@@ -1,0 +1,40 @@
+import { z } from "zod";
+
+/**
+ * The wire format, which is deliberately the tracker format.
+ *
+ * An agent writes four lines of text. Nothing here is a note object or a MIDI
+ * event: the point of the whole project is that a song is something you can
+ * read, diff, paste into a message and hand to a model.
+ */
+export const PatternSchema = z.object({
+  bass: z.string(),
+  lead: z.string(),
+  chord: z.string(),
+  perc: z.string(),
+  chordShape: z.array(z.array(z.number().int())).min(1),
+});
+
+export const SongInput = z.object({
+  title: z.string().trim().min(1).max(80).optional(),
+  bpm: z.number().int().min(40).max(300),
+  patterns: z.array(PatternSchema).min(1).max(16),
+  order: z.array(z.number().int().min(0)).min(1).max(64),
+  /** Which chip. One today; the field exists so songs stay readable later. */
+  chip: z.literal("2a03").default("2a03"),
+  /** Free-form. Meant for an agent to say who or what made it. */
+  author: z.string().trim().max(60).optional(),
+});
+
+export type SongInput = z.infer<typeof SongInput>;
+
+export const RenderQuery = z.object({
+  /**
+   * Capped at five minutes. This is compute somebody else pays for, and a song
+   * is a loop - past a few times round there is nothing new to hear.
+   */
+  seconds: z.coerce.number().min(1).max(300).optional(),
+});
+
+/** The short id: base62, eight characters. */
+export const SongId = z.string().regex(/^[0-9A-Za-z]{8}$/, "not a chipvoice id");

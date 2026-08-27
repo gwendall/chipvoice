@@ -7,6 +7,8 @@
       ],
       "outputs": [
         "dist/**",
+        ".next/**",
+        "!.next/cache/**",
         "src/chips/nes/dsp.generated.ts",
         "src/chips/nes/worklet-inline.ts"
       ]

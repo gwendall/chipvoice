@@ -10,6 +10,7 @@
     "dev": "turbo dev"
   },
   "devDependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "turbo": "^2.5.0"
   }
 }

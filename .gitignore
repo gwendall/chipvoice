@@ -7,3 +7,6 @@ dist/
 # Generated from packages/chipvoice/src/chips/nes/dsp.js by build-dsp.mjs.
 packages/chipvoice/src/chips/nes/dsp.generated.ts
 packages/chipvoice/src/chips/nes/worklet-inline.ts
+.next/
+next-env.d.ts
+.chipvoice-dev.db*
