@@ -169,6 +169,24 @@ rather than guessed at now.
 Songs are matched by `id`, not by identity: a variant built at call time - a spread
 to change one field - fails an identity check and restarts the piece on every call.
 
+## Releasing
+
+Publishing runs on a tag, from GitHub Actions, over **trusted publishing**: npm
+trades the workflow's OIDC token for a short-lived credential, so no secret is
+stored anywhere. There is nothing to leak, rotate, or forget to revoke - and npm
+is retiring 2FA-bypass tokens for direct publishing in January 2027, so the
+alternative has an expiry date on it.
+
+```
+npm version patch && git push --follow-tags
+```
+
+The workflow refuses to publish if the tag and `package.json` disagree, and runs
+`test:fresh` first - which installs the tarball into an empty project and drives
+it in a browser. It is the only check that sees what `npm install` actually
+hands over: a wrong `files` list, a missing export or a worklet left out of the
+package all look perfect from inside the repo.
+
 ## Where it comes from
 
 Extracted from [redburner.com](https://redburner.com), a wireframe rail shooter drawn

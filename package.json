@@ -43,9 +43,12 @@
     "typecheck": "npm run worklet && tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run build",
     "dev": "npm run build && cd app && npm install && npm run dev",
-    "build:app": "npm run build && cd app && npm install && npm run build"
+    "build:app": "npm run build && cd app && npm install && npm run build",
+    "test:fresh": "node scripts/fresh-install-test.mjs"
   },
   "devDependencies": {
+    "playwright": "^1.62.1",
+    "serve": "^14.2.6",
     "typescript": "^5.7.0"
   }
 }
