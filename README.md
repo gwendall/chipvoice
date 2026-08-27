@@ -28,7 +28,7 @@ chip.sfx("p2", {
 No files to copy, no build step, no setup. The worklet is inlined and handed to the
 browser as a blob URL, so `npm install` is the whole installation.
 
-**[Try it](https://chipvoice.vercel.app)** - a grid, a playhead, and a Fire button
+**[Try it](https://chipvoice.dev)** - a grid, a playhead, and a Fire button
 that takes a channel away from the music while you watch. The song lives in the URL,
 so a link is the save file.
 
