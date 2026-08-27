@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { SongInput } from "@/lib/schema";
-import { check, insert, present } from "@/lib/songs";
+import { insert, present } from "@/lib/songs";
 import { allow, clientKey } from "@/lib/limit";
 import { hasDatabase } from "@/lib/db";
 import { identify } from "@/lib/auth";
-import { cleanAuthor, cleanTitle } from "@/lib/text";
+import { checkAll } from "@/lib/check";
 
 export const runtime = "nodejs";
 
@@ -71,27 +71,14 @@ export async function POST(request: Request) {
   }
 
   /*
+   * One check, shared with `/api/validate`.
+   *
    * The title and the author are composed onto a card in the site's own colours
    * and shown by Telegram, X and Discord. Unfiltered, that is a way to make an
-   * official-looking image say anything, which is the first abuse of every
+   * official-looking image say anything - which is the first abuse of every
    * service that renders user text into a picture.
    */
-  const title = cleanTitle(parsed.data.title);
-  const author = cleanAuthor(parsed.data.author);
-  if (!title.ok || !author.ok) {
-    return NextResponse.json(
-      {
-        error: "invalid_request",
-        issues: [
-          ...(title.ok ? [] : [{ level: "error" as const, path: "title", message: title.message!, silent: false }]),
-          ...(author.ok ? [] : [{ level: "error" as const, path: "author", message: author.message!, silent: false }]),
-        ],
-      },
-      { status: 422 },
-    );
-  }
-
-  const result = check(parsed.data);
+  const result = checkAll(parsed.data);
   if (!result.ok) {
     return NextResponse.json(
       { error: "invalid_song", issues: result.issues },
@@ -100,7 +87,7 @@ export async function POST(request: Request) {
   }
 
   const song = await insert(
-    { ...parsed.data, title: title.value || undefined, author: author.value || undefined },
+    { ...parsed.data, title: result.title || undefined, author: result.author || undefined },
     null,
     caller.keyId,
   );

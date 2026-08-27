@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { SongId, SongInput } from "@/lib/schema";
-import { check, find, insert, present } from "@/lib/songs";
+import { find, insert, present } from "@/lib/songs";
 import { allow, clientKey } from "@/lib/limit";
 import { hasDatabase } from "@/lib/db";
 import { identify } from "@/lib/auth";
-import { cleanAuthor, cleanTitle } from "@/lib/text";
+import { checkAll } from "@/lib/check";
 
 export const runtime = "nodejs";
 
@@ -74,28 +74,13 @@ export async function POST(
     author: parsed.data.author ?? undefined,
   };
 
-  const title = cleanTitle(merged.title);
-  const author = cleanAuthor(merged.author);
-  if (!title.ok || !author.ok) {
-    return NextResponse.json(
-      {
-        error: "invalid_request",
-        issues: [
-          ...(title.ok ? [] : [{ level: "error" as const, path: "title", message: title.message!, silent: false }]),
-          ...(author.ok ? [] : [{ level: "error" as const, path: "author", message: author.message!, silent: false }]),
-        ],
-      },
-      { status: 422 },
-    );
-  }
-
-  const result = check(merged);
+  const result = checkAll(merged);
   if (!result.ok) {
     return NextResponse.json({ error: "invalid_song", issues: result.issues }, { status: 422 });
   }
 
   const song = await insert(
-    { ...merged, title: title.value || undefined, author: author.value || undefined },
+    { ...merged, title: result.title || undefined, author: result.author || undefined },
     parent.song,
     caller.keyId,
   );

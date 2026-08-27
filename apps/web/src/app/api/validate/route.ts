@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { SongInput } from "@/lib/schema";
-import { check } from "@/lib/songs";
+import { checkAll } from "@/lib/check";
 
 export const runtime = "nodejs";
 
@@ -38,7 +38,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = check(parsed.data);
+  // The same check the store route runs, so an answer here means the next call
+  // will not refuse for a reason this one did not mention.
+  const result = checkAll(parsed.data);
   return NextResponse.json(
     { ok: result.ok, issues: result.issues, measured: result.measured },
     { status: result.ok ? 200 : 422 },

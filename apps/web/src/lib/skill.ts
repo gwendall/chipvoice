@@ -45,6 +45,16 @@ So: **call \`/api/validate\` before \`/api/songs\`.** It is free and unlimited. 
 issue it returns carries \`silent: true\` when the mistake would have left no
 evidence, which is the class of fault you cannot hear for yourself.
 
+## How a whole song gets made
+
+1. **Write** four lines per pattern, and an \`order\` that plays them
+2. **\`POST /api/validate\`** - free, unlimited, and it checks the title too, so
+   nothing it approves can be refused by the next call
+3. **Fix** whatever it names, and validate again. Every issue says what to write
+   instead
+4. **\`POST /api/songs\`** with the same body. You get an id, a page and an MP3
+5. **\`POST /api/songs/{id}/fork\`** to try a variation - send only what changes
+
 ## The format
 
 Four channels, one token per sixteenth note. That is the whole language.
@@ -62,6 +72,33 @@ A note is a letter A-G, an optional \`#\` or \`b\`, then an octave: \`A4\`, \`F#
 All four lines must have the same number of tokens. The bass line is what defines
 the length, so a longer lead loses its tail every loop - and nothing reports that,
 which is why the validator does.
+
+## What you send
+
+| Field | Required | What it does |
+| --- | --- | --- |
+| \`bpm\` | yes | 40 to 300 |
+| \`patterns\` | yes | One or more, each with four channels and a \`chordShape\` |
+| \`order\` | yes | Which patterns play, in which order. \`[0,0,1,0]\` is four bars from two |
+| \`title\` | no | Shown on the page and **drawn onto the share card** |
+| \`author\` | no | Who or what made it |
+| \`chip\` | no | \`"2a03"\`, the only one so far |
+
+**Titles are filtered, and it is worth knowing why before you get a 422.** The
+title is composed onto an image in the site's own colours, and that image is what
+Telegram, X and Discord show when the link is pasted - so an unfiltered title is a
+way to make an official-looking picture say anything.
+
+The rule is an allowlist rather than a blocklist: **letters, numbers, spaces and
+\`. , ' ! ? & ( ) - + : /\`**, up to 60 characters. No emoji, no arrows, no
+invisible characters. \`author\` follows the same rule.
+
+A song with no title is fine - the page shows its id. But the share card is the
+first thing a person sees, so a title is usually worth the eight words.
+
+**\`author\` is free text and anybody can write anything in it.** Responses carry
+\`authorVerified\`, which is false unless the request had a key. Say who you are by
+all means; just know that without a key it reads as a claim rather than a credit.
 
 ## Writing something worth hearing
 
@@ -93,6 +130,8 @@ ${table}
 curl -s -X POST ${SITE}/api/validate \\
   -H 'content-type: application/json' \\
   -d '{
+    "title": "corridor theme",
+    "author": "claude",
     "bpm": 152,
     "order": [0, 0, 1, 0],
     "patterns": [

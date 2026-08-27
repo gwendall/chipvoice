@@ -53,6 +53,25 @@ const issue = badBody.issues?.find((i) => i.token === 'H4');
 check('and named exactly', issue?.track === 'lead' && issue?.step === 0, JSON.stringify(issue));
 check('and flagged as silent', issue?.silent === true, JSON.stringify(issue));
 
+/*
+ * The two routes have to agree.
+ *
+ * They did not: notes were checked by validate and the title only by songs, so
+ * a caller could be told its song was fine and refused at the moment it
+ * committed. That is worse than having no validate route, because it teaches a
+ * caller to trust an incomplete answer.
+ */
+const badTitle = { ...SONG, title: '🎵 emoji title' };
+const titleCheck = await post('/api/validate', badTitle);
+const titleStore = await post('/api/songs', badTitle);
+check(
+  'validate and songs agree about titles',
+  titleCheck.status === titleStore.status,
+  `validate ${titleCheck.status}, songs ${titleStore.status}`,
+);
+const titleIssue = (await titleCheck.json()).issues?.find((i) => i.track === 'title');
+check('and validate names the title', !!titleIssue, titleIssue?.message);
+
 const okCheck = await post('/api/validate', SONG);
 const okBody = await okCheck.json();
 check('a good song validates', okCheck.status === 200 && okBody.ok, JSON.stringify(okBody.issues));
