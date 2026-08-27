@@ -13,7 +13,8 @@
  * frame at a time.
  */
 
-import { getChip, type ChipCore, type RegisterEvent } from "./chip.js";
+import { type ChipCore, type RegisterEvent } from "./chip.js";
+import { nesChip } from "./chips/nes/index.js";
 
 const CPU_HZ = 1789773;
 export const FRAME_RATE = 60;
@@ -117,8 +118,17 @@ export class APU implements NoteSink {
    */
   async init(destination: AudioNode): Promise<boolean> {
     if (!this.ctx.audioWorklet) return false;
-    const chip = getChip("2a03");
-    if (!chip) return false;
+    /*
+     * The chip is imported, not looked up.
+     *
+     * It used to come from the registry, which a side-effecting import filled -
+     * and the package declares `sideEffects: false`, so every bundler was free
+     * to drop that import. It did: in the built studio the registry was empty,
+     * `init` returned false, and `Chip.create()` resolved to null with no
+     * error anywhere. The registry is still there for introspection; nothing
+     * on the path that has to work depends on it.
+     */
+    const chip = nesChip;
     const url = URL.createObjectURL(
       new Blob([chip.workletSource], { type: "application/javascript" }),
     );

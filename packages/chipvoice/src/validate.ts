@@ -1,4 +1,5 @@
 import { getChip, type VoiceSpec } from "./chip.js";
+import { nesChip } from "./chips/nes/index.js";
 import { noteToFreq } from "./driver.js";
 import type { Pattern, Song } from "./sequencer.js";
 import { loopSeconds } from "./render.js";
@@ -91,11 +92,9 @@ export function validateSong(song: unknown): ValidationResult {
   const s = song as Partial<Song> & { chip?: string };
 
   const chipId = s.chip ?? "2a03";
-  const chip = getChip(chipId);
+  const chip = chipId === "2a03" ? nesChip : getChip(chipId);
   if (!chip) {
-    return fail(
-      `unknown chip "${chipId}". This build knows: ${[...(getChip("2a03") ? ["2a03"] : [])].join(", ")}`,
-    );
+    return fail(`unknown chip "${chipId}". This build knows: 2a03`);
   }
   const voices = new Map<string, VoiceSpec>(chip.spec.voices.map((v) => [v.id, v]));
 

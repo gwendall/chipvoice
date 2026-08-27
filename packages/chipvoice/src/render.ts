@@ -1,4 +1,5 @@
 import { getChip } from "./chip.js";
+import { nesChip } from "./chips/nes/index.js";
 import { Sequencer, type Song } from "./sequencer.js";
 import { OfflineDriver } from "./driver.js";
 
@@ -52,8 +53,11 @@ export function loopSeconds(song: Song): number {
 
 export function renderSong(song: Song, options: RenderOptions = {}): RenderResult {
   const sampleRate = options.sampleRate ?? 44100;
-  const chip = getChip(options.chip ?? "2a03");
-  if (!chip) throw new Error(`unknown chip: ${options.chip}`);
+  // Same reason as the driver: the default is imported so a bundler cannot
+  // drop it. Anything else goes through the registry, which a caller filled.
+  const id = options.chip ?? "2a03";
+  const chip = id === "2a03" ? nesChip : getChip(id);
+  if (!chip) throw new Error(`unknown chip: ${id}`);
 
   const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
   const total = Math.max(1, Math.round(seconds * sampleRate));

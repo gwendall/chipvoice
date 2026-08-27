@@ -11,7 +11,7 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "types": ["node", "vite/client"],
-    "paths": { "chipvoice": ["../dist/index.d.ts"] }
+    "paths": { "chipvoice": ["../../packages/chipvoice/dist/index.d.ts"] }
   },
   "include": ["src", "vite.config.ts"]
 }

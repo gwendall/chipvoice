@@ -1,4 +1,4 @@
-import { chromium } from '/Users/gwendall/Code/redburner/node_modules/playwright/index.mjs';
+import { chromium } from 'playwright';
 
 /**
  * The playground has to make a sound, show where it is, and show a channel
