@@ -1,0 +1,318 @@
+/**
+ * Main-thread driver for the 2A03 emulation in `worklet-source.js`.
+ *
+ * Real NES games did not "play a sound"; a driver rewrote the APU registers
+ * every NMI, sixty times a second. Instruments here are the same idea, and the
+ * same shape FamiTracker settled on: per-frame tables for volume, arpeggio,
+ * pitch and duty. Everything is expanded into timestamped register writes and
+ * handed to the worklet, which applies them sample-exactly.
+ */
+
+import { WORKLET_SOURCE } from "./worklet-inline.js";
+
+const CPU_HZ = 1789773;
+export const FRAME_RATE = 60;
+export const FRAME_TIME = 1 / FRAME_RATE;
+
+export type Channel = "p1" | "p2" | "tri" | "noi";
+
+const NOTE_OFFSETS: Record<string, number> = {
+  C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11,
+};
+
+export function noteToFreq(note: string): number {
+  const m = /^([A-G])([#b]?)(-?\d)$/.exec(note.trim());
+  if (!m) return 0;
+  const [, letter, accidental, octave] = m;
+  let semis = NOTE_OFFSETS[letter];
+  if (accidental === "#") semis += 1;
+  if (accidental === "b") semis -= 1;
+  const midi = (Number(octave) + 1) * 12 + semis;
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+/** Pulse and noise: f = CPU / (16 * (t + 1)). */
+export function freqToPulsePeriod(freq: number): number {
+  if (freq <= 0) return 0x7ff;
+  return Math.max(0, Math.min(0x7ff, Math.round(CPU_HZ / (16 * freq) - 1)));
+}
+
+/** The triangle divides by 32, which is why it sounds an octave lower. */
+export function freqToTrianglePeriod(freq: number): number {
+  if (freq <= 0) return 0x7ff;
+  return Math.max(0, Math.min(0x7ff, Math.round(CPU_HZ / (32 * freq) - 1)));
+}
+
+/**
+ * A per-frame instrument definition. Volume is 0-15, arpeggio is in semitones,
+ * pitch is a signed period offset applied cumulatively, duty is 0-3.
+ */
+export interface Instrument {
+  volume: number[];
+  duty?: number | number[];
+  arp?: number[];
+  /** Added to the period each frame, cumulatively. Positive = lower pitch. */
+  pitch?: number[];
+  /** Semitones added per frame; simpler than a raw pitch table for slides. */
+  slide?: number;
+  /** Hold the last volume value instead of stopping, until note off. */
+  sustain?: boolean;
+  /** Loop the arpeggio table (default true) or play it once. */
+  arpLoop?: boolean;
+  vibrato?: { depth: number; rate: number; delay?: number };
+  noiseMode?: boolean;
+}
+
+interface RegisterEvent {
+  at: number; // absolute sample index
+  ch: Channel;
+  duty?: number;
+  period?: number;
+  periodIndex?: number;
+  volume?: number;
+  constant?: boolean;
+  loop?: boolean;
+  length?: number;
+  linear?: number;
+  trigger?: boolean;
+  mode?: boolean;
+  stop?: boolean;
+  sweep?: { period: number; negate: boolean; shift: number } | null;
+}
+
+export class APU {
+  private node: AudioWorkletNode | null = null;
+  private readonly ctx: AudioContext;
+  private queue: RegisterEvent[] = [];
+  private flushHandle: number | null = null;
+  ready = false;
+
+  constructor(ctx: AudioContext) {
+    this.ctx = ctx;
+  }
+
+  /**
+   * Loads the processor and connects it.
+   *
+   * The worklet is inlined and handed over as a blob URL rather than fetched
+   * from a path. A library that ships it as a file makes every consumer copy it
+   * into their own public directory and keep that copy in step with the
+   * package - and the failure mode is silence with no error, because
+   * `addModule` on a 404 rejects into a catch nobody reads.
+   */
+  async init(destination: AudioNode): Promise<boolean> {
+    if (!this.ctx.audioWorklet) return false;
+    const url = URL.createObjectURL(
+      new Blob([WORKLET_SOURCE], { type: "application/javascript" }),
+    );
+    try {
+      await this.ctx.audioWorklet.addModule(url);
+    } catch {
+      return false;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+    this.node = new AudioWorkletNode(this.ctx, "apu-processor", {
+      numberOfInputs: 0,
+      numberOfOutputs: 1,
+      outputChannelCount: [2],
+    });
+    this.node.connect(destination);
+    this.ready = true;
+    return true;
+  }
+
+  setGain(value: number) {
+    this.node?.port.postMessage({ type: "gain", value });
+  }
+
+  reset() {
+    this.queue.length = 0;
+    this.node?.port.postMessage({ type: "reset" });
+  }
+
+  private push(event: RegisterEvent) {
+    this.queue.push(event);
+    if (this.flushHandle === null) {
+      // Batch a frame's worth of writes into one postMessage.
+      this.flushHandle = requestAnimationFrame(() => this.flush());
+    }
+  }
+
+  private flush() {
+    this.flushHandle = null;
+    if (!this.node || this.queue.length === 0) return;
+    this.node.port.postMessage({ type: "events", events: this.queue });
+    this.queue = [];
+  }
+
+  private sampleAt(time: number) {
+    return Math.max(0, Math.round(time * this.ctx.sampleRate));
+  }
+
+  /**
+   * Expands an instrument into per-frame register writes. Only actual changes
+   * are emitted, so a flat sustained note costs one write.
+   */
+  playNote(
+    channel: Channel,
+    opts: {
+      /** Note name or frequency in Hz. */
+      note: string | number;
+      instrument: Instrument;
+      /** Seconds. */
+      duration: number;
+      /** Absolute context time; defaults to now. */
+      at?: number;
+      /** Scales the instrument's volume table, 0..1. */
+      gain?: number;
+      /** Detune in semitones. */
+      detune?: number;
+    },
+  ) {
+    if (!this.ready) return;
+    const inst = opts.instrument;
+    const start = opts.at ?? this.ctx.currentTime;
+    const isNoiseChannel = channel === "noi";
+    // On the noise channel `note` is a period index 0-15, not a pitch.
+    const baseFreq = isNoiseChannel
+      ? 0
+      : typeof opts.note === "string"
+        ? noteToFreq(opts.note)
+        : opts.note;
+    const noiseBase = isNoiseChannel ? Number(opts.note) : 0;
+    if (!isNoiseChannel && !baseFreq) return;
+
+    const frames = Math.max(1, Math.round(opts.duration * FRAME_RATE));
+    const gain = opts.gain ?? 1;
+    const detune = opts.detune ?? 0;
+    const isTriangle = channel === "tri";
+    const isNoise = isNoiseChannel;
+
+    let lastPeriod = -1;
+    let lastVolume = -1;
+    let lastDuty = -1;
+    let pitchAcc = 0;
+
+    for (let f = 0; f < frames; f++) {
+      const at = this.sampleAt(start + f * FRAME_TIME);
+
+      // Volume table, held at its last value when the instrument sustains.
+      let vol: number;
+      if (f < inst.volume.length) vol = inst.volume[f];
+      else if (inst.sustain) vol = inst.volume[inst.volume.length - 1];
+      else vol = 0;
+      vol = Math.max(0, Math.min(15, Math.round(vol * gain)));
+
+      // Arpeggio, slide and vibrato all act on the note, not the period, so
+      // they stay musical across octaves.
+      let semis = detune;
+      if (inst.arp && inst.arp.length > 0) {
+        const loop = inst.arpLoop !== false;
+        const idx = loop ? f % inst.arp.length : Math.min(f, inst.arp.length - 1);
+        semis += inst.arp[idx];
+      }
+      if (inst.slide) semis += inst.slide * f;
+      if (inst.vibrato) {
+        const delay = inst.vibrato.delay ?? 0;
+        if (f >= delay) {
+          semis +=
+            Math.sin(((f - delay) / inst.vibrato.rate) * Math.PI * 2) *
+            inst.vibrato.depth;
+        }
+      }
+
+      const freq = isNoise ? 0 : baseFreq * Math.pow(2, semis / 12);
+      let period = isNoise
+        ? 0
+        : isTriangle
+          ? freqToTrianglePeriod(freq)
+          : freqToPulsePeriod(freq);
+      if (inst.pitch && inst.pitch.length > 0) {
+        pitchAcc += inst.pitch[Math.min(f, inst.pitch.length - 1)];
+        period = Math.max(0, Math.min(0x7ff, period + Math.round(pitchAcc)));
+      }
+
+      const ev: RegisterEvent = { at, ch: channel };
+      let dirty = false;
+
+      if (isNoise) {
+        // Noise has 16 periods rather than a frequency, so arpeggio and slide
+        // walk the period index instead of transposing.
+        const idx = Math.max(0, Math.min(15, Math.round(noiseBase + semis)));
+        if (idx !== lastPeriod) {
+          ev.periodIndex = idx;
+          lastPeriod = idx;
+          dirty = true;
+        }
+        if (f === 0) {
+          ev.mode = !!inst.noiseMode;
+          dirty = true;
+        }
+      } else if (period !== lastPeriod) {
+        ev.period = period;
+        lastPeriod = period;
+        dirty = true;
+      }
+
+      if (!isTriangle) {
+        if (vol !== lastVolume) {
+          ev.volume = vol;
+          ev.constant = true;
+          lastVolume = vol;
+          dirty = true;
+        }
+        if (!isNoise) {
+          const duty = Array.isArray(inst.duty)
+            ? inst.duty[f % inst.duty.length]
+            : (inst.duty ?? 2);
+          if (duty !== lastDuty) {
+            ev.duty = duty;
+            lastDuty = duty;
+            dirty = true;
+          }
+        }
+      } else if (f === 0) {
+        // The triangle has no volume; it plays or it does not.
+        ev.linear = 127;
+        ev.trigger = true;
+        dirty = true;
+      }
+
+      if (f === 0) {
+        ev.length = 31; // longest, since the driver ends notes explicitly
+        ev.loop = true;
+        ev.trigger = true;
+        if (!isTriangle) ev.constant = true;
+        dirty = true;
+      }
+
+      if (dirty) this.push(ev);
+    }
+
+    // Explicit note off, the way a driver would.
+    this.push({
+      at: this.sampleAt(start + frames * FRAME_TIME),
+      ch: channel,
+      stop: true,
+    });
+  }
+
+  /** Silences one channel immediately. */
+  stop(channel: Channel, at?: number) {
+    if (!this.ready) return;
+    this.push({
+      at: this.sampleAt(at ?? this.ctx.currentTime),
+      ch: channel,
+      stop: true,
+    });
+  }
+}
+
+/** Percussion built from the noise channel, plus a triangle thump for kicks. */
+export const NOISE_KIT = {
+  kick: { periodIndex: 6, volume: [15, 13, 9, 5, 2], sweep: -1 },
+  snare: { periodIndex: 9, volume: [14, 11, 8, 5, 3, 1] },
+  hat: { periodIndex: 13, volume: [6, 3, 1], mode: true },
+  openHat: { periodIndex: 12, volume: [8, 7, 6, 5, 4, 3, 2, 1], mode: true },
+} as const;

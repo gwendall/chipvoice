@@ -1,0 +1,245 @@
+import { APU, type Channel, type Instrument } from "./apu.js";
+import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
+
+export type { Channel, Instrument } from "./apu.js";
+export type { Pattern, PercussionKit, Song } from "./sequencer.js";
+export { DEFAULT_KIT, softKit } from "./sequencer.js";
+export { noteToFreq } from "./apu.js";
+
+/**
+ * Which channel is busy, and until when.
+ *
+ * This is the part that makes it sound like a console rather than like a
+ * synthesiser with a retro preset. The 2A03 has four voices and no more, so a
+ * game's music and its gunfire compete for them: firing a shot takes pulse 2
+ * away from the chord for a tenth of a second, and you hear the music dip.
+ *
+ * Every library that generates "8-bit" sound in a browser gives the music its
+ * own tracks and the effects theirs. That is the one thing the hardware could
+ * not do, and losing it is most of why those libraries sound wrong.
+ */
+class Arbiter implements ChannelClaim {
+  private busy: Record<Channel, number> = { p1: 0, p2: 0, tri: 0, noi: 0 };
+
+  claim(channel: Channel, until: number) {
+    this.busy[channel] = Math.max(this.busy[channel], until);
+  }
+
+  canPlay(channel: Channel, at: number) {
+    return at >= this.busy[channel];
+  }
+
+  clear() {
+    this.busy = { p1: 0, p2: 0, tri: 0, noi: 0 };
+  }
+}
+
+export interface ChipOptions {
+  /** Supply your own context to share one with the rest of your audio. */
+  context?: AudioContext;
+  /** 0 to 1. Default 0.78, which leaves headroom for the chip's own mixing. */
+  gain?: number;
+}
+
+export interface SfxOptions {
+  /** Note name (`"A4"`, `"F#3"`) or, on the noise channel, a period index 0-15. */
+  note: string | number;
+  instrument: Instrument;
+  /** Seconds. */
+  duration: number;
+  /** Seconds from now. Default 0. */
+  delay?: number;
+  /** Scales the instrument's volume table, 0 to 1. */
+  gain?: number;
+  /** Semitones. */
+  detune?: number;
+}
+
+/**
+ * A 2A03, and a driver for it.
+ *
+ * ```ts
+ * const chip = await Chip.create();
+ * chip.play(THEME);
+ * chip.sfx("p2", { note: "B6", instrument: LASER, duration: 0.1 });
+ * ```
+ *
+ * `create` must be called from a user gesture, because that is when a browser
+ * will let an AudioContext start. Everything after that is free.
+ */
+export class Chip {
+  private readonly ctx: AudioContext;
+  private readonly master: GainNode;
+  private readonly apu: APU;
+  private readonly arbiter = new Arbiter();
+  private readonly sequencer: Sequencer;
+  private readonly ownsContext: boolean;
+  private level: number;
+
+  private constructor(
+    ctx: AudioContext,
+    apu: APU,
+    master: GainNode,
+    gain: number,
+    owns: boolean,
+  ) {
+    this.ctx = ctx;
+    this.apu = apu;
+    this.master = master;
+    this.ownsContext = owns;
+    this.level = gain;
+    this.sequencer = new Sequencer(apu, this.arbiter, () => ctx.currentTime);
+  }
+
+  /**
+   * Starts the chip. Resolves to null when the browser has no AudioWorklet, so
+   * a caller can degrade rather than crash - `chip?.sfx(...)` is a valid game.
+   */
+  static async create(options: ChipOptions = {}): Promise<Chip | null> {
+    const Ctor =
+      typeof AudioContext !== "undefined"
+        ? AudioContext
+        : (globalThis as unknown as { webkitAudioContext?: typeof AudioContext })
+            .webkitAudioContext;
+    if (!Ctor) return null;
+
+    const owns = !options.context;
+    const ctx = options.context ?? new Ctor();
+    const gain = options.gain ?? 0.78;
+
+    const master = ctx.createGain();
+    master.gain.value = gain;
+    master.connect(ctx.destination);
+
+    const apu = new APU(ctx);
+    const ok = await apu.init(master);
+    if (!ok) {
+      master.disconnect();
+      if (owns) void ctx.close();
+      return null;
+    }
+    return new Chip(ctx, apu, master, gain, owns);
+  }
+
+  /** The context, for sharing it with the rest of your audio. */
+  get audioContext() {
+    return this.ctx;
+  }
+
+  /** The node everything runs through, for taps, analysers and recording. */
+  get output(): AudioNode {
+    return this.master;
+  }
+
+  get currentTime() {
+    return this.ctx.currentTime;
+  }
+
+  /** Browsers suspend contexts on their own; call this from a gesture. */
+  resume() {
+    if (this.ctx.state === "suspended") void this.ctx.resume();
+  }
+
+  /** 0 to 1. Ramped rather than set, because a step is a click. */
+  setGain(value: number) {
+    this.level = value;
+    this.master.gain.setTargetAtTime(value, this.ctx.currentTime, 0.02);
+  }
+
+  getGain() {
+    return this.level;
+  }
+
+  // ------------------------------------------------------------------- music
+
+  /**
+   * Starts a song, or does nothing if that song is already playing.
+   *
+   * Songs are matched by `id`, not by identity: a variant built at call time -
+   * a spread to change one field, which is the obvious way to derive one -
+   * fails an identity check and restarts the piece on every call.
+   */
+  play(song: Song) {
+    this.sequencer.play(song);
+  }
+
+  stop() {
+    this.sequencer.stop();
+    this.arbiter.clear();
+  }
+
+  get playing() {
+    return this.sequencer.isPlaying;
+  }
+
+  /** Which song is loaded and scheduling, by id. */
+  get songId() {
+    return this.sequencer.songId;
+  }
+
+  // --------------------------------------------------------------------- sfx
+
+  /**
+   * Plays an effect, taking the channel from the music for as long as it lasts.
+   *
+   * Pick `p2` for most things: drivers claimed pulse 2 first because the lead
+   * usually lives on pulse 1, and losing the lead is more noticeable than
+   * losing the chord.
+   */
+  sfx(channel: Channel, options: SfxOptions) {
+    const at = this.ctx.currentTime + (options.delay ?? 0);
+    this.arbiter.claim(channel, at + options.duration);
+    this.apu.playNote(channel, {
+      note: options.note,
+      instrument: options.instrument,
+      duration: options.duration,
+      at,
+      gain: options.gain,
+      detune: options.detune,
+    });
+  }
+
+  /**
+   * Is this channel free at that moment?
+   *
+   * Useful for the second-tier effects: a UI blip is worth skipping if it would
+   * cut the lead, where a gunshot never is. It is also the only way to observe
+   * that channel stealing is happening at all, which is the thing this library
+   * is built on and the thing no other one does.
+   */
+  canPlay(channel: Channel, at = this.ctx.currentTime): boolean {
+    return this.arbiter.canPlay(channel, at);
+  }
+
+  /**
+   * The next eighth-note boundary, or null when no music is playing.
+   *
+   * Rez's cheapest trick: snap a player's own sounds to the grid and somebody
+   * with no rhythm still sounds like a musician. Never do it to the gun - a
+   * shot that arrives an eighth late reads as a mushy trigger, and that is the
+   * one thing a shooter cannot afford.
+   */
+  nextEighth(from = this.ctx.currentTime): number | null {
+    return this.sequencer.nextEighth(from);
+  }
+
+  /**
+   * How long to wait for the next eighth, capped.
+   *
+   * Past the cap it returns 0 and the sound plays now, because being on time
+   * matters more than being in time.
+   */
+  beatDelay(maxWait = 0.12): number {
+    const beat = this.nextEighth();
+    if (beat === null) return 0;
+    return Math.min(Math.max(0, beat - this.ctx.currentTime), maxWait);
+  }
+
+  /** Frees the worklet and, unless you supplied the context, closes it. */
+  dispose() {
+    this.sequencer.stop();
+    this.apu.reset();
+    this.master.disconnect();
+    if (this.ownsContext) void this.ctx.close();
+  }
+}

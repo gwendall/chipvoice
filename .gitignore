@@ -1,0 +1,5 @@
+node_modules/
+dist/
+playground/chipvoice/
+# Generated from src/worklet-source.js by scripts/bundle-worklet.mjs.
+src/worklet-inline.ts

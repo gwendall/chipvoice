@@ -1,0 +1,51 @@
+{
+  "name": "chipvoice",
+  "version": "0.1.0",
+  "description": "Game audio on a real NES sound chip. Cycle-accurate 2A03 in an AudioWorklet, with sound effects that steal channels from the music - the way the hardware did.",
+  "keywords": [
+    "chiptune",
+    "nes",
+    "2a03",
+    "audioworklet",
+    "web-audio",
+    "game-audio",
+    "8-bit",
+    "famitracker",
+    "emulation",
+    "tracker"
+  ],
+  "license": "MIT",
+  "author": "Gwendall Esnault (https://gwendall.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gwendall/chipvoice.git"
+  },
+  "homepage": "https://github.com/gwendall/chipvoice",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "worklet": "node scripts/bundle-worklet.mjs",
+    "build": "npm run worklet && tsc -p tsconfig.build.json",
+    "typecheck": "npm run worklet && tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build",
+    "build:playground": "npm run build && rm -rf playground/chipvoice && cp -r dist playground/chipvoice",
+    "dev": "npm run build:playground && npx --yes serve playground -l 4173"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

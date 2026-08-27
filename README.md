@@ -1,0 +1,177 @@
+# chipvoice
+
+Game audio on a real sound chip.
+
+A cycle-accurate **Ricoh 2A03** - the NES chip - running in an AudioWorklet, with a
+driver and a tracker on top, and one thing no other browser library does: **sound
+effects take channels away from the music**, the way the hardware forced them to.
+
+```bash
+npm i chipvoice
+```
+
+```ts
+import { Chip } from "chipvoice";
+
+const chip = await Chip.create();     // from a click, so the browser allows audio
+chip.play(THEME);
+
+// The gun. It holds pulse 2 for a tenth of a second, and the chord drops out
+// under it - which is most of what makes this sound like a console.
+chip.sfx("p2", {
+  note: "B6",
+  instrument: { duty: 0, volume: [13, 12, 10, 8, 5, 2], slide: -3.4 },
+  duration: 0.1,
+});
+```
+
+No files to copy, no build step, no setup. The worklet is inlined and handed to the
+browser as a blob URL, so `npm install` is the whole installation.
+
+**[Try it](https://chipvoice.vercel.app)** - four lines of text, and the song lives
+in the URL.
+
+## Why not oscillators
+
+Every other "8-bit" library in a browser is `OscillatorNode` with `type: "square"`
+and a gain envelope. That cannot sound like a console, for three reasons that are
+structural rather than a matter of tuning:
+
+- **`PeriodicWave` is band-limited.** Web Audio anti-aliases its waveforms. The 2A03
+  outputs a raw square with every harmonic intact. There is no setting for this.
+- **The 2A03 mixes non-linearly.** The two pulses go through
+  `95.88 / (8128/(p1+p2) + 100)`, the triangle and noise through another curve. Two
+  notes together are not the sum of two notes.
+- **Three analog filters** - high-pass at 90 Hz and 440 Hz, low-pass at 14 kHz - are
+  what give the NES its boxy, bass-light voice.
+
+So this steps 8-entry duty sequences and a 15-bit LFSR at the chip clock, mixes them
+through the hardware's own DAC curves, and runs the filters. Register writes arrive
+timestamped and are applied sample-exactly, so a slide lands on the frame it was
+scheduled for.
+
+## Four channels, and the fight over them
+
+| Channel | Usually music | Usually effects |
+| --- | --- | --- |
+| `p1` | Lead | Game over |
+| `p2` | Arpeggiated chord | Everything else |
+| `tri` | Bass | Explosion sub-thump |
+| `noi` | Drums | Hits, explosions, whoosh |
+
+There are four voices and no more, so music and effects compete for them. Every
+library that generates chiptune in a browser gives the music its own tracks and the
+effects theirs - which is the one thing the hardware could not do, and losing it is
+most of why those libraries sound wrong.
+
+`chip.sfx()` claims a channel for the length of the effect. The sequencer asks before
+every note it schedules, and skips the ones it cannot have.
+
+```ts
+chip.canPlay("p1");        // is the lead free right now?
+```
+
+## Writing music
+
+One token per sixteenth note, four channels, as text.
+
+```ts
+const PATTERN = {
+  bass:  `A1  .   A1  .   A1  .   A1  .   A1  .   A1  .   A1  .   G1  .`,
+  lead:  `E4  .   .   .   G4  .   A4  .   .   .   B4  .   C5  .   .   .`,
+  chord: `A3  .   .   .   .   .   .   .   .   .   .   .   .   .   .   .`,
+  chordShape: [[0, 3, 7]],   // one held note, arpeggiated at 60 Hz
+  perc:  `K   .   H   .   S   .   H   .   K   .   H   K   S   .   H   .`,
+};
+```
+
+A note name (`A4`, `F#3`), `.` to hold, `=` to cut. Drums use `K` kick, `S` snare,
+`H` hat, `O` open hat. **The bass line's token count sets the pattern length**, so a
+bar in five is possible.
+
+Instruments are per-frame tables, the shape FamiTracker settled on, because that is
+what a driver on the real machine wrote every NMI:
+
+```ts
+const LEAD = {
+  duty: 1,                                   // 0 = 12.5%, 1 = 25%, 2 = 50%
+  volume: [15, 15, 14, 13, 12, 12, 11, 10],  // one entry per frame, at 60 Hz
+  sustain: true,                             // hold the last value until note off
+  vibrato: { depth: 0.18, rate: 8, delay: 12 },
+};
+```
+
+Chords are **one held note arpeggiated at frame rate**, not three notes. That is what
+the hardware did when it ran out of channels, and it is the most recognisable
+chiptune texture there is.
+
+## Snapping effects to the beat
+
+Rez's cheapest trick: snap a player's own sounds to the grid and somebody with no
+rhythm still sounds like a musician.
+
+```ts
+chip.sfx("noi", { ...boom, delay: chip.beatDelay() });
+```
+
+Capped at 120 ms by default - past that it plays immediately, because being on time
+matters more than being in time. **Never do it to the gun.** A shot that arrives an
+eighth late reads as a mushy trigger, and that is the one thing a shooter cannot
+afford.
+
+## Is this a base for other consoles?
+
+Half of it. Being precise about which half, because the answer decides what a second
+chip actually costs.
+
+**Generalises as-is:**
+
+- the worklet-inlined-as-a-blob pattern, which is what removes the setup step
+- sample-exact scheduling of timestamped register writes
+- the arbiter - channel stealing is a concept, not a 2A03 feature
+- the text tracker format, and the idea that a song is a file you can read
+- the `Chip` facade: create, play, sfx, canPlay, beatDelay
+
+**Is NES in disguise and will have to move:**
+
+- `Channel` is the literal union `"p1" | "p2" | "tri" | "noi"`. A YM2612 has six FM
+  channels, three PSG and a DAC; an SPC700 has eight sample voices; a SID has three.
+- `Instrument` is volume, duty, arpeggio, slide, vibrato - the model for simple
+  waveform chips. An FM patch is four operators with an envelope each, an algorithm
+  and a feedback level. It does not fit in this shape and should not be forced to.
+- `Pattern` names four voices, `bass` / `lead` / `chord` / `perc`. Eight voices do
+  not fit four named fields.
+- Percussion assumes a noise channel. The SNES has no such thing; its drums are
+  samples.
+
+The honest version: **each chip is a project, not a file.** The 2A03 is the simplest
+and best-documented one. The SNES is a small sampler with a 64 KiB budget and BRR
+compression. Generalising against one chip produces a bad abstraction; the shape
+above is deliberately concrete, and it will be rewritten against the second chip
+rather than guessed at now.
+
+## API
+
+| | |
+| --- | --- |
+| `Chip.create(options?)` | Starts the chip. Resolves to `null` where AudioWorklet is missing, so a caller degrades instead of crashing |
+| `chip.play(song)` | Starts a song. A no-op if that `song.id` is already playing |
+| `chip.stop()` | Stops it and frees every channel |
+| `chip.sfx(channel, opts)` | Plays an effect, taking the channel from the music |
+| `chip.canPlay(channel, at?)` | Whether a channel is free |
+| `chip.beatDelay(maxWait?)` | Seconds until the next eighth, capped |
+| `chip.setGain(0..1)` | Ramped, because a step is a click |
+| `chip.output` | The node everything runs through, for analysers and recording |
+| `chip.audioContext` | For sharing one context with the rest of your audio |
+| `chip.dispose()` | Frees the worklet, and closes the context if it made it |
+
+Songs are matched by `id`, not by identity: a variant built at call time - a spread
+to change one field - fails an identity check and restarts the piece on every call.
+
+## Where it comes from
+
+Extracted from [redburner.com](https://redburner.com), a wireframe rail shooter drawn
+in the four-shade red palette of the 1995 Virtual Boy. Every sound in it comes from
+this code, which is the only integration test that means anything.
+
+MIT.
