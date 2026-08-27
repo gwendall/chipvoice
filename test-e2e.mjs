@@ -51,12 +51,32 @@ const SONG = {
   ],
 };
 
-const post = (p, body) =>
-  fetch(SITE + p, {
+/**
+ * Posts, and waits out the rate limit rather than failing on it.
+ *
+ * Twenty writes a minute per address is the product behaving correctly, but
+ * running these suites back to back crosses it - and a run that fails with
+ * "song can be stored: 429" reads as a broken API rather than as a working
+ * limiter. Waiting is what tells the two apart.
+ */
+const post = async (p, body) => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await fetch(SITE + p, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (response.status !== 429) return response;
+    const wait = Number(response.headers.get("retry-after") ?? 10);
+    console.log(`      (rate limited, waiting ${wait}s - the limiter is working)`);
+    await new Promise((r) => setTimeout(r, (wait + 1) * 1000));
+  }
+  return fetch(SITE + p, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+};
 
 // ─────────────────────────────────────────────── the published package
 section("the package, installed from npm");
