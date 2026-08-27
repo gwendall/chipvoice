@@ -1,8 +1,9 @@
 node_modules/
 dist/
-app/dist/
-# Generated from src/chips/nes/dsp.js by scripts/build-dsp.mjs.
-src/chips/nes/dsp.generated.ts
-src/chips/nes/worklet-inline.ts
+.turbo/
 .vercel
-app/tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Generated from packages/chipvoice/src/chips/nes/dsp.js by build-dsp.mjs.
+packages/chipvoice/src/chips/nes/dsp.generated.ts
+packages/chipvoice/src/chips/nes/worklet-inline.ts
