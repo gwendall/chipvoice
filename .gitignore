@@ -1,7 +1,8 @@
 node_modules/
 dist/
 app/dist/
-# Generated from src/worklet-source.js by scripts/bundle-worklet.mjs.
-src/worklet-inline.ts
+# Generated from src/chips/nes/dsp.js by scripts/build-dsp.mjs.
+src/chips/nes/dsp.generated.ts
+src/chips/nes/worklet-inline.ts
 .vercel
 app/tsconfig.tsbuildinfo

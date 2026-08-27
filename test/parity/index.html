@@ -1,0 +1,48 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>parity capture</title>
+<button id="go">go</button>
+<script type="module">
+/* Captures four seconds of the live chip so the offline render can be
+   compared against what a browser actually produces. */
+import { Chip } from "../../dist/index.js";
+
+window.captured = null;
+document.getElementById("go").onclick = async () => {
+  const chip = await Chip.create();
+  const ctx = chip.audioContext;
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  chip.output.connect(analyser);
+  const buf = new Float32Array(analyser.fftSize);
+  const out = [];
+
+  chip.play({
+    id: "parity", bpm: 152, order: [0], gain: 1,
+    patterns: [{
+      bass:  "A1 . A1 . A1 . A1 . A1 . A1 . A1 . G1 .",
+      lead:  "E4 . . . G4 . A4 . . . B4 . C5 . . .",
+      chord: "A3 . . . . . . . . . . . . . . .",
+      chordShape: [[0, 3, 7]],
+      perc:  "K . H . S . H . K . H K S . H .",
+    }],
+    lead: { duty: 1, volume: [15, 14, 13, 12, 11], sustain: true },
+    chord: { duty: 0, volume: [9, 8, 7], sustain: true },
+    bass: { volume: [15], sustain: true },
+  });
+
+  // Sample the analyser repeatedly and concatenate. Not a perfect recording -
+  // windows overlap - but the statistics it feeds are what is being compared.
+  const started = performance.now();
+  const tick = () => {
+    analyser.getFloatTimeDomainData(buf);
+    // Every sample, not every fourth: decimating folds the high harmonics
+    // back down and makes the signal measure brighter than it is - which is
+    // the opposite of what a brightness comparison should do.
+    for (let i = 0; i < buf.length; i++) out.push(buf[i]);
+    if (performance.now() - started < 4000) requestAnimationFrame(tick);
+    else { chip.stop(); window.captured = out; }
+  };
+  requestAnimationFrame(tick);
+};
+</script>

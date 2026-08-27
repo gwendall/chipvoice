@@ -120,36 +120,78 @@ matters more than being in time. **Never do it to the gun.** A shot that arrives
 eighth late reads as a mushy trigger, and that is the one thing a shooter cannot
 afford.
 
-## Is this a base for other consoles?
+## Rendering without a browser
 
-Half of it. Being precise about which half, because the answer decides what a second
-chip actually costs.
+The chip is a pure function of the song and the sample rate. Same input, same bytes,
+every time - which is what lets a server compute a file on demand and cache it
+forever instead of storing one.
 
-**Generalises as-is:**
+```ts
+import { renderSong, toWav } from "chipvoice";
 
-- the worklet-inlined-as-a-blob pattern, which is what removes the setup step
-- sample-exact scheduling of timestamped register writes
-- the arbiter - channel stealing is a concept, not a 2A03 feature
-- the text tracker format, and the idea that a song is a file you can read
-- the `Chip` facade: create, play, sfx, canPlay, beatDelay
+const audio = renderSong(THEME, { seconds: 30 });   // ~1.4s for 30s of sound
+writeFileSync("theme.wav", toWav(audio));
+```
 
-**Is NES in disguise and will have to move:**
+The same DSP runs in both places. `src/chips/nes/dsp.js` has no imports and no host
+globals precisely so it can: the build inlines it into the worklet, where `import`
+does not exist, and exports it as a module for Node. The only difference between
+real time and a file is where the sample clock comes from - `currentFrame` in a
+worklet, a counter offline.
 
-- `Channel` is the literal union `"p1" | "p2" | "tri" | "noi"`. A YM2612 has six FM
-  channels, three PSG and a DAC; an SPC700 has eight sample voices; a SID has three.
+`test/parity.mjs` measures both and compares. Loudness matches to a thousandth,
+brightness to six percent; the rest is the browser starting its context wherever it
+likes.
+
+## Checking a song before playing it
+
+```ts
+import { validateSong } from "chipvoice";
+
+const { ok, issues, measured } = validateSong(song);
+```
+
+There is one property of this format that is hostile to anything writing songs
+without ears: **a mistyped note is silent.** A token that is not a note name
+resolves to 0 Hz, the driver returns without scheduling anything, and the result is
+a hole in the middle of a piece with no error anywhere.
+
+So every issue carries `silent`, which is the difference between a mistake and a
+mistake that leaves no evidence:
+
+```json
+{ "level": "error", "track": "lead", "step": 12, "token": "H4",
+  "message": "not a note name. A note is a letter A-G, an optional # or b, then an octave: A4, F#3, Bb2. Use . to hold and = to cut",
+  "silent": true }
+```
+
+It also measures - loop length, onset density, melodic range - and warns when a loop
+is under fourteen seconds, which is where a piece starts being heard as a repeat.
+
+## Other chips
+
+There is one implementation, and the shape is ready for the second without
+pretending to have it.
+
+`ChipSpec` describes what actually differs between machines: the voices, in number
+and in kind; whether an instrument is per-frame tables, an FM patch or a sample; and
+whether a voice takes a pitch, a noise period, or a sample. `ChipCore` is what does
+not differ - something that takes timestamped register writes and fills a buffer.
+
+What is still 2A03 in disguise, named rather than hidden:
+
+- `Channel` is the literal union `"p1" | "p2" | "tri" | "noi"`
 - `Instrument` is volume, duty, arpeggio, slide, vibrato - the model for simple
   waveform chips. An FM patch is four operators with an envelope each, an algorithm
-  and a feedback level. It does not fit in this shape and should not be forced to.
-- `Pattern` names four voices, `bass` / `lead` / `chord` / `perc`. Eight voices do
-  not fit four named fields.
-- Percussion assumes a noise channel. The SNES has no such thing; its drums are
-  samples.
+  and a feedback level, and should not be forced into this shape
+- `Pattern` names four voices. Eight do not fit four named fields
+- percussion assumes a noise channel; the SNES has none, its drums are samples
 
-The honest version: **each chip is a project, not a file.** The 2A03 is the simplest
-and best-documented one. The SNES is a small sampler with a 64 KiB budget and BRR
-compression. Generalising against one chip produces a bad abstraction; the shape
-above is deliberately concrete, and it will be rewritten against the second chip
-rather than guessed at now.
+**Each chip is a project, not a file.** The 2A03 is the simplest and best-documented
+one; the SNES is a small sampler with a 64 KiB budget and BRR compression.
+Generalising against a single case produces a bad abstraction, so the shape above is
+deliberately concrete and will be rewritten against the second chip rather than
+guessed at now.
 
 ## API
 

@@ -38,13 +38,15 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "worklet": "node scripts/bundle-worklet.mjs",
+    "worklet": "node scripts/build-dsp.mjs",
     "build": "npm run worklet && tsc -p tsconfig.build.json",
     "typecheck": "npm run worklet && tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run build",
     "dev": "npm run build && cd app && npm install && npm run dev",
     "build:app": "npm run build && cd app && npm install && npm run build",
-    "test:fresh": "node scripts/fresh-install-test.mjs"
+    "test:fresh": "node scripts/fresh-install-test.mjs",
+    "test": "node test/validate.mjs && npm run test:fresh",
+    "test:parity": "node test/parity.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

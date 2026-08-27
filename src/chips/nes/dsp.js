@@ -1,5 +1,10 @@
 /**
- * A cycle-driven emulation of the Ricoh 2A03 APU, running in an AudioWorklet.
+ * A cycle-driven emulation of the Ricoh 2A03 APU.
+ *
+ * Plain JavaScript, no imports and no host globals, because two consumers that
+ * cannot share a module both need it: the AudioWorklet, where `import` does not
+ * exist, and Node, for offline rendering. `scripts/build-dsp.mjs` turns it
+ * into both: a module with an export, and a string with the worklet shell.
  *
  * Web Audio's PeriodicWave is band-limited: it anti-aliases, which is precisely
  * why oscillator-based "chiptune" sounds too clean. This does what the chip did
@@ -9,6 +14,11 @@
  *
  * Register writes arrive as timestamped events and are applied sample-exactly,
  * so slides and arpeggios land on the frame they were scheduled for.
+ *
+ * The sample clock is a parameter rather than a global: in a worklet it is
+ * `currentFrame`, offline it is a counter. That one difference is all that
+ * separates real time from a file, and it is what makes rendering a pure
+ * function of the song and the sample rate.
  */
 
 const CPU_HZ = 1789773; // NTSC
@@ -206,9 +216,9 @@ function mixTND(triangle, noise, dmc) {
   return denom === 0 ? 0 : 159.79 / (1 / denom + 100);
 }
 
-class APUProcessor extends AudioWorkletProcessor {
-  constructor() {
-    super();
+class NesApuCore {
+  constructor(sampleRate) {
+    this.sampleRate = sampleRate;
     this.pulse1 = new Pulse(1);
     this.pulse2 = new Pulse(2);
     this.triangle = new Triangle();
@@ -236,19 +246,6 @@ class APUProcessor extends AudioWorkletProcessor {
     this.events = [];
     this.masterGain = 1;
 
-    this.port.onmessage = (e) => {
-      const data = e.data;
-      if (data.type === "events") {
-        for (const ev of data.events) this.events.push(ev);
-        // Keep the queue ordered; scheduling can interleave.
-        this.events.sort((a, b) => a.at - b.at);
-      } else if (data.type === "gain") {
-        this.masterGain = data.value;
-      } else if (data.type === "reset") {
-        this.events.length = 0;
-        this.silence();
-      }
-    };
   }
 
   silence() {
@@ -383,18 +380,18 @@ class APUProcessor extends AudioWorkletProcessor {
     }
   }
 
-  process(_inputs, outputs) {
-    const out = outputs[0];
-    const left = out[0];
-    const right = out.length > 1 ? out[1] : null;
+  /**
+   * Fills a buffer, advancing the chip one sample at a time.
+   *
+   * `startSample` is the absolute position of `left[0]` on the sample clock,
+   * which is what makes a scheduled event land on the sample it was booked for.
+   * Pass null for `right` to render mono.
+   */
+  render(left, right, startSample) {
     const n = left.length;
-
-    // currentFrame is the context-wide sample clock, so scheduling from the main
-    // thread lines up exactly with ctx.currentTime.
     for (let i = 0; i < n; i++) {
-      const now = currentFrame + i;
+      const now = startSample + i;
 
-      // Apply everything scheduled for this sample.
       while (this.events.length > 0 && this.events[0].at <= now) {
         this.applyEvent(this.events.shift());
       }
@@ -435,9 +432,22 @@ class APUProcessor extends AudioWorkletProcessor {
       left[i] = v;
       if (right) right[i] = v;
     }
+  }
 
-    return true;
+  /** Queues register writes. Each one is applied at the sample it names. */
+  schedule(events) {
+    for (const ev of events) this.events.push(ev);
+    // Keep the queue ordered; scheduling can interleave.
+    this.events.sort((a, b) => a.at - b.at);
+  }
+
+  setGain(value) {
+    this.masterGain = value;
+  }
+
+  /** Silences every voice and drops anything still queued. */
+  reset() {
+    this.events.length = 0;
+    this.silence();
   }
 }
-
-registerProcessor("apu-processor", APUProcessor);

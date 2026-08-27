@@ -1,14 +1,19 @@
 /**
- * Main-thread driver for the 2A03 emulation in `worklet-source.js`.
+ * Main-thread driver: turns instruments into timestamped register writes.
  *
  * Real NES games did not "play a sound"; a driver rewrote the APU registers
  * every NMI, sixty times a second. Instruments here are the same idea, and the
  * same shape FamiTracker settled on: per-frame tables for volume, arpeggio,
- * pitch and duty. Everything is expanded into timestamped register writes and
- * handed to the worklet, which applies them sample-exactly.
+ * pitch and duty. Everything is expanded into timestamped writes and handed to
+ * a chip, which applies them sample-exactly.
+ *
+ * This layer is 2A03-shaped and will move when a second chip arrives: `duty`
+ * and the two period formulas below are pulse-and-triangle facts, not facts
+ * about chips. What survives is the idea - an instrument is a table read one
+ * frame at a time.
  */
 
-import { WORKLET_SOURCE } from "./worklet-inline.js";
+import { getChip, type ChipCore, type RegisterEvent } from "./chip.js";
 
 const CPU_HZ = 1789773;
 export const FRAME_RATE = 60;
@@ -63,24 +68,34 @@ export interface Instrument {
   noiseMode?: boolean;
 }
 
-interface RegisterEvent {
-  at: number; // absolute sample index
-  ch: Channel;
-  duty?: number;
-  period?: number;
-  periodIndex?: number;
-  volume?: number;
-  constant?: boolean;
-  loop?: boolean;
-  length?: number;
-  linear?: number;
-  trigger?: boolean;
-  mode?: boolean;
-  stop?: boolean;
-  sweep?: { period: number; negate: boolean; shift: number } | null;
+/**
+ * What the sequencer talks to.
+ *
+ * Two implementations: `APU` posts to a worklet, `OfflineDriver` writes into a
+ * chip core directly. The sequencer cannot tell them apart, which is what lets
+ * one piece of scheduling code serve both real time and a file.
+ */
+export interface NoteSink {
+  readonly ready: boolean;
+  playNote(channel: string, opts: PlayNoteOptions): void;
+  stop(channel: string, at?: number): void;
 }
 
-export class APU {
+export interface PlayNoteOptions {
+  /** Note name or frequency in Hz. On the noise channel, a period index 0-15. */
+  note: string | number;
+  instrument: Instrument;
+  /** Seconds. */
+  duration: number;
+  /** Absolute context time; defaults to now. */
+  at?: number;
+  /** Scales the instrument's volume table, 0..1. */
+  gain?: number;
+  /** Detune in semitones. */
+  detune?: number;
+}
+
+export class APU implements NoteSink {
   private node: AudioWorkletNode | null = null;
   private readonly ctx: AudioContext;
   private queue: RegisterEvent[] = [];
@@ -102,8 +117,10 @@ export class APU {
    */
   async init(destination: AudioNode): Promise<boolean> {
     if (!this.ctx.audioWorklet) return false;
+    const chip = getChip("2a03");
+    if (!chip) return false;
     const url = URL.createObjectURL(
-      new Blob([WORKLET_SOURCE], { type: "application/javascript" }),
+      new Blob([chip.workletSource], { type: "application/javascript" }),
     );
     try {
       await this.ctx.audioWorklet.addModule(url);
@@ -112,7 +129,7 @@ export class APU {
     } finally {
       URL.revokeObjectURL(url);
     }
-    this.node = new AudioWorkletNode(this.ctx, "apu-processor", {
+    this.node = new AudioWorkletNode(this.ctx, chip.processorName, {
       numberOfInputs: 0,
       numberOfOutputs: 1,
       outputChannelCount: [2],
@@ -131,22 +148,31 @@ export class APU {
     this.node?.port.postMessage({ type: "reset" });
   }
 
-  private push(event: RegisterEvent) {
+  /**
+   * Where a register write goes.
+   *
+   * Overridable because it is the one line that differs between playing and
+   * rendering: live it batches a frame's worth into one postMessage, offline it
+   * collects them for the next block. Everything above - the whole expansion of
+   * an instrument into writes - is shared by construction rather than copied,
+   * because a copy drifts, and a slide that drifts is a file that does not
+   * match what the player heard.
+   */
+  protected enqueue(event: RegisterEvent) {
     this.queue.push(event);
     if (this.flushHandle === null) {
-      // Batch a frame's worth of writes into one postMessage.
       this.flushHandle = requestAnimationFrame(() => this.flush());
     }
   }
 
-  private flush() {
+  protected flush() {
     this.flushHandle = null;
     if (!this.node || this.queue.length === 0) return;
     this.node.port.postMessage({ type: "events", events: this.queue });
     this.queue = [];
   }
 
-  private sampleAt(time: number) {
+  protected sampleAt(time: number) {
     return Math.max(0, Math.round(time * this.ctx.sampleRate));
   }
 
@@ -154,22 +180,7 @@ export class APU {
    * Expands an instrument into per-frame register writes. Only actual changes
    * are emitted, so a flat sustained note costs one write.
    */
-  playNote(
-    channel: Channel,
-    opts: {
-      /** Note name or frequency in Hz. */
-      note: string | number;
-      instrument: Instrument;
-      /** Seconds. */
-      duration: number;
-      /** Absolute context time; defaults to now. */
-      at?: number;
-      /** Scales the instrument's volume table, 0..1. */
-      gain?: number;
-      /** Detune in semitones. */
-      detune?: number;
-    },
-  ) {
+  playNote(channel: Channel, opts: PlayNoteOptions) {
     if (!this.ready) return;
     const inst = opts.instrument;
     const start = opts.at ?? this.ctx.currentTime;
@@ -287,11 +298,11 @@ export class APU {
         dirty = true;
       }
 
-      if (dirty) this.push(ev);
+      if (dirty) this.enqueue(ev);
     }
 
     // Explicit note off, the way a driver would.
-    this.push({
+    this.enqueue({
       at: this.sampleAt(start + frames * FRAME_TIME),
       ch: channel,
       stop: true,
@@ -301,7 +312,7 @@ export class APU {
   /** Silences one channel immediately. */
   stop(channel: Channel, at?: number) {
     if (!this.ready) return;
-    this.push({
+    this.enqueue({
       at: this.sampleAt(at ?? this.ctx.currentTime),
       ch: channel,
       stop: true,
@@ -316,3 +327,55 @@ export const NOISE_KIT = {
   hat: { periodIndex: 13, volume: [6, 3, 1], mode: true },
   openHat: { periodIndex: 12, volume: [8, 7, 6, 5, 4, 3, 2, 1], mode: true },
 } as const;
+
+
+/**
+ * The same driver, writing into a chip core instead of a worklet.
+ *
+ * Everything above expands an instrument into register writes and then posts
+ * them. This does the expansion identically and hands the writes straight to
+ * the chip, which is the whole of the difference between playing and rendering.
+ *
+ * It reuses `APU`'s expansion by construction rather than by copy: the class
+ * below extends it and replaces only the two methods that touch the browser.
+ * A second copy of that loop would drift, and a slide that drifts is a file
+ * that does not match what the player heard.
+ */
+export class OfflineDriver extends APU implements NoteSink {
+  private readonly core: ChipCore;
+  private readonly rate: number;
+  private pending: RegisterEvent[] = [];
+
+  constructor(core: ChipCore, sampleRate: number) {
+    // The base class only uses the context for `currentTime` and the sample
+    // rate, both of which are supplied here instead.
+    super({ currentTime: 0, sampleRate } as unknown as AudioContext);
+    this.core = core;
+    this.rate = sampleRate;
+    this.ready = true;
+  }
+
+  protected override enqueue(event: RegisterEvent) {
+    this.pending.push(event);
+  }
+
+  /** Hands everything queued to the chip. Called once per rendered block. */
+  override flush() {
+    if (this.pending.length === 0) return;
+    this.core.schedule(this.pending);
+    this.pending = [];
+  }
+
+  override setGain(value: number) {
+    this.core.setGain(value);
+  }
+
+  override reset() {
+    this.pending.length = 0;
+    this.core.reset();
+  }
+
+  protected override sampleAt(time: number) {
+    return Math.max(0, Math.round(time * this.rate));
+  }
+}

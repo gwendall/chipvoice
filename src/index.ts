@@ -1,10 +1,27 @@
-import { APU, type Channel, type Instrument } from "./apu.js";
+import { APU, type Channel, type Instrument } from "./driver.js";
+import "./chips/nes/index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
-export type { Channel, Instrument } from "./apu.js";
+export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
+export { renderSong, toWav, loopSeconds } from "./render.js";
+export { validateSong } from "./validate.js";
+export type { Issue, IssueLevel, Measured, ValidationResult } from "./validate.js";
+export type { RenderOptions, RenderResult } from "./render.js";
+export {
+  chips,
+  getChip,
+  registerChip,
+  type ChipCore,
+  type ChipDefinition,
+  type ChipSpec,
+  type RegisterEvent,
+  type VoiceKind,
+  type VoiceSpec,
+} from "./chip.js";
+export { NES_2A03, nesChip } from "./chips/nes/index.js";
 export type { Pattern, PercussionKit, Song } from "./sequencer.js";
 export { DEFAULT_KIT, softKit } from "./sequencer.js";
-export { noteToFreq } from "./apu.js";
+export { noteToFreq } from "./driver.js";
 
 /**
  * Which channel is busy, and until when.

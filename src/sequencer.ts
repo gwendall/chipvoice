@@ -1,4 +1,4 @@
-import type { APU, Channel, Instrument } from "./apu.js";
+import type { Channel, Instrument, NoteSink } from "./driver.js";
 
 /**
  * A small tracker, written the way this music was authored on the hardware:
@@ -128,7 +128,7 @@ function compile(p: Pattern): CompiledPattern {
  * queue; the worklet applies it sample-exactly.
  */
 export class Sequencer {
-  private readonly apu: APU;
+  private readonly apu: NoteSink;
   private readonly arbiter: ChannelClaim;
   private song: Song | null = null;
   private compiled: CompiledPattern[] = [];
@@ -139,11 +139,19 @@ export class Sequencer {
   private running = false;
   private chordSlot = 0;
   private currentTime: () => number;
+  /** False when something else advances the clock and calls `pump`. */
+  private live: boolean;
 
-  constructor(apu: APU, arbiter: ChannelClaim, currentTime: () => number) {
+  constructor(
+    apu: NoteSink,
+    arbiter: ChannelClaim,
+    currentTime: () => number,
+    options: { live?: boolean } = {},
+  ) {
     this.apu = apu;
     this.arbiter = arbiter;
     this.currentTime = currentTime;
+    this.live = options.live ?? true;
   }
 
   get isPlaying() {
@@ -242,7 +250,11 @@ export class Sequencer {
     this.chordSlot = 0;
     this.running = true;
     this.nextTime = this.currentTime() + 0.1;
-    this.tick();
+    // A host with no timers - Node, during an offline render - drives `pump`
+    // itself. Starting a timer there would schedule against a clock that never
+    // advances and fill the queue with everything at once.
+    if (typeof setTimeout === "function" && this.live) this.tick();
+    else this.pump();
   }
 
   stop() {
@@ -258,7 +270,14 @@ export class Sequencer {
     this.song = null;
   }
 
-  private tick = () => {
+  /**
+   * Schedules everything due between now and the lookahead.
+   *
+   * Split out of the timer so it can be driven by something other than a
+   * clock: offline rendering advances a counter and calls this, which is the
+   * whole of what makes the same sequencer serve real time and a file.
+   */
+  pump() {
     if (!this.running || !this.song) return;
     const stepTime = 60 / this.song.bpm / 4;
     const lookahead = 0.2;
@@ -283,7 +302,12 @@ export class Sequencer {
         this.chordSlot = 0;
       }
     }
-    this.timer = window.setTimeout(this.tick, 40);
+  }
+
+  private tick = () => {
+    if (!this.running) return;
+    this.pump();
+    this.timer = setTimeout(this.tick, 40) as unknown as number;
   };
 
   private scheduleStep(at: number, stepTime: number) {
