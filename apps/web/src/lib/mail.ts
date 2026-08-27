@@ -11,7 +11,10 @@
  * route looks like the product is broken.
  */
 const FROM = process.env.CHIPVOICE_MAIL_FROM ?? "hello@chipvoice.dev";
-const API = "https://domani.run/api/emails/send";
+
+/** The sending endpoint is per mailbox, not global. */
+const sendUrl = (from: string) =>
+  `https://domani.run/api/emails/${encodeURIComponent(from)}/send`;
 
 export async function sendKeyEmail(
   to: string,
@@ -39,18 +42,13 @@ export async function sendKeyEmail(
   ].join("\n");
 
   try {
-    const response = await fetch(API, {
+    const response = await fetch(sendUrl(FROM), {
       method: "POST",
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        from: FROM,
-        to,
-        subject: "Your chipvoice key",
-        text,
-      }),
+      body: JSON.stringify({ to, subject: "Your chipvoice key", text }),
     });
     return response.ok;
   } catch {

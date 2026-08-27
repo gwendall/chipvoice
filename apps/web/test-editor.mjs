@@ -24,7 +24,7 @@ try {
     // failed fetch. Counting that as a page error would fail the run for
     // working exactly as intended.
     const text = m.text();
-    if (m.type() === "error" && !/422 \(Unprocessable/.test(text)) errors.push(text);
+    if (m.type() === "error" && !/status of 422/.test(text)) errors.push(text);
   });
 
   await page.goto(SITE, { waitUntil: "domcontentloaded" });
