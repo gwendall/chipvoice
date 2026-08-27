@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Chip } from "chipvoice";
 import { toSong, type Track } from "./song";
