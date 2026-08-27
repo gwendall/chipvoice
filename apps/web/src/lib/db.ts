@@ -96,17 +96,15 @@ export async function db(): Promise<Client> {
       )
     `);
 
-    for (const index of [
-      `create index if not exists songs_parent on songs (parent_id)`,
-      `create index if not exists songs_root on songs (root_id)`,
-      `create index if not exists songs_key on songs (key_id, created_at)`,
-      `create index if not exists keys_email on keys (email)`,
-    ]) {
-      await client.execute(index);
-    }
-
-    // Columns added after the first deployment. SQLite has no `add column if
-    // not exists`, so the failure is caught rather than checked for.
+    /*
+     * Columns added after the first deployment, applied before the indexes.
+     *
+     * SQLite has no `add column if not exists`, so a repeat is caught rather
+     * than checked for. The order matters and was wrong once: creating an index
+     * on root_id before adding root_id throws, and that throw is what turned
+     * every write into a 500 against a database that already existed. Local was
+     * fine - its file is created from the current schema every time.
+     */
     for (const alter of [
       `alter table songs add column root_id text`,
       `alter table songs add column depth integer not null default 0`,
@@ -118,6 +116,15 @@ export async function db(): Promise<Client> {
       } catch {
         // Already there.
       }
+    }
+
+    for (const index of [
+      `create index if not exists songs_parent on songs (parent_id)`,
+      `create index if not exists songs_root on songs (root_id)`,
+      `create index if not exists songs_key on songs (key_id, created_at)`,
+      `create index if not exists keys_email on keys (email)`,
+    ]) {
+      await client.execute(index);
     }
 
     ready = true;
