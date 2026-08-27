@@ -1,4 +1,5 @@
 import { Mp3Encoder } from "@breezystack/lamejs";
+import { id3, type Tags } from "./id3";
 
 /**
  * LAME, compiled to JavaScript.
@@ -14,7 +15,11 @@ import { Mp3Encoder } from "@breezystack/lamejs";
 const BITRATE = 128;
 const BLOCK = 1152; // one MPEG frame
 
-export function encodeMp3(samples: Float32Array, sampleRate: number): Uint8Array {
+export function encodeMp3(
+  samples: Float32Array,
+  sampleRate: number,
+  tags?: Tags,
+): Uint8Array {
   const encoder = new Mp3Encoder(1, sampleRate, BITRATE);
   const chunks: Uint8Array[] = [];
 
@@ -33,9 +38,13 @@ export function encodeMp3(samples: Float32Array, sampleRate: number): Uint8Array
   const tail = encoder.flush();
   if (tail.length > 0) chunks.push(new Uint8Array(tail));
 
-  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  // The tag goes in front of the first frame, which is where every reader
+  // looks for it.
+  const header = tags ? id3(tags) : new Uint8Array(0);
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, header.length);
   const out = new Uint8Array(total);
-  let at = 0;
+  out.set(header, 0);
+  let at = header.length;
   for (const chunk of chunks) {
     out.set(chunk, at);
     at += chunk.length;

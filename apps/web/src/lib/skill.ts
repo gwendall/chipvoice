@@ -169,6 +169,11 @@ The MP3 URL is a plain file. Send it to a person, put it in an \`<audio>\` tag, 
 it to a message. It is computed on request and never changes, because the chip is a
 pure function of the song.
 
+**It is tagged and named**, which is why the title is worth setting: the file
+downloads as \`your title.mp3\` and carries ID3 tags, so Telegram, iTunes and a car
+stereo all show the title and the author rather than "unknown". Without a title
+both fall back to the id.
+
 ## Fork instead of rewriting
 
 \`\`\`bash

@@ -138,6 +138,45 @@ check(
   `${parentAudio.length} vs ${again.length}`,
 );
 
+// ---- what a person gets when they download it
+//
+// A file called k3n8vq2p.mp3 with no tags arrives in Telegram as "unknown".
+// The tag matters more than the name: every player shows what is inside.
+const named = await fetch(`${BASE}/s/${song.id}.mp3`);
+const disposition = named.headers.get('content-disposition') ?? '';
+check(
+  'the download is named after the song',
+  disposition.includes('end to end.mp3'),
+  disposition,
+);
+check(
+  'with a unicode form beside the ascii one',
+  /filename\*=UTF-8''/.test(disposition),
+  disposition,
+);
+
+const tagged = new Uint8Array(await named.arrayBuffer());
+const head = new TextDecoder('latin1').decode(tagged.subarray(0, 400));
+check('the file carries an ID3 tag', head.startsWith('ID3'), head.slice(0, 3));
+check('naming the song', head.includes('TIT2'));
+check('and its author', head.includes('TPE1'));
+// UTF-16, so the letters are interleaved with nulls - which is what proves the
+// encoding byte and the BOM were written rather than assumed.
+check(
+  'in readable text',
+  head.includes('e\u0000n\u0000d\u0000'),
+  JSON.stringify(head.slice(head.indexOf('TIT2'), head.indexOf('TIT2') + 40)),
+);
+check(
+  'and the audio still starts with an MPEG frame',
+  (() => {
+    for (let i = 0; i < tagged.length - 1; i++) {
+      if (tagged[i] === 0xff && (tagged[i + 1] & 0xe0) === 0xe0) return i > 10;
+    }
+    return false;
+  })(),
+);
+
 // ---- the agent surface
 for (const [path, type] of [
   ['/skill.md', 'text/markdown'],

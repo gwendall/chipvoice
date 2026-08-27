@@ -1,8 +1,9 @@
 import { renderSong, toWav } from "chipvoice";
 import { RenderQuery, SongId } from "@/lib/schema";
-import { find, toLibrarySong } from "@/lib/songs";
+import { find, SITE, toLibrarySong } from "@/lib/songs";
 import { hasDatabase } from "@/lib/db";
 import { encodeMp3 } from "@/lib/mp3";
+import { contentDisposition } from "@/lib/id3";
 
 export const runtime = "nodejs";
 // Rendering a minute of audio is a second of CPU. The default would kill it.
@@ -53,8 +54,25 @@ export async function GET(
     sampleRate: 44100,
   });
 
+  /*
+   * The tag matters more than the filename.
+   *
+   * Telegram, iTunes and every car stereo show what is inside the file, not
+   * what it is called - so an untagged song arrives as "unknown" however
+   * carefully it was named on the way out.
+   */
+  const song = found.song;
   const body =
-    format === "wav" ? toWav(audio) : encodeMp3(audio.left, audio.sampleRate);
+    format === "wav"
+      ? toWav(audio)
+      : encodeMp3(audio.left, audio.sampleRate, {
+          title: song.title ?? `chipvoice ${song.id}`,
+          artist: song.author ?? "chipvoice",
+          album: "chipvoice",
+          year: new Date(song.createdAt).getUTCFullYear().toString(),
+          comment: `Written on an emulated Ricoh 2A03. ${SITE}/s/${song.id}`,
+          url: `${SITE}/s/${song.id}`,
+        });
 
   return new Response(new Uint8Array(body), {
     headers: {
@@ -62,7 +80,7 @@ export async function GET(
       "Content-Length": String(body.length),
       // Immutable because the song behind this id can never change.
       "Cache-Control": "public, max-age=31536000, immutable",
-      "Content-Disposition": `inline; filename="${id}.${format}"`,
+      "Content-Disposition": contentDisposition(found.song.title, id, format),
       "X-Render-Ms": String(Date.now() - started),
     },
   });
