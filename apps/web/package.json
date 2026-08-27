@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node test-api.mjs"
+    "test": "node test-api.mjs && node test-studio.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
@@ -22,6 +22,7 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
+    "playwright": "^1.62.1",
     "typescript": "^5.7.0"
   }
 }

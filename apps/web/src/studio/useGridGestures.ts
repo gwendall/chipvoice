@@ -12,17 +12,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 export const ZOOMS = [6, 12, 20, 34] as const;
 
 /**
- * Where the zoom starts, by screen.
+ * Where the zoom starts.
+ *
+ * The same value everywhere on the first render, and narrowed for a phone in an
+ * effect afterwards. Reading `window.innerWidth` during render is what it used
+ * to do, and the server has no window - so the markup it sent and the markup
+ * the phone built disagreed, which React reports as a hydration error and
+ * repairs by throwing the page away and rendering it again.
  *
  * A phone at the widest level shows nine steps out of sixty-four, which is a
- * keyhole: you cannot see the bar you are editing, let alone the pattern. It
- * opens at 12px there - twenty-six steps - and at 20px on a desktop, which
- * fits fifty-five and still leaves the tokens readable.
+ * keyhole; 12px shows twenty-six. Desktop opens at 20px, which fits fifty-five
+ * and still leaves the tokens readable.
  */
-export function defaultZoom(): number {
-  if (typeof window === "undefined") return 2;
-  return window.innerWidth < 720 ? 1 : 2;
-}
+export const DESKTOP_ZOOM = 2;
+export const PHONE_ZOOM = 1;
+export const PHONE_WIDTH = 720;
 
 /**
  * The gestures a timeline is expected to have.
@@ -32,7 +36,12 @@ export function defaultZoom(): number {
  * same two live on ctrl/cmd + wheel and ordinary scroll.
  */
 export function useGridGestures(scroller: React.RefObject<HTMLDivElement | null>) {
-  const [zoomIndex, setZoomIndex] = useState(defaultZoom);
+  const [zoomIndex, setZoomIndex] = useState(DESKTOP_ZOOM);
+
+  // Narrow it once we are in a browser and know how wide it is.
+  useEffect(() => {
+    if (window.innerWidth < PHONE_WIDTH) setZoomIndex(PHONE_ZOOM);
+  }, []);
   const pinch = useRef<{ start: number; index: number } | null>(null);
   const points = useRef(new Map<number, { x: number; y: number }>());
 

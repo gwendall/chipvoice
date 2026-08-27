@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CHANNELS,
   CHANNEL_LABEL,
@@ -10,10 +10,15 @@ import {
   type Track,
 } from "./song";
 import { cellKind } from "./notes";
-import { useFollowPlayhead, useGridGestures } from "./useGridGestures";
+import { PHONE_WIDTH, useFollowPlayhead, useGridGestures } from "./useGridGestures";
 
-/** Narrower on a phone: 64 steps and a wide gutter do not both fit. */
-const LABEL_WIDTH = typeof window !== "undefined" && window.innerWidth < 720 ? 74 : 92;
+/**
+ * The gutter, narrower on a phone where 64 steps and a wide one do not both
+ * fit. Measured after mounting rather than during render: the server has no
+ * window, so deciding here would send different markup than the phone builds.
+ */
+const WIDE_LABEL = 92;
+const NARROW_LABEL = 74;
 
 /**
  * The tracker, laid flat: one row per channel, one column per sixteenth.
@@ -43,8 +48,13 @@ export function Grid({
   onToggleMute: (channel: ChannelName) => void;
 }) {
   const scroller = useRef<HTMLDivElement | null>(null);
+  const [labelWidth, setLabelWidth] = useState(WIDE_LABEL);
+
+  useEffect(() => {
+    if (window.innerWidth < PHONE_WIDTH) setLabelWidth(NARROW_LABEL);
+  }, []);
   const { zoom, zoomBy, canZoomIn, canZoomOut } = useGridGestures(scroller);
-  useFollowPlayhead(scroller, step, zoom, LABEL_WIDTH);
+  useFollowPlayhead(scroller, step, zoom, labelWidth);
 
   /**
    * Drag to paint, on a mouse only.
@@ -104,7 +114,7 @@ export function Grid({
       <div
         className={`grid ${zoomedOut ? "dense" : ""}`}
         ref={scroller}
-        style={{ ["--cell" as string]: `${zoom}px`, ["--label" as string]: `${LABEL_WIDTH}px` }}
+        style={{ ["--cell" as string]: `${zoom}px`, ["--label" as string]: `${labelWidth}px` }}
         onPointerUp={endPaint}
         onPointerLeave={endPaint}
       >
