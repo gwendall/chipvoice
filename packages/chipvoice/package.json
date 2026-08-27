@@ -1,7 +1,7 @@
 {
   "name": "chipvoice",
-  "version": "0.1.1",
-  "description": "Game audio on a real NES sound chip. Cycle-accurate 2A03 in an AudioWorklet, with sound effects that steal channels from the music - the way the hardware did.",
+  "version": "0.2.0",
+  "description": "Game audio on a real NES sound chip. Cycle-accurate 2A03 in an AudioWorklet or rendered offline to a file, with sound effects that steal channels from the music - the way the hardware did.",
   "keywords": [
     "chiptune",
     "nes",

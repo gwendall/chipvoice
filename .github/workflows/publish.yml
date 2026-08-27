@@ -11,31 +11,37 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      # The whole point: npm trades this OIDC token for a short-lived
-      # publishing credential. No secret is stored anywhere, so there is
-      # nothing to leak, rotate or forget to revoke - and npm is retiring
-      # 2FA-bypass tokens for direct publishing in January 2027 anyway.
+      # npm trades this OIDC token for a short-lived publishing credential. No
+      # secret is stored anywhere, so there is nothing to leak, rotate or forget
+      # to revoke - and npm retires 2FA-bypass tokens for direct publishing in
+      # January 2027 anyway.
       id-token: write
       contents: read
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+          cache: pnpm
 
-      # npm 11.5.1 or newer is what knows how to do the OIDC exchange.
+      # npm 11.5.1 or newer knows how to do the OIDC exchange.
       - run: npm install -g npm@latest
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       - name: Build and typecheck
         run: |
-          npm run typecheck
-          npm run build
+          pnpm typecheck
+          pnpm build --filter chipvoice
 
       - name: The tag has to match the version
+        working-directory: packages/chipvoice
         run: |
           tag="${GITHUB_REF_NAME#v}"
           pkg="$(node -p "require('./package.json').version")"
@@ -47,6 +53,10 @@ jobs:
       # Installs the tarball into an empty project and drives it in a browser.
       # It is the only check that sees what `npm install` actually hands over.
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:fresh
+      - run: node test/validate.mjs
+        working-directory: packages/chipvoice
+      - run: pnpm test:fresh
+        working-directory: packages/chipvoice
 
       - run: npm publish --access public
+        working-directory: packages/chipvoice
