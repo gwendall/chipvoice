@@ -42,8 +42,8 @@
     "build": "npm run worklet && tsc -p tsconfig.build.json",
     "typecheck": "npm run worklet && tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run build",
-    "build:playground": "npm run build && rm -rf playground/chipvoice && cp -r dist playground/chipvoice",
-    "dev": "npm run build:playground && npx --yes serve playground -l 4173"
+    "dev": "npm run build && cd app && npm install && npm run dev",
+    "build:app": "npm run build && cd app && npm install && npm run build"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

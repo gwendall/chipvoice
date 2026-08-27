@@ -200,6 +200,18 @@ export class Chip {
   }
 
   /**
+   * Which step is sounding right now, or null when nothing is playing.
+   *
+   * Read this from a rAF loop to draw a playhead. It is deliberately the
+   * *audible* position rather than the scheduled one: the sequencer queues up
+   * to 200ms ahead, and a playhead drawn from the queue leads the sound by a
+   * fifth of a second, which reads as a broken display rather than as latency.
+   */
+  position(): { step: number; orderIndex: number } | null {
+    return this.sequencer.positionAt(this.ctx.currentTime);
+  }
+
+  /**
    * Is this channel free at that moment?
    *
    * Useful for the second-tier effects: a UI blip is worth skipping if it would

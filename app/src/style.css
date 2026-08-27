@@ -1,0 +1,445 @@
+/*
+ * A tool, not a document: fixed transport, the grid taking the room that is
+ * left, and nothing that needs scrolling to be reached while playing.
+ *
+ * Single theme on purpose. This is an instrument panel - the dark ground is
+ * what makes the playhead and the taken-channel state read at a glance, and a
+ * light variant would need a second set of those signals to work as well.
+ */
+:root {
+  --ground: #0d1016;
+  --panel: #151a23;
+  --panel-2: #1b212c;
+  --line: #242b38;
+  --line-soft: #1c2230;
+  --ink: #e7eaf0;
+  --ink-soft: #a7afbe;
+  --ink-mute: #6f7788;
+  --amber: #e8973a;
+  --amber-dim: #7a5320;
+  --cool: #7fa1d6;
+  --steal: #dd6a4f;
+  --head: 22px;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+button, input, textarea { font: inherit; color: inherit; }
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  /* Room for the fixed transport, plus whatever the phone puts below it. */
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+/* ------------------------------------------------------------------- header */
+
+.head { border-bottom: 1px solid var(--line); }
+
+.head-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 26px 18px 22px;
+}
+
+h1 {
+  font: 600 26px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+h1 span { color: var(--amber); }
+
+.head p {
+  margin: 0;
+  color: var(--ink-soft);
+  max-width: 62ch;
+  font-size: 14px;
+}
+.head b { color: var(--ink); font-weight: 600; }
+
+/* -------------------------------------------------------------------- tabs */
+
+.work {
+  flex: 1;
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 16px 18px 24px;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tabs button {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 7px 14px;
+  font: 600 12px/1 ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  cursor: pointer;
+}
+.tabs button.on { color: var(--ground); background: var(--ink-soft); border-color: var(--ink-soft); }
+
+.note {
+  margin-left: auto;
+  font: 400 12px/1 ui-monospace, monospace;
+  color: var(--amber);
+}
+
+/* -------------------------------------------------------------------- grid */
+
+.grid-shell { display: flex; flex-direction: column; gap: 8px; }
+
+.grid-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.grid-hint {
+  font: 400 12px/1 ui-monospace, monospace;
+  color: var(--ink-mute);
+}
+
+.zoom { display: flex; gap: 4px; }
+.zoom button {
+  width: 34px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel-2);
+  color: var(--ink-soft);
+  font: 500 15px/1 ui-monospace, monospace;
+  cursor: pointer;
+}
+.zoom button:disabled { opacity: 0.35; cursor: default; }
+.zoom button:not(:disabled):hover { border-color: var(--ink-mute); color: var(--ink); }
+
+.grid {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* The label column stays put while the steps scroll under it, which is what
+     makes 64 columns usable on a phone. Horizontal panning stays with the
+     browser: it is the gesture a finger expects on a timeline, so painting is
+     left to the mouse rather than taking it. */
+  scrollbar-width: thin;
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
+}
+
+.grid-rows { display: flex; flex-direction: column; }
+
+.row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line-soft);
+}
+.row:last-child { border-bottom: 0; }
+
+.row-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  flex: 0 0 var(--label);
+  display: flex;
+  align-items: stretch;
+  background: var(--panel-2);
+  border-right: 1px solid var(--line);
+}
+.row.on .row-label { background: #232b39; box-shadow: inset 2px 0 0 var(--amber); }
+
+.row-pick {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 8px;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.row-mute {
+  flex: 0 0 26px;
+  background: none;
+  border: 0;
+  border-left: 1px solid var(--line-soft);
+  color: var(--ink-mute);
+  font: 600 10px/1 ui-monospace, monospace;
+  cursor: pointer;
+}
+.row-mute.on { background: var(--steal); color: #1a0d08; }
+.row.muted .cell.note { background: #23272f; color: #4b5261; }
+.row.muted .row-name { color: var(--ink-mute); text-decoration: line-through; }
+
+.row-name {
+  font: 600 11px/1 ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+}
+.row-voice {
+  font: 400 10px/1 ui-monospace, monospace;
+  color: var(--ink-mute);
+}
+.row-taken {
+  font: 600 9px/1 ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--steal);
+}
+
+.row-cells { display: flex; }
+
+.cell {
+  flex: 0 0 var(--cell);
+  height: 40px;
+  border: 0;
+  border-right: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--ink-mute);
+  font: 500 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cell.beat { background: rgba(255, 255, 255, 0.016); }
+.cell.bar { border-left: 1px solid var(--line); }
+.cell.note { background: var(--amber-dim); color: #ffe9cf; }
+.cell.cut { color: var(--ink-mute); background: rgba(255, 255, 255, 0.03); }
+.cell:hover { outline: 1px solid var(--cool); outline-offset: -1px; }
+
+/* The playhead. Solid, not a border: it has to read while four rows of cells
+   are changing underneath it. */
+.cell.at { box-shadow: inset 0 0 0 2px var(--cool); }
+.cell.at.note { background: var(--amber); color: #1a1206; }
+
+/* While an effect holds the voice, the row that lives on it goes dark. This is
+   the demo: you see the music lose the channel. */
+.row.taken .cell.note { background: #3a2118; color: #8b6a5c; }
+.row.taken .row-label { box-shadow: inset 2px 0 0 var(--steal); }
+
+.grid-ruler {
+  display: flex;
+  border-top: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.grid-ruler .row-label { flex: 0 0 var(--label); height: 20px; background: var(--panel-2); position: sticky; left: 0; z-index: 2; }
+.tick {
+  flex: 0 0 var(--cell);
+  font: 400 9px/20px ui-monospace, monospace;
+  color: var(--ink-mute);
+  text-align: center;
+  border-right: 1px solid var(--line-soft);
+}
+.tick.bar { border-left: 1px solid var(--line); color: var(--ink-soft); }
+.tick.at { background: var(--cool); }
+
+/* Zoomed out, a cell is six pixels: no token fits, and the grid becomes a
+   shape rather than a table. Borders would eat half of it. */
+.grid.dense .cell { border-right: 0; }
+.grid.dense .cell.note { box-shadow: inset 0 0 0 6px var(--amber-dim); }
+.grid.dense .cell.at { box-shadow: inset 0 0 0 3px var(--cool); }
+.grid.dense .tick { border-right: 0; }
+
+/* ----------------------------------------------------------------- palette */
+
+.palette {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  padding: 12px 14px 14px;
+}
+
+.palette-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: 600 11px/1 ui-monospace, monospace;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+
+.ghost {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink-mute);
+  padding: 5px 10px;
+  font: 500 11px/1 ui-monospace, monospace;
+  cursor: pointer;
+}
+.ghost:hover { color: var(--ink); border-color: var(--ink-mute); }
+
+.palette-keys { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.key {
+  min-width: 44px;
+  padding: 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel-2);
+  color: var(--ink-soft);
+  font: 500 12px/1 ui-monospace, monospace;
+  cursor: pointer;
+}
+.key.on { background: var(--amber); border-color: var(--amber); color: #1a1206; }
+
+.hint { margin: 10px 0 0; font-size: 12px; color: var(--ink-mute); }
+.hint b { color: var(--amber); }
+.hint code {
+  font-family: ui-monospace, monospace;
+  background: var(--panel-2);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------- text view */
+
+.text-view { display: flex; flex-direction: column; gap: 12px; }
+.text-view label { display: flex; flex-direction: column; gap: 6px; }
+.text-view span {
+  font: 600 11px/1 ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--ink-mute);
+}
+.text-view textarea {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 10px 12px;
+  font: 400 12px/1.7 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+  overflow-x: auto;
+  resize: vertical;
+}
+.text-view textarea:focus { outline: none; border-color: var(--cool); }
+
+/* --------------------------------------------------------------- transport */
+
+.transport {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(13, 16, 22, 0.94);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line);
+}
+
+.transport button {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel-2);
+  padding: 12px 18px;
+  font: 600 12px/1 ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.transport button:hover { border-color: var(--ink-mute); }
+.transport .primary { background: var(--amber); border-color: var(--amber); color: #1a1206; }
+.transport .fire { border-color: var(--steal); color: var(--steal); }
+
+.bpm { display: flex; align-items: center; gap: 8px; margin-left: 6px; }
+.bpm span {
+  font: 500 12px/1 ui-monospace, monospace;
+  color: var(--ink-soft);
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+}
+.bpm input { width: 110px; accent-color: var(--amber); }
+
+.repo {
+  margin-left: auto;
+  font: 400 12px/1 ui-monospace, monospace;
+  color: var(--ink-mute);
+  text-decoration: none;
+}
+.repo:hover { color: var(--cool); }
+
+:focus-visible { outline: 2px solid var(--cool); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ------------------------------------------------------------------ phones */
+
+@media (max-width: 720px) {
+  .head-inner { padding: 18px 14px 16px; }
+  .head p { font-size: 13px; }
+  h1 { font-size: 22px; }
+  .work { padding: 12px 14px 18px; }
+  .cell { height: 38px; }
+  .transport { gap: 6px; padding-left: 12px; padding-right: 12px; }
+  .transport button { padding: 12px 14px; }
+  /* The tempo and the repo link are the two things a thumb does not need
+     mid-take; the phone keeps play, fire and share. */
+  .bpm { display: none; }
+  .repo { display: none; }
+}
+
+/* ------------------------------------------------------------------- scope */
+
+.scope {
+  position: relative;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  height: 120px;
+  overflow: hidden;
+}
+
+.scope canvas { display: block; width: 100%; height: 100%; }
+
+.scope-label {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  font: 600 10px/1 ui-monospace, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .scope { height: 84px; }
+}

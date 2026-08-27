@@ -151,6 +151,35 @@ export class Sequencer {
   }
 
   /**
+   * Where the music is *heard*, not where it has been scheduled.
+   *
+   * The scheduler runs up to 200ms ahead, so `this.step` is the future. Any
+   * playhead drawn from it leads the sound by a fifth of a second, which reads
+   * as the display being broken rather than as latency.
+   *
+   * So every scheduled step is recorded with the time it will sound at, and
+   * this walks that list to whatever is audible now. Steps already in the past
+   * are dropped as they are passed, so the list stays at lookahead length
+   * rather than growing for the life of the song.
+   */
+  private timeline: Array<{ at: number; step: number; orderIndex: number }> = [];
+
+  positionAt(time: number): { step: number; orderIndex: number } | null {
+    if (!this.running) return null;
+    let current: { step: number; orderIndex: number } | null = null;
+    while (this.timeline.length > 0 && this.timeline[0].at <= time) {
+      const entry = this.timeline[0];
+      // Keep the last one that has already sounded: it is the one playing.
+      if (this.timeline.length === 1 || this.timeline[1].at > time) {
+        current = { step: entry.step, orderIndex: entry.orderIndex };
+        break;
+      }
+      this.timeline.shift();
+    }
+    return current;
+  }
+
+  /**
    * The piece actually loaded and scheduling, by name.
    *
    * Not "the piece that should be playing". A first version of the soundtrack
@@ -207,6 +236,7 @@ export class Sequencer {
     this.stop();
     this.song = song;
     this.compiled = song.patterns.map(compile);
+    this.timeline.length = 0;
     this.orderIndex = 0;
     this.step = 0;
     this.chordSlot = 0;
@@ -217,6 +247,7 @@ export class Sequencer {
 
   stop() {
     this.running = false;
+    this.timeline.length = 0;
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -238,6 +269,11 @@ export class Sequencer {
 
     while (this.nextTime < now + lookahead) {
       this.scheduleStep(this.nextTime, stepTime);
+      this.timeline.push({
+        at: this.nextTime,
+        step: this.step,
+        orderIndex: this.orderIndex,
+      });
       this.nextTime += stepTime;
       this.step++;
       const pattern = this.compiled[this.song.order[this.orderIndex]];
