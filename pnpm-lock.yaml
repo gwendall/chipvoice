@@ -11,6 +11,9 @@ importers:
       '@breezystack/lamejs':
         specifier: ^1.2.7
         version: 1.2.7
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
       turbo:
         specifier: ^2.5.0
         version: 2.10.12
