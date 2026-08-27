@@ -138,9 +138,14 @@ try {
   check('and starts it', await page.evaluate(() => window.chipvoice.playing));
 
   // ------------------------------------------------------------------- URL
+  //
+  // The draft link: the whole song in a fragment, no account, no storage. It is
+  // still here alongside saving, because the two are for different moments -
+  // one is a scratch you can throw away, the other is a publication.
   await page.evaluate(() => {
     const buttons = [...document.querySelectorAll('.transport button')];
-    buttons.find((b) => /copy link/i.test(b.textContent)).click();
+    const draft = buttons.find((b) => /draft link/i.test(b.textContent));
+    if (draft) draft.click();
   });
   await page.waitForTimeout(300);
   const hash = await page.evaluate(() => location.hash.length);

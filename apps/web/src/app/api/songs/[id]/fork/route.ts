@@ -3,6 +3,8 @@ import { SongId, SongInput } from "@/lib/schema";
 import { check, find, insert, present } from "@/lib/songs";
 import { allow, clientKey } from "@/lib/limit";
 import { hasDatabase } from "@/lib/db";
+import { identify } from "@/lib/auth";
+import { cleanAuthor, cleanTitle } from "@/lib/text";
 
 export const runtime = "nodejs";
 
@@ -27,7 +29,8 @@ export async function POST(
     return NextResponse.json({ error: "no_database" }, { status: 503 });
   }
 
-  const gate = allow(clientKey(request));
+  const caller = await identify(request);
+  const gate = allow(clientKey(request), caller.keyId ? "key" : "anonymous");
   if (!gate.ok) {
     return NextResponse.json(
       { error: "rate_limited", retryAfter: gate.retryAfter },
@@ -71,11 +74,30 @@ export async function POST(
     author: parsed.data.author ?? undefined,
   };
 
+  const title = cleanTitle(merged.title);
+  const author = cleanAuthor(merged.author);
+  if (!title.ok || !author.ok) {
+    return NextResponse.json(
+      {
+        error: "invalid_request",
+        issues: [
+          ...(title.ok ? [] : [{ level: "error" as const, path: "title", message: title.message!, silent: false }]),
+          ...(author.ok ? [] : [{ level: "error" as const, path: "author", message: author.message!, silent: false }]),
+        ],
+      },
+      { status: 422 },
+    );
+  }
+
   const result = check(merged);
   if (!result.ok) {
     return NextResponse.json({ error: "invalid_song", issues: result.issues }, { status: 422 });
   }
 
-  const song = await insert(merged, parent.song.id);
+  const song = await insert(
+    { ...merged, title: title.value || undefined, author: author.value || undefined },
+    parent.song,
+    caller.keyId,
+  );
   return NextResponse.json({ ...present(song), issues: result.issues }, { status: 201 });
 }

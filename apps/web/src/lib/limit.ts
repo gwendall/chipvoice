@@ -8,12 +8,23 @@
  */
 const seen = new Map<string, number[]>();
 const WINDOW_MS = 60_000;
-const MAX_WRITES = 20;
 
-export function allow(key: string): { ok: true } | { ok: false; retryAfter: number } {
+/**
+ * Two ceilings.
+ *
+ * The anonymous one is sized for a person clicking save. The identified one is
+ * sized for an agent exploring - which is the actual use, and the reason a key
+ * is worth having at all when nothing here needs protecting from writes.
+ */
+const LIMITS = { anonymous: 20, key: 240 } as const;
+
+export function allow(
+  key: string,
+  tier: keyof typeof LIMITS = "anonymous",
+): { ok: true } | { ok: false; retryAfter: number } {
   const now = Date.now();
   const hits = (seen.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (hits.length >= MAX_WRITES) {
+  if (hits.length >= LIMITS[tier]) {
     const oldest = hits[0];
     return { ok: false, retryAfter: Math.ceil((WINDOW_MS - (now - oldest)) / 1000) };
   }

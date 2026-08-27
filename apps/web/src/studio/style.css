@@ -443,3 +443,81 @@ h1 span { color: var(--amber); }
 @media (max-width: 720px) {
   .scope { height: 84px; }
 }
+
+/* ---------------------------------------------------------------- titlebar */
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.title {
+  flex: 1 1 220px;
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 9px 12px;
+  font: 500 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--ink);
+}
+.title::placeholder { color: var(--ink-mute); }
+.title:focus { outline: none; border-color: var(--cool); }
+
+.permalink {
+  font: 500 12px/1 ui-monospace, monospace;
+  color: var(--amber);
+  text-decoration: none;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.permalink:hover { border-color: var(--amber); }
+
+.quiet {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink-mute);
+  padding: 9px 12px;
+  font: 500 12px/1 ui-monospace, monospace;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.quiet:hover { color: var(--ink); border-color: var(--ink-mute); }
+
+.signin { display: flex; gap: 6px; }
+.signin input {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 9px 11px;
+  font: 400 13px/1 ui-monospace, monospace;
+  color: var(--ink);
+  width: 190px;
+}
+.signin input:focus { outline: none; border-color: var(--cool); }
+.signin button {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink);
+  padding: 9px 12px;
+  font: 500 12px/1 ui-monospace, monospace;
+  cursor: pointer;
+}
+
+.note.error { color: var(--steal); }
+
+.transport button:disabled { opacity: 0.5; cursor: default; }
+.transport .quiet { text-transform: uppercase; letter-spacing: 0.1em; }
+
+@media (max-width: 720px) {
+  /* The draft link is a desktop convenience; the phone keeps Save. */
+  .transport .quiet { display: none; }
+  .signin input { width: 140px; }
+}

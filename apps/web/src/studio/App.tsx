@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Grid } from "./Grid";
 import { Scope } from "./Scope";
 import { useChip } from "./useChip";
+import { useLibrary } from "./useLibrary";
 import { paletteFor, DRUM_LABEL } from "./notes";
 import { decode, encode } from "./share";
 import {
@@ -31,13 +32,35 @@ export default function App() {
     lead: false, chord: false, bass: false, perc: false,
   });
   const [note, setNote] = useState("");
+  const [title, setTitle] = useState("");
+  const [email, setEmail] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
+  /** True when the grid differs from what was last saved. */
+  const [dirty, setDirty] = useState(false);
 
   const chip = useChip();
+  const library = useLibrary();
 
-  // Load a shared link once, before the first paint that matters.
+  /*
+   * Two ways in, and they are for different moments.
+   *
+   * `/s/{id}` is a published song: a short id, an MP3, a page. A fragment is a
+   * draft - instant, private, disposable, and already shareable. Neither
+   * replaces the other, which is why both are still here.
+   */
   useEffect(() => {
+    const stored = /^\/s\/([0-9A-Za-z]{8})$/.exec(location.pathname);
+    if (stored) {
+      void library.load(stored[1]).then((loaded) => {
+        if (!loaded) return;
+        setTrack(loaded.track);
+        setBpm(loaded.bpm);
+        setTitle(loaded.title);
+      });
+      return;
+    }
     const raw = location.hash.slice(1);
-    if (!raw) return;
+    if (!raw || raw.startsWith("key=")) return;
     const loaded = decode(raw);
     // A truncated or hand-edited link falls back to the default song rather
     // than to an empty page and an error nobody can act on.
@@ -45,7 +68,19 @@ export default function App() {
       setTrack(loaded.track);
       setBpm(loaded.bpm);
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+   * Any edit unpublishes.
+   *
+   * A stored song can never change, so the moment the grid differs from what
+   * was saved the button has to stop saying Fork-of-nothing and start offering
+   * to publish the new thing. Clearing it here is what keeps the button honest.
+   */
+  const publishedId = library.published?.id ?? null;
+  useEffect(() => {
+    if (publishedId) setDirty(true);
+  }, [track, bpm, title]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Editing while it plays restarts the piece with the change in it: the song
   // id carries the content, so `play` is a no-op until something changes.
@@ -105,17 +140,53 @@ export default function App() {
     [brush, chip],
   );
 
-  const share = useCallback(async () => {
+  const say = useCallback((message: string) => {
+    setNote(message);
+    setTimeout(() => setNote(""), 3200);
+  }, []);
+
+  const copyDraft = useCallback(async () => {
     const hash = encode(track, bpm);
-    history.replaceState(null, "", `#${hash}`);
+    history.replaceState(null, "", `/#${hash}`);
     try {
       await navigator.clipboard.writeText(location.href);
-      setNote("Link copied");
+      say("Draft link copied");
     } catch {
-      setNote("The link is in the address bar");
+      say("The draft link is in the address bar");
     }
-    setTimeout(() => setNote(""), 2400);
-  }, [track, bpm]);
+  }, [track, bpm, say]);
+
+  /**
+   * Save, or fork if this one is already published.
+   *
+   * A published song is immutable, so editing one and saving means forking it.
+   * The button says which it is about to do rather than leaving it to be
+   * found out afterwards.
+   */
+  const save = useCallback(async () => {
+    const existing = library.published;
+    const song =
+      existing && dirty
+        ? await library.fork(existing.id, track, bpm, title)
+        : existing
+          ? existing
+          : await library.publish(track, bpm, title);
+    if (!song) return;
+    setDirty(false);
+    try {
+      await navigator.clipboard.writeText(song.url);
+      say(`Saved as ${song.id} - link copied`);
+    } catch {
+      say(`Saved as ${song.id}`);
+    }
+  }, [library, dirty, track, bpm, title, say]);
+
+  const signIn = useCallback(async () => {
+    if (!email.trim()) return;
+    say(await library.requestKey(email.trim()));
+    setSigningIn(false);
+    setEmail("");
+  }, [email, library, say]);
 
   const clear = useCallback(() => {
     setTrack((prev) => ({ ...prev, [selected]: Array.from({ length: STEPS }, () => ".") }));
@@ -140,6 +211,44 @@ export default function App() {
       </header>
 
       <main className="work">
+        <div className="titlebar">
+          <input
+            className="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Untitled"
+            maxLength={60}
+            aria-label="Song title"
+          />
+          {library.published ? (
+            <a className="permalink" href={library.published.url}>
+              {library.published.id}
+              {library.published.forks > 0 ? ` · ${library.published.forks} forks` : ""}
+            </a>
+          ) : null}
+          {library.key ? (
+            <button type="button" className="quiet" onClick={library.signOut}>
+              Signed in
+            </button>
+          ) : signingIn ? (
+            <span className="signin">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                aria-label="Email for your key"
+                onKeyDown={(e) => { if (e.key === "Enter") void signIn(); }}
+              />
+              <button type="button" onClick={() => void signIn()}>Send key</button>
+            </span>
+          ) : (
+            <button type="button" className="quiet" onClick={() => setSigningIn(true)}>
+              Sign in
+            </button>
+          )}
+        </div>
+
         <div className="tabs" role="tablist" aria-label="Editor view">
           <button
             role="tab"
@@ -157,7 +266,9 @@ export default function App() {
           >
             Text
           </button>
-          <span className="note">{note || (chip.unsupported ? "No AudioWorklet here" : "")}</span>
+          <span className={library.error ? "note error" : "note"}>
+            {library.error || note || (chip.unsupported ? "No AudioWorklet here" : "")}
+          </span>
         </div>
 
         {view === "grid" ? (
@@ -255,8 +366,17 @@ export default function App() {
             aria-label="Tempo"
           />
         </label>
-        <button type="button" onClick={() => void share()}>
-          Copy link
+        <button type="button" onClick={() => void save()} disabled={library.busy}>
+          {library.busy
+            ? "Saving…"
+            : library.published && dirty
+              ? "Fork"
+              : library.published
+                ? "Saved"
+                : "Save"}
+        </button>
+        <button type="button" className="quiet" onClick={() => void copyDraft()}>
+          Draft link
         </button>
         <a className="repo" href="https://github.com/gwendall/chipvoice">
           npm i chipvoice

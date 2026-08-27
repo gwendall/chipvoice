@@ -1,16 +1,22 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { find, present, SITE } from "@/lib/songs";
+import Studio from "@/studio/App";
 import { hasDatabase } from "@/lib/db";
 
 export const runtime = "nodejs";
 
 /**
- * The page a link lands on.
+ * The page a link lands on: the editor, with the song in it.
  *
- * Telegram, X and Discord do not read the API - they read meta tags. So this
- * carries og:audio and a generated card, which is what turns a pasted URL into
- * something with a play button rather than a bare string.
+ * It was a separate read-only page for an hour, and that was one page too many -
+ * the editor already shows the grid, plays the song and can fork it, so a second
+ * view of the same thing is a second thing to keep in step. A link opens what
+ * the person who sent it was looking at, which is what CodePen gets right.
+ *
+ * The metadata still matters and still lives here: Telegram, X and Discord do
+ * not read the API, they read meta tags. og:audio and a generated card are what
+ * turn a pasted URL into something with a play button.
  */
 export async function generateMetadata({
   params,
@@ -58,42 +64,8 @@ export default async function SongPage({
   const found = await find(id);
   if (!found) notFound();
 
-  const song = present(found.song, found.forks);
-  const pattern = song.patterns[song.order[0]] ?? song.patterns[0];
-
-  return (
-    <main className="song">
-      <p className="eyebrow">chipvoice · Ricoh 2A03</p>
-      <h1>{song.title ?? song.id}</h1>
-
-      <audio controls preload="none" src={song.mp3} />
-
-      <dl className="facts">
-        <div><dt>Tempo</dt><dd>{song.bpm} bpm</dd></div>
-        <div><dt>Loop</dt><dd>{song.measured?.loopSeconds ?? "?"}s</dd></div>
-        <div><dt>Density</dt><dd>{song.measured?.onsetsPerSecond ?? "?"}/s</dd></div>
-        <div><dt>Range</dt><dd>{song.measured?.range ?? "?"} semitones</dd></div>
-        {song.forks > 0 ? <div><dt>Forks</dt><dd>{song.forks}</dd></div> : null}
-      </dl>
-
-      {/* The song itself, because the whole claim is that it is readable. */}
-      <pre className="tokens">
-        <code>
-          {(["lead", "chord", "bass", "perc"] as const)
-            .map((track) => `${track.padEnd(5)} ${pattern[track]}`)
-            .join("\n")}
-        </code>
-      </pre>
-
-      <p className="links">
-        <a href={song.mp3}>MP3</a>
-        <a href={song.wav}>WAV</a>
-        <a href={`${SITE}/api/songs/${song.id}`}>JSON</a>
-        {song.parentId ? <a href={`${SITE}/s/${song.parentId}`}>Forked from</a> : null}
-        <a href="https://chipvoice.dev">Open the editor</a>
-      </p>
-
-      {song.author ? <p className="by">Written by {song.author}</p> : null}
-    </main>
-  );
+  // The song is fetched here only to decide whether the page exists at all.
+  // The editor loads it for itself from the same id in the path.
+  void present(found.song, found.forks);
+  return <Studio />;
 }

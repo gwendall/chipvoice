@@ -3,6 +3,8 @@ import { SongInput } from "@/lib/schema";
 import { check, insert, present } from "@/lib/songs";
 import { allow, clientKey } from "@/lib/limit";
 import { hasDatabase } from "@/lib/db";
+import { identify } from "@/lib/auth";
+import { cleanAuthor, cleanTitle } from "@/lib/text";
 
 export const runtime = "nodejs";
 
@@ -21,7 +23,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const gate = allow(clientKey(request));
+  /*
+   * A key raises the ceiling rather than opening the door.
+   *
+   * Anonymous publishing keeps working: putting a form between somebody and the
+   * one thing this product does would trade the product for an account system.
+   * What a key buys is room to work - an agent exploring writes faster than a
+   * person ever will.
+   */
+  const caller = await identify(request);
+  const gate = allow(clientKey(request), caller.keyId ? "key" : "anonymous");
   if (!gate.ok) {
     return NextResponse.json(
       {
@@ -59,6 +70,27 @@ export async function POST(request: Request) {
     );
   }
 
+  /*
+   * The title and the author are composed onto a card in the site's own colours
+   * and shown by Telegram, X and Discord. Unfiltered, that is a way to make an
+   * official-looking image say anything, which is the first abuse of every
+   * service that renders user text into a picture.
+   */
+  const title = cleanTitle(parsed.data.title);
+  const author = cleanAuthor(parsed.data.author);
+  if (!title.ok || !author.ok) {
+    return NextResponse.json(
+      {
+        error: "invalid_request",
+        issues: [
+          ...(title.ok ? [] : [{ level: "error" as const, path: "title", message: title.message!, silent: false }]),
+          ...(author.ok ? [] : [{ level: "error" as const, path: "author", message: author.message!, silent: false }]),
+        ],
+      },
+      { status: 422 },
+    );
+  }
+
   const result = check(parsed.data);
   if (!result.ok) {
     return NextResponse.json(
@@ -67,7 +99,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const song = await insert(parsed.data, null);
+  const song = await insert(
+    { ...parsed.data, title: title.value || undefined, author: author.value || undefined },
+    null,
+    caller.keyId,
+  );
   // Warnings survive a successful write: a short loop is playable and worth
   // saying something about, and swallowing it would make the write look
   // cleaner than it was.

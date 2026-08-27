@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { SongId } from "@/lib/schema";
-import { find, present } from "@/lib/songs";
+import { find, lineageOf, present, softDelete } from "@/lib/songs";
 import { hasDatabase } from "@/lib/db";
+import { identify } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -35,7 +36,53 @@ export async function GET(
    *
    * The audio is where caching actually pays, and that stays immutable.
    */
-  return NextResponse.json(present(found.song, found.forks), {
+  const lineage = await lineageOf(found.song);
+  return NextResponse.json(present(found.song, found.forks, lineage), {
     headers: { "Cache-Control": "no-store" },
   });
+}
+
+/**
+ * Retires a song. The row stays.
+ *
+ * Its forks point at it, and removing the row would leave them orphaned - a
+ * lineage with a hole in it is worse than one with a tombstone. The audio and
+ * the page stop being served; the tree stays walkable.
+ *
+ * Only the key that published it may do this. A song published anonymously
+ * cannot be withdrawn by anyone, which is the honest consequence of publishing
+ * without identity and is said as much in the skill.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  if (!SongId.safeParse(id).success) {
+    return NextResponse.json({ error: "bad_id" }, { status: 400 });
+  }
+  if (!hasDatabase()) return NextResponse.json({ error: "no_database" }, { status: 503 });
+
+  const found = await find(id);
+  if (!found) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const caller = await identify(request);
+  const admin =
+    process.env.CHIPVOICE_ADMIN_KEY &&
+    request.headers.get("authorization") === `Bearer ${process.env.CHIPVOICE_ADMIN_KEY}`;
+
+  if (!admin && (!caller.keyId || caller.keyId !== found.song.keyId)) {
+    return NextResponse.json(
+      {
+        error: "not_yours",
+        message: found.song.keyId
+          ? "this song was published with a different key"
+          : "this song was published anonymously, so nobody can withdraw it. Publish with a key to keep that option",
+      },
+      { status: 403 },
+    );
+  }
+
+  await softDelete(id);
+  return NextResponse.json({ ok: true, id });
 }

@@ -161,6 +161,59 @@ export function openApiSpec() {
           responses: { "200": { description: "audio/mpeg" }, "404": { description: "No such song" } },
         },
       },
+      "/api/songs/{id}/delete": {
+        delete: {
+          operationId: "deleteSong",
+          summary: "Withdraw a song you published",
+          description:
+            "Only the key that published it may withdraw it. The row stays so its forks keep their parent, but the page and the audio stop being served. A song published anonymously cannot be withdrawn by anyone - which is the honest cost of publishing without a key.",
+          tags: ["songs"],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: {
+            "200": { description: "Withdrawn" },
+            "403": { description: "Published with another key, or anonymously" },
+            "404": { description: "No such song" },
+          },
+        },
+      },
+      "/api/keys": {
+        post: {
+          operationId: "requestKey",
+          summary: "Get a key, by email",
+          description:
+            "The key is emailed rather than returned: a secret in a response body ends up in a proxy log and a shell history, and whoever asked for it cannot tell which. A key raises the write limit from 20 a minute to 240, marks your songs as verifiably yours, and is what makes GET /api/me possible.",
+          tags: ["identity"],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["email"],
+                  properties: {
+                    email: { type: "string", format: "email" },
+                    label: { type: "string", description: "What it is for, so you can tell keys apart" },
+                  },
+                },
+              },
+            },
+          },
+          responses: { "202": { description: "On its way" }, "422": { description: "Not an email address" } },
+        },
+      },
+      "/api/me": {
+        get: {
+          operationId: "listMySongs",
+          summary: "Everything this key has published",
+          description:
+            "Without a key a lost id is a lost song, permanently - nothing anywhere records that you made it.",
+          tags: ["identity"],
+          responses: {
+            "200": { description: "Your songs, newest first" },
+            "401": { description: "No key" },
+          },
+        },
+      },
       "/s/{id}.wav": {
         get: {
           operationId: "getWav",
@@ -193,6 +246,13 @@ export function openApiSpec() {
             mp3: { type: "string" },
             wav: { type: "string" },
             forks: { type: "integer" },
+            depth: { type: "integer", description: "0 for an original, 1 for its fork" },
+            rootId: { type: "string", description: "The first ancestor. Fetch the whole family with it" },
+            authorVerified: {
+              type: "boolean",
+              description:
+                "Whether `author` came from a request carrying a key. The field is free text, so without this it is a claim rather than a credit.",
+            },
             measured: { $ref: "#/components/schemas/Measured" },
             issues: { type: "array", items: ISSUE },
           },

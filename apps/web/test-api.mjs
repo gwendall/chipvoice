@@ -143,8 +143,10 @@ check('each with an input schema', mcp.tools.every((t) => t.inputSchema?.type ==
 const page = await fetch(`${BASE}/s/${song.id}`);
 const html = await page.text();
 check('the share page renders', page.status === 200);
-check('with an audio element', /<audio/.test(html));
-check('and an og:audio tag', /og:audio/.test(html));
+// It is the editor now rather than a separate read-only view, so what has to
+// be there is the metadata a chat client reads and the app that plays it.
+check('carrying og:audio for chat clients', /og:audio/.test(html));
+check('and the editor itself', /transport|__next/.test(html));
 check('and a card image', (await fetch(`${BASE}/s/${song.id}/card`)).status === 200);
 
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
