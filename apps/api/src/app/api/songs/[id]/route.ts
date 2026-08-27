@@ -24,9 +24,18 @@ export async function GET(
   if (!found) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+  /*
+   * Not cached, and the reason is the fork count.
+   *
+   * The song itself never changes - a fork is a new id - so the first version
+   * of this cached for five minutes at the edge. But the count does change, and
+   * a caller that forks and immediately reads the parent got a stale zero from
+   * the CDN. Production found it; local never could, because there is no edge
+   * cache in front of a dev server.
+   *
+   * The audio is where caching actually pays, and that stays immutable.
+   */
   return NextResponse.json(present(found.song, found.forks), {
-    // A song never changes - a fork is a new id - so this is safe to cache for
-    // a long time, and the fork count is not worth a shorter one.
-    headers: { "Cache-Control": "public, max-age=60, s-maxage=300" },
+    headers: { "Cache-Control": "no-store" },
   });
 }
