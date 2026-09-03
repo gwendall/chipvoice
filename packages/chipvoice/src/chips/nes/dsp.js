@@ -38,10 +38,14 @@ const TRIANGLE_SEQ = [];
 for (let i = 15; i >= 0; i--) TRIANGLE_SEQ.push(i);
 for (let i = 0; i <= 15; i++) TRIANGLE_SEQ.push(i);
 
-// NTSC noise periods, in CPU cycles.
+// NTSC noise periods, in CPU cycles: one shift of the register every N cycles.
+// The noise timer itself is clocked at the APU rate, half the CPU clock, so a
+// period is halved before it is loaded. Every entry is even, so nothing is
+// lost. Index 15 gives 1789773 / 4068, which is 440 Hz almost exactly.
 const NOISE_PERIODS = [
   4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 ];
+const noisePeriod = (index) => NOISE_PERIODS[Math.max(0, Math.min(15, index | 0))] >> 1;
 
 // Length counter table, indexed by the 5-bit load value.
 const LENGTH_TABLE = [
@@ -181,7 +185,7 @@ class Noise {
     this.shift = 1;
     this.mode = false;
     this.timer = 0;
-    this.period = NOISE_PERIODS[0];
+    this.period = noisePeriod(0); // in APU cycles per shift
     this.env = new Envelope();
     this.lengthCounter = 0;
     this.lengthHalt = false;
@@ -192,7 +196,10 @@ class Noise {
       this.timer--;
       return;
     }
-    this.timer = this.period;
+    // Reloaded one short, so a shift lands every `period` clocks rather than
+    // every `period + 1`. The pulse timer counts (t + 1) by design; this one
+    // is a plain divider.
+    this.timer = this.period - 1;
     // Bit 6 in short mode shortens the sequence to 93 steps: metallic, not hiss.
     const tap = this.mode ? (this.shift >> 6) & 1 : (this.shift >> 1) & 1;
     const feedback = (this.shift & 1) ^ tap;
@@ -326,9 +333,7 @@ class NesApuCore {
           return;
         }
         ch.enabled = true;
-        if (ev.periodIndex !== undefined) {
-          ch.period = NOISE_PERIODS[Math.max(0, Math.min(15, ev.periodIndex | 0))];
-        }
+        if (ev.periodIndex !== undefined) ch.period = noisePeriod(ev.periodIndex);
         if (ev.volume !== undefined) {
           ch.env.volume = Math.max(0, Math.min(15, ev.volume | 0));
         }
