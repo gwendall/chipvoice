@@ -154,7 +154,11 @@ class Triangle {
     this.enabled = false;
     this.timer = 0;
     this.period = 0;
-    this.step = 0;
+    // Step 15 outputs 0. The hardware powers on at step 0, which outputs 15
+    // and holds it until the first note - and a held 15 is a DC step through
+    // the high-pass filters, which is a click at the head of every render. A
+    // deliberate deviation, listed on the sheet.
+    this.step = 15;
     this.lengthCounter = 0;
     this.lengthHalt = false;
     this.linearCounter = 0;
@@ -180,8 +184,13 @@ class Triangle {
     if (!this.lengthHalt) this.linearReloadFlag = false;
   }
 
+  /**
+   * Always the current step. When the length or linear counter reaches zero
+   * the sequencer stops clocking and the output holds where it was; it does
+   * not drop to zero. An earlier version returned 0 the moment a note ended,
+   * which is a step of up to 15 into the mixer and a click at every note off.
+   */
   output() {
-    if (!this.enabled) return 0;
     return TRIANGLE_SEQ[this.step];
   }
 }
