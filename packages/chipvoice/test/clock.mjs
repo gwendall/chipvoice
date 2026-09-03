@@ -91,5 +91,26 @@ check('the long noise sequence is 32767 steps', sequenceLength(false) === 32767,
   check('the short noise sequence is 93 or 31 steps', short === 93 || short === 31, `${short}`);
 }
 
+// ---- the frame counter: 240 Hz quarter frames, 120 Hz half frames, in phase
+
+{
+  const core = fresh();
+  const quarters = [];
+  const halves = [];
+  let cycle = 0;
+  const q = core.clockQuarterFrame.bind(core);
+  const h = core.clockHalfFrame.bind(core);
+  core.clockQuarterFrame = () => { quarters.push(cycle); q(); };
+  core.clockHalfFrame = () => { halves.push(cycle); h(); };
+  for (cycle = 1; cycle <= CPU_HZ; cycle++) core.clockCPU();
+
+  // One percent: a second is 59.999 sequences, so the last one is cut short.
+  check('quarter frames run at 240 Hz', near(quarters.length, 240, 0.01), `${quarters.length} a second`);
+  check('half frames run at 120 Hz', near(halves.length, 120, 0.01), `${halves.length} a second`);
+  // The sequence from nesdev, in CPU cycles: 7457, 14913, 22371, 29829.
+  check('the first sequence lands on 7457, 14913, 22371, 29829', quarters.slice(0, 4).join() === '7457,14913,22371,29829', quarters.slice(0, 4).join());
+  check('half frames fall on the second and fourth steps', halves.slice(0, 2).join() === '14913,29829', halves.slice(0, 2).join());
+}
+
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

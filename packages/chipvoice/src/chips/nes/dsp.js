@@ -47,6 +47,13 @@ const NOISE_PERIODS = [
 ];
 const noisePeriod = (index) => NOISE_PERIODS[Math.max(0, Math.min(15, index | 0))] >> 1;
 
+// The 4-step frame sequence, in CPU cycles from the start of a sequence.
+// Every step clocks the envelopes and the linear counter; the second and the
+// fourth also clock the length counters and the sweeps. The sequence is 29830
+// cycles long, which is where the 240 Hz and 120 Hz come from.
+const FRAME_STEPS = [7457, 14913, 22371, 29829];
+const FRAME_PERIOD = 29830;
+
 // Length counter table, indexed by the 5-bit load value.
 const LENGTH_TABLE = [
   10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
@@ -375,13 +382,18 @@ class NesApuCore {
       this.noise.clock();
     }
 
-    // 4-step frame sequence at 240 Hz.
+    // The 4-step frame sequence. Half frames on the second and fourth steps:
+    // an earlier version fired them on the first and third, which put every
+    // length counter and sweep a quarter frame early.
     this.frameCycles++;
-    if (this.frameCycles >= 7457) {
-      this.frameCycles -= 7457;
-      this.frameStep = (this.frameStep + 1) & 3;
+    if (this.frameCycles === FRAME_STEPS[this.frameStep]) {
       this.clockQuarterFrame();
       if (this.frameStep === 1 || this.frameStep === 3) this.clockHalfFrame();
+      this.frameStep++;
+    }
+    if (this.frameCycles >= FRAME_PERIOD) {
+      this.frameCycles = 0;
+      this.frameStep = 0;
     }
   }
 
