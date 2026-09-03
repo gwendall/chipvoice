@@ -2,9 +2,10 @@
 
 Game audio on a real sound chip.
 
-A cycle-accurate **Ricoh 2A03** - the NES chip - running in an AudioWorklet, with a
-driver and a tracker on top, and one thing no other browser library does: **sound
-effects take channels away from the music**, the way the hardware forced them to.
+A **Ricoh 2A03** - the NES chip - emulated at the clock level and running in an
+AudioWorklet, with a driver and a tracker on top, and one thing no other browser
+library does: **sound effects take channels away from the music**, the way the
+hardware forced them to.
 
 ```bash
 npm i chipvoice
@@ -142,6 +143,28 @@ worklet, a counter offline.
 `test/parity.mjs` measures both and compares. Loudness matches to a thousandth,
 brightness to six percent; the rest is the browser starting its context wherever it
 likes.
+
+## How accurate is it
+
+Accuracy is a measurement here, not an adjective. The chip's **conformance sheet**,
+[`docs/chips/2a03.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md),
+says what has been verified, against which oracle, and what is known to differ - and
+[`docs/CONFORMANCE.md`](https://github.com/gwendall/chipvoice/blob/main/docs/CONFORMANCE.md)
+is the method every chip is held to. Until the sheet says otherwise, the honest summary is: the clocks match the
+formulas, the mixer and filters are the documented curves, and the parts the driver
+does not exercise are implemented from the wiki and unverified.
+
+Three tests run on every push:
+
+| | |
+| --- | --- |
+| `test/validate.mjs` | The validator says the right thing about the wrong song |
+| `test/clock.mjs` | Every voice's rate against the datasheet formula, and the frame counter's phase |
+| `test/golden.mjs` | A fixed song renders to the same bytes. If the hash moves, the sound moved |
+
+The golden hash is the one to watch. A fix that brings the chip closer to the
+hardware changes it, and the commit that does so says what moved and why. A hash
+that changes without that sentence is a regression.
 
 ## Checking a song before playing it
 
