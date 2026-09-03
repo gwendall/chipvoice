@@ -1,0 +1,36 @@
+name: ci
+
+# Every push and every pull request. The publish workflow is the release gate
+# and runs the fresh-install test in a browser; this is the cheap check that
+# runs all the time, so a regression is found on the commit that made it
+# rather than on the day of a release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # No version here: package.json's `packageManager` field is the one
+      # source.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm build --filter chipvoice
+
+      # The validator, the clocks against the formulas, and the golden hash.
+      # No browser: that is what the release runs.
+      - run: pnpm test:unit
+        working-directory: packages/chipvoice

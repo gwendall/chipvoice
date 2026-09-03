@@ -8,7 +8,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "dev": "turbo dev",
-    "test:e2e": "node test-e2e.mjs"
+    "test:e2e": "node test-e2e.mjs",
+    "test:unit": "pnpm --filter chipvoice test:unit"
   },
   "devDependencies": {
     "@breezystack/lamejs": "^1.2.7",

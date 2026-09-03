@@ -1,7 +1,7 @@
 {
   "name": "chipvoice",
   "version": "0.2.0",
-  "description": "Game audio on a real NES sound chip. Cycle-accurate 2A03 in an AudioWorklet or rendered offline to a file, with sound effects that steal channels from the music - the way the hardware did.",
+  "description": "Game audio on a real NES sound chip. A Ricoh 2A03 emulated at the clock level, in an AudioWorklet or rendered offline to a file, with sound effects that steal channels from the music - the way the hardware did.",
   "keywords": [
     "chiptune",
     "nes",
@@ -44,7 +44,8 @@
     "prepublishOnly": "npm run build",
     "dev": "npm run build && npm run worklet -- --watch",
     "test:fresh": "node scripts/fresh-install-test.mjs",
-    "test": "node test/validate.mjs && npm run test:fresh",
+    "test:unit": "node test/validate.mjs && node test/clock.mjs && node test/golden.mjs",
+    "test": "npm run test:unit && npm run test:fresh",
     "test:parity": "node test/parity.mjs"
   },
   "devDependencies": {

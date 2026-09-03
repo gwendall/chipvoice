@@ -1,0 +1,8 @@
+{
+  "song": "test/golden.mjs",
+  "seconds": 4,
+  "sampleRate": 44100,
+  "sha256": "9ccc0f1b6e5e925d0210bb86efdbf83c137b40a2e8c12e4a2b28baa9632bd52e",
+  "rms": 0.103,
+  "peak": 0.7143
+}
