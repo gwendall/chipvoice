@@ -1,0 +1,23 @@
+# chipvoice register log v1
+# name: script-five-step
+# chip: 2a03
+# clock: 1789773
+# cycles: 5548296
+# source: packages/conform/src/corpus/generate.mjs
+# notes: $4017 = $80, then a hundred cycles later envelopes and length counters running under the 5-step sequence
+0 4015 0F
+178977 4017 80
+179077 4000 82
+179077 4001 08
+179077 4002 FD
+179077 4003 18
+179077 4004 93
+179077 4005 08
+179077 4006 80
+179077 4007 28
+179077 4008 30
+179077 400A F8
+179077 400B 1B
+2863637 4003 F8
+2863637 4007 F8
+2863637 400B FB

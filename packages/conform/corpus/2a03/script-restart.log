@@ -1,0 +1,32 @@
+# chipvoice register log v1
+# name: script-restart
+# chip: 2a03
+# clock: 1789773
+# cycles: 1073864
+# source: packages/conform/src/corpus/generate.mjs
+# notes: $4003 rewritten every 1000 cycles on a sounding pulse: the phase restarts, the timer does not
+0 4015 0F
+178977 4000 BF
+178977 4001 08
+178977 4002 FD
+178977 4003 F8
+179977 4003 F8
+180977 4003 F8
+181977 4003 F8
+182977 4003 F8
+183977 4003 F8
+184977 4003 F8
+185977 4003 F8
+186977 4003 F8
+187977 4003 F8
+188977 4003 F8
+189977 4003 F8
+190977 4003 F8
+191977 4003 F8
+192977 4003 F8
+193977 4003 F8
+194977 4003 F8
+195977 4003 F8
+196977 4003 F8
+197977 4003 F8
+198977 4003 F8

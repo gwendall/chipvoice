@@ -1,0 +1,13 @@
+# chipvoice register log v1
+# name: script-low-pulse
+# chip: 2a03
+# clock: 1789773
+# cycles: 3758523
+# source: packages/conform/src/corpus/generate.mjs
+# notes: pulse 1 at period $400 with $4001 = $00, muted by the sweep unit, then $08 a second later, sounding
+0 4015 0F
+178977 4000 BF
+178977 4001 00
+178977 4002 00
+178977 4003 FC
+1968750 4001 08

@@ -155,17 +155,24 @@ is the method every chip is held to. Until the sheet says otherwise, the honest 
 formulas, the mixer and filters are the documented curves, and the parts the driver
 does not exercise are implemented from the wiki and unverified.
 
-Three tests run on every push:
+Four tests run on every push:
 
 | | |
 | --- | --- |
 | `test/validate.mjs` | The validator says the right thing about the wrong song |
-| `test/clock.mjs` | Every voice's rate against the datasheet formula, and the frame counter's phase |
+| `test/clock.mjs` | Every voice's rate against the datasheet formula, the frame counter's phase, the registers against nesdev |
+| `test/driver.mjs` | What the driver writes is what a NES needed: the sweep byte, the phase restarts, silence through the channel's own registers |
 | `test/golden.mjs` | A fixed song renders to the same bytes. If the hash moves, the sound moved |
 
 The golden hash is the one to watch. A fix that brings the chip closer to the
 hardware changes it, and the commit that does so says what moved and why. A hash
 that changes without that sentence is a regression.
+
+And on every push, `conform` - the harness in `packages/conform` - runs a corpus
+of register logs through this chip and through Nes_Snd_Emu, blargg's reference,
+and compares the two cycle for cycle. The pulses are identical to it on every
+song; what differs, and why it is the oracle's convention rather than a bug here,
+is on the sheet.
 
 ## Checking a song before playing it
 

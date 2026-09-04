@@ -1,0 +1,16 @@
+{
+  "name": "chipvoice-conform",
+  "private": true,
+  "version": "0.0.0",
+  "description": "The conformance harness: a register log in, chipvoice and an oracle run, the first divergence out. See docs/CONFORMANCE.md.",
+  "type": "module",
+  "scripts": {
+    "conform": "node src/cli.mjs",
+    "check": "node src/cli.mjs 2a03 --corpus corpus/2a03 --oracle nes-snd-emu --baseline corpus/2a03/parity.json",
+    "baseline": "node src/cli.mjs 2a03 --corpus corpus/2a03 --oracle nes-snd-emu --baseline corpus/2a03/parity.json --write-baseline --sheet ../../docs/chips/2a03.md",
+    "corpus": "node src/corpus/generate.mjs"
+  },
+  "dependencies": {
+    "chipvoice": "workspace:*"
+  }
+}

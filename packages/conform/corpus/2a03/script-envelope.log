@@ -1,0 +1,23 @@
+# chipvoice register log v1
+# name: script-envelope
+# chip: 2a03
+# clock: 1789773
+# cycles: 5548296
+# source: packages/conform/src/corpus/generate.mjs
+# notes: envelope decay on both pulses and the noise: period 3 on pulse 1, looping period 0 on pulse 2, period 15 on the noise, restarted twice
+0 4015 0F
+178977 4000 83
+178977 4001 08
+178977 4002 FD
+178977 4003 F8
+178977 4004 A0
+178977 4005 08
+178977 4006 80
+178977 4007 F8
+178977 400C 0F
+178977 400E 05
+178977 400F F8
+1968750 4003 F8
+1968750 400F F8
+3758523 4003 F8
+3758523 400F F8

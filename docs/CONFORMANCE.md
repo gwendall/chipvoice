@@ -88,10 +88,12 @@ or away; that is what the first three are for.
 
 ## The harness
 
-A command, one for every chip, built in phase 1 of the roadmap.
+`conform`, in `packages/conform`. One command for every chip.
 
 ```
-conform <chip> --corpus <dir> --oracle <wasm | dir>
+pnpm --filter chipvoice-conform conform 2a03 --corpus corpus/2a03 --oracle nes-snd-emu
+pnpm --filter chipvoice-conform baseline     # rewrite the baseline and the sheet's numbers
+pnpm --filter chipvoice-conform corpus       # regenerate the logs from the songs and scripts
 ```
 
 - Reads each log in the corpus, runs it through chipvoice's core and through the
@@ -100,14 +102,21 @@ conform <chip> --corpus <dir> --oracle <wasm | dir>
   cycle number, the register writes leading up to it, and both outputs for sixteen
   cycles either side. The point of the report is that the bug is findable from it
   without a debugger.
-- Exits non-zero on any divergence. CI runs it on the subset; a release runs it on
-  everything.
-- Writes the sheet's numbers as JSON. The sheet embeds them; nobody types them.
+- Reports per voice: the identical count, the edges that match exactly, within a
+  cycle, or not at all, the constant shift that lines the most edges up, and how
+  many runs of edges line up under a shift of their own - which is what tells a
+  phase convention from a bug. `--dump <voice>` prints both streams side by side
+  around the first divergence.
+- Exits non-zero on any divergence, or, given `--baseline`, only when a voice's
+  identical count fell below the committed baseline. That is what CI runs: an
+  imperfect oracle diverges somewhere by design, and what must not happen is a
+  regression.
+- Writes the sheet's numbers between its parity markers. Nobody types them.
 
-The oracle is a WebAssembly build of the reference core where one compiles, so the
-comparison is live. Where it does not - a netlist simulation run once - the corpus
-carries the oracle's output hash per file, and the harness compares hashes and asks
-for the oracle only when it has to locate a divergence.
+The oracle is a native build of the reference core: its sources are vendored, a
+recording sink stands in for its sample synthesis, and the system C++ compiler
+builds it on first use. A WebAssembly build would do as well; native was a day
+shorter.
 
 ## What a core must provide to be testable
 

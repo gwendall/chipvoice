@@ -1,0 +1,16 @@
+# chipvoice register log v1
+# name: script-noise
+# chip: 2a03
+# clock: 1789773
+# cycles: 5548296
+# source: packages/conform/src/corpus/generate.mjs
+# notes: the noise in long mode then short mode at rates 4, 9 and 15, constant volume
+0 4015 0F
+178977 400C 3F
+178977 400E 04
+178977 400F F8
+1073864 400E 09
+1968750 400E 0F
+2863637 400E 84
+3758523 400E 89
+4653410 400E 8F

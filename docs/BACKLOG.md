@@ -16,14 +16,16 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P1-2 | Register writes are bytes: `RegisterEvent` is `{at, addr, value}`, the core decodes `$4000-$4017`, the driver encodes | done | 0.5.0. Learned: see the log |
 | P1-3 | Digital and analog apart: a per-cycle digital output before mixing, resampling and filters; the output stage as its own class with a named profile | done | PR #2. `Nes2A03`, `NesOutputStage`, `NESDEV_PROFILE`; golden unchanged |
 | P1-4 | The trace: a change stream per voice, `(cycle, value)`, which is what parity is measured on | done | PR #2. `DigitalChip.trace`, `ChipDefinition.digital()` |
-| P1-5 | `conform`: the harness. Corpus in, two cores run, first divergence out, numbers as JSON | todo | |
-| P1-6 | Oracle 1: Nes_Snd_Emu, built natively from vendored LGPL sources with a recording sink in place of Blip_Buffer | todo | |
-| P1-7 | Corpus 1: this project's own songs and feature scripts, as byte write logs | todo | |
-| P1-8 | The sheet's numbers written by the harness | todo | |
-| P1-9 | `conform` in CI on the subset | todo | |
+| P1-5 | `conform`: the harness. Corpus in, two cores run, first divergence out, numbers as JSON | done | PR #3, `packages/conform` |
+| P1-6 | Oracle 1: Nes_Snd_Emu, built natively from vendored LGPL sources with a recording sink in place of Blip_Buffer | done | PR #3. Its limits are on the sheet |
+| P1-7 | Corpus 1: this project's own songs and feature scripts, as byte write logs | done | PR #3, 12 logs |
+| P1-8 | The sheet's numbers written by the harness | done | PR #3, `--sheet` between markers |
+| P1-9 | `conform` in CI on the subset | done | PR #3, against a committed baseline |
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | todo | |
 | P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | todo | needs P1-11 or an NSF player |
+| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - to settle the frame timing and the triangle's start, where Nes_Snd_Emu 0.1.7 predates nesdev | todo | found in P1-6 |
+| P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | todo | found in P1-6 |
 
 ## Phase 2. NES to 100 %
 
@@ -74,6 +76,16 @@ sweep unit's mute condition silenced any pulse note with a period of `$400` or
 more - roughly G#2 and below. Drivers on the hardware wrote `$4001 = $08` for
 that reason. Both are now what the hardware does: a note that crosses a period
 high-byte boundary restarts its phase, and low pulse notes play.
+
+**2026-09-04, P1-6, first run.** The pulses are identical to the oracle cycle
+for cycle on every song and on the sweep-down, mute, and restart scripts: not
+one edge unmatched. Every divergence found is an oracle convention: its frame
+steps land two cycles late, its triangle steps at once when its counters reload
+where the hardware waits for the timer, and its `reset()` writes `$4003` to
+every voice so that its first frame clock loads every envelope with 15. The
+sheet has the reading. CI checks a baseline rather than demanding zero
+divergence, because with this oracle zero is not on offer; a second oracle is
+ticket P1-13.
 
 **2026-09-04, P1-6.** Nes_Snd_Emu 0.1.7 is from 2005 and predates some of what
 nesdev now knows. Its frame sequence is a uniform 7458 cycles, not
