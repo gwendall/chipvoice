@@ -1,8 +1,8 @@
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.1.0";
-const UPDATED = "2026-08-27";
+const VERSION = "0.2.0";
+const UPDATED = "2026-09-04";
 
 /**
  * The file an agent reads first.
@@ -22,7 +22,7 @@ export function skillMarkdown(): string {
 
   return `---
 name: chipvoice
-description: Write chiptune for a real emulated NES sound chip as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - the 2A03 is emulated cycle by cycle, so what comes out is what the hardware would have made. Songs fork like code.
+description: Write chiptune for a real emulated NES sound chip as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - the 2A03 is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
 compatibility: Requires curl and network access. Nothing to install.
 homepage: ${SITE}
 metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","openclaw":{"requires":{"bins":["curl"]},"capabilities":[],"emoji":"musical_keyboard","homepage":"${SITE}"}}
@@ -35,6 +35,13 @@ four lines, get a link and an MP3 that plays anywhere.
 
 > **Skill version ${VERSION} (${UPDATED}).** To check for updates, fetch \`${SITE}/skill.md\`
 > and compare the \`updated\` date in the frontmatter with the one above.
+>
+> Since 0.1.0: the noise channel ran at half the hardware rate, so every drum was
+> an octave darker than a NES. Fixed. A song published before this date sounds
+> brighter on its drums now than it did when it was written.
+
+How accurate the chip is, and how that is measured, is on its conformance sheet:
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md
 
 ## The one thing to understand first
 

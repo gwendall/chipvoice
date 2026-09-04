@@ -116,19 +116,27 @@ without.
 `dsp.generated.ts` are gone. The golden hash did not move, which is the proof
 that the conversion changed nothing but the language.
 
+### 10. Audio URLs stay immutable; a deploy changes what they serve next (2026-09-04)
+
+`/s/{id}.mp3` keeps its one-year immutable cache and its URL. When the engine
+changes - phase 0 changed the sound of every drum - a new deployment is what
+changes the bytes: the edge cache is purged on deploy, so the next fetch of any
+URL renders with the new engine, while a file somebody already downloaded stays
+what it was when they heard it.
+
+**Why.** A version in the path would be the more honest URL and would break
+every link already pasted into a chat, which is the one thing a share link must
+not do. A shorter cache would cost renders for no benefit, since the song never
+changes and the engine changes rarely. And a file that stays what it was when it
+was fetched is the honest behaviour for a download: nobody's saved MP3 changes
+under them.
+
+**What changes.** A release that changes the sound says so in the skill, so an
+agent that published before it knows the drums moved. Package and site are
+released together, because the end-to-end test compares their renders byte for
+byte.
+
 ## Open
-
-### A. Immutable audio URLs versus a chip that changes
-
-`/s/{id}.mp3` is cached for a year as immutable, on the reasoning that the song
-behind an id never changes. The engine behind it does: phase 0 changed the sound
-of every drum. Cached files stay old until they expire, and a freshly rendered
-file differs from one somebody downloaded last week from the same URL.
-
-Options: put an engine version in the audio path or query, so a conformance fix
-is a new URL; keep the URL and accept that an immutable cache holds the sound as
-it was when first fetched; or shorten the cache. Not decided. The first option
-is the honest one and the one that breaks pasted links.
 
 ### B. The SID's licence
 

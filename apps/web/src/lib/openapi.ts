@@ -67,7 +67,8 @@ export function openApiSpec() {
       version: "0.1.0",
       description:
         "Write music for a real NES sound chip as four lines of text, get back a link and an MP3. " +
-        "The chip is emulated cycle by cycle, so what comes out is what the hardware would have made.",
+        "The chip is emulated at the clock level; what has been verified against the hardware is on " +
+        "its conformance sheet at https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md",
       license: { name: "MIT" },
     },
     servers: [{ url: SITE }],
