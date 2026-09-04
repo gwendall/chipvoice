@@ -1,10 +1,5 @@
 /**
- * A cycle-driven emulation of the Ricoh 2A03 APU.
- *
- * Plain JavaScript, no imports and no host globals, because two consumers that
- * cannot share a module both need it: the AudioWorklet, where `import` does not
- * exist, and Node, for offline rendering. `scripts/build-dsp.mjs` turns it
- * into both: a module with an export, and a string with the worklet shell.
+ * A clock-driven emulation of the Ricoh 2A03 APU.
  *
  * Web Audio's PeriodicWave is band-limited: it anti-aliases, which is precisely
  * why oscillator-based "chiptune" sounds too clean. This does what the chip did
@@ -15,14 +10,30 @@
  * Register writes arrive as timestamped events and are applied sample-exactly,
  * so slides and arpeggios land on the frame they were scheduled for.
  *
- * The sample clock is a parameter rather than a global: in a worklet it is
- * `currentFrame`, offline it is a counter. That one difference is all that
- * separates real time from a file, and it is what makes rendering a pure
- * function of the song and the sample rate.
+ * The same module runs in two places. Node imports it. The worklet gets it
+ * bundled with `worklet.ts` into one self-contained script by
+ * `scripts/build-worklet.mjs`, because a blob URL has nothing to resolve an
+ * import against. The sample clock is a parameter rather than a global: in a
+ * worklet it is `currentFrame`, offline it is a counter. That one difference
+ * is all that separates real time from a file, and it is what makes rendering
+ * a pure function of the song and the sample rate.
+ *
+ * What is verified and what is not is on the chip's sheet, `docs/chips/2a03.md`.
  */
 
-const CPU_HZ = 1789773; // NTSC
-const APU_HZ = CPU_HZ / 2;
+import type { ChipCore, RegisterEvent } from "../../chip.js";
+
+/** The NTSC CPU clock. The APU units run at half of it, except the triangle. */
+export const CPU_HZ = 1789773;
+
+/**
+ * The name the worklet registers its processor under.
+ *
+ * Here because the worklet and the package both import this file and neither
+ * can import the other: the worklet's own module registers a processor the
+ * moment it loads.
+ */
+export const PROCESSOR_NAME = "apu-processor";
 
 // Duty sequences, straight from the hardware. Entry 3 is 25% inverted, which is
 // why it sounds identical to entry 1.
@@ -34,7 +45,7 @@ const DUTY = [
 ];
 
 // The 32-step triangle sequence: 15 down to 0, then back up.
-const TRIANGLE_SEQ = [];
+const TRIANGLE_SEQ: number[] = [];
 for (let i = 15; i >= 0; i--) TRIANGLE_SEQ.push(i);
 for (let i = 0; i <= 15; i++) TRIANGLE_SEQ.push(i);
 
@@ -45,7 +56,10 @@ for (let i = 0; i <= 15; i++) TRIANGLE_SEQ.push(i);
 const NOISE_PERIODS = [
   4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068,
 ];
-const noisePeriod = (index) => NOISE_PERIODS[Math.max(0, Math.min(15, index | 0))] >> 1;
+
+/** APU cycles per shift, for a rate index 0-15. */
+const noisePeriod = (index: number): number =>
+  NOISE_PERIODS[Math.max(0, Math.min(15, index | 0))] >> 1;
 
 // The 4-step frame sequence, in CPU cycles from the start of a sequence.
 // Every step clocks the envelopes and the linear counter; the second and the
@@ -61,14 +75,13 @@ const LENGTH_TABLE = [
 ];
 
 class Envelope {
-  constructor() {
-    this.start = false;
-    this.loop = false;
-    this.constant = true;
-    this.volume = 0; // doubles as the divider period
-    this.decay = 0;
-    this.divider = 0;
-  }
+  start = false;
+  loop = false;
+  constant = true;
+  /** 0-15. Doubles as the divider's period, as on the hardware. */
+  volume = 0;
+  decay = 0;
+  divider = 0;
 
   clock() {
     if (this.start) {
@@ -86,28 +99,31 @@ class Envelope {
     else if (this.loop) this.decay = 15;
   }
 
-  output() {
+  output(): number {
     return this.constant ? this.volume : this.decay;
   }
 }
 
 class Pulse {
-  constructor(channel) {
-    this.channel = channel; // 1 or 2; affects the sweep's negate behaviour
-    this.enabled = false;
-    this.duty = 0;
-    this.step = 0;
-    this.timer = 0;
-    this.period = 0;
-    this.env = new Envelope();
-    this.lengthCounter = 0;
-    this.lengthHalt = false;
-    this.sweepEnabled = false;
-    this.sweepPeriod = 0;
-    this.sweepNegate = false;
-    this.sweepShift = 0;
-    this.sweepDivider = 0;
-    this.sweepReload = false;
+  /** 1 or 2. Affects the sweep's negate behaviour. */
+  readonly channel: 1 | 2;
+  enabled = false;
+  duty = 0;
+  step = 0;
+  timer = 0;
+  period = 0;
+  readonly env = new Envelope();
+  lengthCounter = 0;
+  lengthHalt = false;
+  sweepEnabled = false;
+  sweepPeriod = 0;
+  sweepNegate = false;
+  sweepShift = 0;
+  sweepDivider = 0;
+  sweepReload = false;
+
+  constructor(channel: 1 | 2) {
+    this.channel = channel;
   }
 
   clock() {
@@ -119,7 +135,7 @@ class Pulse {
     this.step = (this.step + 1) & 7;
   }
 
-  targetPeriod() {
+  targetPeriod(): number {
     const change = this.period >> this.sweepShift;
     if (this.sweepNegate) {
       // Pulse 1 negates with an extra -1; that off-by-one is real hardware.
@@ -141,7 +157,7 @@ class Pulse {
     }
   }
 
-  output() {
+  output(): number {
     if (!this.enabled || this.lengthCounter === 0) return 0;
     // Periods under 8 are muted by the hardware, and so is an overflowing sweep.
     if (this.period < 8 || this.targetPeriod() > 0x7ff) return 0;
@@ -150,21 +166,20 @@ class Pulse {
 }
 
 class Triangle {
-  constructor() {
-    this.enabled = false;
-    this.timer = 0;
-    this.period = 0;
-    // Step 15 outputs 0. The hardware powers on at step 0, which outputs 15
-    // and holds it until the first note - and a held 15 is a DC step through
-    // the high-pass filters, which is a click at the head of every render. A
-    // deliberate deviation, listed on the sheet.
-    this.step = 15;
-    this.lengthCounter = 0;
-    this.lengthHalt = false;
-    this.linearCounter = 0;
-    this.linearReload = 0;
-    this.linearReloadFlag = false;
-  }
+  timer = 0;
+  period = 0;
+  /**
+   * Step 15 outputs 0. The hardware powers on at step 0, which outputs 15 and
+   * holds it until the first note - and a held 15 is a DC step through the
+   * high-pass filters, which is a click at the head of every render. A
+   * deliberate deviation, listed on the sheet.
+   */
+  step = 15;
+  lengthCounter = 0;
+  lengthHalt = false;
+  linearCounter = 0;
+  linearReload = 0;
+  linearReloadFlag = false;
 
   /** Runs at the full CPU rate, which is why the triangle is an octave down. */
   clock() {
@@ -190,22 +205,21 @@ class Triangle {
    * not drop to zero. An earlier version returned 0 the moment a note ended,
    * which is a step of up to 15 into the mixer and a click at every note off.
    */
-  output() {
+  output(): number {
     return TRIANGLE_SEQ[this.step];
   }
 }
 
 class Noise {
-  constructor() {
-    this.enabled = false;
-    this.shift = 1;
-    this.mode = false;
-    this.timer = 0;
-    this.period = noisePeriod(0); // in APU cycles per shift
-    this.env = new Envelope();
-    this.lengthCounter = 0;
-    this.lengthHalt = false;
-  }
+  enabled = false;
+  shift = 1;
+  mode = false;
+  timer = 0;
+  /** In APU cycles per shift. */
+  period = noisePeriod(0);
+  readonly env = new Envelope();
+  lengthCounter = 0;
+  lengthHalt = false;
 
   clock() {
     if (this.timer > 0) {
@@ -222,53 +236,65 @@ class Noise {
     this.shift = (this.shift >> 1) | (feedback << 14);
   }
 
-  output() {
+  output(): number {
     if (!this.enabled || this.lengthCounter === 0) return 0;
     return this.shift & 1 ? 0 : this.env.output();
   }
 }
 
 /** Hardware DAC curves. Both are non-linear, and both matter. */
-function mixPulses(p1, p2) {
+function mixPulses(p1: number, p2: number): number {
   const sum = p1 + p2;
   return sum === 0 ? 0 : 95.88 / (8128 / sum + 100);
 }
 
-function mixTND(triangle, noise, dmc) {
+function mixTND(triangle: number, noise: number, dmc: number): number {
   const denom = triangle / 8227 + noise / 12241 + dmc / 22638;
   return denom === 0 ? 0 : 159.79 / (1 / denom + 100);
 }
 
-class NesApuCore {
-  constructor(sampleRate) {
+/**
+ * The chip.
+ *
+ * The four voices and the three clock methods are public for `test/clock.mjs`,
+ * which drives the clocks directly and counts what the timers do. They are
+ * not API: the package exposes a core through `ChipCore`, and nothing else.
+ */
+export class NesApuCore implements ChipCore {
+  readonly sampleRate: number;
+  readonly pulse1 = new Pulse(1);
+  readonly pulse2 = new Pulse(2);
+  readonly triangle = new Triangle();
+  readonly noise = new Noise();
+
+  private readonly cyclesPerSample: number;
+  private cycleAcc = 0;
+  private apuToggle = false;
+
+  // Frame counter: quarter frames at 240 Hz drive envelopes, half frames at
+  // 120 Hz drive length counters and sweeps.
+  private frameCycles = 0;
+  private frameStep = 0;
+
+  // The three analog filters, as one-pole sections.
+  private hp90 = 0;
+  private hp440 = 0;
+  private lp14k = 0;
+  private readonly hp90Coef: number;
+  private readonly hp440Coef: number;
+  private readonly lpCoef: number;
+  private lastIn90 = 0;
+  private lastIn440 = 0;
+
+  private events: RegisterEvent[] = [];
+  private masterGain = 1;
+
+  constructor(sampleRate: number) {
     this.sampleRate = sampleRate;
-    this.pulse1 = new Pulse(1);
-    this.pulse2 = new Pulse(2);
-    this.triangle = new Triangle();
-    this.noise = new Noise();
-
     this.cyclesPerSample = CPU_HZ / sampleRate;
-    this.cycleAcc = 0;
-    this.apuToggle = false;
-
-    // Frame counter: quarter frames at ~240 Hz drive envelopes, half frames at
-    // ~120 Hz drive length counters and sweeps.
-    this.frameCycles = 0;
-    this.frameStep = 0;
-
-    // The three analog filters, as one-pole sections.
-    this.hp90 = 0;
-    this.hp440 = 0;
-    this.lp14k = 0;
     this.hp90Coef = Math.exp((-2 * Math.PI * 90) / sampleRate);
     this.hp440Coef = Math.exp((-2 * Math.PI * 440) / sampleRate);
     this.lpCoef = 1 - Math.exp((-2 * Math.PI * 14000) / sampleRate);
-    this.lastIn90 = 0;
-    this.lastIn440 = 0;
-
-    this.events = [];
-    this.masterGain = 1;
-
   }
 
   silence() {
@@ -276,7 +302,6 @@ class NesApuCore {
       ch.lengthCounter = 0;
       ch.enabled = false;
     }
-    this.triangle.enabled = false;
     this.triangle.lengthCounter = 0;
   }
 
@@ -284,7 +309,7 @@ class NesApuCore {
    * Applies one scheduled command. These stand in for register writes; the
    * fields map one-to-one onto $4000-$400F.
    */
-  applyEvent(ev) {
+  applyEvent(ev: RegisterEvent) {
     switch (ev.ch) {
       case "p1":
       case "p2": {
@@ -328,10 +353,8 @@ class NesApuCore {
         if (ev.stop) {
           ch.lengthCounter = 0;
           ch.linearCounter = 0;
-          ch.enabled = false;
           return;
         }
-        ch.enabled = true;
         if (ev.period !== undefined) ch.period = Math.max(0, Math.min(0x7ff, ev.period | 0));
         if (ev.length !== undefined) ch.lengthCounter = LENGTH_TABLE[ev.length & 31];
         if (ev.linear !== undefined) {
@@ -395,7 +418,7 @@ class NesApuCore {
     // an earlier version fired them on the first and third, which put every
     // length counter and sweep a quarter frame early.
     this.frameCycles++;
-    if (this.frameCycles === FRAME_STEPS[this.frameStep]) {
+    if (this.frameStep < 4 && this.frameCycles === FRAME_STEPS[this.frameStep]) {
       this.clockQuarterFrame();
       if (this.frameStep === 1 || this.frameStep === 3) this.clockHalfFrame();
       this.frameStep++;
@@ -413,13 +436,15 @@ class NesApuCore {
    * which is what makes a scheduled event land on the sample it was booked for.
    * Pass null for `right` to render mono.
    */
-  render(left, right, startSample) {
+  render(left: Float32Array, right: Float32Array | null, startSample: number) {
     const n = left.length;
     for (let i = 0; i < n; i++) {
       const now = startSample + i;
 
       while (this.events.length > 0 && this.events[0].at <= now) {
-        this.applyEvent(this.events.shift());
+        const ev = this.events[0];
+        this.events.shift();
+        this.applyEvent(ev);
       }
 
       // Advance the chip, averaging over the cycles that make up this sample.
@@ -461,13 +486,13 @@ class NesApuCore {
   }
 
   /** Queues register writes. Each one is applied at the sample it names. */
-  schedule(events) {
+  schedule(events: RegisterEvent[]) {
     for (const ev of events) this.events.push(ev);
     // Keep the queue ordered; scheduling can interleave.
     this.events.sort((a, b) => a.at - b.at);
   }
 
-  setGain(value) {
+  setGain(value: number) {
     this.masterGain = value;
   }
 

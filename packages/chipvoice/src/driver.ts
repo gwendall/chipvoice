@@ -13,7 +13,7 @@
  * frame at a time.
  */
 
-import { type ChipCore, type RegisterEvent } from "./chip.js";
+import { type ChipCore, type RegisterEvent, type WorkletMessage } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
 
 const CPU_HZ = 1789773;
@@ -149,13 +149,18 @@ export class APU implements NoteSink {
     return true;
   }
 
+  /** The one place a message crosses to the worklet, so it is typed once. */
+  private post(message: WorkletMessage) {
+    this.node?.port.postMessage(message);
+  }
+
   setGain(value: number) {
-    this.node?.port.postMessage({ type: "gain", value });
+    this.post({ type: "gain", value });
   }
 
   reset() {
     this.queue.length = 0;
-    this.node?.port.postMessage({ type: "reset" });
+    this.post({ type: "reset" });
   }
 
   /**
@@ -178,7 +183,7 @@ export class APU implements NoteSink {
   protected flush() {
     this.flushHandle = null;
     if (!this.node || this.queue.length === 0) return;
-    this.node.port.postMessage({ type: "events", events: this.queue });
+    this.post({ type: "events", events: this.queue });
     this.queue = [];
   }
 

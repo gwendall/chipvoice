@@ -1,3 +1,9 @@
 packages:
   - packages/*
   - apps/*
+
+# esbuild verifies its platform binary in a postinstall. pnpm 10 refuses to run
+# install scripts it has not been told about, and prints a warning on every
+# install until it is.
+onlyBuiltDependencies:
+  - esbuild

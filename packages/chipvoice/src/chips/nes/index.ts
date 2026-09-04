@@ -1,5 +1,5 @@
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
-import { NesApuCore } from "./dsp.generated.js";
+import { NesApuCore, PROCESSOR_NAME } from "./dsp.js";
 import { WORKLET_SOURCE } from "./worklet-inline.js";
 
 /**
@@ -31,7 +31,7 @@ export const nesChip: ChipDefinition = {
   spec: NES_2A03,
   create: (sampleRate: number) => new NesApuCore(sampleRate),
   workletSource: WORKLET_SOURCE,
-  processorName: "apu-processor",
+  processorName: PROCESSOR_NAME,
 };
 
 registerChip(nesChip);

@@ -4,8 +4,7 @@ dist/
 .vercel
 *.tsbuildinfo
 
-# Generated from packages/chipvoice/src/chips/nes/dsp.js by build-dsp.mjs.
-packages/chipvoice/src/chips/nes/dsp.generated.ts
+# Generated from packages/chipvoice/src/chips/nes/worklet.ts by build-worklet.mjs.
 packages/chipvoice/src/chips/nes/worklet-inline.ts
 .next/
 next-env.d.ts

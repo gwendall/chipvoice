@@ -95,6 +95,27 @@ as the changes they describe.
 **Why.** A document elsewhere drifts; a document in another language than the
 code excludes the people the project wants as readers.
 
+### 9. The DSP is TypeScript, and the worklet is a bundle (2026-09-04)
+
+The chip is an ordinary TypeScript module, `dsp.ts`, that implements `ChipCore`
+and is type-checked with the rest of the package. The worklet is `worklet.ts`,
+which imports it; `scripts/build-worklet.mjs` bundles the two with esbuild into
+one self-contained script and writes it out as the string the driver hands to
+`addModule`. Tests and scripts stay plain JavaScript: they import from `dist`,
+so they test what ships, with no toolchain between them and Node.
+
+**Why.** The DSP was plain JavaScript with no imports so it could be pasted into
+the worklet verbatim, and that made it the one part of the package the compiler
+never checked - `@ts-nocheck` on the core of the project. The constraint was
+always on the emitted script, not on the source; a bundler makes it a property
+of the output. Phase 1 changes the units on every event and phase 5 embeds
+WebAssembly in the worklet, and both are easier with types and a bundler than
+without.
+
+**What changes.** `dsp.js`, `worklet-shell.js` and the generated
+`dsp.generated.ts` are gone. The golden hash did not move, which is the proof
+that the conversion changed nothing but the language.
+
 ## Open
 
 ### A. Immutable audio URLs versus a chip that changes

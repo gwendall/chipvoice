@@ -114,6 +114,18 @@ export interface ChipDefinition {
   processorName: string;
 }
 
+/**
+ * What the main thread posts to a chip's worklet.
+ *
+ * One type, imported by both ends of the port, so the driver cannot send a
+ * message the processor does not handle. The processor is bundled separately
+ * and would otherwise drift from the driver with nothing to say so.
+ */
+export type WorkletMessage =
+  | { type: "events"; events: RegisterEvent[] }
+  | { type: "gain"; value: number }
+  | { type: "reset" };
+
 const registry = new Map<string, ChipDefinition>();
 
 export function registerChip(definition: ChipDefinition) {

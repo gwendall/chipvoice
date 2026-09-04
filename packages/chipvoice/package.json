@@ -38,19 +38,20 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "worklet": "node scripts/build-dsp.mjs",
+    "worklet": "node scripts/build-worklet.mjs",
     "build": "npm run worklet && tsc -p tsconfig.build.json",
     "typecheck": "npm run worklet && tsc -p tsconfig.json --noEmit",
     "prepublishOnly": "npm run build",
-    "dev": "npm run build && npm run worklet -- --watch",
+    "dev": "npm run worklet && (npm run worklet -- --watch & tsc -p tsconfig.build.json --watch)",
     "test:fresh": "node scripts/fresh-install-test.mjs",
     "test:unit": "node test/validate.mjs && node test/clock.mjs && node test/golden.mjs",
     "test": "npm run test:unit && npm run test:fresh",
     "test:parity": "node test/parity.mjs"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
+    "esbuild": "^0.28.2",
     "playwright": "^1.61.1",
-    "serve": "^14.2.6"
+    "serve": "^14.2.6",
+    "typescript": "^5.7.0"
   }
 }

@@ -134,11 +134,12 @@ const audio = renderSong(THEME, { seconds: 30 });   // ~1.4s for 30s of sound
 writeFileSync("theme.wav", toWav(audio));
 ```
 
-The same DSP runs in both places. `src/chips/nes/dsp.js` has no imports and no host
-globals precisely so it can: the build inlines it into the worklet, where `import`
-does not exist, and exports it as a module for Node. The only difference between
-real time and a file is where the sample clock comes from - `currentFrame` in a
-worklet, a counter offline.
+The same DSP runs in both places. `src/chips/nes/dsp.ts` is a TypeScript module like
+any other: Node imports it, and the build bundles it with the worklet shell into one
+self-contained script - a blob URL has nothing to resolve an import against - and
+hands that string to `addModule`. The only difference between real time and a file
+is where the sample clock comes from - `currentFrame` in a worklet, a counter
+offline.
 
 `test/parity.mjs` measures both and compares. Loudness matches to a thousandth,
 brightness to six percent; the rest is the browser starting its context wherever it

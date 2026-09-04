@@ -180,7 +180,7 @@ five archetypes, and only as additions to a proven shape.
 
 | Chip | Machine | Archetype | Core | Licence | Oracle |
 | --- | --- | --- | --- | --- | --- |
-| Ricoh 2A03 | NES, Famicom | Tables per frame | Own, `dsp.js` | MIT | Nes_Snd_Emu, Visual2A03 as arbiter |
+| Ricoh 2A03 | NES, Famicom | Tables per frame | Own, `dsp.ts` | MIT | Nes_Snd_Emu, Visual2A03 as arbiter |
 | DMG APU | Game Boy | Tables plus wavetable | SameBoy's `apu.c`, ported | MIT | SameBoy, blargg's ROMs |
 | YM2612 + SN76489 | Mega Drive | FM plus PSG | Nuked-OPN2, MAME `sn76496`, WebAssembly | LGPL, BSD-3 | Nuked itself, die-derived; hardware captures |
 | S-DSP | SNES | Samples | snes_spc or ares, WebAssembly | LGPL, ISC | Captures of the serial DAC stream |
