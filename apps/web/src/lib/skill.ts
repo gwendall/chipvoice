@@ -239,7 +239,7 @@ lead, the chord and the bass are looped waveforms the driver synthesised -
 \`"soft"\` a triangle, \`"bright"\` a sawtooth, \`"round"\` a sine; the bass
 words the same an octave down, \`"hollow"\` a square - played through the chip's
 Gaussian interpolation, which rounds everything off: this is the softest of the
-four machines. The drums are synthesised samples, a kick that sweeps down, a
+five machines. The drums are synthesised samples, a kick that sweeps down, a
 snare, two hats. Every pitched voice goes through the echo, 48 ms with the
 low-pass filter most games used, and that echo is most of what makes it sound
 like the machine: write with space for it. Volume is the voice's own, so

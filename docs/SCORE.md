@@ -86,13 +86,19 @@ rows are what is built; the rest is the plan.
 
 ## The voice budget
 
-Both shipped chips have exactly four voices for the four roles, so the budget
-has not been tested. Fewer voices than roles - the SN76489 has three tones and
-a noise - will need priorities per role and sharing rules, bass and chord
-alternating on one voice being the classic one. More voices than roles - the
-S-DSP has eight - opens real triads, doubling and echo voices. `canPlay` and
-`claim` already speak in the chip's own voice ids, and an arranger will say
-which role loses a voice first.
+The C64 tested it first: three voices for four roles. The lead and the bass
+keep a voice each, the chord and the percussion share the third, and the rule
+is the sequencer's rather than the driver's, because a driver expands a note
+into writes when the note is scheduled and cannot take one back: a drum cuts
+the chord, and the chord comes back after it until the next drum, each
+segment ending a frame before the drum so its note off cannot land on the
+drum's gate (`Sequencer.scheduleStep`, when `roles.chord === roles.perc`).
+That is what every C64 tune with drums did, and it means a busy drum line
+leaves the chord little room, which the skill tells an agent. Other sharings
+- bass and chord alternating, the classic on a three-voice PSG - are the same
+rule with other roles, when a chip asks for it. More voices than roles - the
+S-DSP has eight - opens real triads, doubling and echo voices, still to come
+(P6-10). `canPlay` and `claim` speak in the chip's own voice ids.
 
 ## Structure
 
