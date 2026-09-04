@@ -73,9 +73,12 @@ vector. The corpus is chosen to cover features: sweeps, envelope decay, both noi
 modes, the DMC, length counters actually expiring. A small subset of around twenty
 short logs runs in CI; the full set runs at release and on demand.
 
-**2. Test ROMs.** They need a CPU. The CPU is a test fixture, a few hundred lines
-that exist only to run these, and it never ships. Each ROM's verdict goes on the
-sheet by name.
+**2. Test ROMs.** They need a CPU. The harness carries one, a 6502 in a few
+hundred lines that exists only to run these and never ships, with enough of a
+console around it to read a verdict: memory at `$6000` for the newer ROMs, the
+screen for the older ones, the beeps for the ones that only beep.
+`pnpm --filter chipvoice-conform roms` runs every ROM under `packages/conform/roms`
+and `roms:sheet` writes each verdict on the sheet by name.
 
 **3. Formula tests.** `test/clock.mjs` for the 2A03: every voice's rate against
 the datasheet formula, the LFSR's sequence lengths, the frame counter's phase.

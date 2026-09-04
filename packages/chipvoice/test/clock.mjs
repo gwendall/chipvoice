@@ -170,10 +170,14 @@ function frameClocks(core, cycles) {
   const stepBefore = core.pulse1.step;
   core.write(0x4003, 0x08 | 0);
   check('$4003 restarts the pulse sequencer at step 0', stepBefore !== 0 && core.pulse1.step === 0, `was ${stepBefore}`);
-  check('and loads the length counter', core.pulse1.lengthCounter === 254, `${core.pulse1.lengthCounter}`);
+  // The load lands when the cycle settles, after the frame counter has had
+  // its say: blargg's len_reload_timing.
+  core.clockCPU();
+  check('and loads the length counter by the end of the cycle', core.pulse1.lengthCounter === 254, `${core.pulse1.lengthCounter}`);
   core.write(0x4015, 0x0e);
   check('clearing its $4015 bit forces the length counter to 0', core.pulse1.lengthCounter === 0, `${core.pulse1.lengthCounter}`);
   core.write(0x4003, 0xf8);
+  core.clockCPU();
   check('and a load while disabled is ignored', core.pulse1.lengthCounter === 0, `${core.pulse1.lengthCounter}`);
 }
 
