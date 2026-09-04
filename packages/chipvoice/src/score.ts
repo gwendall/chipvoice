@@ -2,6 +2,7 @@ import type { Instrument } from "./driver.js";
 import type { PercussionKit, Song } from "./sequencer.js";
 import { nesInstruments } from "./chips/nes/arranger.js";
 import { gbInstruments } from "./chips/gb/arranger.js";
+import { mdInstruments } from "./chips/md/arranger.js";
 
 /**
  * The score: what the music is, before any chip has done anything with it.
@@ -84,7 +85,9 @@ export function resolveIntent(intent: Intent | undefined): Required<Intent> {
 /** A chip's instruments for an intent. Unknown chips get the 2A03's. */
 export function instrumentsFor(chipId: string, intent: Intent | undefined): Instruments {
   const resolved = resolveIntent(intent);
-  return chipId === "dmg" ? gbInstruments(resolved) : nesInstruments(resolved);
+  if (chipId === "dmg") return gbInstruments(resolved);
+  if (chipId === "md") return mdInstruments(resolved);
+  return nesInstruments(resolved);
 }
 
 /**

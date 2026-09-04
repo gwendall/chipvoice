@@ -38,8 +38,9 @@ way for anyone, human or machine, to pick the instrument up and play it.
 ## What it is
 
 - **The chips, emulated at the clock level**, running in an AudioWorklet in a
-  browser or rendered offline to a file on a server. Two so far: the NES's
-  Ricoh 2A03, and the Game Boy's DMG APU. The Mega Drive, the SNES and the C64
+  browser or rendered offline to a file on a server. Three so far: the NES's
+  Ricoh 2A03, the Game Boy's DMG APU, and the Mega Drive's YM2612 with its
+  SN76489, the FM chip a port of a reading of the die. The SNES and the C64
   are on the [roadmap](docs/ROADMAP.md).
 - **A driver and a tracker on top**, so a tune is four lines of text - lead,
   chord, bass, percussion - and a word per line for what it should sound like.
@@ -69,7 +70,7 @@ hand. Each chip's sheet has the detail behind every cell, and
 | --- | --- | ---: | --- | --- | --- | --- | --- |
 | NES, Famicom | Ricoh 2A03 | **82 %** | ✅ 98 % | ✅ 29/29 | 🟡 mixer | 🟡 4/5 | [2a03](docs/chips/2a03.md) |
 | Game Boy | DMG APU | **74 %** | ✅ 98 % | ✅ 12/12 | ❌ none | ✅ 4/4 | [dmg](docs/chips/dmg.md) |
-| Mega Drive, Genesis | YM2612 + SN76489 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 5 |
+| Mega Drive, Genesis | YM2612 + SN76489 | **35 %** | ✅ 100 % | ⬜ | ❌ none | 🟡 4/10 | [md](docs/chips/md.md) |
 | Super Nintendo | S-DSP | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 6 |
 | Commodore 64 | SID 6581, 8580 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 7 |
 | Later | PC Engine, GBA, Amiga, POKEY, YM2151, YM2610 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | later |
@@ -80,7 +81,7 @@ Written by `conform` on 2026-09-04. **Digital**: runs of edges that line up with
 
 **Game Boy** (DMG APU, since 0.8.0). Digital: Gb_Snd_Emu 0.1.4 (blargg), 7 logs, 145.1M cycles; runs aligned on step times 97.5 % (12645 of 12969); identical cycles 57.4 %, the rest the oracle's own conventions, read on the sheet. ROMs: blargg's `dmg_sound`, 12 of 12 pass. Analog: unmeasured; the output stage is a placeholder built to be replaced by a measurement. Driver: all four voices, the bass on the wave channel, drums as the hardware envelope. Remains: a stronger oracle than Gb_Snd_Emu (SameBoy); a unit's line-out; the sweep and the length counters, which no instrument reaches.
 
-**Mega Drive, Genesis** (YM2612 + SN76489). Planned, phase 5: Nuked-OPN2, derived from the die, and MAME's `sn76496`, both compiled to WebAssembly; parity with Nuked is parity with the silicon.
+**Mega Drive, Genesis** (YM2612 + SN76489, since 0.11.0). Digital: Nuked-OPN2 1.0.12 (Nuke.YKT), 7 logs, 1798.7M cycles; runs aligned on step times 100.0 % (36580 of 36580); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the die. The PSG is from the documents and has no oracle yet. Analog: unmeasured; Nuked's own DAC model is marked unverified, the mix and the Model 1 filter are placeholders. Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten. Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit's line-out.
 
 **Super Nintendo** (S-DSP). Planned, phase 6: snes_spc or ares compiled to WebAssembly; captures of the DSP's serial stream to the DAC exist and are the oracle.
 
@@ -125,8 +126,10 @@ reference emulator cycle for cycle on every song in the corpus, all twenty-nine
 of his APU test ROMs pass on a 6502 the harness carries, and its mixer cancels
 against his recordings of a real NES as well as the console did. The Game Boy's
 is [`docs/chips/dmg.md`](docs/chips/dmg.md): twelve of twelve `dmg_sound` ROMs
-on an SM83. What still says **unverified** on both, honestly: the analog stage,
-which needs a real unit's line-out. The [roadmap](docs/ROADMAP.md) is the order
+on an SM83. The Mega Drive's is [`docs/chips/md.md`](docs/chips/md.md): its
+YM2612 is identical to Nuked-OPN2, a reading of the die, on every cycle of the
+corpus. What still says **unverified** on all three, honestly: the analog
+stage, which needs a real unit's line-out. The [roadmap](docs/ROADMAP.md) is the order
 in which those lines change, and the [backlog](docs/BACKLOG.md) is what is being
 done about it this week.
 

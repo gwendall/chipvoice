@@ -4,11 +4,11 @@ import Studio from "@/studio/App";
 export const metadata: Metadata = {
   title: "chipvoice - write music on the sound chips of the old machines",
   description:
-    "Four lines of text, four channels, the NES's 2A03 or the Game Boy's APU emulated to the cycle. Sound effects steal channels from the music, the way the hardware did.",
+    "Four lines of text, four channels, the NES's 2A03, the Game Boy's APU or the Mega Drive's FM chip emulated to the cycle. Sound effects steal channels from the music, the way the hardware did.",
   openGraph: {
     title: "chipvoice",
     description:
-      "Write music on a real NES or Game Boy sound chip in a browser tab. Songs are text, and they fork like code.",
+      "Write music on a real NES, Game Boy or Mega Drive sound chip in a browser tab. Songs are text, and they fork like code.",
     url: "https://chipvoice.dev",
     type: "website",
   },

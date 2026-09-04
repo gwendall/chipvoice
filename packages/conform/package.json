@@ -18,7 +18,10 @@
     "corpus:dmg": "node src/corpus/generate-dmg.mjs",
     "roms:dmg": "node src/roms/run.mjs --chip dmg",
     "roms:dmg:sheet": "node src/roms/run.mjs --chip dmg --sheet ../../docs/chips/dmg.md --json corpus/dmg/roms.json && node src/status.mjs",
-    "status": "node src/status.mjs"
+    "status": "node src/status.mjs",
+    "check:md": "node src/cli.mjs md --corpus corpus/md --oracle nuked-opn2 --baseline corpus/md/parity.json",
+    "baseline:md": "node src/cli.mjs md --corpus corpus/md --oracle nuked-opn2 --baseline corpus/md/parity.json --write-baseline --sheet ../../docs/chips/md.md && node src/status.mjs",
+    "corpus:md": "node src/corpus/generate-md.mjs"
   },
   "dependencies": {
     "chipvoice": "workspace:*"

@@ -20,6 +20,7 @@ import {
   type ChipCore,
   type ChipDefinition,
   type ChipDriver,
+  type FmPatch,
   type NoteFrame,
   type RegisterEvent,
   type WorkletMessage,
@@ -76,6 +77,12 @@ export interface Instrument {
    * voice ignores it, and a wavetable voice without it plays a triangle.
    */
   wave?: number[];
+  /**
+   * For an FM voice, the patch: four operators, an algorithm, a feedback
+   * level, in the YM2612's units. A chip without FM ignores it; an FM voice
+   * without it plays the chip's default patch.
+   */
+  fm?: FmPatch;
 }
 
 /**
@@ -245,6 +252,7 @@ export class APU implements NoteSink {
     const gain = opts.gain ?? 1;
     const detune = opts.detune ?? 0;
     const wave = inst.wave ?? null;
+    const fm = inst.fm ?? null;
     let pitchAcc = 0;
 
     const states: NoteFrame[] = [];
@@ -295,6 +303,7 @@ export class APU implements NoteSink {
         noiseMode: inst.noiseMode === true,
         pitchOffset: pitchAcc,
         wave,
+        fm,
       });
     }
 

@@ -66,11 +66,48 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | --- | --- | --- | --- |
 | OPS-1 | Vercel: the `chipvoice-api` project was still connected to the repository and failed a deployment on every push, next to the `chipvoice` project that serves chipvoice.dev | done | Its root directory was `apps/api`, which stopped existing when the API moved into `apps/web`; nothing referenced it. Deleted with the Vercel CLI on 2026-09-04. Every PR from #1 to #11 wore its red cross; it should have been fixed at #1 |
 
+## Phase 5. Mega Drive
+
+| # | Ticket | Status | Where |
+| --- | --- | --- | --- |
+| P5-1 | Nuked-OPN2 vendored as the YM2612 oracle: built natively, driven by a register log, its per-channel outputs traced | done | `packages/conform/oracles/nuked-opn2` |
+| P5-2 | The YM2612 in TypeScript, ported from Nuked-OPN2 line for line, behind `DigitalChip`: six FM channels and the DAC | done | `chips/md/ym2612.ts`; identical to Nuked on every script |
+| P5-3 | The SN76489 from the documents, with formula tests | done | `chips/md/sn76489.ts`; no oracle yet, see P5-8 |
+| P5-4 | The Mega Drive chip: the two behind one `ChipCore`, the ladder DAC and the console's output stage, a worklet | done | `chips/md/dsp.ts`; the output stage is a placeholder |
+| P5-5 | The Mega Drive's driver and arranger: FM patches for the intents, the PSG for the chord, the kit on the noise | done | `chips/md/driver.ts`, `arranger.ts`; FM drums are still to come |
+| P5-6 | VGM for the YM2612 and the PSG, the chip in the API, the studio and the skill | done | `toVgm({ chip: "md" })`; skill 0.6.0 |
+| P5-7 | The Mega Drive sheet: parity with Nuked on every voice, a corpus of scripts and songs | done | `docs/chips/md.md` |
+| P5-8 | A PSG oracle: MAME's `sn76496` behind a shim, or a Master System test ROM | todo | the noise register's sequence and the period-0 behaviour are from the documents |
+| P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3 |
+| P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the kit is on the PSG noise for now |
+
 ## Later phases
 
-Mega Drive, SNES, C64: see the roadmap. Not ticketed until phase 3 is done.
+SNES, C64: see the roadmap. Not ticketed until phase 5 is done.
 
 ## Discoveries
+
+**2026-09-04, P5-1 to P5-7.** The third chip, in a day, and the first whose
+verification is against the die. Nuked-OPN2 is a reading of the YM3438's
+transistors, and the chip's YM2612 is that reading ported line for line with
+Nuked's names kept; Nuked itself, built natively, is the oracle. The first run
+was 93 % identical with every run aligned under a shift of at most 41 cycles,
+which was two conventions and no bug: the trace stamped a change at the end of
+the internal cycle where the oracle stamps its start, and a write was delivered
+on the cycle after its stamp rather than the one starting at it. With both made
+the oracle's, every script - the eight algorithms at three feedback levels, the
+envelope's stages and key scaling, detune and every multiple, the LFO at every
+speed with both sensitivities, SSG-EG's eight shapes, channel 3's special mode,
+the DAC - is identical on every voice, every edge exact. Two things learned on
+the way: the register's slot pipeline means a data byte lands only when the
+chip's twelve-slot cycle reaches its operator, so a driver that writes faster
+than the busy flag loses writes, and the driver here spaces registers as a
+program that waits on the flag does; and the master clock is the right unit for
+the log, because the 68000, the YM2612 and the PSG all divide from it and
+nothing else is integral in all three. The SN76489's noise register, sixteen
+bits with taps at 0 and 3 as SMS Power and MAME have it, is not a maximal
+register: it repeats after 7 times 8191 shifts, not 32767, which the formula
+test now says. It has no oracle yet.
 
 **2026-09-04, P4-6.** Blargg's smooth vibrato, as FamiStudio's engine writes
 it: to move a pulse's period high bits by one without the `$4003` write that

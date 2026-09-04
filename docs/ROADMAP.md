@@ -170,11 +170,15 @@ how each chip likes to be written for.
 
 ### Phase 5. Mega Drive
 
-Nuked-OPN2 for the YM2612 and MAME's `sn76496` for the PSG, compiled to
-WebAssembly and inlined the way the worklet is. The sheet is nearly free: Nuked is
-derived from the die and matched to captures, so parity with it is parity with the
-hardware. The work is the FM instrument shape, the FM arranger, and the licence
-boundary, which lives in its own package.
+Done in 0.11.0, in a different shape from the plan. The YM2612 is Nuked-OPN2
+ported line for line to TypeScript rather than compiled to WebAssembly, with
+Nuked itself built natively as the oracle: the port is identical to it cycle
+for cycle on every script and song in the corpus, which is parity with the die
+(decision 17). The PSG is written from SMS Power's notes and has no oracle yet
+(P5-8). The FM instrument shape is `FmPatch` on an instrument; the arranger
+maps the score's words onto patches; the chord goes to the PSG. The licence
+boundary is one LGPL file, named. Still to come: FM drums and the LFO in the
+arranger (P5-10), a PSG oracle (P5-8), a Model 1's line-out (P5-9).
 
 ### Phase 6. SNES
 
@@ -201,7 +205,7 @@ five archetypes, and only as additions to a proven shape.
 | --- | --- | --- | --- | --- | --- |
 | Ricoh 2A03 | NES, Famicom | Tables per frame | Own, `dsp.ts` | MIT | Nes_Snd_Emu, Visual2A03 as arbiter |
 | DMG APU | Game Boy | Tables plus wavetable | Own, `gb/dsp.ts`, from Pan Docs and blargg's notes | MIT | blargg's `dmg_sound` ROMs, Gb_Snd_Emu; SameBoy to come |
-| YM2612 + SN76489 | Mega Drive | FM plus PSG | Nuked-OPN2, MAME `sn76496`, WebAssembly | LGPL, BSD-3 | Nuked itself, die-derived; hardware captures |
+| YM2612 + SN76489 | Mega Drive | FM plus PSG | Nuked-OPN2 ported line for line (`md/ym2612.ts`); the PSG from the documents | LGPL 2.1 for the one file, MIT for the rest | Nuked itself, die-derived: identical on every voice; the PSG's oracle to come |
 | S-DSP | SNES | Samples | snes_spc or ares, WebAssembly | LGPL, ISC | Captures of the serial DAC stream |
 | SID 6581, 8580 | C64 | Analog filter | reSID-fp or own | GPL, or MIT if rewritten | reSID-fp per profile; analog tolerance only |
 

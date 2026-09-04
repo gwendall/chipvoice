@@ -2,8 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chip2a03 } from './chips/2a03.mjs';
 import { chipDmg } from './chips/dmg.mjs';
+import { chipMd } from './chips/md.mjs';
 import { nesSndEmu } from './oracles/nes-snd-emu.mjs';
 import { gbSndEmu } from './oracles/gb-snd-emu.mjs';
+import { nukedOpn2 } from './oracles/nuked-opn2.mjs';
 import { parseLog } from './log.mjs';
 import { compare, dump } from './compare.mjs';
 
@@ -24,9 +26,9 @@ import { compare, dump } from './compare.mjs';
  * 1 only when a log's identical count fell below the baseline's: the check CI
  * runs, since an imperfect oracle diverges somewhere by design.
  */
-const CHIPS = { '2a03': chip2a03, dmg: chipDmg };
-const ORACLES = { 'nes-snd-emu': nesSndEmu, 'gb-snd-emu': gbSndEmu };
-const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu' };
+const CHIPS = { '2a03': chip2a03, dmg: chipDmg, md: chipMd };
+const ORACLES = { 'nes-snd-emu': nesSndEmu, 'gb-snd-emu': gbSndEmu, 'nuked-opn2': nukedOpn2 };
+const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu', md: 'nuked-opn2' };
 
 const args = process.argv.slice(2);
 const chipId = args[0];

@@ -185,6 +185,39 @@ export interface FrameState {
   pitchOffset: number;
   /** For a wavetable voice: 32 samples, 0 to 15; null for the chip's own default. */
   wave: number[] | null;
+  /** For an FM voice: the patch; null for the chip's own default. */
+  fm: FmPatch | null;
+}
+
+/**
+ * One operator of a four-operator FM patch, in the YM2612's own units:
+ * detune 0-7, multiple 0-15, total level 0-127 (attenuation), key scale 0-3,
+ * attack 0-31, decay 0-31, sustain rate 0-31, sustain level 0-15, release
+ * 0-15. Written for the chip that has them; an FM chip's arranger maps the
+ * score's words onto these.
+ */
+export interface FmOperator {
+  dt: number;
+  mul: number;
+  tl: number;
+  ks: number;
+  ar: number;
+  dr: number;
+  sr: number;
+  sl: number;
+  rr: number;
+  /** Amplitude modulation by the LFO. */
+  am?: boolean;
+}
+
+/** A YM2612 patch: an algorithm, a feedback level, four operators in the order OP1 to OP4. */
+export interface FmPatch {
+  algorithm: number;
+  feedback: number;
+  ops: [FmOperator, FmOperator, FmOperator, FmOperator];
+  /** LFO sensitivities, when the LFO is on. */
+  ams?: number;
+  pms?: number;
 }
 
 /** A frame, stamped with the cycle it starts on. */

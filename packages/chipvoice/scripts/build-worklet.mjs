@@ -21,6 +21,7 @@ import fs from 'node:fs';
 const WORKLETS = [
   { entry: 'src/chips/nes/worklet.ts', out: 'src/chips/nes/worklet-inline.ts' },
   { entry: 'src/chips/gb/worklet.ts', out: 'src/chips/gb/worklet-inline.ts' },
+  { entry: 'src/chips/md/worklet.ts', out: 'src/chips/md/worklet-inline.ts' },
 ];
 
 const options = (entry) => ({
