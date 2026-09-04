@@ -128,6 +128,9 @@ if (jsonPath) {
   fs.writeFileSync(jsonPath, JSON.stringify({ date: new Date().toISOString().slice(0, 10), passed, total: results.length, results }, null, 2) + '\n');
 }
 
+/** The wave ROMs print every byte of wave RAM many times over; the sheet keeps the start. */
+const clip = (text) => (text.length > 120 ? `${text.slice(0, 117).trimEnd()} ...` : text);
+
 const sheetPath = option('sheet', null);
 if (sheetPath) {
   const text = fs.readFileSync(sheetPath, 'utf8');
@@ -140,7 +143,7 @@ if (sheetPath) {
     '',
     '| ROM | Result | What it said |',
     '| --- | --- | --- |',
-    ...results.map((r) => `| \`${r.name}\` | ${r.status < 0 ? 'hung' : r.passed ? 'pass' : `fail, code ${r.status}`} | ${r.text.replace(/\|/g, '\\|').replace(/\s+/g, ' ')} |`),
+    ...results.map((r) => `| \`${r.name}\` | ${r.status < 0 ? 'hung' : r.passed ? 'pass' : `fail, code ${r.status}`} | ${clip(r.text.replace(/\|/g, '\\|').replace(/\s+/g, ' '))} |`),
     '<!-- roms:end -->',
   ];
   fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- roms:end -->'.length));

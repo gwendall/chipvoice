@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { chip2a03 } from './chips/2a03.mjs';
+import { chipDmg } from './chips/dmg.mjs';
 import { nesSndEmu } from './oracles/nes-snd-emu.mjs';
+import { gbSndEmu } from './oracles/gb-snd-emu.mjs';
 import { parseLog } from './log.mjs';
 import { compare, dump } from './compare.mjs';
 
@@ -22,8 +24,9 @@ import { compare, dump } from './compare.mjs';
  * 1 only when a log's identical count fell below the baseline's: the check CI
  * runs, since an imperfect oracle diverges somewhere by design.
  */
-const CHIPS = { '2a03': chip2a03 };
-const ORACLES = { 'nes-snd-emu': nesSndEmu };
+const CHIPS = { '2a03': chip2a03, dmg: chipDmg };
+const ORACLES = { 'nes-snd-emu': nesSndEmu, 'gb-snd-emu': gbSndEmu };
+const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu' };
 
 const args = process.argv.slice(2);
 const chipId = args[0];
@@ -38,7 +41,7 @@ if (!chip) {
   console.error(`usage: conform <${Object.keys(CHIPS).join('|')}> --corpus <dir> --oracle <${Object.keys(ORACLES).join('|')}>`);
   process.exit(2);
 }
-const oracle = ORACLES[option('oracle', 'nes-snd-emu')];
+const oracle = ORACLES[option('oracle', DEFAULT_ORACLE[chipId])];
 const corpusDir = option('corpus', `corpus/${chipId}`);
 const voiceNames = (option('voices', oracle.trusted.join(',')) ?? '').split(',').filter(Boolean);
 const voices = voiceNames.map((n) => {

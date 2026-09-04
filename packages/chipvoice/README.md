@@ -181,6 +181,15 @@ twenty-nine pass. Blargg's mixer tests, which cancel each channel against the
 DMC's DAC and which he recorded on a real NES, cancel here as well as they did on
 his console: the DAC curves are measured, not assumed.
 
+The package carries a second chip, the Game Boy's, at `src/chips/gb/dsp.ts`,
+exported as `gbChip` and held to the same method: `test/gb.mjs` checks its
+clocks against the formulas, and the harness runs blargg's twelve `dmg_sound`
+ROMs on an SM83 of its own, all of which pass. Its sheet is
+[`docs/chips/dmg.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md).
+The driver and `Chip` do not speak to it yet; that is the next piece of work,
+and the reason the chip is here first is that a second real chip is what the
+driver's instrument model has to be rewritten against.
+
 ## The song, as bytes: VGM
 
 A NES saw a song as register writes, and so does this library, so the most honest

@@ -202,6 +202,26 @@ no click either.
 triangle's phase, and the parity baseline moved with it too: the oracle powers
 its triangle on at 0, so every silent cycle now differs on that voice.
 
+### 14. The Game Boy's chip is written from the documents, not ported (2026-09-04)
+
+`gb/dsp.ts` is our own, from Pan Docs and blargg's "Game Boy Sound Operation",
+behind the same `DigitalChip` and `ChipCore` as the 2A03. The roadmap had said
+"port SameBoy's `apu.c`".
+
+**Why.** A port buys verification only if the ported code is verified and stays
+verified through the port, and SameBoy's APU is written into its emulator's
+state in a way that would have been rewritten line by line to fit the chip
+interface. The verification here comes from the ROMs, not the source: blargg's
+`dmg_sound` suite checks the hardware to the cycle on the things that are hard
+to get right, and a chip that passes it is verified whoever wrote it. Two
+choices the documents leave open are taken from SameBoy and marked as such on
+the sheet: timers run only while a voice is on, and the wave RAM corruption's
+window. Where a later chip's reference core came from the die, as Nuked-OPN2
+did, the roadmap's reasoning still holds and that one is ported.
+
+**What changed.** Ticket P3-1's wording, the roadmap's chip table, and the
+sheet's "Core" line. The harness carries an SM83 next to its 6502.
+
 ## Open
 
 ### B. The SID's licence

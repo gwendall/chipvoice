@@ -616,10 +616,13 @@ export class GbApu implements DigitalChip {
     // The falling edge of bit 12 of the divider.
     if ((before & 0x1000) !== 0 && (this.divider & 0x1000) === 0 && this.power) this.clockFrame();
     if (!this.power) return;
-    this.ch1.clock();
-    this.ch2.clock();
-    this.ch3.clock();
-    this.ch4.clock();
+    // A voice's timer runs only while the voice is on: the duty position a
+    // note starts at is where the last one stopped, not where a timer that
+    // kept running in the silence got to. SameBoy's model; no ROM checks it.
+    if (this.ch1.enabled) this.ch1.clock();
+    if (this.ch2.enabled) this.ch2.clock();
+    if (this.ch3.enabled) this.ch3.clock();
+    if (this.ch4.enabled) this.ch4.clock();
   }
 
   /**

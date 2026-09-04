@@ -40,9 +40,11 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
-| P3-1 | DMG APU from Pan Docs and blargg's notes, verified by his dmg_sound ROMs on an SM83 fixture | doing | |
+| P3-1 | DMG APU from Pan Docs and blargg's notes, verified by his dmg_sound ROMs on an SM83 fixture | done | `packages/chipvoice/src/chips/gb`, `packages/conform/src/roms/{sm83,gb}.mjs` |
 | P3-2 | `ChipSpec`, `RegisterEvent` and the instrument model rewritten against two chips | todo | |
-| P3-3 | The Game Boy sheet, generated | todo | |
+| P3-3 | The Game Boy sheet, generated | done | `docs/chips/dmg.md` |
+| P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | todo | Gb_Snd_Emu is 2005 and takes its first step at the trigger |
+| P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3 |
 
 ## Phase 4. The portable score
 
@@ -67,6 +69,26 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 Mega Drive, SNES, C64: see the roadmap. Not ticketed until phase 3 is done.
 
 ## Discoveries
+
+**2026-09-04, P3-1.** The Game Boy's APU was written from Pan Docs and blargg's
+"Game Boy Sound Operation" rather than ported from SameBoy as the ticket first
+said: SameBoy's `apu.c` is shaped around its emulator's state and would have had
+to be rewritten into `DigitalChip` anyway, and the verification does not come
+from the port but from the ROMs. Blargg's twelve `dmg_sound` ROMs, on an SM83
+the harness now carries, passed eleven of twelve on the first run. The twelfth
+was the DMG's wave RAM corruption on a retrigger, which happens in the two
+cycles *before* the channel fetches a byte, with the byte it is about to fetch,
+not after the fetch with the byte it just read; SameBoy models it the same way.
+Two things the documents leave open and the ROMs do not settle, both taken from
+SameBoy: a voice's timer runs only while the voice is on, so a note starts at
+the duty position the last one stopped at; and the wave channel's first fetch
+after a trigger comes six cycles after its period, which ROMs 09, 10 and 12 are
+sensitive to within two cycles and pass with. Gb_Snd_Emu 0.1.4 as an oracle is
+as old as Nes_Snd_Emu and weaker: it takes a voice's first step at the trigger
+without reloading the timer, ticks its frame clock at time zero, and has no
+DACs, no power switch and no zombie envelope. Its runs line up with ours on
+every voice; its identical-cycle count never will. It confirms the short noise
+sequence's pattern and the envelope's steps, which no ROM checks.
 
 **2026-09-04, P1-2.** The decoded-command interface let the driver do two things
 the hardware cannot. It changed a pulse's period high bits without restarting the
