@@ -4,6 +4,7 @@ import { nesInstruments } from "./chips/nes/arranger.js";
 import { gbInstruments } from "./chips/gb/arranger.js";
 import { mdInstruments } from "./chips/md/arranger.js";
 import { snesInstruments } from "./chips/snes/arranger.js";
+import { c64Instruments } from "./chips/c64/arranger.js";
 
 /**
  * The score: what the music is, before any chip has done anything with it.
@@ -33,9 +34,9 @@ export const INTENTS = {
     held: "a softer 50 % pulse that sustains under the lead",
   },
   bass: {
-    round: "the default: the triangle on a NES, a triangle wave on a Game Boy",
-    hollow: "a square wave on the Game Boy's wave channel; a NES has only the triangle",
-    bright: "a sawtooth on the Game Boy's wave channel; a NES has only the triangle",
+    round: "the default: the triangle on a NES, a triangle wave on a Game Boy or a C64",
+    hollow: "a square wave on the Game Boy's wave channel or a SID voice; a NES has only the triangle",
+    bright: "a sawtooth on the Game Boy's wave channel or a SID voice; a NES has only the triangle",
   },
   perc: {
     tight: "the default kit: a kick, a snare, a closed and an open hat",
@@ -74,7 +75,7 @@ export interface Score {
   order: number[];
   /** 0 to 1. Default 1. */
   gain?: number;
-  /** Which chip, when the score is stored for one: `"2a03"` or `"dmg"`. */
+  /** Which chip, when the score is stored for one: `"2a03"`, `"dmg"`, `"md"`, `"snes"` or `"c64"`. */
   chip?: string;
   intent?: Intent;
 }
@@ -89,6 +90,7 @@ export function instrumentsFor(chipId: string, intent: Intent | undefined): Inst
   if (chipId === "dmg") return gbInstruments(resolved);
   if (chipId === "md") return mdInstruments(resolved);
   if (chipId === "snes") return snesInstruments(resolved);
+  if (chipId === "c64") return c64Instruments(resolved);
   return nesInstruments(resolved);
 }
 

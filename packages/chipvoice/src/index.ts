@@ -4,6 +4,7 @@ import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
 import { mdChip } from "./chips/md/index.js";
 import { snesChip } from "./chips/snes/index.js";
+import { c64Chip } from "./chips/c64/index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
 export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
@@ -39,6 +40,7 @@ export {
   type NoteFrame,
   type RegisterEvent,
   type Role,
+  type Waveform,
   type VoiceKind,
   type VoiceSpec,
 } from "./chip.js";
@@ -50,6 +52,12 @@ export { Sn76489 } from "./chips/md/sn76489.js";
 export { SNES, snesChip } from "./chips/snes/index.js";
 export { SDsp } from "./chips/snes/sdsp.js";
 export { encodeBrr } from "./chips/snes/brr.js";
+export { C64, c64Chip } from "./chips/c64/index.js";
+export { Sid, SID_VOICES, RATE_COMPARE, combinedWaveform, buildWaveTables, COMBINED_6581 } from "./chips/c64/sid.js";
+export type { CombinedModel } from "./chips/c64/sid.js";
+export { SID_6581_PROFILE, ladderWeights } from "./chips/c64/dsp.js";
+export type { SidProfile } from "./chips/c64/dsp.js";
+export { c64Kit } from "./chips/c64/arranger.js";
 export type { Pattern, PercussionKit, Song } from "./sequencer.js";
 export { DEFAULT_KIT, NES_ROLES, softKit } from "./sequencer.js";
 export { arrange, instrumentsFor, resolveIntent, INTENTS, DEFAULT_INTENT } from "./score.js";
@@ -95,6 +103,7 @@ export function chipFor(id: string): ChipDefinition | null {
   if (id === "dmg") return gbChip;
   if (id === "md") return mdChip;
   if (id === "snes") return snesChip;
+  if (id === "c64") return c64Chip;
   return getChip(id);
 }
 

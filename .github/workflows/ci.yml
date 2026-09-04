@@ -56,6 +56,10 @@ jobs:
       # The SNES: the S-DSP against snes_spc, the core it is ported from.
       - run: pnpm --filter chipvoice-conform check:snes
 
+      # The C64: the SID, written from the documents, against reSID-fp,
+      # built here with the system C++ compiler.
+      - run: pnpm --filter chipvoice-conform check:c64
+
       # The mixer against blargg's cancellation tests: each channel has to
       # cancel against the DMC as well as his console did. The recordings are
       # decoded when the runner has ffmpeg; the floor holds either way.

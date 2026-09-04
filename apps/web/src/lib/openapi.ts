@@ -30,7 +30,7 @@ const SONG_BODY = {
     bpm: { type: "integer", minimum: 40, maximum: 300 },
     chip: {
       type: "string",
-      enum: ["2a03", "dmg", "md", "snes"],
+      enum: ["2a03", "dmg", "md", "snes", "c64"],
       default: "2a03",
       description: "The NES's Ricoh 2A03, the Game Boy's DMG APU, the Mega Drive's YM2612 and SN76489, or the SNES's S-DSP. The same four lines play on any, in its own idiom.",
     },

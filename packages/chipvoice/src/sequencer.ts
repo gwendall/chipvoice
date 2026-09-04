@@ -1,5 +1,5 @@
 import type { Role } from "./chip.js";
-import type { Channel, Instrument, NoteSink } from "./driver.js";
+import { FRAME_RATE, type Channel, type Instrument, type NoteSink } from "./driver.js";
 
 /**
  * A small tracker, written the way this music was authored on the hardware:
@@ -27,11 +27,18 @@ export interface Pattern {
 export const NES_ROLES: Record<Role, string> = { lead: "p1", chord: "p2", bass: "tri", perc: "noi" };
 
 /** One voice per percussion token. */
+/** A drum: a noise period on a chip whose kit is noise, a pitch on one whose drums are pitched. */
+export interface Drum {
+  note: number | string;
+  instrument: Instrument;
+  duration: number;
+}
+
 export interface PercussionKit {
-  K: { note: number; instrument: Instrument; duration: number };
-  S: { note: number; instrument: Instrument; duration: number };
-  H: { note: number; instrument: Instrument; duration: number };
-  O: { note: number; instrument: Instrument; duration: number };
+  K: Drum;
+  S: Drum;
+  H: Drum;
+  O: Drum;
 }
 
 export interface Song {
@@ -352,13 +359,37 @@ export class Sequencer {
       const shape =
         pattern.chordShape[this.chordSlot % pattern.chordShape.length];
       this.chordSlot++;
-      this.apu.playNote(chordVoice, {
-        note: chord.token,
-        instrument: { ...song.chord, arp: shape, arpLoop: true },
-        duration: chord.length * stepTime * 0.98,
-        at,
-        gain: song.gain,
-      });
+      const instrument = { ...song.chord, arp: shape, arpLoop: true };
+      const play = (start: number, duration: number) => {
+        if (duration < 1 / FRAME_RATE) return;
+        this.apu.playNote(chordVoice, { note: chord.token, instrument, duration, at: start, gain: song.gain });
+      };
+      if (chordVoice !== percVoice) {
+        play(at, chord.length * stepTime * 0.98);
+      } else {
+        // One voice for both, as on a SID: a drum cuts the chord, and the
+        // chord comes back after it, until the next drum or its own end. A
+        // segment ends a frame before the drum so its note off cannot land
+        // on the drum's gate.
+        const kit = song.perc ?? DEFAULT_KIT;
+        const drumAt = (step: number) => {
+          const hit = pattern.perc.get(step);
+          return hit ? kit[hit.token as keyof PercussionKit] : undefined;
+        };
+        let s = 0;
+        while (s < chord.length) {
+          let start = at + s * stepTime;
+          const hit = drumAt(this.step + s);
+          if (hit) start += (Math.max(1, Math.round(hit.duration * FRAME_RATE)) + 1) / FRAME_RATE;
+          let e = s + 1;
+          while (e < chord.length && !drumAt(this.step + e)) e++;
+          let duration: number;
+          if (e < chord.length) duration = (Math.floor((at + e * stepTime - start) * FRAME_RATE) - 1) / FRAME_RATE;
+          else duration = at + chord.length * stepTime * 0.98 - start;
+          play(start, duration);
+          s = e;
+        }
+      }
     }
 
     const perc = pattern.perc.get(this.step);

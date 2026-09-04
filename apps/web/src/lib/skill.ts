@@ -2,7 +2,7 @@ import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 const UPDATED = "2026-09-04";
 
 /**
@@ -79,12 +79,19 @@ same four lines play on any of them, each in its own idiom.
 > becomes a sample - waveforms the driver synthesised for the pitched roles, a
 > kit of drums - with the echo the machine is known for. The DSP is a port of
 > snes_spc and identical to it sample for sample.
+>
+> Since 0.8.0: a fifth chip, the Commodore 64's SID. Send \`"chip": "c64"\`
+> and the piece plays on three voices: the lead and the bass have one each,
+> the chord and the drums share the third, where a drum cuts the chord and
+> the chord comes back after it, as on every C64 tune. The chip is written
+> from the documents and identical to reSID-fp cycle for cycle.
 
 How accurate each chip is, and how that is measured, is on its conformance sheet:
 https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md,
 https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md,
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md and
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md,
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md and
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/c64.md
 
 ## The one thing to understand first
 
@@ -132,7 +139,7 @@ which is why the validator does.
 | \`order\` | yes | Which patterns play, in which order. \`[0,0,1,0]\` is four bars from two |
 | \`title\` | no | Shown on the page and **drawn onto the share card** |
 | \`author\` | no | Who or what made it |
-| \`chip\` | no | \`"2a03"\` (the NES, the default), \`"dmg"\` (the Game Boy), \`"md"\` (the Mega Drive) or \`"snes"\` (the SNES) |
+| \`chip\` | no | \`"2a03"\` (the NES, the default), \`"dmg"\` (the Game Boy), \`"md"\` (the Mega Drive), \`"snes"\` (the SNES) or \`"c64"\` (the Commodore 64) |
 | \`intent\` | no | A word per role for what it should sound like; see below. \`{"lead": "bright", "bass": "hollow"}\` |
 
 **Titles are filtered, and it is worth knowing why before you get a 422.** The
@@ -237,6 +244,20 @@ snare, two hats. Every pitched voice goes through the echo, 48 ms with the
 low-pass filter most games used, and that echo is most of what makes it sound
 like the machine: write with space for it. Volume is the voice's own, so
 tables work as on the NES.
+
+**The Commodore 64 (\`"c64"\`).** Three voices, and the score has four lines:
+the lead and the bass get a voice each, and the chord and the drums share the
+third. A drum cuts the chord and the chord comes back after it until the next
+drum, so a busy drum line leaves little room for the chord: write the two
+lines together, and put the chord's changes where the drums leave gaps. The
+lead is a pulse, \`"bright"\` thin and \`"round"\` square, with the same tables
+as the NES; the bass is a triangle for \`"round"\`, a square for \`"hollow"\`
+and a sawtooth for \`"bright"\`, and reaches as low as you like. The drums are
+the SID's own: a triangle falling through an octave for the kick, a click
+into pitched noise for the snare and the hats. Volume tables work as on the
+NES, through the chip's envelope: a falling table is free, a rising step is a
+new attack you may hear as a tick. The filter, which is most of what a SID
+is known for, is not reached by any word yet.
 
 ## Endpoints
 

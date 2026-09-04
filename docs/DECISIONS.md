@@ -299,9 +299,36 @@ README says which file is under which licence. The SNES followed the same
 day: `chips/snes/sdsp.ts` is snes_spc's SPC_DSP ported the same way, the
 second LGPL file, with snes_spc as its oracle.
 
+### 18. The SID is written from the documents, and reSID-fp is its oracle in the harness only (2026-09-04)
+
+`chips/c64/sid.ts` is chipvoice's own code, written from the 6581 datasheet,
+kevtris's rate register values, plogue's ADSR findings and the behaviour the
+VICE and reSID projects recovered from the die and published: the noise
+register's taps and its two-cycle shift, the write-back of combined
+waveforms, the cycle-by-cycle state changes of a gate, the power-on values.
+reSID-fp, which is GPL, is vendored in the harness as the oracle and nothing
+of it is in the package; the package stays MIT for this chip. The combined
+waveforms are a model with six numbers per combination, fitted against the
+oracle's tables; the harness scores the fit.
+
+**Why.** Open question B: a GPL core cannot ship in an MIT package, and a
+separate GPL package would have split the library in two for one chip. The
+Mega Drive and the SNES were ported because their reference cores carried the
+verification and were LGPL, which a file can carry; reSID-fp carries the
+verification too, but as GPL it can only be the thing the chip is compared
+with. Writing from the documents and comparing with reSID-fp cycle for cycle
+gives the same sheet the ports have - identical on every log - without the
+licence. What is not clean-room about it is honest: the documents were read
+alongside the oracle's source, and the model of the combined waveforms is the
+one its authors described. The code is chipvoice's; the facts are the chip's.
+
+**What changed.** Question B is closed. The harness has a GPL directory with
+its own licence file and README; the package's licence field is unchanged.
+The sheet says which of the chip's behaviours come from which document.
+
 ## Open
 
 ### B. The SID's licence
 
-reSID-fp is GPL. Either a separate GPL package, or a rewrite from the
-documentation with a weaker sheet. Decide when phase 7 is in sight, not before.
+Closed by decision 18: written from the documents, reSID-fp in the harness
+only, and the sheet is not weaker for it.

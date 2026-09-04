@@ -53,7 +53,7 @@ Which oracle each chip gets:
 | YM2612, YM3438 | Logic captures of the digital output exist; Nuked-OPN2 was derived from the die | Nuked-OPN2, in use: the chip is its port and identical to it on every voice | none exist |
 | SN76489 | | MAME `sn76496`, to come | none exist |
 | SNES S-DSP | The DSP outputs a serial digital stream to an external DAC, and captures of it exist | snes_spc (blargg), in use: the chip is its port and identical to it on the stream | none exist |
-| SID 6581, 8580 | Analog. No digital 100 % exists | reSID-fp, with per-chip profiles | |
+| SID 6581, 8580 | Analog from the DACs on; the two digital values per voice before them are what an oracle reads | reSID-fp (libsidplayfp), in use: the chip is written from the documents and identical to it on both values of every voice | VICE's `testprogs/SID`, to come on a 6510 |
 
 For the chips whose reference core came from the die or was matched to captures,
 parity with the reference *is* parity with the hardware. That is why the roadmap

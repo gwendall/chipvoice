@@ -87,10 +87,24 @@ const CHIPS = [
       'Remains: real triads across voices; a unit\'s line-out; SPC export.',
     ],
   },
+  {
+    id: 'c64',
+    machine: 'Commodore 64',
+    chip: 'MOS 6581 SID',
+    sheet: 'docs/chips/c64.md',
+    since: '0.13.0',
+    analog: { done: 0, label: 'profile' },
+    driver: { reached: 3, voices: 3 },
+    notes: [
+      'The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter.',
+      'Analog: a profile from the documents, unmeasured: the 6581\'s non-linear DAC ladders, the filter on a measured cutoff curve, the output stage\'s corners. The 8580 is not modelled.',
+      'Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did.',
+      'Remains: the filter in the arranger; the 8580; a unit\'s line-out; VICE\'s SID test programs on a 6510.',
+    ],
+  },
 ];
 
 const PLANNED = [
-  { machine: 'Commodore 64', chip: 'SID 6581, 8580', phase: 7, plan: 'reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B.' },
   { machine: 'Later', chip: 'PC Engine, GBA, Amiga, POKEY, YM2151, YM2610', phase: null, plan: 'After the five, by demand.' },
 ];
 
