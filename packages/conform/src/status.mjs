@@ -3,16 +3,22 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * The board: one row per machine, in the README.
+ * The board: one row per machine, in the README, dense.
  *
  *   node src/status.mjs
  *
- * The numbers come from what the harness keeps in `corpus/<chip>`: the parity
- * baseline, the ROM verdicts, the mixer measurement. The words next to them -
- * what the driver reaches, what remains - are kept here by hand, because no
- * number says "the filters want a unit's line-out". Machines not started yet
- * have a row too, with what the roadmap plans for them, so the table is the
- * whole plan and not only the part that has numbers.
+ * A cell is a mark and a number, nothing more, so the table reads at a
+ * glance; the words go in the notes under it, one paragraph per machine. The
+ * numbers come from what the harness keeps in `corpus/<chip>`: the parity
+ * baseline, the ROM verdicts, the mixer measurement. The words - what the
+ * driver reaches, what remains - are kept here by hand, because no number
+ * says "the filters want a unit's line-out". Machines not started have a row
+ * with the roadmap's plan, so the table is the whole plan and not only the
+ * part that has numbers.
+ *
+ * "Done" is the mean of four fractions: runs aligned with the oracle, test
+ * ROMs passing, the analog stage measured, voices the driver reaches. It is a
+ * rough number by design, and CONFORMANCE.md says what each part means.
  *
  * Written between `<!-- status:begin -->` and `<!-- status:end -->` in the
  * repository's README by every script that changes a number.
@@ -27,10 +33,15 @@ const CHIPS = [
     chip: 'Ricoh 2A03',
     sheet: 'docs/chips/2a03.md',
     since: '0.1.0',
-    status: 'in progress',
-    driver: 'Every voice but the DMC, which no instrument reaches yet',
-    analog: 'The mixer, measured against blargg\'s recordings of his console. The filters and the DAC after them: unmeasured, and want a unit\'s line-out',
-    remains: 'A second oracle for the envelope, the sweep and the triangle near a clock; a corpus from real games; a unit for the filters',
+    /** The analog stage: how much of it is measured, and the word for the cell. */
+    analog: { done: 0.5, label: 'mixer' },
+    /** Voices the driver reaches, of the chip's. */
+    driver: { reached: 4, voices: 5 },
+    notes: [
+      'Analog: the mixer measured against blargg\'s recordings of his console; the filters and the DAC after them unmeasured, and want a unit\'s line-out.',
+      'Driver: every voice but the DMC, which no instrument reaches yet.',
+      'Remains: a second oracle for the envelope, the sweep and the triangle near a clock; a corpus from real games; a unit for the filters.',
+    ],
   },
   {
     id: 'dmg',
@@ -38,87 +49,96 @@ const CHIPS = [
     chip: 'DMG APU',
     sheet: 'docs/chips/dmg.md',
     since: '0.8.0',
-    status: 'in progress',
-    driver: 'All four voices: bass on the wave channel, drums as the hardware envelope',
-    analog: 'Unmeasured. The output stage is a placeholder built to be replaced by a measurement',
-    remains: 'A stronger oracle than Gb_Snd_Emu (SameBoy); a unit\'s line-out; the sweep and the length counters, which no instrument reaches',
+    analog: { done: 0, label: 'none' },
+    driver: { reached: 4, voices: 4 },
+    notes: [
+      'Analog: unmeasured; the output stage is a placeholder built to be replaced by a measurement.',
+      'Driver: all four voices, the bass on the wave channel, drums as the hardware envelope.',
+      'Remains: a stronger oracle than Gb_Snd_Emu (SameBoy); a unit\'s line-out; the sweep and the length counters, which no instrument reaches.',
+    ],
   },
 ];
 
 const PLANNED = [
-  { machine: 'Mega Drive, Genesis', chip: 'YM2612 + SN76489', phase: 5, plan: 'Nuked-OPN2, derived from the die, and MAME\'s `sn76496`, both compiled to WebAssembly; parity with Nuked is parity with the silicon' },
-  { machine: 'Super Nintendo', chip: 'S-DSP', phase: 6, plan: 'snes_spc or ares compiled to WebAssembly; captures of the DSP\'s serial stream to the DAC exist and are the oracle' },
-  { machine: 'Commodore 64', chip: 'SID 6581, 8580', phase: 7, plan: 'reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B' },
-  { machine: 'Later', chip: 'PC Engine, Game Boy Advance, Amiga Paula, POKEY, YM2151, YM2610', phase: null, plan: 'After the five, by demand' },
+  { machine: 'Mega Drive, Genesis', chip: 'YM2612 + SN76489', phase: 5, plan: 'Nuked-OPN2, derived from the die, and MAME\'s `sn76496`, both compiled to WebAssembly; parity with Nuked is parity with the silicon.' },
+  { machine: 'Super Nintendo', chip: 'S-DSP', phase: 6, plan: 'snes_spc or ares compiled to WebAssembly; captures of the DSP\'s serial stream to the DAC exist and are the oracle.' },
+  { machine: 'Commodore 64', chip: 'SID 6581, 8580', phase: 7, plan: 'reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B.' },
+  { machine: 'Later', chip: 'PC Engine, GBA, Amiga, POKEY, YM2151, YM2610', phase: null, plan: 'After the five, by demand.' },
 ];
 
 const read = (file) => (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);
-const pct = (a, b) => (b > 0 ? ((100 * a) / b).toFixed(1) : '0.0');
+const pct = (x, digits = 0) => `${(100 * x).toFixed(digits)} %`;
 const millions = (n) => `${(n / 1e6).toFixed(1)}M`;
+/** A mark for a fraction: done, part way, nothing. */
+const mark = (x) => (x >= 0.95 ? '✅' : x > 0 ? '🟡' : '❌');
 
-/** The parity baseline, read for the board: identical cycles, runs aligned, voices identical throughout. */
-function parityCell(chip) {
-  const parity = read(path.join(ROOT, 'corpus', chip.id, 'parity.json'));
-  if (!parity) return 'no baseline yet';
+/** The parity baseline, read for the board. */
+function parity(chip) {
+  const p = read(path.join(ROOT, 'corpus', chip.id, 'parity.json'));
+  if (!p) return null;
   let runs = 0;
   let aligned = 0;
-  const identicalOn = new Map();
-  for (const r of parity.results) {
+  for (const r of p.results) {
     for (const e of r.edges) {
       runs += e.runs.ours;
       aligned += e.runs.alignedTimes;
-      const whole = e.identical === r.cycles && e.onlyA === 0 && e.onlyB === 0;
-      identicalOn.set(e.voice, (identicalOn.get(e.voice) ?? 0) + (whole ? 1 : 0));
     }
   }
-  const whole = [...identicalOn.entries()].filter(([, n]) => n === parity.files).map(([v]) => `\`${v}\``);
-  const parts = [
-    `${parity.oracle.name}, ${parity.files} logs, ${millions(parity.cycles)} cycles`,
-    `runs aligned on step times ${pct(aligned, runs)} % (${aligned} of ${runs})`,
-    `identical cycles ${pct(parity.identical, parity.cycles)} %, the rest being the oracle's own conventions, read on the sheet`,
+  return { oracle: p.oracle.name, files: p.files, cycles: p.cycles, runs, aligned, fraction: runs > 0 ? aligned / runs : 0, identical: p.cycles > 0 ? p.identical / p.cycles : 0 };
+}
+
+function roms(chip) {
+  const r = read(path.join(ROOT, 'corpus', chip.id, 'roms.json'));
+  if (!r) return null;
+  const suites = [...new Set(r.results.map((x) => x.name.split('/')[0]))];
+  return { passed: r.passed, total: r.total, suites, fraction: r.total > 0 ? r.passed / r.total : 0 };
+}
+
+function mixer(chip) {
+  const m = read(path.join(ROOT, 'corpus', chip.id, 'mixer.json'));
+  if (!m) return null;
+  return m.results.filter((r) => r.hardware).map((r) => `${r.name} ${r.ours.residual.toFixed(1)} dB (console ${r.hardware.residual.toFixed(1)})`);
+}
+
+function row(chip) {
+  const p = parity(chip);
+  const r = roms(chip);
+  const driver = chip.driver.reached / chip.driver.voices;
+  const done = ((p?.fraction ?? 0) + (r?.fraction ?? 0) + chip.analog.done + driver) / 4;
+  const cells = [
+    chip.machine,
+    chip.chip,
+    `**${pct(done)}**`,
+    p ? `${mark(p.fraction)} ${pct(p.fraction)}` : '⬜',
+    r ? `${mark(r.fraction)} ${r.passed}/${r.total}` : '⬜',
+    `${mark(chip.analog.done)} ${chip.analog.label}`,
+    `${mark(driver)} ${chip.driver.reached}/${chip.driver.voices}`,
+    `[${chip.id}](${chip.sheet})`,
   ];
-  if (whole.length > 0) parts.push(`${whole.join(', ')} identical on every log`);
-  return parts.join('; ');
+  const notes = [];
+  if (p) notes.push(`Digital: ${p.oracle}, ${p.files} logs, ${millions(p.cycles)} cycles; runs aligned on step times ${pct(p.fraction, 1)} (${p.aligned} of ${p.runs}); identical cycles ${pct(p.identical, 1)}, the rest the oracle's own conventions, read on the sheet.`);
+  if (r) notes.push(`ROMs: blargg's ${r.suites.map((s) => `\`${s}\``).join(', ')}, ${r.passed} of ${r.total} pass.`);
+  const m = mixer(chip);
+  notes.push(...chip.notes.map((n) => (n.startsWith('Analog:') && m ? `${n} Cancellation against the DMC: ${m.join(', ')}.` : n)));
+  return { line: `| ${cells.join(' | ')} |`, note: `**${chip.machine}** (${chip.chip}, since ${chip.since}). ${notes.join(' ')}` };
 }
 
-function romsCell(chip) {
-  const roms = read(path.join(ROOT, 'corpus', chip.id, 'roms.json'));
-  if (!roms) return 'not run';
-  const suites = [...new Set(roms.results.map((r) => r.name.split('/')[0]))].map((s) => `\`${s}\``).join(', ');
-  return `blargg's ${suites}: **${roms.passed} of ${roms.total} pass**`;
-}
-
-function analogCell(chip) {
-  const mixer = read(path.join(ROOT, 'corpus', chip.id, 'mixer.json'));
-  if (!mixer) return chip.analog;
-  const measured = mixer.results
-    .filter((r) => r.hardware)
-    .map((r) => `${r.name} ${r.ours.residual.toFixed(1)} dB (console ${r.hardware.residual.toFixed(1)})`)
-    .join(', ');
-  return `${chip.analog}. Cancellation against the DMC: ${measured}`;
-}
-
-function rows() {
-  const out = [];
-  for (const chip of CHIPS) {
-    out.push(
-      `| ${chip.machine} | [${chip.chip}](${chip.sheet}) | ${chip.status}, since ${chip.since} | ${parityCell(chip)} | ${romsCell(chip)} | ${analogCell(chip)} | ${chip.driver} | ${chip.remains} |`,
-    );
-  }
-  for (const p of PLANNED) {
-    const status = p.phase ? `planned, phase ${p.phase}` : 'not planned yet';
-    out.push(`| ${p.machine} | ${p.chip} | ${status} | ${p.plan} | | | | not started |`);
-  }
-  return out;
-}
+const rows = CHIPS.map(row);
+const planned = PLANNED.map((p) => ({
+  line: `| ${p.machine} | ${p.chip} | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | ${p.phase ? `phase ${p.phase}` : 'later'} |`,
+  note: `**${p.machine}** (${p.chip}). ${p.phase ? `Planned, phase ${p.phase}: ` : ''}${p.plan}`,
+}));
 
 const block = [
   '<!-- status:begin -->',
-  `Written by \`conform\` on ${new Date().toISOString().slice(0, 10)}. "Runs aligned" is the measure that survives an oracle's own conventions: a run of edges lines up when its step times match under one shift; see each sheet for the reading.`,
+  '| Machine | Chip | Done | Digital | ROMs | Analog | Driver | Sheet |',
+  '| --- | --- | ---: | --- | --- | --- | --- | --- |',
+  ...rows.map((r) => r.line),
+  ...planned.map((p) => p.line),
   '',
-  '| Machine | Chip | Status | Digital parity | Test ROMs | Analog stage | Driver | What remains |',
-  '| --- | --- | --- | --- | --- | --- | --- | --- |',
-  ...rows(),
+  `Written by \`conform\` on ${new Date().toISOString().slice(0, 10)}. **Digital**: runs of edges that line up with the oracle on step times, which survives an oracle's own conventions. **ROMs**: blargg's test ROMs passing on the harness's own CPU. **Analog**: how much of the stage after the DACs is measured against a real unit. **Driver**: voices the driver reaches. **Done**: the mean of the four; rough by design.`,
+  '',
+  [...rows, ...planned].map((r) => r.note).join('\n\n'),
   '<!-- status:end -->',
 ].join('\n');
 
