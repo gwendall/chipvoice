@@ -2,7 +2,7 @@ import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
 const UPDATED = "2026-09-04";
 
 /**
@@ -167,6 +167,36 @@ The constraints are the instrument. What actually matters, in order:
    around them are what a listener remembers.
 5. **Pick a scale and stay in it.** A minor is the safe one: A B C D E F G. Random
    chromatic notes sound like a mistake, because usually they are.
+
+## Writing for each chip
+
+The same score plays on both, and it is worth knowing what each one does with
+it. Send \`"chip"\` with the song; fork a song onto the other chip by sending
+only \`{"chip": "dmg"}\`.
+
+**The NES (\`"2a03"\`).** Two pulses, a triangle, a noise. The lead and the chord
+are pulses whose only timbre is the duty, which the \`intent\` words pick. The
+bass is the triangle: no volume, one waveform, an octave below where you write
+it, and it cannot be made brighter or softer - the bass words do nothing here.
+It is at its best on steady eighths or sixteenths between A1 and A3. A pulse
+note below G#2 sounds; a lead above C7 gets thin. The chord is one pulse
+arpeggiated at frame rate, so wide shapes (\`[0,4,7,12]\`) shimmer and tight
+ones (\`[0,3,7]\`) sit. Every volume table is free: a note can swell and decay
+without a click. This is the chip the format was written for, and the kit is
+the classic one.
+
+**The Game Boy (\`"dmg"\`).** Two pulses, a wave channel, a noise. The pulses
+are the NES's, duty for duty, with one difference you may hear: a volume
+change is a retrigger on this hardware, so a lead with a steep decay is a
+little more percussive than on the NES. The bass is the wave channel playing a
+waveform from RAM, which is where the bass words matter: \`"round"\` is a
+triangle, \`"hollow"\` a square, \`"bright"\` a sawtooth. It reaches an octave
+lower than the NES's triangle - down to C1 - and it has four levels rather than
+sixteen volumes. The drums are the hardware envelope, which decays more slowly
+than the NES's tables: the kit is softer and rounder, and \`"tight"\` is the
+sharper of the two words. Everything comes out in stereo, every voice on both
+sides. What does not carry over from the NES: nothing you can write; what
+carries over differently: the bass and the drums, and those are the machine.
 
 ## Endpoints
 

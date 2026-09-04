@@ -55,7 +55,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P4-2 | The score: roles and intents | done | `score.ts`: `Score`, `arrange`, `INTENTS`; decision 16 |
 | P4-3 | An arranger per chip | done | `chips/nes/arranger.ts`, `chips/gb/arranger.ts`; the roles and idioms in `ChipSpec.roles` and `ChipDriver` since P3-2 |
 | P4-4 | Instruments in the API and the wire format | done | as `intent`, words from the catalogue, stored, forked, rendered; skill 0.5.0 |
-| P4-5 | Idioms per chip in the skill and the MCP server | doing | the skill has the catalogue with what each word does per chip; a section per chip on how to write for it is still to come |
+| P4-5 | Idioms per chip in the skill | done | skill 0.5.1: the catalogue per word, and a section per chip on how to write for it. There is no MCP server; the skill is the file an agent reads |
 | P4-8 | Intent pickers in the studio, one per row | todo | the studio arranges with the default words |
 | P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | todo | found in P1-2 |
 | P4-7 | "Agent-written music sounds good" as a named goal with its own measures | todo | |
