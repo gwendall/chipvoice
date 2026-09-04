@@ -148,7 +148,8 @@ The centre of the product, and the phase without a clean end.
 3. Instruments exposed in the API and the wire format, so a published song can
    have a timbre of its own. Today every published song shares one.
 4. VGM export from the register-event stream. Real hardware through any VGM
-   player, and every chiptune player, in one step.
+   player, and every chiptune player, in one step. Done in 0.6.0: `toVgm`,
+   and the harness imports VGM files into the corpus.
 5. The skill and the MCP server document idioms per chip, so an agent writes in
    the machine's spirit rather than in a generic one.
 

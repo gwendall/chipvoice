@@ -174,6 +174,25 @@ and compares the two cycle for cycle. The pulses are identical to it on every
 song; what differs, and why it is the oracle's convention rather than a bug here,
 is on the sheet.
 
+## The song, as bytes: VGM
+
+A NES saw a song as register writes, and so does this library, so the most honest
+file it can produce is the list of them. That list is a VGM file - the chiptune
+world's exchange format - and every chiptune player opens it, and a VGM player on
+real hardware plays it on the chip itself.
+
+```ts
+import { recordSong, toVgm } from "chipvoice";
+
+const { events, cycles } = recordSong(THEME, { seconds: 30 });
+writeFileSync("theme.vgm", toVgm(events, cycles, { title: "Theme", author: "me" }));
+```
+
+`recordSong` runs the same driver and sequencer as `renderSong` and keeps what
+they write instead of playing it. `toVgm` rounds each write to a sample at
+44100 Hz, which is the format's clock, and writes a GD3 tag so a player shows
+a name. Pass `loopAtCycle` and the file loops there.
+
 ## Checking a song before playing it
 
 ```ts

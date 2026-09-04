@@ -94,7 +94,12 @@ or away; that is what the first three are for.
 pnpm --filter chipvoice-conform conform 2a03 --corpus corpus/2a03 --oracle nes-snd-emu
 pnpm --filter chipvoice-conform baseline     # rewrite the baseline and the sheet's numbers
 pnpm --filter chipvoice-conform corpus       # regenerate the logs from the songs and scripts
+node packages/conform/src/corpus/import-vgm.mjs some.vgm --out packages/conform/corpus/2a03
 ```
+
+Any NES VGM file - a rip of a real game, a tracker's export - is corpus material
+through `import-vgm`. A rip of a commercial game belongs on a developer's machine,
+not in this repository, which holds only what it may.
 
 - Reads each log in the corpus, runs it through chipvoice's core and through the
   oracle, and compares the **digital** output on every cycle.
