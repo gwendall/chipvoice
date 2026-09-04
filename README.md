@@ -59,22 +59,34 @@ way for anyone, human or machine, to pick the instrument up and play it.
 
 ## Where every machine stands
 
-One row per machine, the numbers written by the harness from what it keeps in
-`packages/conform/corpus` (`pnpm --filter chipvoice-conform status`), the words
-kept by hand next to them. A chip's sheet has the detail behind each cell and
+One row per machine, the numbers written by the harness from what it keeps
+(`pnpm --filter chipvoice-conform status`), the notes under the table kept by
+hand. Each chip's sheet has the detail behind every cell, and
 [`docs/CONFORMANCE.md`](docs/CONFORMANCE.md) says what "verified" means here.
 
 <!-- status:begin -->
-Written by `conform` on 2026-09-04. "Runs aligned" is the measure that survives an oracle's own conventions: a run of edges lines up when its step times match under one shift; see each sheet for the reading.
+| Machine | Chip | Done | Digital | ROMs | Analog | Driver | Sheet |
+| --- | --- | ---: | --- | --- | --- | --- | --- |
+| NES, Famicom | Ricoh 2A03 | **82 %** | ✅ 98 % | ✅ 29/29 | 🟡 mixer | 🟡 4/5 | [2a03](docs/chips/2a03.md) |
+| Game Boy | DMG APU | **74 %** | ✅ 98 % | ✅ 12/12 | ❌ none | ✅ 4/4 | [dmg](docs/chips/dmg.md) |
+| Mega Drive, Genesis | YM2612 + SN76489 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 5 |
+| Super Nintendo | S-DSP | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 6 |
+| Commodore 64 | SID 6581, 8580 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 7 |
+| Later | PC Engine, GBA, Amiga, POKEY, YM2151, YM2610 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | later |
 
-| Machine | Chip | Status | Digital parity | Test ROMs | Analog stage | Driver | What remains |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| NES, Famicom | [Ricoh 2A03](docs/chips/2a03.md) | in progress, since 0.1.0 | Nes_Snd_Emu 0.1.7 (blargg), 13 logs, 92.2M cycles; runs aligned on step times 97.7 % (6665 of 6820); identical cycles 3.9 %, the rest being the oracle's own conventions, read on the sheet | blargg's `apu_test`, `apu_reset`, `dmc_tests`, `apu_2005`: **29 of 29 pass** | The mixer, measured against blargg's recordings of his console. The filters and the DAC after them: unmeasured, and want a unit's line-out. Cancellation against the DMC: square -32.7 dB (console -32.2), triangle -33.0 dB (console -30.9), noise -13.8 dB (console -16.2), dmc -31.0 dB (console -27.2) | Every voice but the DMC, which no instrument reaches yet | A second oracle for the envelope, the sweep and the triangle near a clock; a corpus from real games; a unit for the filters |
-| Game Boy | [DMG APU](docs/chips/dmg.md) | in progress, since 0.8.0 | Gb_Snd_Emu 0.1.4 (blargg), 7 logs, 145.1M cycles; runs aligned on step times 97.5 % (12645 of 12969); identical cycles 57.4 %, the rest being the oracle's own conventions, read on the sheet | blargg's `dmg_sound`: **12 of 12 pass** | Unmeasured. The output stage is a placeholder built to be replaced by a measurement | All four voices: bass on the wave channel, drums as the hardware envelope | A stronger oracle than Gb_Snd_Emu (SameBoy); a unit's line-out; the sweep and the length counters, which no instrument reaches |
-| Mega Drive, Genesis | YM2612 + SN76489 | planned, phase 5 | Nuked-OPN2, derived from the die, and MAME's `sn76496`, both compiled to WebAssembly; parity with Nuked is parity with the silicon | | | | not started |
-| Super Nintendo | S-DSP | planned, phase 6 | snes_spc or ares compiled to WebAssembly; captures of the DSP's serial stream to the DAC exist and are the oracle | | | | not started |
-| Commodore 64 | SID 6581, 8580 | planned, phase 7 | reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B | | | | not started |
-| Later | PC Engine, Game Boy Advance, Amiga Paula, POKEY, YM2151, YM2610 | not planned yet | After the five, by demand | | | | not started |
+Written by `conform` on 2026-09-04. **Digital**: runs of edges that line up with the oracle on step times, which survives an oracle's own conventions. **ROMs**: blargg's test ROMs passing on the harness's own CPU. **Analog**: how much of the stage after the DACs is measured against a real unit. **Driver**: voices the driver reaches. **Done**: the mean of the four; rough by design.
+
+**NES, Famicom** (Ricoh 2A03, since 0.1.0). Digital: Nes_Snd_Emu 0.1.7 (blargg), 13 logs, 92.2M cycles; runs aligned on step times 97.7 % (6665 of 6820); identical cycles 3.9 %, the rest the oracle's own conventions, read on the sheet. ROMs: blargg's `apu_test`, `apu_reset`, `dmc_tests`, `apu_2005`, 29 of 29 pass. Analog: the mixer measured against blargg's recordings of his console; the filters and the DAC after them unmeasured, and want a unit's line-out. Cancellation against the DMC: square -32.7 dB (console -32.2), triangle -33.0 dB (console -30.9), noise -13.8 dB (console -16.2), dmc -31.0 dB (console -27.2). Driver: every voice but the DMC, which no instrument reaches yet. Remains: a second oracle for the envelope, the sweep and the triangle near a clock; a corpus from real games; a unit for the filters.
+
+**Game Boy** (DMG APU, since 0.8.0). Digital: Gb_Snd_Emu 0.1.4 (blargg), 7 logs, 145.1M cycles; runs aligned on step times 97.5 % (12645 of 12969); identical cycles 57.4 %, the rest the oracle's own conventions, read on the sheet. ROMs: blargg's `dmg_sound`, 12 of 12 pass. Analog: unmeasured; the output stage is a placeholder built to be replaced by a measurement. Driver: all four voices, the bass on the wave channel, drums as the hardware envelope. Remains: a stronger oracle than Gb_Snd_Emu (SameBoy); a unit's line-out; the sweep and the length counters, which no instrument reaches.
+
+**Mega Drive, Genesis** (YM2612 + SN76489). Planned, phase 5: Nuked-OPN2, derived from the die, and MAME's `sn76496`, both compiled to WebAssembly; parity with Nuked is parity with the silicon.
+
+**Super Nintendo** (S-DSP). Planned, phase 6: snes_spc or ares compiled to WebAssembly; captures of the DSP's serial stream to the DAC exist and are the oracle.
+
+**Commodore 64** (SID 6581, 8580). Planned, phase 7: reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B.
+
+**Later** (PC Engine, GBA, Amiga, POKEY, YM2151, YM2610). After the five, by demand.
 <!-- status:end -->
 
 ## What is in here

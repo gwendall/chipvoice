@@ -97,9 +97,15 @@ The repository's README carries one row per machine, written by
 `packages/conform/corpus/<chip>`: the parity baseline, the ROM verdicts, the
 mixer measurement. Every script that changes one of those numbers rewrites the
 board, so the README's numbers are the harness's and never a person's memory
-of them. The words next to the numbers - what the driver reaches, what remains
-- are kept by hand in `status.mjs`, and the machines not started yet have a
-row with what the roadmap plans for them.
+of them. A cell is a mark and a number; the words - what the driver reaches,
+what remains - are notes under the table, kept by hand in `status.mjs`, and
+the machines not started yet have a row with what the roadmap plans for them.
+
+The **Done** column is the mean of four fractions: runs of edges aligned with
+the oracle on step times; test ROMs passing; how much of the analog stage is
+measured against a real unit (the mixer alone counts a half); voices the
+driver reaches. It is rough by design - a weak oracle can make the first
+fraction read high - and the sheet, not the number, is the contract.
 
 ## The harness
 
