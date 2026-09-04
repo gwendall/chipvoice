@@ -91,7 +91,9 @@ The most important phase, and the one that makes no sound.
 1. **Events in chip cycles.** Done, in 0.4.0. `RegisterEvent.at` is a cycle
    count and a write lands on its cycle; the sample position is derived from it
    in the core. The oracle reasons in cycles, VGM is written in cycles, and a
-   driver that thinks in frames does not care.
+   driver that thinks in frames does not care. 0.5.0 made the writes bytes on
+   `$4000-$4017`, so the stream is exactly what an oracle and a VGM file speak,
+   and nothing the driver does is something the hardware could not.
 2. **Digital and analog split.** The core exposes a per-cycle digital output
    before resampling and filtering. The analog stage becomes a separate model
    with a named profile.

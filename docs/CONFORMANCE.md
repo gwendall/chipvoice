@@ -111,6 +111,10 @@ for the oracle only when it has to locate a divergence.
 
 ## What a core must provide to be testable
 
+- **A byte port.** The core takes writes as the CPU made them, an address and
+  a byte, and decodes them itself. That is what every log and every oracle
+  speaks, and it is the only interface that cannot let a driver do something
+  the hardware could not.
 - **Events timestamped in chip cycles.** `ChipSpec.clockHz` names the clock,
   and a write lands on its cycle wherever that falls inside a sample. The
   sample clock is derived from the cycle clock, never the other way round, and

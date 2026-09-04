@@ -1,0 +1,127 @@
+import { OfflineDriver, nesChip } from '../dist/index.js';
+
+/**
+ * The driver, as a program on the hardware would have written it.
+ *
+ * The driver's job is to turn a note into byte writes on $4000-$4017, and
+ * this checks that what it writes is what a NES needed: the sweep byte that
+ * keeps low notes audible, a phase restart only where the hardware forces
+ * one, and silence through the channel's own registers rather than $4015.
+ */
+let failures = 0;
+const check = (n, ok, extra = '') => {
+  if (!ok) failures++;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}${extra ? '  ' + extra : ''}`);
+};
+const hex = (n) => '$' + n.toString(16).toUpperCase().padStart(2, '0');
+
+/** Records what the driver writes, without a chip behind it. */
+function recorder() {
+  const writes = [];
+  const core = {
+    schedule: (events) => writes.push(...events),
+    render() {},
+    setGain() {},
+    reset() {},
+  };
+  const driver = new OfflineDriver(core);
+  return { driver, writes, flush: () => driver.flush() };
+}
+
+const at = (writes, cycle) => writes.filter((w) => w.at === cycle);
+const bytes = (ws) => ws.map((w) => `${w.addr.toString(16)}=${hex(w.value)}`).join(' ');
+
+// ---- power-on, and a note's first frame
+
+{
+  const { driver, writes, flush } = recorder();
+  driver.playNote('p1', { note: 'A4', instrument: { duty: 1, volume: [15] }, duration: 0.05, at: 1 });
+  flush();
+  const first = writes[0];
+  check('the first write enables the four voices', first.at === 0 && first.addr === 0x4015 && first.value === 0x0f, bytes([first]));
+
+  const frame0 = at(writes, 1789773);
+  check(
+    'a pulse note writes control, sweep, period low, then period high with the length',
+    bytes(frame0) === '4000=$7F 4001=$08 4002=$FD 4003=$F8',
+    bytes(frame0),
+  );
+}
+
+{
+  const { driver, writes, flush } = recorder();
+  driver.playNote('tri', { note: 'A1', instrument: { volume: [15], sustain: true }, duration: 0.05, at: 0 });
+  flush();
+  const frame0 = at(writes, 0).filter((w) => w.addr !== 0x4015);
+  // A1 is 55 Hz: a triangle period of 1016, $3F8.
+  check('a triangle note writes the control flag with linear 127, then its period', bytes(frame0) === '4008=$FF 400a=$F8 400b=$FB', bytes(frame0));
+}
+
+{
+  const { driver, writes, flush } = recorder();
+  driver.playNote('noi', { note: 9, instrument: { volume: [12, 8], noiseMode: true }, duration: 0.05, at: 0 });
+  flush();
+  const frame0 = at(writes, 0).filter((w) => w.addr !== 0x4015);
+  check('a noise note writes volume, mode and rate, then the length', bytes(frame0) === '400c=$3C 400e=$89 400f=$F8', bytes(frame0));
+}
+
+// ---- a held note costs nothing; a change costs one write
+
+{
+  const { driver, writes, flush } = recorder();
+  driver.playNote('p2', { note: 'C5', instrument: { duty: 2, volume: [15], sustain: true }, duration: 0.5, at: 0 });
+  flush();
+  const later = writes.filter((w) => w.at > 0 && w.addr !== 0x4004 && w.addr !== 0x4015);
+  check('a flat sustained pulse note writes nothing after its first frame', later.length === 0, `${later.length} later writes`);
+}
+
+{
+  // A4 is period 253; a vibrato of 0.18 semitones swings it past 255. The
+  // high byte changes, and the only road there is $4003, which restarts the
+  // phase - the click a NES makes, and the reason the hardware's drivers
+  // went through the sweep unit for smooth vibrato.
+  const { driver, writes, flush } = recorder();
+  driver.playNote('p1', { note: 'A4', instrument: { duty: 1, volume: [15], sustain: true, vibrato: { depth: 0.18, rate: 8 } }, duration: 0.5, at: 0 });
+  flush();
+  const restarts = writes.filter((w) => w.at > 0 && w.addr === 0x4003);
+  const lows = writes.filter((w) => w.at > 0 && w.addr === 0x4002);
+  check('a vibrato across the period high byte restarts the phase through $4003', restarts.length > 0 && lows.length > restarts.length, `${restarts.length} restarts, ${lows.length} low-byte writes`);
+}
+
+// ---- silence, through the channel's own registers
+
+{
+  const { driver, writes, flush } = recorder();
+  driver.playNote('p1', { note: 'A4', instrument: { volume: [15] }, duration: 0.1, at: 0 });
+  driver.stop('noi', 0.2);
+  flush();
+  const off = writes.filter((w) => w.at === Math.round(0.1 * 1789773));
+  check('a pulse note ends with a constant volume of 0', bytes(off) === '4000=$30', bytes(off));
+  const noiseOff = writes.filter((w) => w.at === Math.round(0.2 * 1789773));
+  check('stopping the noise writes the same', bytes(noiseOff) === '400c=$30', bytes(noiseOff));
+  check('$4015 is never written again', writes.filter((w) => w.addr === 0x4015).length === 1);
+}
+
+{
+  // The triangle has no volume. It is silenced by reloading its linear
+  // counter with 0, which the next quarter frame does, and $400B keeps the
+  // period high bits it had, so the last milliseconds keep their pitch.
+  const core = nesChip.create(44100);
+  const driver = new OfflineDriver(core);
+  driver.playNote('tri', { note: 'A1', instrument: { volume: [15], sustain: true }, duration: 0.1, at: 0 });
+  driver.flush();
+  const buffer = new Float32Array(Math.round(44100 * 0.098));
+  core.render(buffer, null, 0);
+  const periodBefore = core.triangle.period;
+  check('the triangle plays until its note ends', core.triangle.linearCounter > 0 && core.triangle.period === 1016, `linear ${core.triangle.linearCounter}, period ${core.triangle.period}`);
+  // Past the note off, plus a quarter frame.
+  core.render(new Float32Array(Math.round(44100 * 0.008)), null, buffer.length);
+  const stepThen = core.triangle.step;
+  core.render(new Float32Array(4410), null, buffer.length + Math.round(44100 * 0.008));
+  check('within a quarter frame of the end its linear counter is 0', core.triangle.linearCounter === 0, `${core.triangle.linearCounter}`);
+  check('and the sequencer holds where it stopped', core.triangle.step === stepThen, `${stepThen} then ${core.triangle.step}`);
+  check('at the period it had', core.triangle.period === periodBefore, `${core.triangle.period}`);
+}
+
+console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
+process.exit(failures === 0 ? 0 : 1);

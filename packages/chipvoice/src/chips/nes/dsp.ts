@@ -7,11 +7,11 @@
  * them through the hardware's non-linear DAC curves, then run the three analog
  * filters that give the NES its boxy voice.
  *
- * Register writes arrive as events stamped with the CPU cycle they land on,
- * and are applied on that cycle - not at the start of the sample around it -
- * so slides and arpeggios land on the frame they were scheduled for, and so a
- * log of writes from a real game can be replayed here and against an oracle
- * and expected to agree.
+ * The interface is the chip's: byte writes to `$4000` through `$4017`, each
+ * stamped with the CPU cycle it lands on and applied on that cycle - not at the
+ * start of the sample around it. The driver encodes its notes into these, a
+ * VGM file is a list of these, and an oracle takes the same list, which is what
+ * makes the three comparable.
  *
  * The same module runs in two places. Node imports it. The worklet gets it
  * bundled with `worklet.ts` into one self-contained script by
@@ -64,12 +64,18 @@ const NOISE_PERIODS = [
 const noisePeriod = (index: number): number =>
   NOISE_PERIODS[Math.max(0, Math.min(15, index | 0))] >> 1;
 
-// The 4-step frame sequence, in CPU cycles from the start of a sequence.
-// Every step clocks the envelopes and the linear counter; the second and the
-// fourth also clock the length counters and the sweeps. The sequence is 29830
-// cycles long, which is where the 240 Hz and 120 Hz come from.
-const FRAME_STEPS = [7457, 14913, 22371, 29829];
-const FRAME_PERIOD = 29830;
+/**
+ * The two frame sequences, in CPU cycles from the start of a sequence.
+ *
+ * Every step clocks the envelopes and the linear counter; a `half` step also
+ * clocks the length counters and the sweeps. The 4-step sequence is 29830
+ * cycles long, which is where 240 Hz and 120 Hz come from; the 5-step one adds
+ * a silent step at 29829 and ends at 37282. Both from nesdev.
+ */
+const FRAME_SEQUENCES = [
+  { steps: [7457, 14913, 22371, 29829], half: [false, true, false, true], period: 29830 },
+  { steps: [7457, 14913, 22371, 37281], half: [false, true, false, true], period: 37282 },
+];
 
 // Length counter table, indexed by the 5-bit load value.
 const LENGTH_TABLE = [
@@ -110,6 +116,7 @@ class Envelope {
 class Pulse {
   /** 1 or 2. Affects the sweep's negate behaviour. */
   readonly channel: 1 | 2;
+  /** The `$4015` bit. Off, the length counter is 0 and stays 0. */
   enabled = false;
   duty = 0;
   step = 0;
@@ -160,15 +167,22 @@ class Pulse {
     }
   }
 
+  /**
+   * Muted by a length counter at 0, a period under 8, and a sweep target past
+   * `$7FF`. The last one is the trap every driver on the hardware learned:
+   * with the negate flag clear and no shift, the target is twice the period,
+   * so any note at `$400` or above - about G#2 and below - is silent until
+   * `$4001` has been written with `$08`.
+   */
   output(): number {
     if (!this.enabled || this.lengthCounter === 0) return 0;
-    // Periods under 8 are muted by the hardware, and so is an overflowing sweep.
     if (this.period < 8 || this.targetPeriod() > 0x7ff) return 0;
     return DUTY[this.duty][this.step] ? this.env.output() : 0;
   }
 }
 
 class Triangle {
+  enabled = false;
   timer = 0;
   period = 0;
   /**
@@ -259,16 +273,17 @@ function mixTND(triangle: number, noise: number, dmc: number): number {
 /**
  * The chip.
  *
- * The four voices and the three clock methods are public for `test/clock.mjs`,
- * which drives the clocks directly and counts what the timers do. They are
- * not API: the package exposes a core through `ChipCore`, and nothing else.
+ * The four voices, `write` and the three clock methods are public for
+ * `test/clock.mjs`, which drives the chip directly and counts what the timers
+ * do. They are not API: the package exposes a core through `ChipCore`, and
+ * nothing else.
  */
 export class NesApuCore implements ChipCore {
   readonly sampleRate: number;
-  readonly pulse1 = new Pulse(1);
-  readonly pulse2 = new Pulse(2);
-  readonly triangle = new Triangle();
-  readonly noise = new Noise();
+  pulse1 = new Pulse(1);
+  pulse2 = new Pulse(2);
+  triangle = new Triangle();
+  noise = new Noise();
 
   private apuToggle = false;
 
@@ -292,10 +307,12 @@ export class NesApuCore implements ChipCore {
   private remainder = 0;
   private nextSample = -1;
 
-  // Frame counter: quarter frames at 240 Hz drive envelopes, half frames at
-  // 120 Hz drive length counters and sweeps.
+  // The frame counter: which sequence, where in it, and a pending reset from
+  // a `$4017` write, which lands 3 or 4 cycles after the write.
+  private frameMode = 0;
   private frameCycles = 0;
   private frameStep = 0;
+  private frameResetIn = 0;
 
   // The three analog filters, as one-pole sections.
   private hp90 = 0;
@@ -317,96 +334,123 @@ export class NesApuCore implements ChipCore {
     this.lpCoef = 1 - Math.exp((-2 * Math.PI * 14000) / sampleRate);
   }
 
-  silence() {
-    for (const ch of [this.pulse1, this.pulse2, this.noise]) {
-      ch.lengthCounter = 0;
-      ch.enabled = false;
+  /**
+   * A register write, `$4000` to `$4017`, as the CPU would make it.
+   *
+   * This is the chip's whole interface. Every field of every unit is set from
+   * here and nowhere else, so what the driver can do is exactly what a program
+   * on the hardware could do - including the things it could not: a pulse's
+   * period high bits change only through `$4003`, which restarts the phase.
+   * Reads do not exist; there is no CPU to read.
+   */
+  write(addr: number, value: number) {
+    const v = value & 0xff;
+    switch (addr) {
+      case 0x4000:
+      case 0x4004: {
+        const ch = addr === 0x4000 ? this.pulse1 : this.pulse2;
+        ch.duty = v >> 6;
+        ch.lengthHalt = (v & 0x20) !== 0;
+        ch.env.loop = ch.lengthHalt;
+        ch.env.constant = (v & 0x10) !== 0;
+        ch.env.volume = v & 15;
+        return;
+      }
+      case 0x4001:
+      case 0x4005: {
+        const ch = addr === 0x4001 ? this.pulse1 : this.pulse2;
+        ch.sweepEnabled = (v & 0x80) !== 0;
+        ch.sweepPeriod = (v >> 4) & 7;
+        ch.sweepNegate = (v & 0x08) !== 0;
+        ch.sweepShift = v & 7;
+        ch.sweepReload = true;
+        return;
+      }
+      case 0x4002:
+      case 0x4006: {
+        const ch = addr === 0x4002 ? this.pulse1 : this.pulse2;
+        ch.period = (ch.period & 0x700) | v;
+        return;
+      }
+      case 0x4003:
+      case 0x4007: {
+        const ch = addr === 0x4003 ? this.pulse1 : this.pulse2;
+        ch.period = (ch.period & 0xff) | ((v & 7) << 8);
+        if (ch.enabled) ch.lengthCounter = LENGTH_TABLE[v >> 3];
+        ch.env.start = true;
+        // The sequencer restarts at the first step of its duty sequence. The
+        // timer is not touched: that is the hardware, and the click it makes.
+        ch.step = 0;
+        return;
+      }
+      case 0x4008: {
+        this.triangle.lengthHalt = (v & 0x80) !== 0;
+        this.triangle.linearReload = v & 0x7f;
+        return;
+      }
+      case 0x400a: {
+        this.triangle.period = (this.triangle.period & 0x700) | v;
+        return;
+      }
+      case 0x400b: {
+        const ch = this.triangle;
+        ch.period = (ch.period & 0xff) | ((v & 7) << 8);
+        if (ch.enabled) ch.lengthCounter = LENGTH_TABLE[v >> 3];
+        ch.linearReloadFlag = true;
+        return;
+      }
+      case 0x400c: {
+        const ch = this.noise;
+        ch.lengthHalt = (v & 0x20) !== 0;
+        ch.env.loop = ch.lengthHalt;
+        ch.env.constant = (v & 0x10) !== 0;
+        ch.env.volume = v & 15;
+        return;
+      }
+      case 0x400e: {
+        this.noise.mode = (v & 0x80) !== 0;
+        this.noise.period = noisePeriod(v & 15);
+        return;
+      }
+      case 0x400f: {
+        const ch = this.noise;
+        if (ch.enabled) ch.lengthCounter = LENGTH_TABLE[v >> 3];
+        ch.env.start = true;
+        return;
+      }
+      case 0x4010:
+      case 0x4011:
+      case 0x4012:
+      case 0x4013:
+        // The DMC. Not built; the sheet says so.
+        return;
+      case 0x4015: {
+        // Enable bits. A cleared bit forces that length counter to 0, and it
+        // stays there: loads are ignored until the bit is set again.
+        const units = [this.pulse1, this.pulse2, this.triangle, this.noise];
+        for (let i = 0; i < units.length; i++) {
+          const on = ((v >> i) & 1) !== 0;
+          units[i].enabled = on;
+          if (!on) units[i].lengthCounter = 0;
+        }
+        return;
+      }
+      case 0x4017: {
+        // Bit 7 picks the sequence. The reset lands 3 cycles after the write
+        // when it fell on an APU cycle and 4 when it fell between two, and in
+        // 5-step mode the sequencer is clocked once as it lands.
+        this.frameMode = v >> 7;
+        this.frameResetIn = this.apuToggle ? 3 : 4;
+        return;
+      }
+      default:
+        return;
     }
-    this.triangle.lengthCounter = 0;
   }
 
-  /**
-   * Applies one scheduled command. These stand in for register writes; the
-   * fields map one-to-one onto $4000-$400F.
-   */
+  /** Applies a scheduled write. The render loop's one entry into `write`. */
   applyEvent(ev: RegisterEvent) {
-    switch (ev.ch) {
-      case "p1":
-      case "p2": {
-        const ch = ev.ch === "p1" ? this.pulse1 : this.pulse2;
-        if (ev.stop) {
-          ch.lengthCounter = 0;
-          ch.enabled = false;
-          return;
-        }
-        ch.enabled = true;
-        if (ev.duty !== undefined) ch.duty = ev.duty & 3;
-        if (ev.period !== undefined) ch.period = Math.max(0, Math.min(0x7ff, ev.period | 0));
-        if (ev.volume !== undefined) {
-          ch.env.volume = Math.max(0, Math.min(15, ev.volume | 0));
-        }
-        if (ev.constant !== undefined) ch.env.constant = !!ev.constant;
-        if (ev.loop !== undefined) {
-          ch.env.loop = !!ev.loop;
-          ch.lengthHalt = !!ev.loop;
-        }
-        if (ev.sweep) {
-          ch.sweepEnabled = true;
-          ch.sweepPeriod = ev.sweep.period | 0;
-          ch.sweepNegate = !!ev.sweep.negate;
-          ch.sweepShift = ev.sweep.shift | 0;
-          ch.sweepReload = true;
-        } else if (ev.sweep === null) {
-          ch.sweepEnabled = false;
-        }
-        if (ev.length !== undefined) {
-          ch.lengthCounter = LENGTH_TABLE[ev.length & 31];
-        }
-        if (ev.trigger) {
-          ch.env.start = true;
-          ch.step = 0;
-        }
-        return;
-      }
-      case "tri": {
-        const ch = this.triangle;
-        if (ev.stop) {
-          ch.lengthCounter = 0;
-          ch.linearCounter = 0;
-          return;
-        }
-        if (ev.period !== undefined) ch.period = Math.max(0, Math.min(0x7ff, ev.period | 0));
-        if (ev.length !== undefined) ch.lengthCounter = LENGTH_TABLE[ev.length & 31];
-        if (ev.linear !== undefined) {
-          ch.linearReload = Math.max(0, Math.min(127, ev.linear | 0));
-        }
-        if (ev.loop !== undefined) ch.lengthHalt = !!ev.loop;
-        if (ev.trigger) ch.linearReloadFlag = true;
-        return;
-      }
-      case "noi": {
-        const ch = this.noise;
-        if (ev.stop) {
-          ch.lengthCounter = 0;
-          ch.enabled = false;
-          return;
-        }
-        ch.enabled = true;
-        if (ev.periodIndex !== undefined) ch.period = noisePeriod(ev.periodIndex);
-        if (ev.volume !== undefined) {
-          ch.env.volume = Math.max(0, Math.min(15, ev.volume | 0));
-        }
-        if (ev.constant !== undefined) ch.env.constant = !!ev.constant;
-        if (ev.loop !== undefined) {
-          ch.env.loop = !!ev.loop;
-          ch.lengthHalt = !!ev.loop;
-        }
-        if (ev.mode !== undefined) ch.mode = !!ev.mode;
-        if (ev.length !== undefined) ch.lengthCounter = LENGTH_TABLE[ev.length & 31];
-        if (ev.trigger) ch.env.start = true;
-        return;
-      }
-    }
+    this.write(ev.addr, ev.value);
   }
 
   clockQuarterFrame() {
@@ -434,16 +478,27 @@ export class NesApuCore implements ChipCore {
       this.noise.clock();
     }
 
-    // The 4-step frame sequence. Half frames on the second and fourth steps:
-    // an earlier version fired them on the first and third, which put every
+    if (this.frameResetIn > 0 && --this.frameResetIn === 0) {
+      this.frameCycles = 0;
+      this.frameStep = 0;
+      if (this.frameMode === 1) {
+        this.clockQuarterFrame();
+        this.clockHalfFrame();
+      }
+      return;
+    }
+
+    // The frame sequence. Half frames on the second and fourth steps: an
+    // earlier version fired them on the first and third, which put every
     // length counter and sweep a quarter frame early.
+    const sequence = FRAME_SEQUENCES[this.frameMode];
     this.frameCycles++;
-    if (this.frameStep < 4 && this.frameCycles === FRAME_STEPS[this.frameStep]) {
+    if (this.frameStep < 4 && this.frameCycles === sequence.steps[this.frameStep]) {
       this.clockQuarterFrame();
-      if (this.frameStep === 1 || this.frameStep === 3) this.clockHalfFrame();
+      if (sequence.half[this.frameStep]) this.clockHalfFrame();
       this.frameStep++;
     }
-    if (this.frameCycles >= FRAME_PERIOD) {
+    if (this.frameCycles >= sequence.period) {
       this.frameCycles = 0;
       this.frameStep = 0;
     }
@@ -520,10 +575,11 @@ export class NesApuCore implements ChipCore {
     this.remainder = scaled - this.cycle * this.sampleRate;
   }
 
-  /** Queues register writes. Each one is applied at the sample it names. */
+  /** Queues register writes. Each one is applied at the cycle it names. */
   schedule(events: RegisterEvent[]) {
     for (const ev of events) this.events.push(ev);
-    // Keep the queue ordered; scheduling can interleave.
+    // Keep the queue ordered; scheduling can interleave. The sort is stable,
+    // so two writes on the same cycle land in the order they were queued.
     this.events.sort((a, b) => a.at - b.at);
   }
 
@@ -531,9 +587,22 @@ export class NesApuCore implements ChipCore {
     this.masterGain = value;
   }
 
-  /** Silences every voice and drops anything still queued. */
+  /**
+   * Power-on: every unit fresh, `$4015` and `$4017` at zero, nothing queued.
+   *
+   * The clocks and the filters are left alone. The cycle clock follows the
+   * sample clock, which did not stop; the filters decay on their own, and
+   * zeroing them would be a step through the high-pass sections.
+   */
   reset() {
     this.events.length = 0;
-    this.silence();
+    this.pulse1 = new Pulse(1);
+    this.pulse2 = new Pulse(2);
+    this.triangle = new Triangle();
+    this.noise = new Noise();
+    this.frameMode = 0;
+    this.frameCycles = 0;
+    this.frameStep = 0;
+    this.frameResetIn = 0;
   }
 }
