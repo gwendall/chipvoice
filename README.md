@@ -56,6 +56,26 @@ way for anyone, human or machine, to pick the instrument up and play it.
   and an MP3, and fork someone else's. [chipvoice.dev](https://chipvoice.dev)
   is the editor and that API.
 
+## Where every machine stands
+
+One row per machine, the numbers written by the harness from what it keeps in
+`packages/conform/corpus` (`pnpm --filter chipvoice-conform status`), the words
+kept by hand next to them. A chip's sheet has the detail behind each cell and
+[`docs/CONFORMANCE.md`](docs/CONFORMANCE.md) says what "verified" means here.
+
+<!-- status:begin -->
+Written by `conform` on 2026-09-04. "Runs aligned" is the measure that survives an oracle's own conventions: a run of edges lines up when its step times match under one shift; see each sheet for the reading.
+
+| Machine | Chip | Status | Digital parity | Test ROMs | Analog stage | Driver | What remains |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| NES, Famicom | [Ricoh 2A03](docs/chips/2a03.md) | in progress, since 0.1.0 | Nes_Snd_Emu 0.1.7 (blargg), 13 logs, 92.2M cycles; runs aligned on step times 98.4 % (6692 of 6798); identical cycles 2.4 %, the rest being the oracle's own conventions, read on the sheet | blargg's `apu_test`, `apu_reset`, `dmc_tests`, `apu_2005`: **29 of 29 pass** | The mixer, measured against blargg's recordings of his console. The filters and the DAC after them: unmeasured, and want a unit's line-out. Cancellation against the DMC: square -32.7 dB (console -32.2), triangle -33.0 dB (console -30.9), noise -13.8 dB (console -16.2), dmc -31.0 dB (console -27.2) | Every voice but the DMC, which no instrument reaches yet | A second oracle for the envelope, the sweep and the triangle near a clock; a corpus from real games; a unit for the filters |
+| Game Boy | [DMG APU](docs/chips/dmg.md) | in progress, since 0.8.0 | Gb_Snd_Emu 0.1.4 (blargg), 7 logs, 145.1M cycles; runs aligned on step times 97.5 % (12645 of 12969); identical cycles 57.4 %, the rest being the oracle's own conventions, read on the sheet | blargg's `dmg_sound`: **12 of 12 pass** | Unmeasured. The output stage is a placeholder built to be replaced by a measurement | All four voices: bass on the wave channel, drums as the hardware envelope | A stronger oracle than Gb_Snd_Emu (SameBoy); a unit's line-out; the sweep and the length counters, which no instrument reaches |
+| Mega Drive, Genesis | YM2612 + SN76489 | planned, phase 5 | Nuked-OPN2, derived from the die, and MAME's `sn76496`, both compiled to WebAssembly; parity with Nuked is parity with the silicon | | | | not started |
+| Super Nintendo | S-DSP | planned, phase 6 | snes_spc or ares compiled to WebAssembly; captures of the DSP's serial stream to the DAC exist and are the oracle | | | | not started |
+| Commodore 64 | SID 6581, 8580 | planned, phase 7 | reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B | | | | not started |
+| Later | PC Engine, Game Boy Advance, Amiga Paula, POKEY, YM2151, YM2610 | not planned yet | After the five, by demand | | | | not started |
+<!-- status:end -->
+
 ## What is in here
 
 One repository, three things that ship separately and are built from the same code.

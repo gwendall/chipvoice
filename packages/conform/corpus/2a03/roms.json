@@ -1,0 +1,210 @@
+{
+  "date": "2026-09-04",
+  "passed": 29,
+  "total": 29,
+  "results": [
+    {
+      "name": "apu_test/1-len_ctr",
+      "status": 0,
+      "passed": true,
+      "text": "1-len_ctr\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_test/2-len_table",
+      "status": 0,
+      "passed": true,
+      "text": "2-len_table\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_test/3-irq_flag",
+      "status": 0,
+      "passed": true,
+      "text": "3-irq_flag\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_test/4-jitter",
+      "status": 0,
+      "passed": true,
+      "text": "4-jitter\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_test/5-len_timing",
+      "status": 0,
+      "passed": true,
+      "text": "5-len_timing\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_test/6-irq_flag_timing",
+      "status": 0,
+      "passed": true,
+      "text": "6-irq_flag_timing\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_test/7-dmc_basics",
+      "status": 0,
+      "passed": true,
+      "text": "7-dmc_basics\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_test/8-dmc_rates",
+      "status": 0,
+      "passed": true,
+      "text": "8-dmc_rates\n\nPassed",
+      "resets": 0
+    },
+    {
+      "name": "apu_reset/4015_cleared",
+      "status": 0,
+      "passed": true,
+      "text": "4015_cleared\n\nPassed",
+      "resets": 1
+    },
+    {
+      "name": "apu_reset/4017_timing",
+      "status": 0,
+      "passed": true,
+      "text": "Delay after effective $4017 write: 9\n\n4017_timing\n\nPassed",
+      "resets": 1
+    },
+    {
+      "name": "apu_reset/4017_written",
+      "status": 0,
+      "passed": true,
+      "text": "4017_written\n\nPassed",
+      "resets": 2
+    },
+    {
+      "name": "apu_reset/irq_flag_cleared",
+      "status": 0,
+      "passed": true,
+      "text": "irq_flag_cleared\n\nPassed",
+      "resets": 1
+    },
+    {
+      "name": "apu_reset/len_ctrs_enabled",
+      "status": 0,
+      "passed": true,
+      "text": "len_ctrs_enabled\n\nPassed",
+      "resets": 1
+    },
+    {
+      "name": "apu_reset/works_immediately",
+      "status": 0,
+      "passed": true,
+      "text": "works_immediately\n\nPassed",
+      "resets": 1
+    },
+    {
+      "name": "dmc_tests/buffer_retained",
+      "status": 0,
+      "passed": true,
+      "text": "1 beep",
+      "resets": 0
+    },
+    {
+      "name": "dmc_tests/latency",
+      "status": 0,
+      "passed": true,
+      "text": "1 beep",
+      "resets": 0
+    },
+    {
+      "name": "dmc_tests/status",
+      "status": 0,
+      "passed": true,
+      "text": "1 beep",
+      "resets": 0
+    },
+    {
+      "name": "dmc_tests/status_irq",
+      "status": 0,
+      "passed": true,
+      "text": "1 beep",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/01.len_ctr",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/02.len_table",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/03.irq_flag",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/04.clock_jitter",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/05.len_timing_mode0",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/06.len_timing_mode1",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/07.irq_flag_timing",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/08.irq_timing",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/09.reset_timing",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/10.len_halt_timing",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    },
+    {
+      "name": "apu_2005/11.len_reload_timing",
+      "status": 0,
+      "passed": true,
+      "text": "  $01",
+      "resets": 0
+    }
+  ]
+}

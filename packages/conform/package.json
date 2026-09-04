@@ -7,17 +7,18 @@
   "scripts": {
     "conform": "node src/cli.mjs",
     "check": "node src/cli.mjs 2a03 --corpus corpus/2a03 --oracle nes-snd-emu --baseline corpus/2a03/parity.json",
-    "baseline": "node src/cli.mjs 2a03 --corpus corpus/2a03 --oracle nes-snd-emu --baseline corpus/2a03/parity.json --write-baseline --sheet ../../docs/chips/2a03.md",
+    "baseline": "node src/cli.mjs 2a03 --corpus corpus/2a03 --oracle nes-snd-emu --baseline corpus/2a03/parity.json --write-baseline --sheet ../../docs/chips/2a03.md && node src/status.mjs",
     "corpus": "node src/corpus/generate.mjs",
     "roms": "node src/roms/run.mjs",
-    "roms:sheet": "node src/roms/run.mjs --sheet ../../docs/chips/2a03.md --json build/roms.json",
+    "roms:sheet": "node src/roms/run.mjs --sheet ../../docs/chips/2a03.md --json corpus/2a03/roms.json && node src/status.mjs",
     "mixer": "node src/mixer/run.mjs",
-    "mixer:sheet": "node src/mixer/run.mjs --sheet ../../docs/chips/2a03.md --json build/mixer.json",
+    "mixer:sheet": "node src/mixer/run.mjs --sheet ../../docs/chips/2a03.md --json corpus/2a03/mixer.json && node src/status.mjs",
     "check:dmg": "node src/cli.mjs dmg --corpus corpus/dmg --oracle gb-snd-emu --baseline corpus/dmg/parity.json",
-    "baseline:dmg": "node src/cli.mjs dmg --corpus corpus/dmg --oracle gb-snd-emu --baseline corpus/dmg/parity.json --write-baseline --sheet ../../docs/chips/dmg.md",
+    "baseline:dmg": "node src/cli.mjs dmg --corpus corpus/dmg --oracle gb-snd-emu --baseline corpus/dmg/parity.json --write-baseline --sheet ../../docs/chips/dmg.md && node src/status.mjs",
     "corpus:dmg": "node src/corpus/generate-dmg.mjs",
     "roms:dmg": "node src/roms/run.mjs --chip dmg",
-    "roms:dmg:sheet": "node src/roms/run.mjs --chip dmg --sheet ../../docs/chips/dmg.md --json build/roms-dmg.json"
+    "roms:dmg:sheet": "node src/roms/run.mjs --chip dmg --sheet ../../docs/chips/dmg.md --json corpus/dmg/roms.json && node src/status.mjs",
+    "status": "node src/status.mjs"
   },
   "dependencies": {
     "chipvoice": "workspace:*"

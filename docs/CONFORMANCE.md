@@ -90,6 +90,17 @@ It locks the whole path - driver, sequencer, core, resampling, analog stage - an
 says when any of it moved. It cannot say whether the move was towards the hardware
 or away; that is what the first three are for.
 
+## The board
+
+The repository's README carries one row per machine, written by
+`pnpm --filter chipvoice-conform status` from the JSON the harness keeps in
+`packages/conform/corpus/<chip>`: the parity baseline, the ROM verdicts, the
+mixer measurement. Every script that changes one of those numbers rewrites the
+board, so the README's numbers are the harness's and never a person's memory
+of them. The words next to the numbers - what the driver reaches, what remains
+- are kept by hand in `status.mjs`, and the machines not started yet have a
+row with what the roadmap plans for them.
+
 ## The harness
 
 `conform`, in `packages/conform`. One command for every chip.
