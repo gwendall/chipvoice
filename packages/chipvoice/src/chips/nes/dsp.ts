@@ -7,24 +7,29 @@
  * them through the hardware's non-linear DAC curves, then run the three analog
  * filters that give the NES its boxy voice.
  *
- * The interface is the chip's: byte writes to `$4000` through `$4017`, each
- * stamped with the CPU cycle it lands on and applied on that cycle - not at the
- * start of the sample around it. The driver encodes its notes into these, a
- * VGM file is a list of these, and an oracle takes the same list, which is what
- * makes the three comparable.
+ * Two stages, kept apart because only one of them has a truth to match:
  *
- * The same module runs in two places. Node imports it. The worklet gets it
- * bundled with `worklet.ts` into one self-contained script by
- * `scripts/build-worklet.mjs`, because a blob URL has nothing to resolve an
- * import against. The sample clock is a parameter rather than a global: in a
- * worklet it is `currentFrame`, offline it is a counter. That one difference
- * is all that separates real time from a file, and it is what makes rendering
- * a pure function of the song and the sample rate.
+ *  - `Nes2A03` is the digital chip. Byte writes to `$4000-$4017` in, stamped
+ *    with the CPU cycle they land on; the value of each voice out, cycle by
+ *    cycle. It is a finite state machine, and its output can be compared bit
+ *    for bit with a netlist simulation, a logic capture or another emulator.
+ *    That comparison is what `trace` is for.
+ *  - `NesOutputStage` is everything after: the DAC's mixing curves, the
+ *    averaging down to a sample rate, the three filters, the gain. Two real
+ *    consoles disagree here, so it is a named profile with a tolerance, not a
+ *    truth.
+ *
+ * `NesApuCore` composes the two behind `ChipCore`. The same module runs in
+ * two places: Node imports it, and the worklet gets it bundled with
+ * `worklet.ts` into one self-contained script by `scripts/build-worklet.mjs`.
+ * The sample clock is a parameter rather than a global: in a worklet it is
+ * `currentFrame`, offline it is a counter. That one difference is all that
+ * separates real time from a file.
  *
  * What is verified and what is not is on the chip's sheet, `docs/chips/2a03.md`.
  */
 
-import type { ChipCore, RegisterEvent } from "../../chip.js";
+import type { ChipCore, DigitalChip, RegisterEvent } from "../../chip.js";
 
 /** The NTSC CPU clock. The APU units run at half of it, except the triangle. */
 export const CPU_HZ = 1789773;
@@ -259,27 +264,25 @@ class Noise {
   }
 }
 
-/** Hardware DAC curves. Both are non-linear, and both matter. */
-function mixPulses(p1: number, p2: number): number {
-  const sum = p1 + p2;
-  return sum === 0 ? 0 : 95.88 / (8128 / sum + 100);
-}
-
-function mixTND(triangle: number, noise: number, dmc: number): number {
-  const denom = triangle / 8227 + noise / 12241 + dmc / 22638;
-  return denom === 0 ? 0 : 159.79 / (1 / denom + 100);
-}
+/** The order `trace` reports voices in. The DMC is a voice; it is not built yet. */
+export const NES_VOICES = ["p1", "p2", "tri", "noi", "dmc"] as const;
 
 /**
- * The chip.
+ * The digital chip: what can be right or wrong, cycle by cycle.
  *
- * The four voices, `write` and the three clock methods are public for
- * `test/clock.mjs`, which drives the chip directly and counts what the timers
- * do. They are not API: the package exposes a core through `ChipCore`, and
- * nothing else.
+ * Register writes go in through `write`, or scheduled through `schedule` and
+ * applied on their cycle by `step`. The output is the value of each voice,
+ * a 4-bit number for the first four and 7 bits for the DMC, read through
+ * `outputs`. There is no sample rate here and no analog anywhere: that is
+ * `NesOutputStage`'s business, and keeping it out is what lets this be
+ * compared with an oracle.
+ *
+ * The four voices, `write` and the three clock methods are public for the
+ * tests, which drive the chip directly and count what the timers do. They are
+ * not API.
  */
-export class NesApuCore implements ChipCore {
-  readonly sampleRate: number;
+export class Nes2A03 implements DigitalChip {
+  readonly voices = NES_VOICES;
   pulse1 = new Pulse(1);
   pulse2 = new Pulse(2);
   triangle = new Triangle();
@@ -288,24 +291,11 @@ export class NesApuCore implements ChipCore {
   private apuToggle = false;
 
   /**
-   * Where the cycle clock stands against the sample clock, in integers.
-   *
-   * `cycle` is the absolute CPU cycle about to be clocked, counted from sample
-   * 0. Events are stamped on the same clock, so it is what decides when a
-   * write lands. `remainder` is how far the sample clock has got into that
-   * cycle, in units of one sample rate: each sample adds CPU_HZ to it and
-   * clocks a cycle for every whole sample rate it holds. Exact arithmetic, so
-   * the two clocks cannot drift apart over a long render the way a floating
-   * accumulator would let them.
-   *
-   * `nextSample` is where the last block ended. When a caller renders from
-   * somewhere else - the first block, or a worklet that came up with the
-   * context already running - both are re-derived from the sample position
-   * rather than carried on from a place the chip never was.
+   * The absolute CPU cycle about to be clocked. Events are stamped on this
+   * clock, so it is what decides when a write lands. The core sets it from the
+   * sample clock; a harness just lets it run from 0.
    */
-  private cycle = 0;
-  private remainder = 0;
-  private nextSample = -1;
+  cycle = 0;
 
   // The frame counter: which sequence, where in it, and a pending reset from
   // a `$4017` write, which lands 3 or 4 cycles after the write.
@@ -314,25 +304,7 @@ export class NesApuCore implements ChipCore {
   private frameStep = 0;
   private frameResetIn = 0;
 
-  // The three analog filters, as one-pole sections.
-  private hp90 = 0;
-  private hp440 = 0;
-  private lp14k = 0;
-  private readonly hp90Coef: number;
-  private readonly hp440Coef: number;
-  private readonly lpCoef: number;
-  private lastIn90 = 0;
-  private lastIn440 = 0;
-
   private events: RegisterEvent[] = [];
-  private masterGain = 1;
-
-  constructor(sampleRate: number) {
-    this.sampleRate = sampleRate;
-    this.hp90Coef = Math.exp((-2 * Math.PI * 90) / sampleRate);
-    this.hp440Coef = Math.exp((-2 * Math.PI * 440) / sampleRate);
-    this.lpCoef = 1 - Math.exp((-2 * Math.PI * 14000) / sampleRate);
-  }
 
   /**
    * A register write, `$4000` to `$4017`, as the CPU would make it.
@@ -448,7 +420,7 @@ export class NesApuCore implements ChipCore {
     }
   }
 
-  /** Applies a scheduled write. The render loop's one entry into `write`. */
+  /** Applies a scheduled write. `step`'s one entry into `write`. */
   applyEvent(ev: RegisterEvent) {
     this.write(ev.addr, ev.value);
   }
@@ -505,6 +477,220 @@ export class NesApuCore implements ChipCore {
   }
 
   /**
+   * One cycle of the chip: the writes due on it land, before it is clocked,
+   * then it is clocked, then the count advances.
+   */
+  step() {
+    while (this.events.length > 0 && this.events[0].at <= this.cycle) {
+      const ev = this.events[0];
+      this.events.shift();
+      this.applyEvent(ev);
+    }
+    this.clockCPU();
+    this.cycle++;
+  }
+
+  /** The five voices, now. `into[4]` is the DMC, which is 0 until it exists. */
+  outputs(into: number[]) {
+    into[0] = this.pulse1.output();
+    into[1] = this.pulse2.output();
+    into[2] = this.triangle.output();
+    into[3] = this.noise.output();
+    into[4] = 0;
+  }
+
+  /** Queues register writes. Each one is applied at the cycle it names. */
+  schedule(events: RegisterEvent[]) {
+    for (const ev of events) this.events.push(ev);
+    // Keep the queue ordered; scheduling can interleave. The sort is stable,
+    // so two writes on the same cycle land in the order they were queued.
+    this.events.sort((a, b) => a.at - b.at);
+  }
+
+  /**
+   * Runs `cycles` cycles from where the chip is, and reports each change of a
+   * voice's value as it happens. Every voice starts from 0, so a voice that
+   * is not 0 on the first cycle is reported there.
+   *
+   * A list of changes is the compact form of the per-cycle output and says
+   * the same thing, and it is what an oracle's amplitude deltas turn into -
+   * which is why parity is measured on it.
+   */
+  trace(cycles: number, onChange: (cycle: number, voice: number, value: number) => void) {
+    const last = [0, 0, 0, 0, 0];
+    const now = [0, 0, 0, 0, 0];
+    for (let i = 0; i < cycles; i++) {
+      const cycle = this.cycle;
+      this.step();
+      this.outputs(now);
+      for (let v = 0; v < 5; v++) {
+        if (now[v] !== last[v]) {
+          last[v] = now[v];
+          onChange(cycle, v, now[v]);
+        }
+      }
+    }
+  }
+
+  /**
+   * Power-on: every unit fresh, `$4015` and `$4017` at zero, nothing queued.
+   * The cycle count is left alone; it belongs to whoever is driving the chip.
+   */
+  reset() {
+    this.events.length = 0;
+    this.pulse1 = new Pulse(1);
+    this.pulse2 = new Pulse(2);
+    this.triangle = new Triangle();
+    this.noise = new Noise();
+    this.apuToggle = false;
+    this.frameMode = 0;
+    this.frameCycles = 0;
+    this.frameStep = 0;
+    this.frameResetIn = 0;
+  }
+}
+
+/** Hardware DAC curves. Both are non-linear, and both matter. */
+function mixPulses(p1: number, p2: number): number {
+  const sum = p1 + p2;
+  return sum === 0 ? 0 : 95.88 / (8128 / sum + 100);
+}
+
+function mixTND(triangle: number, noise: number, dmc: number): number {
+  const denom = triangle / 8227 + noise / 12241 + dmc / 22638;
+  return denom === 0 ? 0 : 159.79 / (1 / denom + 100);
+}
+
+/**
+ * What a console does to the chip's output on its way to the jack.
+ *
+ * Named, because no two consoles do the same thing: the corner frequencies
+ * below are nesdev's approximations for a front-loading NES and nothing has
+ * been measured yet. The sheet's analog section is where a profile earns a
+ * tolerance against a real unit.
+ */
+export interface OutputProfile {
+  name: string;
+  /** Two first-order high-pass sections, in Hz. */
+  highPassHz: [number, number];
+  /** One first-order low-pass section, in Hz. */
+  lowPassHz: number;
+  /**
+   * Make-up gain after the filters. The mixer tops out near 0.63 and the two
+   * high-pass sections eat a lot of low end; this brings it back with room
+   * for peaks. Not hardware, and to be replaced by a measured level.
+   */
+  gain: number;
+}
+
+export const NESDEV_PROFILE: OutputProfile = {
+  name: "nesdev",
+  highPassHz: [90, 440],
+  lowPassHz: 14000,
+  gain: 2.9,
+};
+
+/**
+ * The analog stage: the DAC curves, the averaging down to a sample rate, the
+ * filters, the gain.
+ *
+ * One sample is built by `begin`, then `add` once per CPU cycle with the
+ * voices' values, then `end`. Averaging over the cycles that make up a sample
+ * is a box filter: plain decimation would alias harshly, and this keeps the
+ * grit without the artefacts. It is not band-limited, and the sheet says so.
+ */
+export class NesOutputStage {
+  readonly profile: OutputProfile;
+  private sum = 0;
+  private count = 0;
+
+  // The three filters, as one-pole sections, and their state.
+  private readonly hp1Coef: number;
+  private readonly hp2Coef: number;
+  private readonly lpCoef: number;
+  private hp1 = 0;
+  private hp2 = 0;
+  private lp = 0;
+  private lastIn1 = 0;
+  private lastIn2 = 0;
+
+  constructor(sampleRate: number, profile: OutputProfile = NESDEV_PROFILE) {
+    this.profile = profile;
+    this.hp1Coef = Math.exp((-2 * Math.PI * profile.highPassHz[0]) / sampleRate);
+    this.hp2Coef = Math.exp((-2 * Math.PI * profile.highPassHz[1]) / sampleRate);
+    this.lpCoef = 1 - Math.exp((-2 * Math.PI * profile.lowPassHz) / sampleRate);
+  }
+
+  begin() {
+    this.sum = 0;
+    this.count = 0;
+  }
+
+  /** One cycle's worth of the five voices, through the DAC curves. */
+  add(p1: number, p2: number, triangle: number, noise: number, dmc: number) {
+    this.sum += mixPulses(p1, p2) + mixTND(triangle, noise, dmc);
+    this.count++;
+  }
+
+  /** The sample: the average, filtered, scaled by `gain`, clamped. */
+  end(gain: number): number {
+    let sample = this.count > 0 ? this.sum / this.count : 0;
+
+    const hp1Out = this.hp1Coef * (this.hp1 + sample - this.lastIn1);
+    this.lastIn1 = sample;
+    this.hp1 = hp1Out;
+    sample = hp1Out;
+
+    const hp2Out = this.hp2Coef * (this.hp2 + sample - this.lastIn2);
+    this.lastIn2 = sample;
+    this.hp2 = hp2Out;
+    sample = hp2Out;
+
+    this.lp += this.lpCoef * (sample - this.lp);
+    sample = this.lp;
+
+    return Math.max(-1, Math.min(1, sample * gain * this.profile.gain));
+  }
+}
+
+/**
+ * The chip and its output stage, behind `ChipCore`: the thing the worklet and
+ * the offline renderer drive.
+ *
+ * It owns the one piece of state neither stage has, the relation between the
+ * sample clock and the cycle clock.
+ */
+export class NesApuCore implements ChipCore {
+  readonly sampleRate: number;
+  readonly chip = new Nes2A03();
+  readonly stage: NesOutputStage;
+
+  /**
+   * Where the cycle clock stands against the sample clock, in integers.
+   *
+   * `chip.cycle` is the absolute CPU cycle about to be clocked, counted from
+   * sample 0. `remainder` is how far the sample clock has got into that cycle,
+   * in units of one sample rate: each sample adds CPU_HZ to it and clocks a
+   * cycle for every whole sample rate it holds. Exact arithmetic, so the two
+   * clocks cannot drift apart over a long render the way a floating
+   * accumulator would let them.
+   *
+   * `nextSample` is where the last block ended. When a caller renders from
+   * somewhere else - the first block, or a worklet that came up with the
+   * context already running - both are re-derived from the sample position
+   * rather than carried on from a place the chip never was.
+   */
+  private remainder = 0;
+  private nextSample = -1;
+  private masterGain = 1;
+  private readonly voices = [0, 0, 0, 0, 0];
+
+  constructor(sampleRate: number, profile: OutputProfile = NESDEV_PROFILE) {
+    this.sampleRate = sampleRate;
+    this.stage = new NesOutputStage(sampleRate, profile);
+  }
+
+  /**
    * Fills a buffer, advancing the chip one sample at a time.
    *
    * `startSample` is the absolute position of `left[0]` on the sample clock.
@@ -516,47 +702,19 @@ export class NesApuCore implements ChipCore {
     const n = left.length;
     if (startSample !== this.nextSample) this.seek(startSample);
 
+    const chip = this.chip;
+    const stage = this.stage;
+    const voices = this.voices;
     for (let i = 0; i < n; i++) {
-      // Advance the chip, averaging over the cycles that make up this sample.
-      // Plain decimation would alias harshly; the box filter keeps the grit
-      // without the artefacts.
-      let sum = 0;
-      let count = 0;
+      stage.begin();
       this.remainder += CPU_HZ;
       while (this.remainder >= this.sampleRate) {
         this.remainder -= this.sampleRate;
-        // A write lands on its cycle, before that cycle is clocked.
-        while (this.events.length > 0 && this.events[0].at <= this.cycle) {
-          const ev = this.events[0];
-          this.events.shift();
-          this.applyEvent(ev);
-        }
-        this.clockCPU();
-        this.cycle++;
-        sum +=
-          mixPulses(this.pulse1.output(), this.pulse2.output()) +
-          mixTND(this.triangle.output(), this.noise.output(), 0);
-        count++;
+        chip.step();
+        chip.outputs(voices);
+        stage.add(voices[0], voices[1], voices[2], voices[3], voices[4]);
       }
-      let sample = count > 0 ? sum / count : 0;
-
-      // Analog output stage: two high-pass sections and one low-pass.
-      const hp90Out = this.hp90Coef * (this.hp90 + sample - this.lastIn90);
-      this.lastIn90 = sample;
-      this.hp90 = hp90Out;
-      sample = hp90Out;
-
-      const hp440Out = this.hp440Coef * (this.hp440 + sample - this.lastIn440);
-      this.lastIn440 = sample;
-      this.hp440 = hp440Out;
-      sample = hp440Out;
-
-      this.lp14k += this.lpCoef * (sample - this.lp14k);
-      sample = this.lp14k;
-
-      // The mixer tops out near 0.63 and the two high-pass sections eat a lot of
-      // low end, so normalise back up with headroom left for peaks.
-      const v = Math.max(-1, Math.min(1, sample * this.masterGain * 2.9));
+      const v = stage.end(this.masterGain);
       left[i] = v;
       if (right) right[i] = v;
     }
@@ -571,16 +729,12 @@ export class NesApuCore implements ChipCore {
    */
   private seek(sample: number) {
     const scaled = sample * CPU_HZ;
-    this.cycle = Math.floor(scaled / this.sampleRate);
-    this.remainder = scaled - this.cycle * this.sampleRate;
+    this.chip.cycle = Math.floor(scaled / this.sampleRate);
+    this.remainder = scaled - this.chip.cycle * this.sampleRate;
   }
 
-  /** Queues register writes. Each one is applied at the cycle it names. */
   schedule(events: RegisterEvent[]) {
-    for (const ev of events) this.events.push(ev);
-    // Keep the queue ordered; scheduling can interleave. The sort is stable,
-    // so two writes on the same cycle land in the order they were queued.
-    this.events.sort((a, b) => a.at - b.at);
+    this.chip.schedule(events);
   }
 
   setGain(value: number) {
@@ -588,21 +742,11 @@ export class NesApuCore implements ChipCore {
   }
 
   /**
-   * Power-on: every unit fresh, `$4015` and `$4017` at zero, nothing queued.
-   *
-   * The clocks and the filters are left alone. The cycle clock follows the
-   * sample clock, which did not stop; the filters decay on their own, and
-   * zeroing them would be a step through the high-pass sections.
+   * Power-on for the chip. The clocks and the filters are left alone: the
+   * sample clock did not stop, and zeroing a filter is a step through the
+   * high-pass sections.
    */
   reset() {
-    this.events.length = 0;
-    this.pulse1 = new Pulse(1);
-    this.pulse2 = new Pulse(2);
-    this.triangle = new Triangle();
-    this.noise = new Noise();
-    this.frameMode = 0;
-    this.frameCycles = 0;
-    this.frameStep = 0;
-    this.frameResetIn = 0;
+    this.chip.reset();
   }
 }

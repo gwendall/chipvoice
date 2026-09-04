@@ -25,6 +25,7 @@ export {
   type ChipCore,
   type ChipDefinition,
   type ChipSpec,
+  type DigitalChip,
   type RegisterEvent,
   type VoiceKind,
   type VoiceSpec,

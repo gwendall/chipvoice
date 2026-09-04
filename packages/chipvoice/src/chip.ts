@@ -117,10 +117,36 @@ export interface RegisterEvent {
   value: number;
 }
 
+/**
+ * The digital chip on its own: the part that can be right or wrong.
+ *
+ * Register writes in, the value of each voice out, cycle by cycle, and no
+ * sample rate anywhere. This is what a harness compares with an oracle, and
+ * what a netlist simulation or a logic capture of the real chip would give.
+ * The analog stage - the mixing curves, the filters - is deliberately not
+ * here: two real consoles disagree about it, so it gets a profile and a
+ * tolerance rather than a bit-for-bit comparison.
+ */
+export interface DigitalChip {
+  /** Voice names, in the order `trace` reports them. */
+  readonly voices: readonly string[];
+  /** Queues register writes, each stamped with the cycle it applies at. */
+  schedule(events: RegisterEvent[]): void;
+  /**
+   * Runs `cycles` cycles and reports each change of a voice's value as it
+   * happens. Every voice starts from 0. A list of changes says the same as
+   * the per-cycle output and is what parity is measured on.
+   */
+  trace(cycles: number, onChange: (cycle: number, voice: number, value: number) => void): void;
+  reset(): void;
+}
+
 export interface ChipDefinition {
   spec: ChipSpec;
   /** Builds a core at a sample rate. */
   create(sampleRate: number): ChipCore;
+  /** Builds the digital chip alone, for a harness. */
+  digital(): DigitalChip;
   /** The worklet source, ready to be handed to `addModule` as a blob. */
   workletSource: string;
   /** The processor name the worklet registers. */

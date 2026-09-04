@@ -35,9 +35,16 @@ function countFires(unit) {
 }
 
 /** A powered-on chip: every voice enabled, the way a program's first write left it. */
-function fresh(rate = 44100) {
+function fresh() {
+  const chip = nesChip.digital();
+  chip.write(0x4015, 0x0f);
+  return chip;
+}
+
+/** A powered-on core, for the tests that render samples. */
+function freshCore(rate = 44100) {
   const core = nesChip.create(rate);
-  core.write(0x4015, 0x0f);
+  core.chip.write(0x4015, 0x0f);
   return core;
 }
 
@@ -194,10 +201,10 @@ function frameClocks(core, cycles) {
 // ---- the event clock: a write lands on the cycle it names, at any position
 
 {
-  const core = fresh();
+  const core = freshCore();
   const landed = [];
-  const apply = core.applyEvent.bind(core);
-  core.applyEvent = (ev) => { landed.push(core.cycle); apply(ev); };
+  const apply = core.chip.applyEvent.bind(core.chip);
+  core.chip.applyEvent = (ev) => { landed.push(core.chip.cycle); apply(ev); };
   core.schedule([
     { at: 1000, addr: 0x4002, value: 100 },
     { at: 123456, addr: 0x4002, value: 200 },
@@ -210,10 +217,10 @@ function frameClocks(core, cycles) {
   // A worklet that comes up mid-context renders from wherever the context is.
   // One second of samples has to be exactly one second of cycles, not a
   // float's idea of it, or a write stamped for that second lands a cycle off.
-  const core = fresh();
+  const core = freshCore();
   const landed = [];
-  const apply = core.applyEvent.bind(core);
-  core.applyEvent = (ev) => { landed.push(core.cycle); apply(ev); };
+  const apply = core.chip.applyEvent.bind(core.chip);
+  core.chip.applyEvent = (ev) => { landed.push(core.chip.cycle); apply(ev); };
   core.schedule([{ at: CPU_HZ, addr: 0x4002, value: 100 }]);
   core.render(new Float32Array(128), null, 44100);
   check('rendering from sample 44100 starts at cycle 1789773', landed.join() === String(CPU_HZ), landed.join());
@@ -223,10 +230,10 @@ function frameClocks(core, cycles) {
   // The same event stream, rendered at two rates, applies its writes on the
   // same cycles: the stream does not know the sample rate, and nor should it.
   const landedAt = (rate) => {
-    const core = fresh(rate);
+    const core = freshCore(rate);
     const landed = [];
-    const apply = core.applyEvent.bind(core);
-    core.applyEvent = (ev) => { landed.push(core.cycle); apply(ev); };
+    const apply = core.chip.applyEvent.bind(core.chip);
+    core.chip.applyEvent = (ev) => { landed.push(core.chip.cycle); apply(ev); };
     core.schedule([{ at: 29831, addr: 0x400e, value: 3 }, { at: 700001, addr: 0x400a, value: 50 }]);
     core.render(new Float32Array(Math.ceil(rate * 0.5)), null, 0);
     return landed.join();
@@ -234,6 +241,30 @@ function frameClocks(core, cycles) {
   const a = landedAt(44100);
   const b = landedAt(48000);
   check('the same cycles at 44100 and 48000', a === b && a === '29831,700001', `${a} vs ${b}`);
+}
+
+// ---- the trace: the change stream parity is measured on
+
+{
+  // Pulse 1 at period 253, duty 2: step 0 of the sequence is 0 and step 1 is
+  // 1. A fresh timer is 0, so the first APU clock reloads it and steps at
+  // once - the edge to 15 is on cycle 0 - and the sequence then runs at 2 (t
+  // + 1) = 508 CPU cycles a step, so the edge back to 0 is four steps later.
+  const chip = nesChip.digital();
+  chip.schedule([
+    { at: 0, addr: 0x4015, value: 0x0f },
+    { at: 0, addr: 0x4000, value: 0xbf },
+    { at: 0, addr: 0x4001, value: 0x08 },
+    { at: 0, addr: 0x4002, value: 0xfd },
+    { at: 0, addr: 0x4003, value: 0xf8 },
+  ]);
+  const changes = [];
+  chip.trace(6000, (cycle, voice, value) => changes.push([cycle, voice, value]));
+  const first = changes[0];
+  const second = changes[1];
+  check('the trace reports the first pulse edge on the first clock', first && first[1] === 0 && first[2] === 15 && first[0] === 0, JSON.stringify(first));
+  check('and the next edge four steps later', second && second[2] === 0 && second[0] - first[0] === 4 * 508, JSON.stringify(second));
+  check('and nothing on the silent voices', changes.every((c) => c[1] === 0), `${changes.length} changes`);
 }
 
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);

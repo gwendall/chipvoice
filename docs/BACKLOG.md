@@ -14,8 +14,8 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | --- | --- | --- | --- |
 | P1-1 | Events in chip cycles | done | 0.4.0 |
 | P1-2 | Register writes are bytes: `RegisterEvent` is `{at, addr, value}`, the core decodes `$4000-$4017`, the driver encodes | done | 0.5.0. Learned: see the log |
-| P1-3 | Digital and analog apart: a per-cycle digital output before mixing, resampling and filters; the output stage as its own class with a named profile | todo | |
-| P1-4 | The trace: a change stream per voice, `(cycle, value)`, which is what parity is measured on | todo | |
+| P1-3 | Digital and analog apart: a per-cycle digital output before mixing, resampling and filters; the output stage as its own class with a named profile | done | PR #2. `Nes2A03`, `NesOutputStage`, `NESDEV_PROFILE`; golden unchanged |
+| P1-4 | The trace: a change stream per voice, `(cycle, value)`, which is what parity is measured on | done | PR #2. `DigitalChip.trace`, `ChipDefinition.digital()` |
 | P1-5 | `conform`: the harness. Corpus in, two cores run, first divergence out, numbers as JSON | todo | |
 | P1-6 | Oracle 1: Nes_Snd_Emu, built natively from vendored LGPL sources with a recording sink in place of Blip_Buffer | todo | |
 | P1-7 | Corpus 1: this project's own songs and feature scripts, as byte write logs | todo | |
@@ -53,6 +53,12 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P4-5 | Idioms per chip in the skill and the MCP server | todo | |
 | P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | todo | found in P1-2 |
 | P4-7 | "Agent-written music sounds good" as a named goal with its own measures | todo | |
+
+## Operations
+
+| # | Ticket | Status | Where |
+| --- | --- | --- | --- |
+| OPS-1 | Vercel: the `chipvoice-api` project is still connected to the repository and fails a preview deployment on every push, next to the `chipvoice` project that serves chipvoice.dev. Disconnect or delete it. Needs the Vercel account, not the repository | todo | seen on PR #1 |
 
 ## Later phases
 

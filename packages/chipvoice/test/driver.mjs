@@ -112,15 +112,15 @@ const bytes = (ws) => ws.map((w) => `${w.addr.toString(16)}=${hex(w.value)}`).jo
   driver.flush();
   const buffer = new Float32Array(Math.round(44100 * 0.098));
   core.render(buffer, null, 0);
-  const periodBefore = core.triangle.period;
-  check('the triangle plays until its note ends', core.triangle.linearCounter > 0 && core.triangle.period === 1016, `linear ${core.triangle.linearCounter}, period ${core.triangle.period}`);
+  const periodBefore = core.chip.triangle.period;
+  check('the triangle plays until its note ends', core.chip.triangle.linearCounter > 0 && core.chip.triangle.period === 1016, `linear ${core.chip.triangle.linearCounter}, period ${core.chip.triangle.period}`);
   // Past the note off, plus a quarter frame.
   core.render(new Float32Array(Math.round(44100 * 0.008)), null, buffer.length);
-  const stepThen = core.triangle.step;
+  const stepThen = core.chip.triangle.step;
   core.render(new Float32Array(4410), null, buffer.length + Math.round(44100 * 0.008));
-  check('within a quarter frame of the end its linear counter is 0', core.triangle.linearCounter === 0, `${core.triangle.linearCounter}`);
-  check('and the sequencer holds where it stopped', core.triangle.step === stepThen, `${stepThen} then ${core.triangle.step}`);
-  check('at the period it had', core.triangle.period === periodBefore, `${core.triangle.period}`);
+  check('within a quarter frame of the end its linear counter is 0', core.chip.triangle.linearCounter === 0, `${core.chip.triangle.linearCounter}`);
+  check('and the sequencer holds where it stopped', core.chip.triangle.step === stepThen, `${stepThen} then ${core.chip.triangle.step}`);
+  check('at the period it had', core.chip.triangle.period === periodBefore, `${core.chip.triangle.period}`);
 }
 
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
