@@ -1,6 +1,6 @@
 {
   "name": "chipvoice",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Game audio on a real NES sound chip. A Ricoh 2A03 emulated at the clock level, in an AudioWorklet or rendered offline to a file, with sound effects that steal channels from the music - the way the hardware did.",
   "keywords": [
     "chiptune",
