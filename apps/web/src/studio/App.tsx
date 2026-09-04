@@ -10,7 +10,9 @@ import { decode, encode } from "./share";
 import {
   CHANNELS,
   CHANNEL_LABEL,
-  CHANNEL_VOICE,
+  CHIP_LABEL,
+  type ChipId,
+  channelVoice,
   STEPS,
   defaultTrack,
   type ChannelName,
@@ -56,6 +58,7 @@ export default function App() {
         setTrack(loaded.track);
         setBpm(loaded.bpm);
         setTitle(loaded.title);
+        chip.selectChip(loaded.chip);
       });
       return;
     }
@@ -67,6 +70,7 @@ export default function App() {
     if (loaded) {
       setTrack(loaded.track);
       setBpm(loaded.bpm);
+      chip.selectChip(loaded.chip);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -80,7 +84,7 @@ export default function App() {
   const publishedId = library.published?.id ?? null;
   useEffect(() => {
     if (publishedId) setDirty(true);
-  }, [track, bpm, title]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [track, bpm, title, chip.chipId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Editing while it plays restarts the piece with the change in it: the song
   // id carries the content, so `play` is a no-op until something changes.
@@ -132,7 +136,7 @@ export default function App() {
         const current = line[index];
         line[index] = current === "." ? brush[channel] : current === "=" ? "." : "=";
         if (line[index] !== "." && line[index] !== "=") {
-          void chip.preview(CHANNEL_VOICE[channel], line[index]);
+          void chip.preview(channelVoice(chip.chipId, channel), line[index]);
         }
         return { ...prev, [channel]: line };
       });
@@ -146,7 +150,7 @@ export default function App() {
   }, []);
 
   const copyDraft = useCallback(async () => {
-    const hash = encode(track, bpm);
+    const hash = encode(track, bpm, chip.chipId);
     history.replaceState(null, "", `/#${hash}`);
     try {
       await navigator.clipboard.writeText(location.href);
@@ -154,7 +158,7 @@ export default function App() {
     } catch {
       say("The draft link is in the address bar");
     }
-  }, [track, bpm, say]);
+  }, [track, bpm, chip.chipId, say]);
 
   /**
    * Save, or fork if this one is already published.
@@ -167,10 +171,10 @@ export default function App() {
     const existing = library.published;
     const song =
       existing && dirty
-        ? await library.fork(existing.id, track, bpm, title)
+        ? await library.fork(existing.id, track, bpm, title, chip.chipId)
         : existing
           ? existing
-          : await library.publish(track, bpm, title);
+          : await library.publish(track, bpm, title, chip.chipId);
     if (!song) return;
     setDirty(false);
     try {
@@ -179,7 +183,7 @@ export default function App() {
     } catch {
       say(`Saved as ${song.id}`);
     }
-  }, [library, dirty, track, bpm, title, say]);
+  }, [library, dirty, track, bpm, title, chip.chipId, say]);
 
   const signIn = useCallback(async () => {
     if (!email.trim()) return;
@@ -202,10 +206,10 @@ export default function App() {
             chip<span>voice</span>
           </h1>
           <p>
-            A real NES sound chip in a browser tab. Press <b>Fire</b> while it
-            plays: the shot takes pulse&nbsp;2, and you watch the chord row go
-            dark. No other library does that, because no other one emulates the
-            chip.
+            The NES's sound chip, or the Game Boy's, in a browser tab. Press{" "}
+            <b>Fire</b> while it plays: the shot takes pulse&nbsp;2, and you
+            watch the chord row go dark. No other library does that, because no
+            other one emulates the chip.
           </p>
         </div>
       </header>
@@ -277,6 +281,7 @@ export default function App() {
               track={track}
               step={chip.step}
               stolenVoice={chip.stolen}
+              chip={chip.chipId}
               selected={selected}
               muted={muted}
               onPaint={paint}
@@ -299,7 +304,7 @@ export default function App() {
                     className={brush[selected] === token ? "key on" : "key"}
                     onClick={() => {
                       setBrush((b) => ({ ...b, [selected]: token }));
-                      void chip.preview(CHANNEL_VOICE[selected], token);
+                      void chip.preview(channelVoice(chip.chipId, selected), token);
                     }}
                   >
                     {selected === "perc" ? DRUM_LABEL[token] : token}
@@ -324,7 +329,7 @@ export default function App() {
             {CHANNELS.map((channel) => (
               <label key={channel}>
                 <span>
-                  {CHANNEL_LABEL[channel]} · {CHANNEL_VOICE[channel]}
+                  {CHANNEL_LABEL[channel]} · {channelVoice(chip.chipId, channel)}
                 </span>
                 <textarea
                   rows={3}
@@ -355,6 +360,15 @@ export default function App() {
         <button type="button" className="fire" onClick={() => void chip.fire()}>
           Fire
         </button>
+        <label className="chipselect" title="Which chip plays the song">
+          <select value={chip.chipId} onChange={(e) => chip.selectChip(e.target.value as ChipId)}>
+            {(Object.keys(CHIP_LABEL) as ChipId[]).map((id) => (
+              <option key={id} value={id}>
+                {CHIP_LABEL[id]}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="bpm">
           <span>{bpm}</span>
           <input

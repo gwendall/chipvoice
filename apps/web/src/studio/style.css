@@ -376,6 +376,18 @@ h1 span { color: var(--amber); }
 .transport .primary { background: var(--amber); border-color: var(--amber); color: #1a1206; }
 .transport .fire { border-color: var(--steal); color: var(--steal); }
 
+.chipselect select {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel-2);
+  color: var(--ink-soft);
+  padding: 11px 12px;
+  font: 600 12px/1 ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.chipselect select:hover { border-color: var(--ink-mute); }
 .bpm { display: flex; align-items: center; gap: 8px; margin-left: 6px; }
 .bpm span {
   font: 500 12px/1 ui-monospace, monospace;

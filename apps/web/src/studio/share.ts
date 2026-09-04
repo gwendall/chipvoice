@@ -1,4 +1,4 @@
-import { CHANNELS, STEPS, defaultTrack, type Track } from "./song";
+import { CHANNELS, STEPS, defaultTrack, type ChipId, type Track } from "./song";
 
 /**
  * The song lives in the URL. No accounts, no storage, no server: a link is the
@@ -6,18 +6,22 @@ import { CHANNELS, STEPS, defaultTrack, type Track } from "./song";
  *
  * Encoded as the four token lines joined by newlines, then base64. Not JSON:
  * the tokens are the format, and a link somebody can half-read is friendlier
- * than an opaque blob.
+ * than an opaque blob. The first line is the tempo, followed by the chip when
+ * it is not the NES, so every link made before there were two still decodes.
  */
-export function encode(track: Track, bpm: number): string {
+export function encode(track: Track, bpm: number, chip: ChipId = "2a03"): string {
   const body = CHANNELS.map((c) => track[c].join(" ")).join("\n");
-  return btoa(unescape(encodeURIComponent(`${bpm}\n${body}`)));
+  const head = chip === "2a03" ? `${bpm}` : `${bpm} ${chip}`;
+  return btoa(unescape(encodeURIComponent(`${head}\n${body}`)));
 }
 
-export function decode(raw: string): { track: Track; bpm: number } | null {
+export function decode(raw: string): { track: Track; bpm: number; chip: ChipId } | null {
   try {
     const text = decodeURIComponent(escape(atob(raw)));
     const [head, ...lines] = text.split("\n");
-    const bpm = Number(head);
+    const [bpmText, chipText] = head.trim().split(/\s+/);
+    const bpm = Number(bpmText);
+    const chip: ChipId = chipText === "dmg" ? "dmg" : "2a03";
     if (!Number.isFinite(bpm) || bpm < 40 || bpm > 300) return null;
     if (lines.length !== CHANNELS.length) return null;
 
@@ -29,7 +33,7 @@ export function decode(raw: string): { track: Track; bpm: number } | null {
       // from the bass line - so one lost token changes the bar for everyone.
       track[channel] = Array.from({ length: STEPS }, (_, s) => tokens[s] ?? ".");
     });
-    return { track, bpm };
+    return { track, bpm, chip };
   } catch {
     return null;
   }

@@ -13,11 +13,14 @@ export function GET() {
   const lines = endpointRows().map((r) => `- ${r.method} ${r.path} - ${r.summary}`);
   const body = `# chipvoice
 
-> Chiptune for a real emulated NES sound chip, written as four lines of text.
-> Post a song, get a link and an MP3. Songs fork like code.
+> Chiptune on the emulated sound chips of the old machines - the NES's 2A03 and
+> the Game Boy's APU - written as four lines of text. Post a song, get a link
+> and an MP3. Songs fork like code.
 
-The format is one token per sixteenth note across four channels: lead (pulse 1),
-chord (pulse 2), bass (triangle), perc (noise). A note is a letter A-G, an optional
+The format is one token per sixteenth note across four channels: lead, chord,
+bass, perc. On the 2A03 they are pulse 1, pulse 2, the triangle and the noise; on
+the Game Boy (\`"chip": "dmg"\`) pulse 1, pulse 2, the wave channel and the noise.
+A note is a letter A-G, an optional
 # or b, then an octave. A dot holds, an equals sign cuts.
 
 A mistyped note is silent - it resolves to 0 Hz and is scheduled as nothing - so

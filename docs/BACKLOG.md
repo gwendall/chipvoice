@@ -45,6 +45,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P3-3 | The Game Boy sheet, generated | done | `docs/chips/dmg.md` |
 | P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | todo | Gb_Snd_Emu is 2005 and takes its first step at the trigger |
 | P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3 |
+| P3-6 | The Game Boy in the API, the studio and the skill: `chip: "dmg"` accepted, rendered and played; a chip selector in the editor; the skill says what changes | done | `apps/web`, skill 0.4.0 |
 
 ## Phase 4. The portable score
 

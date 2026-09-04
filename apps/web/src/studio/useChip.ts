@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Chip } from "chipvoice";
-import { toSong, type Track } from "./song";
+import { toSong, type ChipId, type Track } from "./song";
 
 /**
  * The chip, and where it is.
@@ -11,9 +11,16 @@ import { toSong, type Track } from "./song";
  * until the first press. Everything here handles that null cleanly rather than
  * assuming it away: a browser without AudioWorklet gets a page that says so
  * instead of a page that throws.
+ *
+ * There are two chips to choose from, and switching disposes of the one
+ * playing: the next press builds the other. What the studio says about
+ * voices - which one an effect steals, which one a row previews on - comes
+ * from the chip's own map of the song's four lines, not from names typed here.
  */
 export function useChip() {
   const chipRef = useRef<Chip | null>(null);
+  const [chipId, setChipId] = useState<ChipId>("2a03");
+  const chipIdRef = useRef<ChipId>("2a03");
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [unsupported, setUnsupported] = useState(false);
@@ -27,7 +34,7 @@ export function useChip() {
       chipRef.current.resume();
       return chipRef.current;
     }
-    const chip = await Chip.create();
+    const chip = await Chip.create({ chip: chipIdRef.current });
     if (!chip) {
       setUnsupported(true);
       return null;
@@ -41,6 +48,23 @@ export function useChip() {
     return chip;
   }, []);
 
+  /** Picks the other chip. Whatever was playing stops; the next press starts the new one. */
+  const selectChip = useCallback((id: ChipId) => {
+    if (id === chipIdRef.current) return;
+    chipIdRef.current = id;
+    setChipId(id);
+    const current = chipRef.current;
+    if (current) {
+      current.dispose();
+      chipRef.current = null;
+      setReady(false);
+      setPlaying(false);
+      setStep(-1);
+      setStolen(null);
+      (window as unknown as { chipvoice?: Chip }).chipvoice = undefined;
+    }
+  }, []);
+
   // One rAF loop for the playhead. Reading the position rather than counting
   // frames is what keeps it on the sound: the sequencer schedules 200ms ahead,
   // and anything that counts locally drifts against the audio clock.
@@ -52,7 +76,8 @@ export function useChip() {
         const pos = chip.position();
         setStep(pos ? pos.step : -1);
         setPlaying(chip.playing);
-        setStolen(chip.playing && !chip.canPlay("p2") ? "p2" : null);
+        const chord = chip.spec.roles.chord;
+        setStolen(chip.playing && !chip.canPlay(chord) ? chord : null);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -74,22 +99,22 @@ export function useChip() {
     chipRef.current?.stop();
   }, []);
 
-  /** The demo: a gunshot that holds pulse 2, which the chord is on. */
+  /** The demo: a gunshot that holds the chord's voice, pulse 2 on either chip. */
   const fire = useCallback(async () => {
     const chip = await start();
-    chip?.sfx("p2", {
+    chip?.sfx(chip.spec.roles.chord, {
       note: "B6",
       instrument: { duty: 0, volume: [13, 12, 10, 8, 5, 2], slide: -3.4 },
       duration: 0.18,
     });
   }, [start]);
 
-  /** Audition one token on its own channel, for the palette. */
+  /** Audition one token on its own voice, for the palette. */
   const preview = useCallback(
-    async (voice: "p1" | "p2" | "tri" | "noi", token: string) => {
+    async (voice: string, token: string) => {
       const chip = await start();
       if (!chip) return;
-      if (voice === "noi") {
+      if (voice === chip.spec.roles.perc) {
         const kit: Record<string, { note: number; volume: number[]; mode?: boolean }> = {
           K: { note: 6, volume: [13, 11, 8, 4, 2] },
           S: { note: 9, volume: [12, 10, 7, 4, 2, 1] },
@@ -98,7 +123,7 @@ export function useChip() {
         };
         const drum = kit[token];
         if (!drum) return;
-        chip.sfx("noi", {
+        chip.sfx(voice, {
           note: drum.note,
           instrument: { volume: drum.volume, noiseMode: drum.mode },
           duration: 0.12,
@@ -117,5 +142,5 @@ export function useChip() {
   /** The output node, for the scope. Null until the first press starts it. */
   const output = ready ? (chipRef.current?.output ?? null) : null;
 
-  return { ready, playing, unsupported, step, stolen, output, play, stop, fire, preview };
+  return { chipId, selectChip, ready, playing, unsupported, step, stolen, output, play, stop, fire, preview };
 }

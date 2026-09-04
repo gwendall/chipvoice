@@ -1,7 +1,7 @@
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const UPDATED = "2026-09-04";
 
 /**
@@ -22,7 +22,7 @@ export function skillMarkdown(): string {
 
   return `---
 name: chipvoice
-description: Write chiptune for a real emulated NES sound chip as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - the 2A03 is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
+description: Write chiptune for the emulated sound chips of the old machines - the NES's 2A03 and the Game Boy's APU - as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - each chip is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
 compatibility: Requires curl and network access. Nothing to install.
 homepage: ${SITE}
 metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","openclaw":{"requires":{"bins":["curl"]},"capabilities":[],"emoji":"musical_keyboard","homepage":"${SITE}"}}
@@ -30,8 +30,10 @@ metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","op
 
 # chipvoice - chiptune agents can write
 
-Music for the Ricoh 2A03, the chip in the NES, as text you can read and diff. Post
-four lines, get a link and an MP3 that plays anywhere.
+Music for the sound chips of the old machines - the Ricoh 2A03 in the NES, the
+APU in the Game Boy - as text you can read and diff. Post four lines, get a link
+and an MP3 that plays anywhere. The same four lines play on either chip, each
+in its own idiom.
 
 > **Skill version ${VERSION} (${UPDATED}).** To check for updates, fetch \`${SITE}/skill.md\`
 > and compare the \`updated\` date in the frontmatter with the one above.
@@ -47,9 +49,16 @@ four lines, get a link and an MP3 that plays anywhere.
 > pulse's phase with a click, as on the hardware: A4 with the default vibrato
 > does, E4 does not. The chip is compared with a reference emulator on every
 > change; the pulses are identical to it cycle for cycle.
+>
+> Since 0.4.0: a second chip, the Game Boy's. Send \`"chip": "dmg"\` and the same
+> four lines play on it: the bass moves to the wave channel, which reaches an
+> octave lower and plays a triangle; a volume change retriggers a pulse; a drum's
+> decay becomes the hardware envelope, so the kit is softer and longer than the
+> NES's. Every one of blargg's twelve dmg_sound test ROMs passes on it.
 
-How accurate the chip is, and how that is measured, is on its conformance sheet:
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md
+How accurate each chip is, and how that is measured, is on its conformance sheet:
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md and
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md
 
 ## The one thing to understand first
 
@@ -74,12 +83,12 @@ evidence, which is the class of fault you cannot hear for yourself.
 
 Four channels, one token per sixteenth note. That is the whole language.
 
-| Channel | Chip voice | Takes |
-| --- | --- | --- |
-| \`lead\` | Pulse 1 | Note names |
-| \`chord\` | Pulse 2 | Note names, arpeggiated by \`chordShape\` |
-| \`bass\` | Triangle | Note names. **Its token count sets the pattern length** |
-| \`perc\` | Noise | \`K\` kick, \`S\` snare, \`H\` hat, \`O\` open hat |
+| Channel | On the 2A03 | On the Game Boy | Takes |
+| --- | --- | --- | --- |
+| \`lead\` | Pulse 1 | Pulse 1 | Note names |
+| \`chord\` | Pulse 2 | Pulse 2 | Note names, arpeggiated by \`chordShape\` |
+| \`bass\` | Triangle | Wave channel | Note names. **Its token count sets the pattern length** |
+| \`perc\` | Noise | Noise | \`K\` kick, \`S\` snare, \`H\` hat, \`O\` open hat |
 
 A note is a letter A-G, an optional \`#\` or \`b\`, then an octave: \`A4\`, \`F#3\`, \`Bb2\`.
 \`.\` holds the previous note. \`=\` cuts it.
@@ -97,7 +106,7 @@ which is why the validator does.
 | \`order\` | yes | Which patterns play, in which order. \`[0,0,1,0]\` is four bars from two |
 | \`title\` | no | Shown on the page and **drawn onto the share card** |
 | \`author\` | no | Who or what made it |
-| \`chip\` | no | \`"2a03"\`, the only one so far |
+| \`chip\` | no | \`"2a03"\` (the NES, the default) or \`"dmg"\` (the Game Boy) |
 
 **Titles are filtered, and it is worth knowing why before you get a 422.** The
 title is composed onto an image in the site's own colours, and that image is what
@@ -262,7 +271,7 @@ trip at a time.
 ## Limits
 
 Writes are rate limited per address; reads are not. Rendering is capped at five
-minutes of audio per request. One chip today - the 2A03 - and \`chip\` is in the
-schema so songs stay readable when there are more.
+minutes of audio per request. Two chips today, the 2A03 and the Game Boy's, and
+\`chip\` picks one; the Mega Drive, the SNES and the C64 are on the roadmap.
 `;
 }

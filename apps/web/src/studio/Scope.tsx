@@ -91,13 +91,13 @@ export function Scope({ node }: { node: AudioNode | null }) {
     if (reduced) {
       const slow = () => { draw(); cancelAnimationFrame(raf); raf = window.setTimeout(slow, 200) as unknown as number; };
       slow();
-      return () => { clearTimeout(raf); node.disconnect(analyser); };
+      return () => { clearTimeout(raf); try { node.disconnect(analyser); } catch { /* already disconnected: the chip that owned the node was disposed of first */ } };
     }
 
     raf = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(raf);
-      node.disconnect(analyser);
+      try { node.disconnect(analyser); } catch { /* already disconnected: the chip that owned the node was disposed of first */ }
     };
   }, [node]);
 
