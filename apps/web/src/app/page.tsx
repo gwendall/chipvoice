@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import Studio from "@/studio/App";
 
 export const metadata: Metadata = {
-  title: "chipvoice - write music on a real NES sound chip",
+  title: "chipvoice - write music on the sound chips of the old machines",
   description:
-    "Four lines of text, four channels, one emulated 2A03. Sound effects steal channels from the music, the way the hardware did.",
+    "Four lines of text, four channels, the NES's 2A03 or the Game Boy's APU emulated to the cycle. Sound effects steal channels from the music, the way the hardware did.",
   openGraph: {
     title: "chipvoice",
     description:
-      "Write music on a real NES sound chip in a browser tab. Songs are text, and they fork like code.",
+      "Write music on a real NES or Game Boy sound chip in a browser tab. Songs are text, and they fork like code.",
     url: "https://chipvoice.dev",
     type: "website",
   },

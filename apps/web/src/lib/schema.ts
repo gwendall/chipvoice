@@ -20,8 +20,8 @@ export const SongInput = z.object({
   bpm: z.number().int().min(40).max(300),
   patterns: z.array(PatternSchema).min(1).max(16),
   order: z.array(z.number().int().min(0)).min(1).max(64),
-  /** Which chip. One today; the field exists so songs stay readable later. */
-  chip: z.literal("2a03").default("2a03"),
+  /** Which chip: the NES's 2A03, or the Game Boy's. */
+  chip: z.enum(["2a03", "dmg"]).default("2a03"),
   /** Free-form. Meant for an agent to say who or what made it. */
   author: z.string().trim().max(60).optional(),
 });

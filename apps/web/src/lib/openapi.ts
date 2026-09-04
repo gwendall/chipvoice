@@ -15,7 +15,12 @@ const SONG_BODY = {
     title: { type: "string", maxLength: 80 },
     author: { type: "string", maxLength: 60, description: "Who or what made it" },
     bpm: { type: "integer", minimum: 40, maximum: 300 },
-    chip: { type: "string", enum: ["2a03"], default: "2a03" },
+    chip: {
+      type: "string",
+      enum: ["2a03", "dmg"],
+      default: "2a03",
+      description: "The NES's Ricoh 2A03, or the Game Boy's DMG APU. The same four lines play on either, in its own idiom.",
+    },
     order: {
       type: "array",
       items: { type: "integer", minimum: 0 },
@@ -66,9 +71,9 @@ export function openApiSpec() {
       title: "chipvoice",
       version: "0.1.0",
       description:
-        "Write music for a real NES sound chip as four lines of text, get back a link and an MP3. " +
-        "The chip is emulated at the clock level; what has been verified against the hardware is on " +
-        "its conformance sheet at https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md",
+        "Write music for the sound chips of the old machines as four lines of text, get back a link and an MP3. " +
+        "Two chips: the NES's 2A03 and the Game Boy's APU, each emulated at the clock level; what has been verified " +
+        "against the hardware is on each chip's conformance sheet under https://github.com/gwendall/chipvoice/blob/main/docs/chips/",
       license: { name: "MIT" },
     },
     servers: [{ url: SITE }],

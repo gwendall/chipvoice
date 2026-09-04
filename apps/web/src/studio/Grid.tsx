@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CHANNELS,
   CHANNEL_LABEL,
-  CHANNEL_VOICE,
+  channelVoice,
+  type ChipId,
   STEPS,
   type ChannelName,
   type Track,
@@ -32,6 +33,7 @@ export function Grid({
   track,
   step,
   stolenVoice,
+  chip,
   selected,
   muted,
   onPaint,
@@ -41,6 +43,8 @@ export function Grid({
   track: Track;
   step: number;
   stolenVoice: string | null;
+  /** Which chip is playing, for the voice each row lands on. */
+  chip: ChipId;
   selected: ChannelName;
   muted: Record<ChannelName, boolean>;
   onPaint: (channel: ChannelName, index: number) => void;
@@ -120,7 +124,7 @@ export function Grid({
       >
         <div className="grid-rows">
           {CHANNELS.map((channel) => {
-            const voice = CHANNEL_VOICE[channel];
+            const voice = channelVoice(chip, channel);
             const taken = stolenVoice === voice;
             return (
               <div

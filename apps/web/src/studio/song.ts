@@ -1,4 +1,8 @@
-import { DEFAULT_KIT, type Instrument, type Song } from "chipvoice";
+import { DEFAULT_KIT, GB_DMG, NES_2A03, type Instrument, type Song } from "chipvoice";
+
+/** The chips the studio offers, by the id the API stores. */
+export type ChipId = "2a03" | "dmg";
+export const CHIP_LABEL: Record<ChipId, string> = { "2a03": "NES", dmg: "Game Boy" };
 
 /**
  * The playground's song, as the four lines of tokens the library takes.
@@ -25,12 +29,9 @@ export const CHANNEL_LABEL: Record<ChannelName, string> = {
 };
 
 /** Which chip voice each line ends up on, which is what the stealing acts on. */
-export const CHANNEL_VOICE: Record<ChannelName, "p1" | "p2" | "tri" | "noi"> = {
-  lead: "p1",
-  chord: "p2",
-  bass: "tri",
-  perc: "noi",
-};
+export function channelVoice(chip: ChipId, channel: ChannelName): string {
+  return (chip === "dmg" ? GB_DMG : NES_2A03).roles[channel];
+}
 
 export const STEPS = 64;
 

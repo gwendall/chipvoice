@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Track } from "./song";
-import { CHANNELS } from "./song";
+import { CHANNELS, type ChipId } from "./song";
 
 /**
  * The half of the product that was missing.
@@ -56,7 +56,8 @@ export function useLibrary() {
     return key ? { ...base, authorization: `Bearer ${key}` } : base;
   }, [key]);
 
-  const body = (track: Track, bpm: number, title: string) => ({
+  const body = (track: Track, bpm: number, title: string, chip: ChipId) => ({
+    chip,
     ...(title.trim() ? { title: title.trim() } : {}),
     bpm,
     order: [0],
@@ -91,14 +92,14 @@ export function useLibrary() {
   };
 
   const publish = useCallback(
-    async (track: Track, bpm: number, title: string): Promise<Published | null> => {
+    async (track: Track, bpm: number, title: string, chip: ChipId): Promise<Published | null> => {
       setBusy(true);
       setError(null);
       try {
         const response = await fetch("/api/songs", {
           method: "POST",
           headers: headers(),
-          body: JSON.stringify(body(track, bpm, title)),
+          body: JSON.stringify(body(track, bpm, title, chip)),
         });
         if (!response.ok) {
           setError(await readError(response));
@@ -125,14 +126,14 @@ export function useLibrary() {
    * publishing, Save becomes Fork.
    */
   const fork = useCallback(
-    async (id: string, track: Track, bpm: number, title: string): Promise<Published | null> => {
+    async (id: string, track: Track, bpm: number, title: string, chip: ChipId): Promise<Published | null> => {
       setBusy(true);
       setError(null);
       try {
         const response = await fetch(`/api/songs/${id}/fork`, {
           method: "POST",
           headers: headers(),
-          body: JSON.stringify(body(track, bpm, title)),
+          body: JSON.stringify(body(track, bpm, title, chip)),
         });
         if (!response.ok) {
           setError(await readError(response));
@@ -176,7 +177,7 @@ export function useLibrary() {
   }, []);
 
   /** Loads a stored song into the editor, for /s/{id}. */
-  const load = useCallback(async (id: string): Promise<{ track: Track; bpm: number; title: string; song: Published } | null> => {
+  const load = useCallback(async (id: string): Promise<{ track: Track; bpm: number; chip: ChipId; title: string; song: Published } | null> => {
     try {
       const response = await fetch(`/api/songs/${id}`);
       if (!response.ok) return null;
@@ -186,7 +187,7 @@ export function useLibrary() {
         CHANNELS.map((c) => [c, String(pattern[c] ?? "").trim().split(/\s+/).filter(Boolean)]),
       ) as unknown as Track;
       setPublished(song);
-      return { track, bpm: song.bpm, title: song.title ?? "", song };
+      return { track, bpm: song.bpm, chip: song.chip === "dmg" ? "dmg" : "2a03", title: song.title ?? "", song };
     } catch {
       return null;
     }

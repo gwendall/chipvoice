@@ -52,6 +52,7 @@ export async function GET(
   const audio = renderSong(toLibrarySong(found.song), {
     seconds: query.data.seconds,
     sampleRate: 44100,
+    chip: found.song.chip,
   });
 
   /*

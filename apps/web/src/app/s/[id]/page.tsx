@@ -31,7 +31,7 @@ export async function generateMetadata({
   const song = present(found.song, found.forks);
   const title = song.title ?? `chipvoice ${song.id}`;
   const description =
-    `${song.bpm} bpm, ${song.measured?.loopSeconds ?? "?"}s loop, on an emulated NES sound chip. ` +
+    `${song.bpm} bpm, ${song.measured?.loopSeconds ?? "?"}s loop, on an emulated ${song.chip === "dmg" ? "Game Boy" : "NES"} sound chip. ` +
     `Written as four lines of text.`;
 
   return {
