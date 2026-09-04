@@ -1,4 +1,21 @@
 import { z } from "zod";
+import { INTENTS, type BassIntent, type ChordIntent, type LeadIntent, type PercIntent } from "chipvoice";
+
+const words = <W extends string>(role: keyof typeof INTENTS) => z.enum(Object.keys(INTENTS[role]) as [W, ...W[]]);
+
+/**
+ * An intent: a word per role for what it should sound like, from the
+ * library's catalogue. The catalogue is the one source; the enum here, the
+ * OpenAPI schema and the skill's table are all read from it.
+ */
+export const IntentSchema = z
+  .object({
+    lead: words<LeadIntent>("lead"),
+    chord: words<ChordIntent>("chord"),
+    bass: words<BassIntent>("bass"),
+    perc: words<PercIntent>("perc"),
+  })
+  .partial();
 
 /**
  * The wire format, which is deliberately the tracker format.
@@ -22,6 +39,8 @@ export const SongInput = z.object({
   order: z.array(z.number().int().min(0)).min(1).max(64),
   /** Which chip: the NES's 2A03, or the Game Boy's. */
   chip: z.enum(["2a03", "dmg"]).default("2a03"),
+  /** What each role should sound like. Absent roles take the default word. */
+  intent: IntentSchema.optional(),
   /** Free-form. Meant for an agent to say who or what made it. */
   author: z.string().trim().max(60).optional(),
 });

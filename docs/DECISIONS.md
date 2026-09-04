@@ -246,6 +246,29 @@ Both are named as such on `FrameState` rather than generalised, because the
 songs were written in them and a generalisation without a third chip to test
 it against is the bad abstraction the roadmap warned about.
 
+### 16. The score carries words, not instruments (2026-09-04)
+
+A score is four lines, a tempo, an order, and an *intent*: one word per role
+from a catalogue (`INTENTS`), which each chip's arranger maps onto an
+instrument in its own idiom. The roles keep their names, `lead`, `chord`,
+`bass`, `perc`. A song with no intent arranges to the instruments every song
+had before, to the number.
+
+**Why.** Instruments are the chip's: a duty and a volume table on a 2A03, a
+waveform in RAM on a Game Boy, four operators on a YM2612. Putting them in
+the wire format would have made every stored song an arrangement for one
+chip, which is what the format already was without admitting it. A word is
+what a person or an agent actually means - "a bright lead" - and it leaves the
+arranger free to be idiomatic, where a parameter would push every chip
+towards one wrong answer. Words over parameters was a lean in SCORE.md; the
+Game Boy's bass decided it: `"hollow"` means a square wave in wave RAM there
+and nothing on a NES, which no parameter could express and a word says.
+
+**What changed.** `Score`, `arrange`, `INTENTS`; the API's schema, spec and
+skill read the catalogue; the studio arranges the same way the API renders;
+the validator names a word that is not in the catalogue. `SCORE.md` moved from
+draft to decided.
+
 ## Open
 
 ### B. The SID's licence

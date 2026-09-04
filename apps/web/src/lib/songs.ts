@@ -1,4 +1,4 @@
-import { validateSong, type Measured, type Issue } from "chipvoice";
+import { arrange, validateSong, type Intent, type Measured, type Issue } from "chipvoice";
 import { db, newId } from "./db";
 import type { SongInput } from "./schema";
 
@@ -21,6 +21,8 @@ export interface StoredSong {
   chip: string;
   patterns: SongInput["patterns"];
   order: number[];
+  /** What each role should sound like; null is the default word for every role. */
+  intent: Intent | null;
   author: string | null;
   /** Which key published it, when one did. */
   keyId: string | null;
@@ -65,21 +67,18 @@ export const SITE =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "https://chipvoice.dev";
 
 /** Turns stored rows into the library's song shape, which is what plays it. */
+/**
+ * The stored song as the library plays it: the score, arranged for its chip.
+ * The instruments come from the intent through the chip's arranger, and a
+ * song with no intent gets the ones every song had before there was one.
+ */
 export function toLibrarySong(song: StoredSong) {
   return {
-    id: song.id,
-    bpm: song.bpm,
-    patterns: song.patterns,
-    order: song.order,
-    gain: 1,
-    lead: {
-      duty: 1,
-      volume: [15, 15, 14, 13, 12, 12, 11, 11, 10, 10, 10, 9, 9, 9, 8],
-      sustain: true,
-      vibrato: { depth: 0.18, rate: 8, delay: 12 },
-    },
-    chord: { duty: 0, volume: [9, 8, 7, 7, 6], sustain: true },
-    bass: { volume: [15], sustain: true },
+    ...arrange(
+      { id: song.id, bpm: song.bpm, patterns: song.patterns, order: song.order, gain: 1, intent: song.intent ?? undefined },
+      song.chip,
+    ),
+    intent: song.intent ?? undefined,
   };
 }
 
@@ -114,6 +113,7 @@ export function check(input: SongInput): { ok: boolean; issues: Issue[]; measure
       chip: input.chip,
       patterns: input.patterns,
       order: input.order,
+      intent: input.intent ?? null,
       author: null,
       keyId: null,
       createdAt: 0,
@@ -144,14 +144,15 @@ export async function insert(
     chip: input.chip,
     patterns: input.patterns,
     order: input.order,
+    intent: input.intent && Object.keys(input.intent).length > 0 ? input.intent : null,
     author: input.author ?? null,
     keyId,
     createdAt: Date.now(),
   };
   await client.execute({
     sql: `insert into songs
-            (id, parent_id, root_id, depth, title, bpm, chip, patterns, song_order, author, key_id, created_at)
-          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, parent_id, root_id, depth, title, bpm, chip, patterns, song_order, intent, author, key_id, created_at)
+          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       song.id,
       song.parentId,
@@ -162,6 +163,7 @@ export async function insert(
       song.chip,
       JSON.stringify(song.patterns),
       JSON.stringify(song.order),
+      song.intent ? JSON.stringify(song.intent) : null,
       song.author,
       song.keyId,
       song.createdAt,
@@ -183,6 +185,7 @@ function rowToSong(row: Record<string, unknown>): StoredSong {
     chip: String(row.chip),
     patterns: JSON.parse(String(row.patterns)),
     order: JSON.parse(String(row.song_order)),
+    intent: row.intent === null || row.intent === undefined ? null : (JSON.parse(String(row.intent)) as Intent),
     author: row.author === null ? null : String(row.author),
     keyId: row.key_id === null || row.key_id === undefined ? null : String(row.key_id),
     createdAt: Number(row.created_at),

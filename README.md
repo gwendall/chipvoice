@@ -42,9 +42,10 @@ way for anyone, human or machine, to pick the instrument up and play it.
   Ricoh 2A03, and the Game Boy's DMG APU. The Mega Drive, the SNES and the C64
   are on the [roadmap](docs/ROADMAP.md).
 - **A driver and a tracker on top**, so a tune is four lines of text - lead,
-  chord, bass, percussion - with instruments as the per-frame tables the
-  hardware's own drivers used. The same four lines play on every chip, each in
-  its own idiom; a [portable score](docs/SCORE.md) is where that is going.
+  chord, bass, percussion - and a word per line for what it should sound like.
+  The same four lines and the same words play on every chip, each in its own
+  idiom: the [portable score](docs/SCORE.md). Underneath, instruments are the
+  per-frame tables the hardware's own drivers used.
 - **The one thing the hardware forced on every game**: sound effects take
   channels away from the music, and the music dips. Every other library gives
   the effects their own tracks, and losing that is most of why they sound

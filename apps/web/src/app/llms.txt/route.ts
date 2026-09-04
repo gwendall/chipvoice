@@ -20,7 +20,9 @@ export function GET() {
 The format is one token per sixteenth note across four channels: lead, chord,
 bass, perc. On the 2A03 they are pulse 1, pulse 2, the triangle and the noise; on
 the Game Boy (\`"chip": "dmg"\`) pulse 1, pulse 2, the wave channel and the noise.
-A note is a letter A-G, an optional
+An optional \`intent\` gives each role a word for what it should sound like
+(lead: soft, bright, round; chord: plucked, held; bass: round, hollow, bright;
+perc: tight, soft), the same words on every chip. A note is a letter A-G, an optional
 # or b, then an octave. A dot holds, an equals sign cuts.
 
 A mistyped note is silent - it resolves to 0 Hz and is scheduled as nothing - so

@@ -90,7 +90,7 @@ export function useChip() {
   const play = useCallback(
     async (track: Track, bpm: number) => {
       const chip = await start();
-      chip?.play(toSong(track, bpm));
+      chip?.play(toSong(track, bpm, chipIdRef.current));
     },
     [start],
   );

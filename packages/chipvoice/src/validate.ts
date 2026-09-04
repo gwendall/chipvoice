@@ -1,6 +1,7 @@
 import { chips, getChip, type VoiceSpec } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
+import { INTENTS } from "./score.js";
 import { noteToFreq } from "./driver.js";
 import type { Pattern, Song } from "./sequencer.js";
 import { loopSeconds } from "./render.js";
@@ -83,7 +84,7 @@ export function validateSong(song: unknown): ValidationResult {
   };
 
   if (!song || typeof song !== "object") return fail("expected an object");
-  const s = song as Partial<Song> & { chip?: string };
+  const s = song as Partial<Song> & { chip?: string; intent?: unknown };
 
   const chipId = s.chip ?? "2a03";
   const chip = chipId === "2a03" ? nesChip : chipId === "dmg" ? gbChip : getChip(chipId);
@@ -91,6 +92,21 @@ export function validateSong(song: unknown): ValidationResult {
     return fail(`unknown chip "${chipId}". This build knows: ${chips().map((c) => c.id).join(", ")}`);
   }
   const voices = new Map<string, VoiceSpec>(chip.spec.voices.map((v) => [v.id, v]));
+
+  // An intent is a word per role, from the catalogue; a word that is not
+  // there would silently be the default, which is the class of fault this
+  // validator exists to name.
+  if (s.intent !== undefined) {
+    if (!s.intent || typeof s.intent !== "object") return fail("intent must be an object of role to word");
+    for (const [role, word] of Object.entries(s.intent as Record<string, unknown>)) {
+      const words = (INTENTS as Record<string, Record<string, string>>)[role];
+      if (!words) {
+        issues.push({ level: "error", message: `intent.${role}: no such role. The roles are ${Object.keys(INTENTS).join(", ")}`, silent: true });
+      } else if (typeof word !== "string" || !(word in words)) {
+        issues.push({ level: "error", track: role, message: `intent.${role}: "${String(word)}" is not a ${role} intent. This build knows: ${Object.keys(words).join(", ")}`, silent: true });
+      }
+    }
+  }
 
   if (typeof s.bpm !== "number" || !Number.isFinite(s.bpm)) {
     return fail("bpm must be a number");

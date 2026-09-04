@@ -46,6 +46,22 @@ gb.sfx("ch2", { note: "B6", instrument: LASER, duration: 0.1 });
 gb.spec.voices;                       // ch1, ch2, ch3, ch4 - what to hand sfx()
 ```
 
+A song can carry its instruments spelled out, as `THEME` does, or it can be a
+**score**: the four lines and a word per role for what it should sound like,
+which each chip's arranger turns into its own instruments. The words are the
+same on every chip; `INTENTS` lists them with what they mean.
+
+```ts
+import { arrange, INTENTS } from "chipvoice";
+
+const song = arrange(
+  { bpm: 152, order: [0], patterns: [...], intent: { lead: "bright", bass: "hollow" } },
+  "dmg",
+);
+gb.play(song);                        // a 12.5 % pulse lead, a square wave in wave RAM
+INTENTS.bass.hollow;                  // "a square wave on the Game Boy's wave channel; a NES has only the triangle"
+```
+
 **[Try it](https://chipvoice.dev)** - a grid, a playhead, and a Fire button
 that takes a channel away from the music while you watch. The song lives in the URL,
 so a link is the save file.

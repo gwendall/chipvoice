@@ -1,3 +1,4 @@
+import { INTENTS } from "chipvoice";
 import { SITE } from "./songs";
 
 /**
@@ -8,6 +9,18 @@ import { SITE } from "./songs";
  * descriptions of one API is three things to forget to update, and the one that
  * goes stale is always the one an agent is reading.
  */
+const INTENT_BODY = {
+  type: "object",
+  description:
+    "What each role should sound like: a word from the catalogue, the same words on every chip, each chip playing them in its own idiom. A role left out takes the default. " +
+    Object.entries(INTENTS)
+      .map(([role, ws]) => `${role}: ${Object.entries(ws).map(([w, what]) => `"${w}" (${what})`).join(", ")}`)
+      .join(". "),
+  properties: Object.fromEntries(
+    Object.entries(INTENTS).map(([role, ws]) => [role, { type: "string", enum: Object.keys(ws), default: Object.keys(ws)[0] }]),
+  ),
+};
+
 const SONG_BODY = {
   type: "object",
   required: ["bpm", "patterns", "order"],
@@ -21,6 +34,7 @@ const SONG_BODY = {
       default: "2a03",
       description: "The NES's Ricoh 2A03, or the Game Boy's DMG APU. The same four lines play on either, in its own idiom.",
     },
+    intent: INTENT_BODY,
     order: {
       type: "array",
       items: { type: "integer", minimum: 0 },

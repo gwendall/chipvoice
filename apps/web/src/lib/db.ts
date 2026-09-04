@@ -63,6 +63,17 @@ export async function db(): Promise<Client> {
       )
     `);
 
+    // Columns added since the table was first created. SQLite has no "add
+    // column if not exists", so each one is tried and its "duplicate column"
+    // refusal is the sign it is already there.
+    for (const column of ["intent text"]) {
+      try {
+        await client.execute(`alter table songs add column ${column}`);
+      } catch (error) {
+        if (!/duplicate column/i.test(String(error))) throw error;
+      }
+    }
+
     /*
      * A key is an identity, not a password.
      *
