@@ -86,7 +86,9 @@ let localRender = null;
 let installedVersion = null;
 try {
   execSync("npm init -y", { cwd: dir, stdio: "pipe" });
-  execSync("npm i chipvoice", { cwd: dir, stdio: "pipe" });
+  // No audit and no funding notice: registry round trips with nothing to say
+  // about the package, and the audit one has hung this install for minutes.
+  execSync("npm i chipvoice --no-audit --no-fund", { cwd: dir, stdio: "pipe", timeout: 120000 });
   installedVersion = JSON.parse(
     fs.readFileSync(path.join(dir, "node_modules/chipvoice/package.json"), "utf8"),
   ).version;
@@ -194,7 +196,26 @@ check(
   (mp3.headers.get("cache-control") ?? "").includes("immutable"),
   mp3.headers.get("cache-control"),
 );
-check("and starts with an MPEG frame", mp3Bytes[0] === 0xff && (mp3Bytes[1] & 0xe0) === 0xe0);
+/*
+ * The file is tagged, so the first MPEG frame sits after the ID3v2 header: ten
+ * bytes, then a synchsafe size - seven bits per byte - then the frames. A
+ * check that looked at byte 0 was written before the tag was, and failed the
+ * day the MP3 got a name.
+ */
+const firstFrame = (bytes) => {
+  let at = 0;
+  if (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) {
+    const size = (bytes[6] << 21) | (bytes[7] << 14) | (bytes[8] << 7) | bytes[9];
+    at = 10 + size + (bytes[5] & 0x10 ? 10 : 0);
+  }
+  return at;
+};
+const frameAt = firstFrame(mp3Bytes);
+check(
+  "and an MPEG frame follows the ID3 tag",
+  mp3Bytes[frameAt] === 0xff && (mp3Bytes[frameAt + 1] & 0xe0) === 0xe0,
+  `frame at byte ${frameAt}`,
+);
 
 const again = new Uint8Array(await (await fetch(`${SITE}/s/${song.id}.mp3`)).arrayBuffer());
 check(
