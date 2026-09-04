@@ -63,7 +63,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
-| OPS-1 | Vercel: the `chipvoice-api` project is still connected to the repository and fails a preview deployment on every push, next to the `chipvoice` project that serves chipvoice.dev. Disconnect or delete it. Needs the Vercel account, not the repository | todo | seen on PR #1 |
+| OPS-1 | Vercel: the `chipvoice-api` project was still connected to the repository and failed a deployment on every push, next to the `chipvoice` project that serves chipvoice.dev | done | Its root directory was `apps/api`, which stopped existing when the API moved into `apps/web`; nothing referenced it. Deleted with the Vercel CLI on 2026-09-04. Every PR from #1 to #11 wore its red cross; it should have been fixed at #1 |
 
 ## Later phases
 
