@@ -13,7 +13,7 @@
   "date": "2026-09-04",
   "files": 13,
   "cycles": 92173307,
-  "identical": 2228909,
+  "identical": 3577340,
   "diverging": 13,
   "results": [
     {
@@ -929,9 +929,9 @@
     {
       "name": "song-e2e",
       "source": "test-e2e.mjs, as chipvoice.dev renders it",
-      "writes": 2124,
+      "writes": 2868,
       "cycles": 17897730,
-      "identical": 927465,
+      "identical": 1182241,
       "first": {
         "cycle": 0,
         "voice": 2,
@@ -942,14 +942,14 @@
         {
           "voice": "p1",
           "identical": 17897730,
-          "a": 8602,
-          "b": 8602,
-          "exact": 8602,
+          "a": 8590,
+          "b": 8590,
+          "exact": 8590,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 8602,
+          "aligned": 8590,
           "runs": {
             "ours": 32,
             "theirs": 32,
@@ -960,40 +960,40 @@
         },
         {
           "voice": "p2",
-          "identical": 17897730,
-          "a": 4966,
-          "b": 4966,
-          "exact": 4966,
+          "identical": 17880304,
+          "a": 4876,
+          "b": 4876,
+          "exact": 1168,
           "near": 0,
-          "onlyA": 0,
-          "onlyB": 0,
-          "shift": 0,
-          "aligned": 4966,
+          "onlyA": 3708,
+          "onlyB": 3708,
+          "shift": 2,
+          "aligned": 3373,
           "runs": {
-            "ours": 2428,
-            "theirs": 2428,
-            "alignedTimes": 2428,
-            "alignedValues": 2428,
-            "maxShift": 0
+            "ours": 2437,
+            "theirs": 2437,
+            "alignedTimes": 2437,
+            "alignedValues": 2437,
+            "maxShift": 176
           }
         },
         {
           "voice": "tri",
-          "identical": 927465,
-          "a": 13932,
-          "b": 13955,
+          "identical": 1183868,
+          "a": 13980,
+          "b": 14001,
           "exact": 0,
           "near": 0,
-          "onlyA": 13932,
-          "onlyB": 13955,
-          "shift": 0,
-          "aligned": 0,
+          "onlyA": 13980,
+          "onlyB": 14001,
+          "shift": 10,
+          "aligned": 18,
           "runs": {
             "ours": 52,
             "theirs": 51,
-            "alignedTimes": 37,
-            "alignedValues": 0,
-            "maxShift": 358350
+            "alignedTimes": 14,
+            "alignedValues": 1,
+            "maxShift": 357904
           }
         },
         {
@@ -1020,9 +1020,9 @@
     {
       "name": "song-golden",
       "source": "packages/chipvoice/test/golden.mjs",
-      "writes": 785,
+      "writes": 817,
       "cycles": 7159092,
-      "identical": 186731,
+      "identical": 224015,
       "first": {
         "cycle": 0,
         "voice": 2,
@@ -1033,14 +1033,14 @@
         {
           "voice": "p1",
           "identical": 7159092,
-          "a": 3197,
-          "b": 3197,
-          "exact": 3197,
+          "a": 3185,
+          "b": 3185,
+          "exact": 3185,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 3197,
+          "aligned": 3185,
           "runs": {
             "ours": 13,
             "theirs": 13,
@@ -1070,21 +1070,21 @@
         },
         {
           "voice": "tri",
-          "identical": 186731,
-          "a": 5930,
-          "b": 5936,
+          "identical": 224015,
+          "a": 5927,
+          "b": 5930,
           "exact": 0,
           "near": 0,
-          "onlyA": 5930,
-          "onlyB": 5936,
-          "shift": -14,
-          "aligned": 17,
+          "onlyA": 5927,
+          "onlyB": 5930,
+          "shift": 0,
+          "aligned": 0,
           "runs": {
             "ours": 21,
             "theirs": 20,
-            "alignedTimes": 14,
+            "alignedTimes": 10,
             "alignedValues": 0,
-            "maxShift": 357856
+            "maxShift": 357819
           }
         },
         {
@@ -1111,9 +1111,9 @@
     {
       "name": "song-studio",
       "source": "apps/web/src/studio/song.ts, the default piece in the editor",
-      "writes": 2591,
+      "writes": 3759,
       "cycles": 21477276,
-      "identical": 966483,
+      "identical": 2022854,
       "first": {
         "cycle": 0,
         "voice": 2,
@@ -1124,14 +1124,14 @@
         {
           "voice": "p1",
           "identical": 21477276,
-          "a": 9871,
-          "b": 9871,
-          "exact": 9871,
+          "a": 9845,
+          "b": 9845,
+          "exact": 9845,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 9871,
+          "aligned": 9845,
           "runs": {
             "ours": 32,
             "theirs": 32,
@@ -1143,39 +1143,39 @@
         {
           "voice": "p2",
           "identical": 21477276,
-          "a": 5803,
-          "b": 5803,
-          "exact": 5803,
+          "a": 5660,
+          "b": 5660,
+          "exact": 5660,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 5803,
+          "aligned": 5660,
           "runs": {
-            "ours": 2816,
-            "theirs": 2816,
-            "alignedTimes": 2816,
-            "alignedValues": 2816,
+            "ours": 2829,
+            "theirs": 2829,
+            "alignedTimes": 2829,
+            "alignedValues": 2829,
             "maxShift": 0
           }
         },
         {
           "voice": "tri",
-          "identical": 966483,
-          "a": 16308,
-          "b": 16333,
+          "identical": 2022854,
+          "a": 16286,
+          "b": 16312,
           "exact": 0,
           "near": 0,
-          "onlyA": 16308,
-          "onlyB": 16333,
+          "onlyA": 16286,
+          "onlyB": 16312,
           "shift": 0,
           "aligned": 0,
           "runs": {
             "ours": 62,
             "theirs": 61,
-            "alignedTimes": 46,
+            "alignedTimes": 24,
             "alignedValues": 0,
-            "maxShift": 358635
+            "maxShift": 358902
           }
         },
         {

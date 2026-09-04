@@ -2,7 +2,7 @@ import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.5.1";
+const VERSION = "0.5.2";
 const UPDATED = "2026-09-04";
 
 /**
@@ -63,6 +63,12 @@ in its own idiom.
 > Since 0.5.0: \`intent\`. A word per role for what it should sound like - a
 > bright lead, a held chord, a hollow bass - the same words on every chip, each
 > chip playing them its own way. Before this every song shared one timbre.
+>
+> Since 0.5.2: the click is gone. A vibrato or a slide across a period
+> boundary on the NES no longer restarts the pulse's phase: the driver moves
+> the period through the sweep unit, the way FamiStudio's engine does, so A4
+> with the default vibrato is as smooth as E4. Only a slide faster than a
+> high byte a frame still clicks, as it must.
 
 How accurate each chip is, and how that is measured, is on its conformance sheet:
 https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md and

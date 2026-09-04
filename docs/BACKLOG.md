@@ -57,7 +57,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P4-4 | Instruments in the API and the wire format | done | as `intent`, words from the catalogue, stored, forked, rendered; skill 0.5.0 |
 | P4-5 | Idioms per chip in the skill | done | skill 0.5.1: the catalogue per word, and a section per chip on how to write for it. There is no MCP server; the skill is the file an agent reads |
 | P4-8 | Intent pickers in the studio, one per row | todo | the studio arranges with the default words |
-| P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | todo | found in P1-2 |
+| P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | done | `NesDriver.smoothHighByte`; golden hash moved; see the log |
 | P4-7 | "Agent-written music sounds good" as a named goal with its own measures | todo | |
 
 ## Operations
@@ -71,6 +71,24 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 Mega Drive, SNES, C64: see the roadmap. Not ticketed until phase 3 is done.
 
 ## Discoveries
+
+**2026-09-04, P4-6.** Blargg's smooth vibrato, as FamiStudio's engine writes
+it: to move a pulse's period high bits by one without the `$4003` write that
+restarts the phase, put the low byte at `$FF` or `$00`, arm the sweep with a
+shift of 7 in the right direction, clock it at once with a `$4017` write in
+5-step mode, disarm it, restore the low byte. The period moves by `period >>
+7`, enough to cross the boundary and too little to cross two. Traced on the
+chip: a vibrato on A4 that used to reset the phase six times a second now
+keeps every edge within the vibrato's own swing. The writes are spaced as a
+CPU spaces them, because `$4017` takes effect three or four cycles after the
+write and the disarm has to land after that; the two pulses are staggered so
+both crossing in one frame do not interleave. The golden hash moved, as it
+should. And the oracle found a new place to disagree: Nes_Snd_Emu clocks the
+forced half frame zero or one cycle after the write where the hardware takes
+three or four, which blargg's own later `apu_test` checks and the chip passes.
+When a pulse's timer happens to reload inside those cycles, the oracle's
+edges sit a few cycles from ours for the rest of the note; it happened once,
+on pulse 2 of the e2e song, and the baseline moved to say so.
 
 **2026-09-04, P4-2, P4-3, P4-4.** The second chip turned the score sketch into
 a design in an afternoon, and the design is smaller than the sketch. The roles

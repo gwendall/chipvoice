@@ -110,10 +110,16 @@ export class NesDriver implements ChipDriver {
           write(at, base + 3, (31 << 3) | hi);
         } else {
           if (control !== lastControl) write(at, base, control);
-          if (lo !== lastLo) write(at, base + 2, lo);
-          // The only road to the high bits, and it restarts the phase. A
-          // slide or a vibrato across the boundary clicks here, as on a NES.
-          if (hi !== lastHi) write(at, base + 3, (31 << 3) | hi);
+          if (hi === lastHi) {
+            if (lo !== lastLo) write(at, base + 2, lo);
+          } else if (Math.abs(hi - lastHi) === 1) {
+            this.smoothHighByte(write, base, at, lo, hi - lastHi, voice === "p1" ? 0 : 40);
+          } else {
+            // The plain road to the high bits, and it restarts the phase: a
+            // slide of more than a high byte a frame clicks here, as on a NES.
+            write(at, base + 2, lo);
+            write(at, base + 3, (31 << 3) | hi);
+          }
         }
         lastControl = control;
       }
@@ -121,6 +127,49 @@ export class NesDriver implements ChipDriver {
       lastHi = hi;
     });
     return out;
+  }
+
+  /**
+   * A pulse's period high bits moved by one without a `$4003` write: blargg's
+   * smooth vibrato, as FamiStudio's engine does it.
+   *
+   * `$4003` is the only register that carries the high bits, and a write to
+   * it restarts the phase - the click every NES vibrato across a period
+   * boundary makes. The sweep unit also writes the period, all eleven bits,
+   * and does not touch the phase. So: put the low byte at `$FF` to go up or
+   * `$00` to go down, arm the sweep with a shift of 7 in that direction, and
+   * clock it at once by writing `$4017` with bit 7 set, which clocks a half
+   * frame immediately. The period gains or loses `period >> 7`, at most 15,
+   * which is enough to cross the boundary in either direction and too little
+   * to cross two. Then the sweep is disarmed with the usual `$08` and the real
+   * low byte written. The frame counter is reset first so no half-frame clock
+   * of its own can land in the middle.
+   *
+   * The writes are spaced as a CPU would space them: `$4017` takes effect
+   * three or four cycles after the write, and the disarm has to come after
+   * that. The two pulses are staggered by `offset` so both crossing in one
+   * frame do not interleave.
+   *
+   * What it costs: the frame counter is left in 5-step mode, and the forced
+   * clock also clocks the other voices' length counters, envelopes and the
+   * triangle's linear counter, all of which this driver keeps halted or at a
+   * constant, so nothing else moves.
+   */
+  private smoothHighByte(
+    write: (at: number, addr: number, value: number) => void,
+    base: number,
+    at: number,
+    lo: number,
+    direction: number,
+    offset: number,
+  ) {
+    const t = at + offset;
+    write(t, 0x4017, 0x40);
+    write(t + 4, base + 2, direction > 0 ? 0xff : 0x00);
+    write(t + 8, base + 1, direction > 0 ? 0x87 : 0x8f);
+    write(t + 12, 0x4017, 0xc0);
+    write(t + 20, base + 1, 0x08);
+    write(t + 24, base + 2, lo);
   }
 
   /**
