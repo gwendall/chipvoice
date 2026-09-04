@@ -33,6 +33,12 @@ it is trusted for and what it is not; in short:
 - Its noise register starts at `1 << 14` and outputs the volume when bit 0 is
   *set*, the inverse of the documented polarity, and it does not clock the
   register exactly while the voice is muted.
+- A `$4017` write with bit 7 set clocks its frame sequencer zero or one cycle
+  after the write; the hardware takes three or four, which blargg's own later
+  `apu_test` checks to the cycle. The driver's smooth vibrato forces a clock
+  that way on every period crossing, and when a pulse's timer reloads inside
+  those cycles the oracle's edges sit a few cycles from ours for the rest of
+  the note.
 - Its triangle steps at once when the length and linear counters reload,
   where the hardware waits for the timer's next expiry, and it starts on the
   other of the sequence's two zeros. From the first note the two sequencers

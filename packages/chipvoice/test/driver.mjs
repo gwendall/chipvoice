@@ -78,15 +78,31 @@ const bytes = (ws) => ws.map((w) => `${w.addr.toString(16)}=${hex(w.value)}`).jo
 
 {
   // A4 is period 253; a vibrato of 0.18 semitones swings it past 255. The
-  // high byte changes, and the only road there is $4003, which restarts the
-  // phase - the click a NES makes, and the reason the hardware's drivers
-  // went through the sweep unit for smooth vibrato.
+  // high byte changes, and $4003 would restart the phase - the click a NES
+  // makes. The driver goes through the sweep unit instead, as the hardware's
+  // own drivers did: low byte to $FF or $00, a sweep of shift 7 in the right
+  // direction, a $4017 write that clocks it at once, then the sweep disarmed
+  // and the real low byte written.
   const { driver, writes, flush } = recorder();
   driver.playNote('p1', { note: 'A4', instrument: { duty: 1, volume: [15], sustain: true, vibrato: { depth: 0.18, rate: 8 } }, duration: 0.5, at: 0 });
   flush();
   const restarts = writes.filter((w) => w.at > 0 && w.addr === 0x4003);
-  const lows = writes.filter((w) => w.at > 0 && w.addr === 0x4002);
-  check('a vibrato across the period high byte restarts the phase through $4003', restarts.length > 0 && lows.length > restarts.length, `${restarts.length} restarts, ${lows.length} low-byte writes`);
+  const clocks = writes.filter((w) => w.at > 0 && w.addr === 0x4017 && w.value === 0xc0);
+  check('a vibrato across the period high byte never writes $4003 again', restarts.length === 0 && clocks.length > 0, `${restarts.length} restarts, ${clocks.length} sweep clocks`);
+  const first = clocks[0].at - 12;
+  const sequence = writes.filter((w) => w.at >= first && w.at <= first + 24).map((w) => `${w.at - first}:${w.addr.toString(16)}=${hex(w.value)}`).join(' ');
+  check('in blargg\'s sequence, spaced as a CPU spaces it', /^0:4017=\$40 4:4002=\$(FF|00) 8:4001=\$8(7|F) 12:4017=\$C0 20:4001=\$08 24:4002=\$[0-9A-F]{2}$/.test(sequence), sequence);
+}
+
+{
+  // A slide of more than a high byte a frame has no smooth road: $4003, and
+  // the click, as on a NES. An octave a frame from A2 (period 1015) jumps the
+  // high byte from 3 to 7 at once.
+  const { driver, writes, flush } = recorder();
+  driver.playNote('p2', { note: 'A2', instrument: { duty: 0, volume: [15], sustain: true, slide: -12 }, duration: 0.1, at: 0 });
+  flush();
+  const restarts = writes.filter((w) => w.at > 0 && w.addr === 0x4007);
+  check('a fast slide still restarts through $4007 where the high byte jumps by more than one', restarts.length > 0, `${restarts.length} restarts`);
 }
 
 // ---- silence, through the channel's own registers
