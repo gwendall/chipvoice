@@ -72,10 +72,24 @@ const CHIPS = [
       'Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit\'s line-out.',
     ],
   },
+  {
+    id: 'snes',
+    machine: 'Super Nintendo',
+    chip: 'S-DSP',
+    sheet: 'docs/chips/snes.md',
+    since: '0.12.0',
+    analog: { done: 0, label: 'none' },
+    driver: { reached: 4, voices: 8 },
+    notes: [
+      'The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR.',
+      'Analog: unmeasured; the DAC and the console\'s filter are a placeholder. A capture of the DSP\'s output would compare directly with the stream.',
+      'Driver: a bank of synthesised samples in BRR, four voices of eight, the echo on the pitched ones.',
+      'Remains: real triads across voices; a unit\'s line-out; SPC export.',
+    ],
+  },
 ];
 
 const PLANNED = [
-  { machine: 'Super Nintendo', chip: 'S-DSP', phase: 6, plan: 'snes_spc or ares compiled to WebAssembly; captures of the DSP\'s serial stream to the DAC exist and are the oracle.' },
   { machine: 'Commodore 64', chip: 'SID 6581, 8580', phase: 7, plan: 'reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B.' },
   { machine: 'Later', chip: 'PC Engine, GBA, Amiga, POKEY, YM2151, YM2610', phase: null, plan: 'After the five, by demand.' },
 ];
@@ -150,7 +164,15 @@ const block = [
   ...rows.map((r) => r.line),
   ...planned.map((p) => p.line),
   '',
-  `Written by \`conform\` on ${new Date().toISOString().slice(0, 10)}. **Digital**: runs of edges that line up with the oracle on step times, which survives an oracle's own conventions. **ROMs**: blargg's test ROMs passing on the harness's own CPU. **Analog**: how much of the stage after the DACs is measured against a real unit. **Driver**: voices the driver reaches. **Done**: the mean of the four; rough by design.`,
+  `Written by \`conform\` on ${new Date().toISOString().slice(0, 10)}. The columns:`,
+  '',
+  '- **Machine**: the console or computer, and **Chip**: its sound chip, as the package names it.',
+  '- **Done**: the mean of the four measures that follow, as a rough single number. The sheet, not this, is the contract.',
+  '- **Digital**: how much of the chip\'s digital output matches the reference emulator it is compared with, as the share of runs of edges that line up on step times, a measure that survives an oracle\'s own conventions. A chip ported from a die-derived core reads 100 %.',
+  '- **ROMs**: the community\'s test ROMs for the chip passing on a CPU the harness carries; a dash when none exist.',
+  '- **Analog**: how much of the stage after the chip\'s DACs - mixing, filters, the console\'s output - is measured against a real unit.',
+  '- **Driver**: the voices the driver plays, of the chip\'s; the rest exist and are verified but no song reaches them.',
+  '- **Sheet**: the chip\'s conformance sheet, with the detail behind every cell; or the roadmap phase a machine is planned for.',
   '',
   [...rows, ...planned].map((r) => r.note).join('\n\n'),
   '<!-- status:end -->',

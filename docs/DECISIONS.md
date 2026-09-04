@@ -295,7 +295,9 @@ for the Game Boy because the verification came from ROMs, not the source;
 here the source *is* the verification, so the port is the point.
 
 **What changed.** The chip's file carries the LGPL 2.1 notice and the package
-README says which file is under which licence.
+README says which file is under which licence. The SNES followed the same
+day: `chips/snes/sdsp.ts` is snes_spc's SPC_DSP ported the same way, the
+second LGPL file, with snes_spc as its oracle.
 
 ## Open
 

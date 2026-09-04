@@ -30,9 +30,9 @@ const SONG_BODY = {
     bpm: { type: "integer", minimum: 40, maximum: 300 },
     chip: {
       type: "string",
-      enum: ["2a03", "dmg", "md"],
+      enum: ["2a03", "dmg", "md", "snes"],
       default: "2a03",
-      description: "The NES's Ricoh 2A03, the Game Boy's DMG APU, or the Mega Drive's YM2612 and SN76489. The same four lines play on any, in its own idiom.",
+      description: "The NES's Ricoh 2A03, the Game Boy's DMG APU, the Mega Drive's YM2612 and SN76489, or the SNES's S-DSP. The same four lines play on any, in its own idiom.",
     },
     intent: INTENT_BODY,
     order: {
@@ -86,7 +86,7 @@ export function openApiSpec() {
       version: "0.1.0",
       description:
         "Write music for the sound chips of the old machines as four lines of text, get back a link and an MP3. " +
-        "Three chips: the NES's 2A03, the Game Boy's APU and the Mega Drive's YM2612 with its PSG, each emulated at the clock level; what has been verified " +
+        "Four chips: the NES's 2A03, the Game Boy's APU, the Mega Drive's YM2612 with its PSG and the SNES's S-DSP, each emulated at the clock level; what has been verified " +
         "against the hardware is on each chip's conformance sheet under https://github.com/gwendall/chipvoice/blob/main/docs/chips/",
       license: { name: "MIT" },
     },

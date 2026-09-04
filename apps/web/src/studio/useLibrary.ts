@@ -187,7 +187,7 @@ export function useLibrary() {
         CHANNELS.map((c) => [c, String(pattern[c] ?? "").trim().split(/\s+/).filter(Boolean)]),
       ) as unknown as Track;
       setPublished(song);
-      return { track, bpm: song.bpm, chip: song.chip === "dmg" || song.chip === "md" ? song.chip : "2a03", title: song.title ?? "", song };
+      return { track, bpm: song.bpm, chip: song.chip === "dmg" || song.chip === "md" || song.chip === "snes" ? song.chip : "2a03", title: song.title ?? "", song };
     } catch {
       return null;
     }

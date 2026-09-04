@@ -52,7 +52,7 @@ Which oracle each chip gets:
 | Game Boy DMG | | Gb_Snd_Emu (blargg), in use; SameBoy, to come | blargg's `dmg_sound`, twelve of twelve on the harness's SM83; `cgb_sound` when there is a CGB |
 | YM2612, YM3438 | Logic captures of the digital output exist; Nuked-OPN2 was derived from the die | Nuked-OPN2, in use: the chip is its port and identical to it on every voice | none exist |
 | SN76489 | | MAME `sn76496`, to come | none exist |
-| SNES S-DSP | The DSP outputs a serial digital stream to an external DAC, and captures of it exist | snes_spc (blargg), ares | |
+| SNES S-DSP | The DSP outputs a serial digital stream to an external DAC, and captures of it exist | snes_spc (blargg), in use: the chip is its port and identical to it on the stream | none exist |
 | SID 6581, 8580 | Analog. No digital 100 % exists | reSID-fp, with per-chip profiles | |
 
 For the chips whose reference core came from the die or was matched to captures,

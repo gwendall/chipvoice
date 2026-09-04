@@ -233,6 +233,14 @@ operators for a host that wants its own. Its sheet is
 package's licence field says `(MIT AND LGPL-2.1-or-later)` and everything else
 is MIT.
 
+The fourth is the SNES's, `snesChip`: an S-DSP at `src/chips/snes/sdsp.ts` that
+is snes_spc's ported line for line, the second LGPL file, and identical to it
+sample for sample on the DSP's output stream. Everything on it is a sample:
+`Chip.create({ chip: "snes" })` plays waveforms and drums the driver synthesises
+and encodes to BRR (`encodeBrr` is exported), with the machine's echo on.
+`Instrument.sample` names a sample in the driver's bank. Its sheet is
+[`docs/chips/snes.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md).
+
 ## The song, as bytes: VGM
 
 A NES saw a song as register writes, and so does this library, so the most honest

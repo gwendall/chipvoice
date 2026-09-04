@@ -38,10 +38,10 @@ way for anyone, human or machine, to pick the instrument up and play it.
 ## What it is
 
 - **The chips, emulated at the clock level**, running in an AudioWorklet in a
-  browser or rendered offline to a file on a server. Three so far: the NES's
-  Ricoh 2A03, the Game Boy's DMG APU, and the Mega Drive's YM2612 with its
-  SN76489, the FM chip a port of a reading of the die. The SNES and the C64
-  are on the [roadmap](docs/ROADMAP.md).
+  browser or rendered offline to a file on a server. Four so far: the NES's
+  Ricoh 2A03, the Game Boy's DMG APU, the Mega Drive's YM2612 with its
+  SN76489, and the SNES's S-DSP, the last two ports of the reference cores
+  and identical to them. The C64 is on the [roadmap](docs/ROADMAP.md).
 - **A driver and a tracker on top**, so a tune is four lines of text - lead,
   chord, bass, percussion - and a word per line for what it should sound like.
   The same four lines and the same words play on every chip, each in its own
@@ -71,11 +71,19 @@ hand. Each chip's sheet has the detail behind every cell, and
 | NES, Famicom | Ricoh 2A03 | **82 %** | ✅ 98 % | ✅ 29/29 | 🟡 mixer | 🟡 4/5 | [2a03](docs/chips/2a03.md) |
 | Game Boy | DMG APU | **74 %** | ✅ 98 % | ✅ 12/12 | ❌ none | ✅ 4/4 | [dmg](docs/chips/dmg.md) |
 | Mega Drive, Genesis | YM2612 + SN76489 | **35 %** | ✅ 100 % | ⬜ | ❌ none | 🟡 4/10 | [md](docs/chips/md.md) |
-| Super Nintendo | S-DSP | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 6 |
+| Super Nintendo | S-DSP | **38 %** | ✅ 100 % | ⬜ | ❌ none | 🟡 4/8 | [snes](docs/chips/snes.md) |
 | Commodore 64 | SID 6581, 8580 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 7 |
 | Later | PC Engine, GBA, Amiga, POKEY, YM2151, YM2610 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | later |
 
-Written by `conform` on 2026-09-04. **Digital**: runs of edges that line up with the oracle on step times, which survives an oracle's own conventions. **ROMs**: blargg's test ROMs passing on the harness's own CPU. **Analog**: how much of the stage after the DACs is measured against a real unit. **Driver**: voices the driver reaches. **Done**: the mean of the four; rough by design.
+Written by `conform` on 2026-09-04. The columns:
+
+- **Machine**: the console or computer, and **Chip**: its sound chip, as the package names it.
+- **Done**: the mean of the four measures that follow, as a rough single number. The sheet, not this, is the contract.
+- **Digital**: how much of the chip's digital output matches the reference emulator it is compared with, as the share of runs of edges that line up on step times, a measure that survives an oracle's own conventions. A chip ported from a die-derived core reads 100 %.
+- **ROMs**: the community's test ROMs for the chip passing on a CPU the harness carries; a dash when none exist.
+- **Analog**: how much of the stage after the chip's DACs - mixing, filters, the console's output - is measured against a real unit.
+- **Driver**: the voices the driver plays, of the chip's; the rest exist and are verified but no song reaches them.
+- **Sheet**: the chip's conformance sheet, with the detail behind every cell; or the roadmap phase a machine is planned for.
 
 **NES, Famicom** (Ricoh 2A03, since 0.1.0). Digital: Nes_Snd_Emu 0.1.7 (blargg), 13 logs, 92.2M cycles; runs aligned on step times 97.7 % (6665 of 6820); identical cycles 3.9 %, the rest the oracle's own conventions, read on the sheet. ROMs: blargg's `apu_test`, `apu_reset`, `dmc_tests`, `apu_2005`, 29 of 29 pass. Analog: the mixer measured against blargg's recordings of his console; the filters and the DAC after them unmeasured, and want a unit's line-out. Cancellation against the DMC: square -32.7 dB (console -32.2), triangle -33.0 dB (console -30.9), noise -13.8 dB (console -16.2), dmc -31.0 dB (console -27.2). Driver: every voice but the DMC, which no instrument reaches yet. Remains: a second oracle for the envelope, the sweep and the triangle near a clock; a corpus from real games; a unit for the filters.
 
@@ -83,7 +91,7 @@ Written by `conform` on 2026-09-04. **Digital**: runs of edges that line up with
 
 **Mega Drive, Genesis** (YM2612 + SN76489, since 0.11.0). Digital: Nuked-OPN2 1.0.12 (Nuke.YKT), 7 logs, 1798.7M cycles; runs aligned on step times 100.0 % (36580 of 36580); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the die. The PSG is from the documents and has no oracle yet. Analog: unmeasured; Nuked's own DAC model is marked unverified, the mix and the Model 1 filter are placeholders. Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten. Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit's line-out.
 
-**Super Nintendo** (S-DSP). Planned, phase 6: snes_spc or ares compiled to WebAssembly; captures of the DSP's serial stream to the DAC exist and are the oracle.
+**Super Nintendo** (S-DSP, since 0.12.0). Digital: snes_spc 0.9.0 (blargg), 5 logs, 23.9M cycles; runs aligned on step times 100.0 % (183 of 183); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR. Analog: unmeasured; the DAC and the console's filter are a placeholder. A capture of the DSP's output would compare directly with the stream. Driver: a bank of synthesised samples in BRR, four voices of eight, the echo on the pitched ones. Remains: real triads across voices; a unit's line-out; SPC export.
 
 **Commodore 64** (SID 6581, 8580). Planned, phase 7: reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B.
 
@@ -128,8 +136,10 @@ against his recordings of a real NES as well as the console did. The Game Boy's
 is [`docs/chips/dmg.md`](docs/chips/dmg.md): twelve of twelve `dmg_sound` ROMs
 on an SM83. The Mega Drive's is [`docs/chips/md.md`](docs/chips/md.md): its
 YM2612 is identical to Nuked-OPN2, a reading of the die, on every cycle of the
-corpus. What still says **unverified** on all three, honestly: the analog
-stage, which needs a real unit's line-out. The [roadmap](docs/ROADMAP.md) is the order
+corpus. The SNES's is [`docs/chips/snes.md`](docs/chips/snes.md): its S-DSP is
+identical to snes_spc on every sample of its output stream. What still says
+**unverified** on all four, honestly: the analog stage, which needs a real
+unit's line-out. The [roadmap](docs/ROADMAP.md) is the order
 in which those lines change, and the [backlog](docs/BACKLOG.md) is what is being
 done about it this week.
 

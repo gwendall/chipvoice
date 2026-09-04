@@ -182,11 +182,14 @@ arranger (P5-10), a PSG oracle (P5-8), a Model 1's line-out (P5-9).
 
 ### Phase 6. SNES
 
-The S-DSP through snes_spc or ares, a BRR encoder, and the sample instrument
-shape. The hardest chip for the score, not for the emulation: everything is a
-sample, chords are real triads across eight voices, and the echo is part of the
-sound. Captures of the DSP's serial output exist, so the digital 100 % is
-achievable and already achieved by the references.
+Done in 0.12.0, the way the Mega Drive was: snes_spc's S-DSP ported line for
+line and compared with snes_spc itself, built natively, on the DSP's output
+stream - identical sample for sample on every log, echo and FIR included, on
+the port's first run. A BRR encoder that searches every filter and shift
+against the chip's own decoder; the sample instrument shape as a name in the
+driver's bank (`Instrument.sample`) and `ChipDriver.memory()` for the bank
+itself; the echo on as the signature. Still to come: real triads across
+voices for the chord (P6-10), SPC export (P6-9), a capture of a unit (P6-8).
 
 ### Phase 7. C64
 
@@ -206,7 +209,7 @@ five archetypes, and only as additions to a proven shape.
 | Ricoh 2A03 | NES, Famicom | Tables per frame | Own, `dsp.ts` | MIT | Nes_Snd_Emu, Visual2A03 as arbiter |
 | DMG APU | Game Boy | Tables plus wavetable | Own, `gb/dsp.ts`, from Pan Docs and blargg's notes | MIT | blargg's `dmg_sound` ROMs, Gb_Snd_Emu; SameBoy to come |
 | YM2612 + SN76489 | Mega Drive | FM plus PSG | Nuked-OPN2 ported line for line (`md/ym2612.ts`); the PSG from the documents | LGPL 2.1 for the one file, MIT for the rest | Nuked itself, die-derived: identical on every voice; the PSG's oracle to come |
-| S-DSP | SNES | Samples | snes_spc or ares, WebAssembly | LGPL, ISC | Captures of the serial DAC stream |
+| S-DSP | SNES | Samples | snes_spc's SPC_DSP ported line for line (`snes/sdsp.ts`) | LGPL 2.1 for the one file, MIT for the rest | snes_spc itself, written against the hardware's output: identical on the stream; a capture of a unit to come |
 | SID 6581, 8580 | C64 | Analog filter | reSID-fp or own | GPL, or MIT if rewritten | reSID-fp per profile; analog tolerance only |
 
 ## Not on the roadmap

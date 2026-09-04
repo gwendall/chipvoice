@@ -187,6 +187,8 @@ export interface FrameState {
   wave: number[] | null;
   /** For an FM voice: the patch; null for the chip's own default. */
   fm: FmPatch | null;
+  /** For a sample voice: the name of a sample in the chip's bank; null for the chip's own default. */
+  sample: string | null;
 }
 
 /**
@@ -241,6 +243,12 @@ export interface ChipDriver {
   note(voice: string, frames: NoteFrame[]): RegisterEvent[];
   /** Quiet, through the voice's own registers, on that cycle. */
   noteOff(voice: string, at: number): RegisterEvent[];
+  /**
+   * What a program copied into the chip's memory before playing: samples,
+   * for a chip that plays them. Loaded at power-on, before `powerOn`'s
+   * writes.
+   */
+  memory?(): { address: number; bytes: Uint8Array }[];
 }
 
 export interface ChipDefinition {

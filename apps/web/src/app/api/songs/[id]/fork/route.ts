@@ -70,7 +70,7 @@ export async function POST(
     bpm: parsed.data.bpm ?? parent.song.bpm,
     patterns: parsed.data.patterns ?? parent.song.patterns,
     order: parsed.data.order ?? parent.song.order,
-    chip: (parsed.data.chip ?? parent.song.chip) as "2a03" | "dmg" | "md",
+    chip: (parsed.data.chip ?? parent.song.chip) as "2a03" | "dmg" | "md" | "snes",
     intent: parsed.data.intent ?? parent.song.intent ?? undefined,
     author: parsed.data.author ?? undefined,
   };
