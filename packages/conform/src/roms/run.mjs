@@ -2,24 +2,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Nes } from './nes.mjs';
+import { GameBoy } from './gb.mjs';
 
 /**
- * Runs blargg's APU test ROMs against the chip and prints what each one said.
+ * Runs blargg's APU test ROMs against the chips and prints what each one said.
  *
- *   node src/roms/run.mjs [--only <name>] [--json <file>] [--sheet <file>]
+ *   node src/roms/run.mjs [--chip 2a03|dmg] [--only <name>] [--json <file>] [--sheet <file>]
  *
  * Every ROM under `roms/` is run for up to thirty seconds of emulated time.
- * The newer ones speak blargg's `$6000` protocol: `$80` there means running,
- * `$81` means it wants the reset button - which is given, an eighth of a
- * second later - and anything below `$80` is the result, 0 for passed and
- * otherwise the code the ROM's readme explains, with the text the ROM wrote
- * at `$6004`. The older ones print to the screen and park the CPU in a jump
- * to itself; their screen is read back and "Passed" or "Failed #n" is the
- * verdict.
+ * The newer NES ones speak blargg's `$6000` protocol: `$80` there means
+ * running, `$81` means it wants the reset button - which is given, an eighth
+ * of a second later - and anything below `$80` is the result, 0 for passed
+ * and otherwise the code the ROM's readme explains, with the text the ROM
+ * wrote at `$6004`. The older ones print to the screen and park the CPU in a
+ * jump to itself; their screen is read back and "Passed" or "Failed #n" is
+ * the verdict. The Game Boy ones speak the same protocol at `$A000`.
  */
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'roms');
 const CPU_HZ = 1789773;
 const LIMIT = 30 * CPU_HZ;
+const GB_HZ = 4194304;
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -27,15 +29,41 @@ const option = (name, fallback) => {
   return i >= 0 ? args[i + 1] : fallback;
 };
 const only = option('only', null);
+const chip = option('chip', '2a03');
 
-const SUITES = ['apu_test', 'apu_reset', 'dmc_tests', 'apu_2005'];
+const SUITES = chip === 'dmg' ? ['dmg_sound'] : ['apu_test', 'apu_reset', 'dmc_tests', 'apu_2005'];
+const EXT = chip === 'dmg' ? '.gb' : '.nes';
+
+/** A dmg_sound ROM: the `$A000` protocol, no reset button, no screen to read. */
+function runGameBoy(rom) {
+  const gb = new GameBoy(rom);
+  gb.powerOn();
+  const step = GB_HZ / 100;
+  for (let ran = 0; ran < 30 * GB_HZ; ran += step) {
+    gb.run(step);
+    const r = gb.result();
+    if (r.valid && r.status !== 0x80) return { status: r.status, text: r.text, cycles: gb.cpu.cycles, resets: 0 };
+    if (!r.valid && gb.halted()) break;
+  }
+  return { status: -1, text: gb.result().text, cycles: gb.cpu.cycles, resets: 0 };
+}
+
 const results = [];
 for (const suite of SUITES) {
   const dir = path.join(ROOT, suite);
   if (!fs.existsSync(dir)) continue;
-  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.nes')).sort()) {
-    const name = `${suite}/${file.replace(/\.nes$/, '')}`;
+  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(EXT)).sort()) {
+    const name = `${suite}/${file.replace(/\.(nes|gb)$/, '')}`;
     if (only && !name.includes(only)) continue;
+    if (chip === 'dmg') {
+      const outcome = runGameBoy(new Uint8Array(fs.readFileSync(path.join(dir, file))));
+      const passed = outcome.status === 0;
+      const verdict = outcome.status < 0 ? 'HUNG' : passed ? 'PASS' : 'FAIL';
+      const detail = outcome.status < 0 ? `no result in thirty seconds${outcome.text ? `: ${outcome.text.replace(/\s+/g, ' ')}` : ''}` : `code ${outcome.status}${outcome.text ? `: ${outcome.text.replace(/\s+/g, ' ')}` : ''}`;
+      console.log(`${verdict}  ${name.padEnd(32)} ${detail}`);
+      results.push({ name, status: outcome.status, passed, text: outcome.text, resets: 0 });
+      continue;
+    }
     const rom = new Uint8Array(fs.readFileSync(path.join(dir, file)));
     const nes = new Nes(rom);
     nes.powerOn();
@@ -108,7 +136,7 @@ if (sheetPath) {
   if (begin < 0 || end < 0) throw new Error(`${sheetPath} has no roms markers`);
   const lines = [
     '<!-- roms:begin -->',
-    `Run by \`conform\`'s 6502 fixture on ${new Date().toISOString().slice(0, 10)}: ${passed} of ${results.length} pass.`,
+    `Run by \`conform\`'s ${chip === 'dmg' ? 'SM83' : '6502'} fixture on ${new Date().toISOString().slice(0, 10)}: ${passed} of ${results.length} pass.`,
     '',
     '| ROM | Result | What it said |',
     '| --- | --- | --- |',

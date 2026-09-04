@@ -40,7 +40,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
-| P3-1 | DMG APU from SameBoy's `apu.c` (MIT), with SameBoy as oracle | todo | |
+| P3-1 | DMG APU from Pan Docs and blargg's notes, verified by his dmg_sound ROMs on an SM83 fixture | doing | |
 | P3-2 | `ChipSpec`, `RegisterEvent` and the instrument model rewritten against two chips | todo | |
 | P3-3 | The Game Boy sheet, generated | todo | |
 
