@@ -138,6 +138,8 @@ Done when the sheet meets the definition in CONFORMANCE.md.
    corpus from real games (GBS files on the SM83) are P3-4.
 2. The wave channel forces the wavetable instrument shape. Rewrite `ChipSpec`,
    `RegisterEvent` and the driver's instrument model against two real chips.
+   Done in 0.8.0: the driver splits at the frame, each chip has its own
+   `ChipDriver`, and the same four lines play on both.
 3. A sheet, from the harness, before the chip is exposed in the API. Done:
    `docs/chips/dmg.md`.
 

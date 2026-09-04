@@ -1,5 +1,6 @@
-import { getChip, type VoiceSpec } from "./chip.js";
+import { chips, getChip, type VoiceSpec } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
+import { gbChip } from "./chips/gb/index.js";
 import { noteToFreq } from "./driver.js";
 import type { Pattern, Song } from "./sequencer.js";
 import { loopSeconds } from "./render.js";
@@ -56,13 +57,6 @@ const PERCUSSION = new Set(["K", "S", "H", "O"]);
 const TRACKS = ["bass", "lead", "chord", "perc"] as const;
 type TrackName = (typeof TRACKS)[number];
 
-/** Which voice each track lands on, for the 2A03's four. */
-const TRACK_VOICE: Record<TrackName, string> = {
-  bass: "tri",
-  lead: "p1",
-  chord: "p2",
-  perc: "noi",
-};
 
 const tokens = (line: string) => line.trim().split(/\s+/).filter(Boolean);
 
@@ -92,9 +86,9 @@ export function validateSong(song: unknown): ValidationResult {
   const s = song as Partial<Song> & { chip?: string };
 
   const chipId = s.chip ?? "2a03";
-  const chip = chipId === "2a03" ? nesChip : getChip(chipId);
+  const chip = chipId === "2a03" ? nesChip : chipId === "dmg" ? gbChip : getChip(chipId);
   if (!chip) {
-    return fail(`unknown chip "${chipId}". This build knows: 2a03`);
+    return fail(`unknown chip "${chipId}". This build knows: ${chips().map((c) => c.id).join(", ")}`);
   }
   const voices = new Map<string, VoiceSpec>(chip.spec.voices.map((v) => [v.id, v]));
 
@@ -121,7 +115,7 @@ export function validateSong(song: unknown): ValidationResult {
   }
 
   s.patterns.forEach((pattern, patternIndex) => {
-    checkPattern(pattern, patternIndex, issues, voices, s.patterns!.length > 1);
+    checkPattern(pattern, patternIndex, issues, voices, chip.spec.roles, s.patterns!.length > 1);
   });
 
   const errors = issues.filter((i) => i.level === "error");
@@ -146,6 +140,8 @@ function checkPattern(
   patternIndex: number,
   issues: Issue[],
   voices: Map<string, VoiceSpec>,
+  /** Which voice each track lands on: the chip's map of the song's roles. */
+  roles: Record<TrackName, string>,
   numbered: boolean,
 ) {
   const where = numbered ? `pattern ${patternIndex}, ` : "";
@@ -194,7 +190,7 @@ function checkPattern(
   }
 
   for (const track of TRACKS) {
-    const voice = voices.get(TRACK_VOICE[track]);
+    const voice = voices.get(roles[track]);
     tokens(pattern[track]).forEach((token, step) => {
       if (token === "." || token === "=") return;
 

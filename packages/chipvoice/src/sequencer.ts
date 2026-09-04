@@ -1,3 +1,4 @@
+import type { Role } from "./chip.js";
 import type { Channel, Instrument, NoteSink } from "./driver.js";
 
 /**
@@ -21,6 +22,9 @@ export interface Pattern {
   chordShape: number[][];
   perc: string;
 }
+
+/** The 2A03's map of a song's roles onto its voices, the default. */
+export const NES_ROLES: Record<Role, string> = { lead: "p1", chord: "p2", bass: "tri", perc: "noi" };
 
 /** One voice per percussion token. */
 export interface PercussionKit {
@@ -141,17 +145,20 @@ export class Sequencer {
   private currentTime: () => number;
   /** False when something else advances the clock and calls `pump`. */
   private live: boolean;
+  /** Which voice each of the song's four lines plays on: the chip's map. */
+  private readonly roles: Record<Role, string>;
 
   constructor(
     apu: NoteSink,
     arbiter: ChannelClaim,
     currentTime: () => number,
-    options: { live?: boolean } = {},
+    options: { live?: boolean; roles?: Record<Role, string> } = {},
   ) {
     this.apu = apu;
     this.arbiter = arbiter;
     this.currentTime = currentTime;
     this.live = options.live ?? true;
+    this.roles = options.roles ?? NES_ROLES;
   }
 
   get isPlaying() {
@@ -264,9 +271,9 @@ export class Sequencer {
       clearTimeout(this.timer);
       this.timer = null;
     }
-    this.apu.stop("p1");
-    this.apu.stop("p2");
-    this.apu.stop("tri");
+    this.apu.stop(this.roles.lead);
+    this.apu.stop(this.roles.chord);
+    this.apu.stop(this.roles.bass);
     this.song = null;
   }
 
@@ -314,9 +321,10 @@ export class Sequencer {
     const song = this.song!;
     const pattern = this.compiled[song.order[this.orderIndex]];
 
+    const { lead: leadVoice, chord: chordVoice, bass: bassVoice, perc: percVoice } = this.roles;
     const bass = pattern.bass.get(this.step);
-    if (bass && bass.token !== "=" && this.arbiter.canPlay("tri", at)) {
-      this.apu.playNote("tri", {
+    if (bass && bass.token !== "=" && this.arbiter.canPlay(bassVoice, at)) {
+      this.apu.playNote(bassVoice, {
         note: bass.token,
         instrument: song.bass,
         duration: bass.length * stepTime * 0.94,
@@ -325,11 +333,11 @@ export class Sequencer {
     }
 
     const lead = pattern.lead.get(this.step);
-    if (lead && this.arbiter.canPlay("p1", at)) {
+    if (lead && this.arbiter.canPlay(leadVoice, at)) {
       if (lead.token === "=") {
-        this.apu.stop("p1", at);
+        this.apu.stop(leadVoice, at);
       } else {
-        this.apu.playNote("p1", {
+        this.apu.playNote(leadVoice, {
           note: lead.token,
           instrument: song.lead,
           duration: lead.length * stepTime * 0.96,
@@ -340,11 +348,11 @@ export class Sequencer {
     }
 
     const chord = pattern.chord.get(this.step);
-    if (chord && chord.token !== "=" && this.arbiter.canPlay("p2", at)) {
+    if (chord && chord.token !== "=" && this.arbiter.canPlay(chordVoice, at)) {
       const shape =
         pattern.chordShape[this.chordSlot % pattern.chordShape.length];
       this.chordSlot++;
-      this.apu.playNote("p2", {
+      this.apu.playNote(chordVoice, {
         note: chord.token,
         instrument: { ...song.chord, arp: shape, arpLoop: true },
         duration: chord.length * stepTime * 0.98,
@@ -354,11 +362,11 @@ export class Sequencer {
     }
 
     const perc = pattern.perc.get(this.step);
-    if (perc && this.arbiter.canPlay("noi", at)) {
+    if (perc && this.arbiter.canPlay(percVoice, at)) {
       const kit = song.perc ?? DEFAULT_KIT;
       const voice = kit[perc.token as keyof PercussionKit];
       if (voice) {
-        this.apu.playNote("noi", {
+        this.apu.playNote(percVoice, {
           note: voice.note,
           instrument: voice.instrument,
           duration: voice.duration,

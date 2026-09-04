@@ -1,5 +1,6 @@
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { CLOCK_HZ, GB_PROCESSOR_NAME, GbApu, GbApuCore } from "./dsp.js";
+import { GbDriver } from "./driver.js";
 import { WORKLET_SOURCE } from "./worklet-inline.js";
 
 /**
@@ -9,9 +10,8 @@ import { WORKLET_SOURCE } from "./worklet-inline.js";
  * waveform out of RAM rather than a fixed shape, which is the first
  * instrument that is not a table of frame values.
  *
- * The chip is here in full and the harness verifies it; the driver does not
- * reach it yet. That is ticket P3-2, and it is the rewrite of the driver's
- * instrument model against two real chips that the roadmap asked for.
+ * The chip is here in full and the harness verifies it; `GbDriver` is how a
+ * song reaches it, with the bass on the wave channel.
  */
 export const GB_DMG: ChipSpec = {
   id: "dmg",
@@ -29,12 +29,16 @@ export const GB_DMG: ChipSpec = {
     // 2A03's sixteen.
     { id: "ch4", label: "Noise", kind: "noise", notes: "period" },
   ],
+  // The bass on the wave channel, where Game Boy music put it: it reaches
+  // an octave below the pulses and its waveform is the song's to choose.
+  roles: { lead: "ch1", chord: "ch2", bass: "ch3", perc: "ch4" },
 };
 
 export const gbChip: ChipDefinition = {
   spec: GB_DMG,
   create: (sampleRate: number) => new GbApuCore(sampleRate),
   digital: () => new GbApu(),
+  driver: () => new GbDriver(),
   workletSource: WORKLET_SOURCE,
   processorName: GB_PROCESSOR_NAME,
 };

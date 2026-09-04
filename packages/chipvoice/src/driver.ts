@@ -4,23 +4,36 @@
  * Real NES games did not "play a sound"; a driver rewrote the APU registers
  * every NMI, sixty times a second. Instruments here are the same idea, and the
  * same shape FamiTracker settled on: per-frame tables for volume, arpeggio,
- * pitch and duty. Everything is expanded into writes stamped with a CPU cycle
- * and handed to a chip, which applies each one on the cycle it names.
+ * pitch and duty. Everything is expanded into frames stamped with a cycle and
+ * handed to the chip's own driver, which knows what each frame costs in bytes
+ * to which addresses, and then to the chip, which applies each write on the
+ * cycle it names.
  *
- * This layer is 2A03-shaped and will move when a second chip arrives: `duty`
- * and the two period formulas below are pulse-and-triangle facts, not facts
- * about chips. What survives is the idea - an instrument is a table read one
- * frame at a time.
+ * The split is the one the second chip forced. Reading a table, an arpeggio,
+ * a slide, a vibrato, the frame clock: one piece of code, here. The 2A03's
+ * sweep byte and the Game Boy's retrigger-on-volume: each chip's, in its own
+ * `ChipDriver`. What survives across chips is the idea - an instrument is a
+ * table read one frame at a time - and the frame it produces.
  */
 
-import { type ChipCore, type RegisterEvent, type WorkletMessage } from "./chip.js";
-import { CPU_HZ } from "./chips/nes/dsp.js";
+import {
+  type ChipCore,
+  type ChipDefinition,
+  type ChipDriver,
+  type NoteFrame,
+  type RegisterEvent,
+  type WorkletMessage,
+} from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
 
 export const FRAME_RATE = 60;
 export const FRAME_TIME = 1 / FRAME_RATE;
 
-export type Channel = "p1" | "p2" | "tri" | "noi";
+/**
+ * A voice's id on the chip in use: `p1`, `p2`, `tri`, `noi` on the 2A03,
+ * `ch1` to `ch4` on the Game Boy. `ChipSpec.voices` lists them.
+ */
+export type Channel = string;
 
 const NOTE_OFFSETS: Record<string, number> = {
   C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11,
@@ -37,17 +50,7 @@ export function noteToFreq(note: string): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-/** Pulse and noise: f = CPU / (16 * (t + 1)). */
-export function freqToPulsePeriod(freq: number): number {
-  if (freq <= 0) return 0x7ff;
-  return Math.max(0, Math.min(0x7ff, Math.round(CPU_HZ / (16 * freq) - 1)));
-}
-
-/** The triangle divides by 32, which is why it sounds an octave lower. */
-export function freqToTrianglePeriod(freq: number): number {
-  if (freq <= 0) return 0x7ff;
-  return Math.max(0, Math.min(0x7ff, Math.round(CPU_HZ / (32 * freq) - 1)));
-}
+export { freqToPulsePeriod, freqToTrianglePeriod } from "./chips/nes/driver.js";
 
 /**
  * A per-frame instrument definition. Volume is 0-15, arpeggio is in semitones,
@@ -67,6 +70,12 @@ export interface Instrument {
   arpLoop?: boolean;
   vibrato?: { depth: number; rate: number; delay?: number };
   noiseMode?: boolean;
+  /**
+   * For a wavetable voice, the waveform: 32 samples, 0 to 15. The first
+   * instrument attribute that is not a table of frames; a chip without such a
+   * voice ignores it, and a wavetable voice without it plays a triangle.
+   */
+  wave?: number[];
 }
 
 /**
@@ -83,7 +92,7 @@ export interface NoteSink {
 }
 
 export interface PlayNoteOptions {
-  /** Note name or frequency in Hz. On the noise channel, a period index 0-15. */
+  /** Note name or frequency in Hz. On a noise voice, a period index 0-15. */
   note: string | number;
   instrument: Instrument;
   /** Seconds. */
@@ -99,12 +108,29 @@ export interface PlayNoteOptions {
 export class APU implements NoteSink {
   private node: AudioWorkletNode | null = null;
   private readonly ctx: AudioContext;
+  /** The chip this drives. */
+  readonly chip: ChipDefinition;
+  private readonly encoder: ChipDriver;
+  private readonly noiseVoices: Set<string>;
   private queue: RegisterEvent[] = [];
   private flushHandle: number | null = null;
   ready = false;
 
-  constructor(ctx: AudioContext) {
+  /*
+   * The default chip is imported, not looked up.
+   *
+   * It used to come from the registry, which a side-effecting import filled -
+   * and the package declares `sideEffects: false`, so every bundler was free
+   * to drop that import. It did: in the built studio the registry was empty,
+   * `init` returned false, and `Chip.create()` resolved to null with no
+   * error anywhere. The registry is still there for introspection; nothing
+   * on the path that has to work depends on it.
+   */
+  constructor(ctx: AudioContext, chip: ChipDefinition = nesChip) {
     this.ctx = ctx;
+    this.chip = chip;
+    this.encoder = chip.driver();
+    this.noiseVoices = new Set(chip.spec.voices.filter((v) => v.notes === "period").map((v) => v.id));
   }
 
   /**
@@ -118,17 +144,7 @@ export class APU implements NoteSink {
    */
   async init(destination: AudioNode): Promise<boolean> {
     if (!this.ctx.audioWorklet) return false;
-    /*
-     * The chip is imported, not looked up.
-     *
-     * It used to come from the registry, which a side-effecting import filled -
-     * and the package declares `sideEffects: false`, so every bundler was free
-     * to drop that import. It did: in the built studio the registry was empty,
-     * `init` returned false, and `Chip.create()` resolved to null with no
-     * error anywhere. The registry is still there for introspection; nothing
-     * on the path that has to work depends on it.
-     */
-    const chip = nesChip;
+    const chip = this.chip;
     const url = URL.createObjectURL(
       new Blob([chip.workletSource], { type: "application/javascript" }),
     );
@@ -205,42 +221,33 @@ export class APU implements NoteSink {
    * rate, which is why the offline driver needs no override here.
    */
   protected cycleAt(time: number) {
-    return Math.max(0, Math.round(time * CPU_HZ));
+    return Math.max(0, Math.round(time * this.chip.spec.clockHz));
   }
 
   /**
-   * Expands an instrument into per-frame register writes. Only actual changes
-   * are emitted, so a flat sustained note costs one write.
+   * Expands an instrument into frames, and the frames into the chip's writes.
    */
   playNote(channel: Channel, opts: PlayNoteOptions) {
     if (!this.ready) return;
     const inst = opts.instrument;
     const start = opts.at ?? this.ctx.currentTime;
-    const isNoiseChannel = channel === "noi";
-    // On the noise channel `note` is a period index 0-15, not a pitch.
-    const baseFreq = isNoiseChannel
+    const isNoise = this.noiseVoices.has(channel);
+    // On a noise voice `note` is a period index 0-15, not a pitch.
+    const baseFreq = isNoise
       ? 0
       : typeof opts.note === "string"
         ? noteToFreq(opts.note)
         : opts.note;
-    const noiseBase = isNoiseChannel ? Number(opts.note) : 0;
-    if (!isNoiseChannel && !baseFreq) return;
+    const noiseBase = isNoise ? Number(opts.note) : 0;
+    if (!isNoise && !baseFreq) return;
 
     const frames = Math.max(1, Math.round(opts.duration * FRAME_RATE));
     const gain = opts.gain ?? 1;
     const detune = opts.detune ?? 0;
-    const isTriangle = channel === "tri";
-    const isNoise = isNoiseChannel;
-
-    // The channel's register block, and what this note last wrote to it, so
-    // a held note costs nothing after its first frame.
-    const base =
-      channel === "p1" ? 0x4000 : channel === "p2" ? 0x4004 : channel === "tri" ? 0x4008 : 0x400c;
-    let lastControl = -1;
-    let lastLo = -1;
-    let lastHi = -1;
+    const wave = inst.wave ?? null;
     let pitchAcc = 0;
 
+    const states: NoteFrame[] = [];
     for (let f = 0; f < frames; f++) {
       const at = this.cycleAt(start + f * FRAME_TIME);
 
@@ -269,79 +276,29 @@ export class APU implements NoteSink {
         }
       }
 
-      const freq = isNoise ? 0 : baseFreq * Math.pow(2, semis / 12);
-      let period = isNoise
-        ? 0
-        : isTriangle
-          ? freqToTrianglePeriod(freq)
-          : freqToPulsePeriod(freq);
       if (inst.pitch && inst.pitch.length > 0) {
         pitchAcc += inst.pitch[Math.min(f, inst.pitch.length - 1)];
-        period = Math.max(0, Math.min(0x7ff, period + Math.round(pitchAcc)));
       }
 
-      if (isNoise) {
-        // Noise has 16 periods rather than a frequency, so arpeggio and slide
-        // walk the period index instead of transposing.
-        const idx = Math.max(0, Math.min(15, Math.round(noiseBase + semis)));
-        const control = 0x30 | vol; // halted, constant volume
-        const mode = (inst.noiseMode ? 0x80 : 0) | idx;
-        if (f === 0) {
-          this.enqueue({ at, addr: 0x400c, value: control });
-          this.enqueue({ at, addr: 0x400e, value: mode });
-          // Length 31, halted above, and the envelope restarted.
-          this.enqueue({ at, addr: 0x400f, value: 31 << 3 });
-        } else {
-          if (control !== lastControl) this.enqueue({ at, addr: 0x400c, value: control });
-          if (mode !== lastLo) this.enqueue({ at, addr: 0x400e, value: mode });
-        }
-        lastControl = control;
-        lastLo = mode;
-        continue;
-      }
+      const duty = Array.isArray(inst.duty)
+        ? inst.duty[f % inst.duty.length]
+        : (inst.duty ?? 2);
 
-      const lo = period & 0xff;
-      const hi = period >> 8;
-      if (isTriangle) {
-        if (f === 0) {
-          // Control flag set and the linear counter at its longest: the
-          // triangle plays until told otherwise, and the driver ends notes
-          // itself.
-          this.enqueue({ at, addr: 0x4008, value: 0xff });
-          this.enqueue({ at, addr: 0x400a, value: lo });
-          this.enqueue({ at, addr: 0x400b, value: (31 << 3) | hi });
-        } else {
-          if (lo !== lastLo) this.enqueue({ at, addr: 0x400a, value: lo });
-          if (hi !== lastHi) this.enqueue({ at, addr: 0x400b, value: (31 << 3) | hi });
-        }
-        this.triangleHi = hi;
-      } else {
-        const duty = Array.isArray(inst.duty)
-          ? inst.duty[f % inst.duty.length]
-          : (inst.duty ?? 2);
-        const control = (duty << 6) | 0x30 | vol; // halted, constant volume
-        if (f === 0) {
-          this.enqueue({ at, addr: base, value: control });
-          // Sweep off, negate set. With negate clear the sweep's target is
-          // twice the period, and anything at $400 or above - G#2 and below -
-          // is muted. Every driver on the hardware wrote this byte.
-          this.enqueue({ at, addr: base + 1, value: 0x08 });
-          this.enqueue({ at, addr: base + 2, value: lo });
-          // Length 31, halted above; the phase and the envelope restart.
-          this.enqueue({ at, addr: base + 3, value: (31 << 3) | hi });
-        } else {
-          if (control !== lastControl) this.enqueue({ at, addr: base, value: control });
-          if (lo !== lastLo) this.enqueue({ at, addr: base + 2, value: lo });
-          // The only road to the high bits, and it restarts the phase. A
-          // slide or a vibrato across the boundary clicks here, as on a NES.
-          if (hi !== lastHi) this.enqueue({ at, addr: base + 3, value: (31 << 3) | hi });
-        }
-        lastControl = control;
-      }
-      lastLo = lo;
-      lastHi = hi;
+      states.push({
+        at,
+        volume: vol,
+        freq: isNoise ? 0 : baseFreq * Math.pow(2, semis / 12),
+        // Noise has periods rather than a frequency, so arpeggio and slide
+        // walk the index instead of transposing.
+        period: isNoise ? Math.max(0, Math.min(15, Math.round(noiseBase + semis))) : 0,
+        duty,
+        noiseMode: inst.noiseMode === true,
+        pitchOffset: pitchAcc,
+        wave,
+      });
     }
 
+    for (const e of this.encoder.note(channel, states)) this.enqueue(e);
     // Explicit note off, the way a driver would.
     this.silence(channel, this.cycleAt(start + frames * FRAME_TIME));
   }
@@ -352,49 +309,13 @@ export class APU implements NoteSink {
     this.silence(channel, this.cycleAt(at ?? this.ctx.currentTime));
   }
 
-  /** The triangle's last period high bits, for silencing it without a blip. */
-  private triangleHi = 0;
-
-  /**
-   * What a program did first: enable the four voices.
-   *
-   * `$4015` is written once here and never again. It sets every enable at
-   * once, and a driver that schedules notes two hundred milliseconds ahead
-   * cannot know what the other channels will be doing on the cycle a write
-   * lands: an effect stopping pulse 2 now would carry a lead that ends later,
-   * or miss one that starts later. Silence goes through each channel's own
-   * registers instead.
-   */
+  /** What a program did first: the chip's own driver says what. */
   protected powerOn() {
-    this.enqueue({ at: 0, addr: 0x4015, value: 0x0f });
+    for (const e of this.encoder.powerOn()) this.enqueue(e);
   }
 
-  /**
-   * Quiet, through the channel's own registers.
-   *
-   * A pulse or the noise goes quiet with a constant volume of 0. The triangle
-   * has no volume, so its linear counter is told to reload with 0, which the
-   * next quarter frame does - at most four milliseconds away - and the
-   * sequencer stops where it is. `$400B` carries the period high bits, hence
-   * the copy kept above: zeros there would pitch the last milliseconds up an
-   * octave or more.
-   */
   private silence(channel: Channel, at: number) {
-    switch (channel) {
-      case "p1":
-        this.enqueue({ at, addr: 0x4000, value: 0x30 });
-        return;
-      case "p2":
-        this.enqueue({ at, addr: 0x4004, value: 0x30 });
-        return;
-      case "noi":
-        this.enqueue({ at, addr: 0x400c, value: 0x30 });
-        return;
-      case "tri":
-        this.enqueue({ at, addr: 0x4008, value: 0x00 });
-        this.enqueue({ at, addr: 0x400b, value: this.triangleHi });
-        return;
-    }
+    for (const e of this.encoder.noteOff(channel, at)) this.enqueue(e);
   }
 }
 
@@ -415,10 +336,10 @@ export class OfflineDriver extends APU implements NoteSink {
   private readonly core: ChipCore;
   private pending: RegisterEvent[] = [];
 
-  constructor(core: ChipCore) {
+  constructor(core: ChipCore, chip: ChipDefinition = nesChip) {
     // The base class reads one thing from the context: `currentTime`, as the
     // default start of a note. Offline, that is the origin.
-    super({ currentTime: 0 } as unknown as AudioContext);
+    super({ currentTime: 0 } as unknown as AudioContext, chip);
     this.core = core;
     this.ready = true;
     this.powerOn();

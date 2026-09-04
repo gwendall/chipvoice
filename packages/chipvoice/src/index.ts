@@ -1,6 +1,7 @@
 import { APU, type Channel, type Instrument } from "./driver.js";
-import "./chips/nes/index.js";
-import "./chips/gb/index.js";
+import { getChip, type ChipDefinition } from "./chip.js";
+import { nesChip } from "./chips/nes/index.js";
+import { gbChip } from "./chips/gb/index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
 export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
@@ -27,16 +28,20 @@ export {
   registerChip,
   type ChipCore,
   type ChipDefinition,
+  type ChipDriver,
   type ChipSpec,
   type DigitalChip,
+  type FrameState,
+  type NoteFrame,
   type RegisterEvent,
+  type Role,
   type VoiceKind,
   type VoiceSpec,
 } from "./chip.js";
 export { NES_2A03, nesChip } from "./chips/nes/index.js";
 export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export type { Pattern, PercussionKit, Song } from "./sequencer.js";
-export { DEFAULT_KIT, softKit } from "./sequencer.js";
+export { DEFAULT_KIT, NES_ROLES, softKit } from "./sequencer.js";
 export { noteToFreq } from "./driver.js";
 
 /**
@@ -52,22 +57,35 @@ export { noteToFreq } from "./driver.js";
  * not do, and losing it is most of why those libraries sound wrong.
  */
 class Arbiter implements ChannelClaim {
-  private busy: Record<Channel, number> = { p1: 0, p2: 0, tri: 0, noi: 0 };
+  private busy = new Map<Channel, number>();
 
   claim(channel: Channel, until: number) {
-    this.busy[channel] = Math.max(this.busy[channel], until);
+    this.busy.set(channel, Math.max(this.busy.get(channel) ?? 0, until));
   }
 
   canPlay(channel: Channel, at: number) {
-    return at >= this.busy[channel];
+    return at >= (this.busy.get(channel) ?? 0);
   }
 
   clear() {
-    this.busy = { p1: 0, p2: 0, tri: 0, noi: 0 };
+    this.busy.clear();
   }
 }
 
+/**
+ * The chip for an id. The two this build ships are imported by name, so a
+ * bundler cannot drop them; anything else comes from the registry, which a
+ * caller filled.
+ */
+export function chipFor(id: string): ChipDefinition | null {
+  if (id === "2a03") return nesChip;
+  if (id === "dmg") return gbChip;
+  return getChip(id);
+}
+
 export interface ChipOptions {
+  /** Which chip: `"2a03"` (the default) or `"dmg"`. `chips()` lists them. */
+  chip?: string;
   /** Supply your own context to share one with the rest of your audio. */
   context?: AudioContext;
   /** 0 to 1. Default 0.78, which leaves headroom for the chip's own mixing. */
@@ -89,13 +107,17 @@ export interface SfxOptions {
 }
 
 /**
- * A 2A03, and a driver for it.
+ * A sound chip, and a driver for it: a 2A03 unless asked for another.
  *
  * ```ts
  * const chip = await Chip.create();
  * chip.play(THEME);
  * chip.sfx("p2", { note: "B6", instrument: LASER, duration: 0.1 });
  * ```
+ *
+ * The same song plays on a Game Boy with `Chip.create({ chip: "dmg" })`: each
+ * chip maps the song's four lines onto its own voices, and its own driver
+ * writes its registers in its own idiom.
  *
  * `create` must be called from a user gesture, because that is when a browser
  * will let an AudioContext start. Everything after that is free.
@@ -121,7 +143,7 @@ export class Chip {
     this.master = master;
     this.ownsContext = owns;
     this.level = gain;
-    this.sequencer = new Sequencer(apu, this.arbiter, () => ctx.currentTime);
+    this.sequencer = new Sequencer(apu, this.arbiter, () => ctx.currentTime, { roles: apu.chip.spec.roles });
   }
 
   /**
@@ -136,6 +158,9 @@ export class Chip {
             .webkitAudioContext;
     if (!Ctor) return null;
 
+    const definition = chipFor(options.chip ?? "2a03");
+    if (!definition) throw new Error(`unknown chip: ${options.chip}`);
+
     const owns = !options.context;
     const ctx = options.context ?? new Ctor();
     const gain = options.gain ?? 0.78;
@@ -144,7 +169,7 @@ export class Chip {
     master.gain.value = gain;
     master.connect(ctx.destination);
 
-    const apu = new APU(ctx);
+    const apu = new APU(ctx, definition);
     const ok = await apu.init(master);
     if (!ok) {
       master.disconnect();
@@ -157,6 +182,11 @@ export class Chip {
   /** The context, for sharing it with the rest of your audio. */
   get audioContext() {
     return this.ctx;
+  }
+
+  /** Which chip this is: its id, voices and roles. */
+  get spec() {
+    return this.apu.chip.spec;
   }
 
   /** The node everything runs through, for taps, analysers and recording. */

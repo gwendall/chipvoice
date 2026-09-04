@@ -8,7 +8,7 @@ section is in [CONFORMANCE.md](../CONFORMANCE.md).
 | | |
 | --- | --- |
 | **Machine** | Game Boy (DMG), 4194304 Hz |
-| **Status** | **in progress**: every test ROM passes, the oracle is a weak one, the analog stage is unmeasured, the driver does not reach it yet |
+| **Status** | **in progress**: every test ROM passes, the driver plays every voice, the oracle is a weak one, the analog stage is unmeasured |
 | **Core** | own, `packages/chipvoice/src/chips/gb/dsp.ts`, written from Pan Docs and blargg's "Game Boy Sound Operation" |
 | **Licence of the core** | MIT |
 | **Sheet updated** | 2026-09-04, by hand and by `conform` |
@@ -17,8 +17,8 @@ section is in [CONFORMANCE.md](../CONFORMANCE.md).
 
 Measured by [`conform`](../../packages/conform), the harness, against
 [Gb_Snd_Emu 0.1.4](../../packages/conform/oracles/gb-snd-emu), blargg's Game Boy
-APU from 2005, on all four voices, over six scripts in
-[`packages/conform/corpus/dmg`](../../packages/conform/corpus/dmg). The numbers
+APU from 2005, on all four voices, over a song through the driver and six
+scripts in [`packages/conform/corpus/dmg`](../../packages/conform/corpus/dmg). The numbers
 between the markers are written by the harness (`pnpm --filter chipvoice-conform
 baseline:dmg`); the reading of them below is a person's. CI reruns the corpus and
 fails if any voice's identical count falls below the committed baseline.
@@ -29,9 +29,9 @@ Written by `conform` on 2026-09-04, against Gb_Snd_Emu 0.1.4 (blargg), on ch1, c
 | | |
 | --- | --- |
 | Oracle | Gb_Snd_Emu 0.1.4 (blargg) |
-| Corpus | 6 logs, 128345700 cycles |
-| Identical cycles | 81889085 / 128345700 (63.8035 %) |
-| Logs with a divergence | 6 |
+| Corpus | 7 logs, 145122916 cycles |
+| Identical cycles | 83302844 / 145122916 (57.4016 %) |
+| Logs with a divergence | 7 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
@@ -41,6 +41,7 @@ Written by `conform` on 2026-09-04, against Gb_Snd_Emu 0.1.4 (blargg), on ch1, c
 | script-pulses | 43.3680 % | cycle 423437, ch2: ours 0, oracle 15 | ch1 67.7054 %, 2/198/7284 (198 at -1); runs 1957: 1953 on times, 1952 on values, shift <= 9767; ch2 64.0178 %, 4/0/3924; runs 1417: 1415 on times, 1415 on values, shift <= 32033; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
 | script-sweep | 78.7780 % | cycle 424197, ch1: ours 0, oracle 15 | ch1 78.7780 %, 1/0/1461; runs 633: 625 on times, 625 on values, shift <= 3326555; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
 | script-wave | 74.0036 % | cycle 419430, ch3: ours 0, oracle 1 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 74.0036 %, 6/0/14612; runs 912: 909 on times, 908 on values, shift <= 1513; ch4 100.0000 %, 0/0/0 |
+| song-golden | 8.4267 % | cycle 419430, ch3: ours 0, oracle 1 | ch1 60.7225 %, 8/41/6257 (41 at -1); runs 1579: 1561 on times, 1555 on values, shift <= 94210; ch2 76.5812 %, 0/0/4146; runs 1036: 1036 on times, 1036 on values, shift <= 128888; ch3 14.7736 %, 17/0/11879; runs 410: 391 on times, 391 on values, shift <= 2679; ch4 77.6376 %, 5/0/104673 (22293 at +7); runs 328: 212 on times, 190 on values, shift <= 638199 |
 <!-- parity:end -->
 
 **What the numbers say.** Read the last column, not the first. On every voice
@@ -126,14 +127,16 @@ sum, a high-pass. A real unit's line-out under a known script is what it needs.
 
 ## Driver coverage
 
-The driver does not speak to this chip yet. That is ticket P3-2: `ChipSpec`,
-`RegisterEvent` and the instrument model rewritten against two real chips.
-Until then everything here is exercised only by the corpus, the ROMs and the
-formula tests.
+`GbDriver` in `packages/chipvoice/src/chips/gb/driver.ts`, checked by
+`test/gb-driver.mjs`. The song's lead goes to pulse 1, its chord to pulse 2,
+its bass to the wave channel, its percussion to the noise.
 
 | Voice | Exercised | Not exercised |
 | --- | --- | --- |
-| all | nothing by the driver | everything |
+| ch1, ch2 | all four duties; the envelope's starting volume, retriggered on every change; frequency changes without a trigger; silence at volume 0 with the DAC on | the sweep (written off), the hardware envelope's decay, the length counter, the DAC switched off |
+| ch3 | wave RAM loaded while the channel is off, a triangle by default or the instrument's own 32 samples; the three levels; frequency changes without a trigger | the length counter, a write to RAM while playing, a retrigger while playing |
+| ch4 | every one of the 2A03's sixteen rates mapped onto a divisor and shift; both widths; a decaying volume table fitted to the hardware envelope; rate changes mid-note | a rising envelope, the length counter, a retrigger mid-note |
+| NR50, NR51 | written once at power-on: 7 both sides, every voice both sides | panning, the master volume |
 
 ## Known deviations
 
