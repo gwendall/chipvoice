@@ -41,5 +41,11 @@ it is trusted for and what it is not; in short:
   voice put in envelope mode before that has decayed sounds at 15 here and at
   0 on the hardware. The corpus scripts start a tenth of a second in for this.
 
-So it is the oracle for the pulses and the triangle, and a witness for the
-noise's envelope and length, not its bit pattern.
+- Its DMC's output unit starts with one bit remaining in its first cycle where
+  nesdev and Mesen start with eight, so its first sample byte plays a bit
+  period apart from ours; and a `$4011` write adjusts its amplitude through a
+  DAC table, for the sound of the pop, so its levels after one are not the
+  register's value.
+
+So it is the oracle for the pulses and the triangle, for the DMC's steps, and
+a witness for the noise's envelope and length, not its bit pattern.

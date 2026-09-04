@@ -223,8 +223,36 @@ const SCRIPTS = [
   },
 ];
 
-function scriptLog({ name, notes, cycles, writes }) {
-  return { name, source: 'packages/conform/src/corpus/generate.mjs', cycles, notes, writes: writes.map(([at, addr, value]) => ({ at, addr, value })) };
+/**
+ * A sample for the DMC: 33 bytes, which is what a length register of 2
+ * plays. Eight bytes of ones raise the level by 16, eight of zeros lower it,
+ * so it is a slow triangle wave; the last byte alternates bits, which holds
+ * the level in place.
+ */
+const DMC_SAMPLE = new Uint8Array([
+  ...Array(8).fill(0xff), ...Array(8).fill(0x00), ...Array(8).fill(0xff), ...Array(8).fill(0x00), 0x55,
+]);
+
+SCRIPTS.push({
+  name: 'script-dmc',
+  notes: 'the DMC: a 33-byte sample at $C000 looping at rate 15 then rate 8, a direct $4011 write, a one-shot play, and $4015 clearing its bit mid-sample',
+  cycles: second(3),
+  memory: [{ address: 0xc000, bytes: DMC_SAMPLE }],
+  writes: [
+    ENABLE,
+    [T0, 0x4010, 0x4f], [T0, 0x4011, 0x00], [T0, 0x4012, 0x00], [T0, 0x4013, 0x02],
+    [T0, 0x4015, 0x1f],
+    [second(0.5), 0x4010, 0x48],
+    [second(1), 0x4011, 0x40],
+    [second(1.5), 0x4015, 0x0f],
+    [second(1.6), 0x4010, 0x0f], [second(1.6), 0x4015, 0x1f],
+    [second(2), 0x4015, 0x1f],
+    [second(2.5), 0x4015, 0x0f],
+  ],
+});
+
+function scriptLog({ name, notes, cycles, writes, memory }) {
+  return { name, source: 'packages/conform/src/corpus/generate.mjs', cycles, notes, memory, writes: writes.map(([at, addr, value]) => ({ at, addr, value })) };
 }
 
 // ---- write them out
@@ -232,7 +260,7 @@ function scriptLog({ name, notes, cycles, writes }) {
 fs.mkdirSync(OUT, { recursive: true });
 const logs = [...SONGS.map(songLog), ...SCRIPTS.map(scriptLog)];
 for (const log of logs) {
-  const text = formatLog({ name: log.name, chip: '2a03', clock: CPU_HZ, cycles: log.cycles, source: log.source, notes: log.notes }, log.writes);
+  const text = formatLog({ name: log.name, chip: '2a03', clock: CPU_HZ, cycles: log.cycles, source: log.source, notes: log.notes, memory: log.memory }, log.writes);
   fs.writeFileSync(path.join(OUT, `${log.name}.log`), text);
   console.log(`${log.name.padEnd(20)} ${String(log.writes.length).padStart(6)} writes, ${(log.cycles / CPU_HZ).toFixed(1)} s`);
 }

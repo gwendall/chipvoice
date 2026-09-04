@@ -32,7 +32,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
 | P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | todo | |
-| P2-2 | The DMC | todo | |
+| P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
 | P2-3 | A reference unit for the analog stage, captured and measured | todo | |
 | P2-4 | Release with the sheet linked from the package README and the skill | todo | |
 
@@ -76,6 +76,14 @@ sweep unit's mute condition silenced any pulse note with a period of `$400` or
 more - roughly G#2 and below. Drivers on the hardware wrote `$4001 = $08` for
 that reason. Both are now what the hardware does: a note that crosses a period
 high-byte boundary restarts its phase, and low pulse notes play.
+
+**2026-09-04, P2-2.** The DMC's steps are identical to the oracle's, one bit
+period apart: its output unit powers on with one bit remaining in Nes_Snd_Emu
+and with eight in nesdev's description and in Mesen, and no document pins the
+hardware's power-on state. And a `$4011` write in the oracle adjusts the
+amplitude through a DAC table for the sound of the pop, so its levels after one
+are not the register's value. Kept nesdev's eight; a hardware capture of the
+first DMC byte after power-on would settle it (P2-3 territory).
 
 **2026-09-04, P1-6, first run.** The pulses are identical to the oracle cycle
 for cycle on every song and on the sweep-down, mute, and restart scripts: not

@@ -25,9 +25,11 @@ export const nesSndEmu = {
   /**
    * The voices it is the oracle for. The noise's register starts elsewhere,
    * runs with the opposite polarity and is not clocked exactly while muted,
-   * so its bit pattern cannot match; the DMC is not built on our side.
+   * so its bit pattern cannot match. The DMC is compared for its steps; its
+   * levels after a `$4011` write are the oracle's own, a DAC-table correction
+   * made for sound rather than truth.
    */
-  trusted: ['p1', 'p2', 'tri'],
+  trusted: ['p1', 'p2', 'tri', 'dmc'],
 
   build() {
     const newest = Math.max(...[...SOURCES, ...HEADERS].map((f) => fs.statSync(path.join(DIR, f)).mtimeMs));
@@ -46,10 +48,11 @@ export const nesSndEmu = {
   /**
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
+   * @param {{ address: number, bytes: Uint8Array }[]} [memory] for the DMC
    */
-  trace(writes, cycles) {
+  trace(writes, cycles, memory = []) {
     this.build();
-    const input = formatLog({ chip: '2a03', clock: 1789773, cycles }, writes);
+    const input = formatLog({ chip: '2a03', clock: 1789773, cycles, memory }, writes);
     const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
     if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
     const changes = [];

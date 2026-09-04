@@ -64,7 +64,9 @@ so a slide lands on the frame it was scheduled for.
 There are four voices and no more, so music and effects compete for them. Every
 library that generates chiptune in a browser gives the music its own tracks and the
 effects theirs - which is the one thing the hardware could not do, and losing it is
-most of why those libraries sound wrong.
+most of why those libraries sound wrong. (The chip has a fifth, the DMC, which
+plays samples from memory: the drums of most cartridges. The chip here has it too;
+no instrument reaches it yet.)
 
 `chip.sfx()` claims a channel for the length of the effect. The sequencer asks before
 every note it schedules, and skips the ones it cannot have.

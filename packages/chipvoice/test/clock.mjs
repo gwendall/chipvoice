@@ -198,6 +198,52 @@ function frameClocks(core, cycles) {
   check('and sounds with $4001 = $08', sounding(0x08) === true);
 }
 
+// ---- the DMC: a level nudged by bits from memory, at the rate table's pace
+
+{
+  // Seventeen bytes of ones at $C000, looping at rate 15 - 54 cycles a bit -
+  // raise the level by 2 a bit from 0 to 126, where it stops: 63 bits, 3402
+  // cycles. Rate 0 is 428 cycles a bit.
+  const chip = fresh();
+  chip.load(0xc000, new Uint8Array(17).fill(0xff));
+  chip.write(0x4010, 0x4f);
+  chip.write(0x4012, 0x00);
+  chip.write(0x4013, 0x01);
+  chip.write(0x4015, 0x1f);
+  const changes = [];
+  chip.trace(5000, (cycle, voice, value) => { if (voice === 4) changes.push([cycle, value]); });
+  check('the DMC raises its level by 2 a bit', changes.length >= 63 && changes[0][1] === 2 && changes[62][1] === 126, `${changes.length} changes, first ${JSON.stringify(changes[0])}`);
+  check('at rate 15, 54 cycles a bit', changes.length > 2 && changes[2][0] - changes[1][0] === 54, `${changes[2]?.[0] - changes[1]?.[0]}`);
+  check('and stops at 126', changes.every((c) => c[1] <= 126) && changes[changes.length - 1][1] === 126);
+}
+
+{
+  // Zeros lower it; $4011 sets it outright; clearing the $4015 bit lets the
+  // byte in the shift register play out and then holds the level.
+  const chip = fresh();
+  chip.load(0xc000, new Uint8Array(17).fill(0x00));
+  chip.write(0x4011, 0x40);
+  chip.write(0x4010, 0x40);
+  chip.write(0x4012, 0x00);
+  chip.write(0x4013, 0x01);
+  chip.write(0x4015, 0x1f);
+  // The output unit starts silent and its first eight-bit cycle has to run
+  // out before the buffer is taken, so the first byte plays after eight bit
+  // periods: 3424 cycles at rate 0.
+  const levels = [];
+  chip.trace(428 * 20, (cycle, voice, value) => { if (voice === 4) levels.push([cycle, value]); });
+  check('$4011 sets the level at once', levels[0][0] === 0 && levels[0][1] === 64, `${JSON.stringify(levels[0])}`);
+  check('and zeros lower it by 2 a bit at 428 cycles, from the ninth bit period on', levels[1][0] === 8 * 428 && levels[1][1] === 62 && levels[2][0] - levels[1][0] === 428 && levels.length >= 11, `${JSON.stringify(levels.slice(1, 3))}, ${levels.length} changes`);
+  // Clearing the bit drops what is left to read; the byte in the shift
+  // register and the one already buffered play out, up to sixteen bits, and
+  // then the level holds.
+  chip.write(0x4015, 0x0f);
+  const before = chip.dmc.level;
+  const after = [];
+  chip.trace(428 * 24, (cycle, voice, value) => { if (voice === 4) after.push(value); });
+  check('clearing the $4015 bit plays out at most the two bytes in hand, then holds', after.length <= 16 && after.length > 0 && chip.dmc.level === before - 2 * after.length, `${after.length} more steps`);
+}
+
 // ---- the event clock: a write lands on the cycle it names, at any position
 
 {

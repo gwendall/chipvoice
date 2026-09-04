@@ -36,6 +36,7 @@ class ApuProcessor extends AudioWorkletProcessor {
     this.port.onmessage = (e: MessageEvent<WorkletMessage>) => {
       const data = e.data;
       if (data.type === "events") this.core.schedule(data.events);
+      else if (data.type === "memory") this.core.load(data.address, data.bytes);
       else if (data.type === "gain") this.core.setGain(data.value);
       else if (data.type === "reset") this.core.reset();
     };

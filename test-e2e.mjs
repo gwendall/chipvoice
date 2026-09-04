@@ -99,7 +99,7 @@ try {
   check("and the validator", typeof lib.validateSong === "function");
   check("and the chip registry", typeof lib.chips === "function");
   check("which names the 2A03", lib.NES_2A03?.id === "2a03", lib.NES_2A03?.name);
-  check("with four voices", lib.NES_2A03?.voices?.length === 4);
+  check("with five voices", lib.NES_2A03?.voices?.length === 5);
 
   const verdict = lib.validateSong({ ...SONG, gain: 1, lead: {}, chord: {}, bass: {} });
   check("the published validator accepts the song", verdict.ok, JSON.stringify(verdict.issues));

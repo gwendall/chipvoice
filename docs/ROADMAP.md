@@ -118,8 +118,8 @@ on the triangle's start, so a second one is on the backlog.
 ### Phase 2. NES to 100 %
 
 1. Run the full corpus. Fix every divergence until there are none.
-2. Add the DMC. Real games use it for drums, the corpus will diverge on every one
-   of them without it, and it gives the driver sampled percussion.
+2. Add the DMC. Done in 0.6.0: the chip has it, the harness compares it, and
+   the driver does not use it yet - sampled percussion is a phase 4 instrument.
 3. Add the 5-step frame counter mode and `$4017` write timing, because the test
    ROMs check them.
 4. Choose a reference unit for the analog stage, capture it, measure the error,
