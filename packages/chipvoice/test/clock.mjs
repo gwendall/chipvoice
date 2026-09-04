@@ -310,11 +310,14 @@ function frameClocks(core, cycles) {
   ]);
   const changes = [];
   chip.trace(6000, (cycle, voice, value) => changes.push([cycle, voice, value]));
-  const first = changes[0];
-  const second = changes[1];
-  check('the trace reports the first pulse edge on the first clock', first && first[1] === 0 && first[2] === 15 && first[0] === 0, JSON.stringify(first));
+  const pulse = changes.filter((c) => c[1] === 0);
+  const others = changes.filter((c) => c[1] !== 0);
+  const first = pulse[0];
+  const second = pulse[1];
+  check('the trace reports the first pulse edge on the first clock', first && first[2] === 15 && first[0] === 0, JSON.stringify(first));
   check('and the next edge four steps later', second && second[2] === 0 && second[0] - first[0] === 4 * 508, JSON.stringify(second));
-  check('and nothing on the silent voices', changes.every((c) => c[1] === 0), `${changes.length} changes`);
+  // The triangle powers on at 15, as the hardware does, and says so once.
+  check('and the triangle\'s power-on 15 once, nothing else on the silent voices', others.length === 1 && others[0][1] === 2 && others[0][2] === 15 && others[0][0] === 0, JSON.stringify(others));
 }
 
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);

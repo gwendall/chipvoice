@@ -156,6 +156,12 @@ shorter.
    chip is held to. For first-order stages the target is within 1 dB from 40 Hz to
    15 kHz.
 
+The DAC's mixing curves can be measured without a unit at all: blargg's
+`apu_mixer` ROMs cancel each channel against the DMC's DAC, and he recorded them
+on a real NES. The harness runs them, renders the writes through the whole core,
+and compares how silent the middle is here and on his recording
+(`pnpm --filter chipvoice-conform mixer`). That is the mixer's line on the sheet.
+
 Resampling belongs to this stage too. A box filter over the cycles of a sample and
 band-limited step synthesis give different aliasing, and neither is "the hardware":
 the hardware's output is continuous. Parity is measured before it; its effect is

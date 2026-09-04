@@ -2,7 +2,7 @@
   "song": "test/golden.mjs",
   "seconds": 4,
   "sampleRate": 44100,
-  "sha256": "dc8a9ec002af358831f7a23dc0286c38bd87d523e1da618a0319d125d4f351fa",
-  "rms": 0.1031,
-  "peak": 0.7143
+  "sha256": "90eeb521adb84140f1b919385da2c60dbee84d6b744b66d903cb9f4fce12b479",
+  "rms": 0.103,
+  "peak": 0.649
 }
