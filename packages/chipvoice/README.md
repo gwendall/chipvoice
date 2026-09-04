@@ -263,8 +263,8 @@ alternative has an expiry date on it.
 cd packages/chipvoice
 npm version patch --no-git-tag-version      # or minor, or major
 git commit -am "chipvoice $(node -p 'require("./package.json").version')"
-git tag "v$(node -p 'require("./package.json").version')"
-git push --follow-tags
+git tag -a "v$(node -p 'require("./package.json").version')" -m "chipvoice $(node -p 'require("./package.json").version')"
+git push --follow-tags                         # follows annotated tags only, hence -a
 ```
 
 Three steps rather than one because `npm version` only commits and tags when the
