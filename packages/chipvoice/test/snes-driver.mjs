@@ -54,7 +54,8 @@ function regs(writes) {
   flush();
   const frame1 = regs(writes.filter((w) => w.at >= CLOCK / 60 && w.at < CLOCK / 30));
   check('a volume change writes the voice\'s two volumes and nothing else', frame1.length === 2 && frame1[0][0] === 0x10 && frame1[1][0] === 0x11 && frame1[0][1] === Math.round((8 * 127) / 15), JSON.stringify(frame1));
-  const later = writes.filter((w) => w.at >= CLOCK / 30 && w.at < CLOCK / 2);
+  // Up to the quarter second where power-on turns the echo writes on.
+  const later = writes.filter((w) => w.at >= CLOCK / 30 && w.at < CLOCK / 5);
   check('and a held note costs nothing after that', later.length === 0, `${later.length}`);
   const off = regs(writes.filter((w) => w.at >= CLOCK / 2));
   check('a note ends by switching the voice to a fast GAIN decrease', off.length === 2 && off[0][0] === 0x17 && off[0][1] === 0xbf && off[1][0] === 0x15 && off[1][1] === 0x7f, JSON.stringify(off));
