@@ -3,6 +3,17 @@ import "./chips/nes/index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
 export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
+/*
+ * The driver on its own, for a host that brings its own sequencer.
+ *
+ * `Chip` is the whole thing - driver, sequencer, arbiter - and is what a game
+ * should reach for. But a game that already has a music state machine with
+ * pause, hold and resume, which `Chip` does not have, wants only the part that
+ * turns notes into register writes and talks to the worklet. That was the
+ * situation the library was extracted from, and it kept a copy of this class
+ * for a month rather than depend on the package it came from.
+ */
+export { APU, OfflineDriver, FRAME_RATE, FRAME_TIME } from "./driver.js";
 export { renderSong, toWav, loopSeconds } from "./render.js";
 export { validateSong } from "./validate.js";
 export type { Issue, IssueLevel, Measured, ValidationResult } from "./validate.js";

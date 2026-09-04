@@ -235,6 +235,22 @@ guessed at now.
 Songs are matched by `id`, not by identity: a variant built at call time - a spread
 to change one field - fails an identity check and restarts the piece on every call.
 
+**Bringing your own sequencer.** `Chip` is the whole thing, and what a game should
+reach for. A game that already has a music state machine - pause, hold, resume -
+wants only the part that turns notes into register writes and talks to the
+worklet, and that is exported on its own:
+
+```ts
+import { APU, type NoteSink } from "chipvoice";
+
+const apu = new APU(ctx);
+await apu.init(master);          // loads the worklet, connects it
+apu.playNote("p2", { note: "B6", instrument: LASER, duration: 0.1, at });
+```
+
+`OfflineDriver` is the same class writing into a chip core instead of a worklet,
+which is what `renderSong` uses.
+
 ## Releasing
 
 Publishing runs on a tag, from GitHub Actions, over **trusted publishing**: npm
@@ -244,8 +260,16 @@ is retiring 2FA-bypass tokens for direct publishing in January 2027, so the
 alternative has an expiry date on it.
 
 ```
-npm version patch && git push --follow-tags
+cd packages/chipvoice
+npm version patch --no-git-tag-version      # or minor, or major
+git commit -am "chipvoice $(node -p 'require("./package.json").version')"
+git tag "v$(node -p 'require("./package.json").version')"
+git push --follow-tags
 ```
+
+Three steps rather than one because `npm version` only commits and tags when the
+package sits at the root of the repository, and this one sits in a workspace: run
+bare, it bumps the file and quietly does nothing else.
 
 The workflow refuses to publish if the tag and `package.json` disagree, and runs
 `test:fresh` first - which installs the tarball into an empty project and drives
