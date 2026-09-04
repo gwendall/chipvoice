@@ -1,4 +1,5 @@
-import { getChip } from "./chip.js";
+import { getChip, type ChipCore, type RegisterEvent } from "./chip.js";
+import { CPU_HZ } from "./chips/nes/dsp.js";
 import { nesChip } from "./chips/nes/index.js";
 import { Sequencer, type Song } from "./sequencer.js";
 import { OfflineDriver } from "./driver.js";
@@ -101,6 +102,48 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
   for (let i = 0; i < left.length; i++) peak = Math.max(peak, Math.abs(left[i]));
 
   return { sampleRate, left, right, seconds: total / sampleRate, peak };
+}
+
+/**
+ * The register writes a song makes, without rendering a sample.
+ *
+ * The same driver and sequencer as `renderSong`, driven by the same clock,
+ * with a core that keeps what it is given instead of playing it. This is what
+ * `toVgm` wants, what the conformance corpus is built from, and the most
+ * honest description of a song there is: every byte a NES would have seen.
+ */
+export function recordSong(
+  song: Song,
+  options: { seconds?: number } = {},
+): { events: RegisterEvent[]; cycles: number } {
+  const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
+  const cycles = Math.round(seconds * CPU_HZ);
+  const events: RegisterEvent[] = [];
+  const core: ChipCore = {
+    schedule: (batch) => {
+      for (const e of batch) events.push(e);
+    },
+    render() {},
+    setGain() {},
+    reset() {},
+  };
+  const driver = new OfflineDriver(core);
+  let clock = 0;
+  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false });
+  sequencer.play(song);
+  // The renderer's block, so a song records the way it renders.
+  const block = 4096 / 44100;
+  for (let t = 0; t < seconds; t += block) {
+    clock = t;
+    sequencer.pump();
+    driver.flush();
+  }
+  sequencer.stop();
+  driver.flush();
+  return {
+    events: events.filter((e) => e.at < cycles).sort((a, b) => a.at - b.at),
+    cycles,
+  };
 }
 
 /**

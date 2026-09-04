@@ -12,7 +12,7 @@
   "date": "2026-09-04",
   "files": 12,
   "cycles": 86625011,
-  "identical": 25874896,
+  "identical": 26157375,
   "diverging": 8,
   "results": [
     {
@@ -152,7 +152,7 @@
           "runs": {
             "ours": 2,
             "theirs": 2,
-            "alignedTimes": 1,
+            "alignedTimes": 2,
             "alignedValues": 1,
             "maxShift": 1795
           }
@@ -224,7 +224,7 @@
           "runs": {
             "ours": 3,
             "theirs": 3,
-            "alignedTimes": 1,
+            "alignedTimes": 3,
             "alignedValues": 1,
             "maxShift": 2030
           }
@@ -296,7 +296,7 @@
           "runs": {
             "ours": 3,
             "theirs": 3,
-            "alignedTimes": 1,
+            "alignedTimes": 3,
             "alignedValues": 1,
             "maxShift": 2030
           }
@@ -646,9 +646,9 @@
     {
       "name": "song-e2e",
       "source": "test-e2e.mjs, as chipvoice.dev renders it",
-      "writes": 2201,
+      "writes": 2124,
       "cycles": 17897730,
-      "identical": 653237,
+      "identical": 787614,
       "first": {
         "cycle": 178981,
         "voice": 2,
@@ -696,21 +696,21 @@
         },
         {
           "voice": "tri",
-          "identical": 653237,
-          "a": 13929,
+          "identical": 787614,
+          "a": 13930,
           "b": 13955,
           "exact": 0,
           "near": 0,
-          "onlyA": 13929,
+          "onlyA": 13930,
           "onlyB": 13955,
-          "shift": -7,
-          "aligned": 18,
+          "shift": -9,
+          "aligned": 20,
           "runs": {
             "ours": 51,
             "theirs": 51,
-            "alignedTimes": 2,
+            "alignedTimes": 51,
             "alignedValues": 1,
-            "maxShift": 2030
+            "maxShift": 1888
           }
         }
       ]
@@ -718,9 +718,9 @@
     {
       "name": "song-golden",
       "source": "packages/chipvoice/test/golden.mjs",
-      "writes": 865,
+      "writes": 785,
       "cycles": 7159092,
-      "identical": 346024,
+      "identical": 420595,
       "first": {
         "cycle": 178981,
         "voice": 2,
@@ -768,21 +768,21 @@
         },
         {
           "voice": "tri",
-          "identical": 346024,
-          "a": 5927,
+          "identical": 420595,
+          "a": 5928,
           "b": 5936,
           "exact": 0,
           "near": 0,
-          "onlyA": 5927,
+          "onlyA": 5928,
           "onlyB": 5936,
           "shift": 0,
           "aligned": 0,
           "runs": {
             "ours": 20,
             "theirs": 20,
-            "alignedTimes": 1,
+            "alignedTimes": 20,
             "alignedValues": 1,
-            "maxShift": 2030
+            "maxShift": 1869
           }
         }
       ]
@@ -790,9 +790,9 @@
     {
       "name": "song-studio",
       "source": "apps/web/src/studio/song.ts, the default piece in the editor",
-      "writes": 2714,
+      "writes": 2591,
       "cycles": 21477276,
-      "identical": 859400,
+      "identical": 932931,
       "first": {
         "cycle": 178981,
         "voice": 2,
@@ -840,21 +840,21 @@
         },
         {
           "voice": "tri",
-          "identical": 859400,
-          "a": 16304,
+          "identical": 932931,
+          "a": 16306,
           "b": 16333,
           "exact": 0,
           "near": 0,
-          "onlyA": 16304,
+          "onlyA": 16306,
           "onlyB": 16333,
-          "shift": 0,
-          "aligned": 0,
+          "shift": 6,
+          "aligned": 21,
           "runs": {
             "ours": 61,
             "theirs": 61,
-            "alignedTimes": 6,
+            "alignedTimes": 61,
             "alignedValues": 1,
-            "maxShift": 2030
+            "maxShift": 2115
           }
         }
       ]

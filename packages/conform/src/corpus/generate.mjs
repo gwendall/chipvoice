@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { registerChip, renderSong } from 'chipvoice';
+import { recordSong } from 'chipvoice';
 import { formatLog } from '../log.mjs';
 
 /**
@@ -111,29 +111,9 @@ const SONGS = [
   },
 ];
 
-/** A chip that records what the driver writes and plays nothing. */
-function recorder() {
-  const writes = [];
-  const core = {
-    schedule: (events) => { for (const e of events) writes.push({ at: e.at, addr: e.addr, value: e.value }); },
-    render() {},
-    setGain() {},
-    reset() {},
-  };
-  registerChip({
-    spec: { id: 'record', name: 'recorder', system: '', instruments: 'table', nativeSampleRate: null, clockHz: CPU_HZ, voices: [] },
-    create: () => core,
-    digital: () => { throw new Error('the recorder has no digital chip'); },
-    workletSource: '',
-    processorName: '',
-  });
-  return writes;
-}
-
 function songLog({ name, source, seconds, song }) {
-  const writes = recorder();
-  renderSong(song, { chip: 'record', seconds, sampleRate: 44100 });
-  return { name, source, cycles: seconds * CPU_HZ, writes, notes: 'through the driver and the sequencer' };
+  const { events, cycles } = recordSong(song, { seconds });
+  return { name, source, cycles, writes: events, notes: 'through the driver and the sequencer' };
 }
 
 // ---- scripts, by hand

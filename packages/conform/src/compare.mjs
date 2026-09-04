@@ -71,6 +71,39 @@ export function compare(a, b, { cycles, voices }) {
 const RUN_GAP = 4200;
 
 /**
+ * The times a run's sequencer stepped, with the steps its edges hide put
+ * back.
+ *
+ * A change stream only shows a step when the value changed, and the
+ * triangle's sequence holds its value twice at each end - 15, 15 and 0, 0 -
+ * so two of its thirty-two steps leave no edge. A run whose sequencer began
+ * two steps away from the oracle's has those silent steps at different
+ * places, and its edge times cannot line up position for position even
+ * though every step landed on the same cycle. The period is the run's most
+ * common gap; a gap of two periods is one hidden step, and it is put back
+ * where it was.
+ */
+function stepTimes(run) {
+  if (run.length < 3) return run.map((e) => e.cycle);
+  const gaps = new Map();
+  for (let i = 1; i < run.length; i++) {
+    const g = run[i].cycle - run[i - 1].cycle;
+    gaps.set(g, (gaps.get(g) ?? 0) + 1);
+  }
+  let period = 0;
+  let best = 0;
+  for (const [g, n] of gaps) if (n > best) { best = n; period = g; }
+  const times = [run[0].cycle];
+  for (let i = 1; i < run.length; i++) {
+    const gap = run[i].cycle - run[i - 1].cycle;
+    const steps = Math.max(1, Math.round(gap / period));
+    for (let k = 1; k < steps; k++) times.push(run[i - 1].cycle + Math.round((gap * k) / steps));
+    times.push(run[i].cycle);
+  }
+  return times;
+}
+
+/**
  * The same comparison, one run of edges at a time, each run allowed its own
  * shift.
  *
@@ -109,30 +142,33 @@ function runs(a, b) {
     // that started two steps away from the oracle's steps on the same cycles
     // with different values for the rest of the song, and that is worth
     // telling apart from a sequencer that steps at the wrong times.
+    const stepsA = stepTimes(ours);
+    const stepsB = stepTimes(theirs);
     const candidates = new Set();
-    for (let j = 0; j < Math.min(4, theirs.length); j++) candidates.add(theirs[j].cycle - ours[0].cycle);
-    for (let j = 0; j < Math.min(4, ours.length); j++) candidates.add(theirs[0].cycle - ours[j].cycle);
-    const n = Math.min(ours.length, theirs.length);
-    let best = { shift: 0, times: -1, values: 0 };
+    for (let j = 0; j < Math.min(4, stepsB.length); j++) candidates.add(stepsB[j] - stepsA[0]);
+    for (let j = 0; j < Math.min(4, stepsA.length); j++) candidates.add(stepsB[0] - stepsA[j]);
+    const n = Math.min(stepsA.length, stepsB.length);
+    let best = { shift: 0, times: -1 };
     for (const shift of candidates) {
       let times = 0;
-      let values = 0;
-      for (let k = 0; k < n; k++) {
-        if (ours[k].cycle + shift === theirs[k].cycle) {
-          times++;
-          if (ours[k].value === theirs[k].value) values++;
-        }
-      }
-      if (times > best.times) best = { shift, times, values };
+      for (let k = 0; k < n; k++) if (stepsA[k] + shift === stepsB[k]) times++;
+      if (times > best.times) best = { shift, times };
     }
-    // Aligned: every edge but the run's first and last two lines up. The
+    // Values, at the shift that lined the steps up: the edges themselves,
+    // position for position. A sequencer two steps away from the oracle's
+    // lines every step up and no value.
+    let values = 0;
+    const m = Math.min(ours.length, theirs.length);
+    for (let k = 0; k < m; k++) {
+      if (ours[k].cycle + best.shift === theirs[k].cycle && ours[k].value === theirs[k].value) values++;
+    }
+    // Aligned: every step but the run's first and last two lines up. The
     // ends are where a note's start and stop conventions differ; the middle
     // is the waveform.
-    const needed = Math.max(ours.length, theirs.length) - 2;
-    if (best.times >= needed) {
+    if (best.times >= Math.max(stepsA.length, stepsB.length) - 2) {
       alignedTimes++;
       maxShift = Math.max(maxShift, Math.abs(best.shift));
-      if (best.values >= needed) alignedValues++;
+      if (values >= Math.max(ours.length, theirs.length) - 2) alignedValues++;
     }
   }
   return { ours: ra.length, theirs: rb.length, alignedTimes, alignedValues, maxShift };

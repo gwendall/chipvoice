@@ -25,7 +25,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | todo | |
 | P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | todo | needs P1-11 or an NSF player |
 | P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - to settle the frame timing and the triangle's start, where Nes_Snd_Emu 0.1.7 predates nesdev | todo | found in P1-6 |
-| P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | todo | found in P1-6 |
+| P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 
 ## Phase 2. NES to 100 %
 
@@ -48,7 +48,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
-| P4-1 | VGM export from the event stream | todo | cheap once P1-2 lands |
+| P4-1 | VGM export from the event stream, and VGM import into the corpus | done | PR #4. `toVgm`, `recordSong`; `import-vgm` in the harness |
 | P4-2 | The score: roles and intents | todo | |
 | P4-3 | An arranger per chip | todo | |
 | P4-4 | Instruments in the API and the wire format | todo | |
