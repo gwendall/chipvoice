@@ -13,8 +13,11 @@
     "roms:sheet": "node src/roms/run.mjs --sheet ../../docs/chips/2a03.md --json build/roms.json",
     "mixer": "node src/mixer/run.mjs",
     "mixer:sheet": "node src/mixer/run.mjs --sheet ../../docs/chips/2a03.md --json build/mixer.json",
+    "check:dmg": "node src/cli.mjs dmg --corpus corpus/dmg --oracle gb-snd-emu --baseline corpus/dmg/parity.json",
+    "baseline:dmg": "node src/cli.mjs dmg --corpus corpus/dmg --oracle gb-snd-emu --baseline corpus/dmg/parity.json --write-baseline --sheet ../../docs/chips/dmg.md",
+    "corpus:dmg": "node src/corpus/generate-dmg.mjs",
     "roms:dmg": "node src/roms/run.mjs --chip dmg",
-    "roms:dmg:sheet": "node src/roms/run.mjs --chip dmg --json corpus/dmg/roms.json --sheet ../../docs/chips/dmg.md"
+    "roms:dmg:sheet": "node src/roms/run.mjs --chip dmg --sheet ../../docs/chips/dmg.md --json build/roms-dmg.json"
   },
   "dependencies": {
     "chipvoice": "workspace:*"

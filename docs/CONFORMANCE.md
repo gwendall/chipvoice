@@ -49,7 +49,7 @@ Which oracle each chip gets:
 | Chip | Rank 1 or 2 | Rank 3 | Rank 4 |
 | --- | --- | --- | --- |
 | Ricoh 2A03 | Visual2A03, the netlist simulation | Nes_Snd_Emu (blargg), Mesen | blargg's `apu_test`, `apu_mixer`, `apu_reset` and friends |
-| Game Boy DMG | | SameBoy | blargg's `dmg_sound`, `cgb_sound` |
+| Game Boy DMG | | Gb_Snd_Emu (blargg), in use; SameBoy, to come | blargg's `dmg_sound`, twelve of twelve on the harness's SM83; `cgb_sound` when there is a CGB |
 | YM2612, YM3438 | Logic captures of the digital output exist; Nuked-OPN2 was derived from the die | Nuked-OPN2 | |
 | SN76489 | | MAME `sn76496` | |
 | SNES S-DSP | The DSP outputs a serial digital stream to an external DAC, and captures of it exist | snes_spc (blargg), ares | |
@@ -73,12 +73,13 @@ vector. The corpus is chosen to cover features: sweeps, envelope decay, both noi
 modes, the DMC, length counters actually expiring. A small subset of around twenty
 short logs runs in CI; the full set runs at release and on demand.
 
-**2. Test ROMs.** They need a CPU. The harness carries one, a 6502 in a few
-hundred lines that exists only to run these and never ships, with enough of a
-console around it to read a verdict: memory at `$6000` for the newer ROMs, the
-screen for the older ones, the beeps for the ones that only beep.
-`pnpm --filter chipvoice-conform roms` runs every ROM under `packages/conform/roms`
-and `roms:sheet` writes each verdict on the sheet by name.
+**2. Test ROMs.** They need a CPU. The harness carries two, a 6502 and an SM83
+in a few hundred lines each that exist only to run these and never ship, with
+enough of a console around each to read a verdict: memory at `$6000` or `$A000`
+for the newer ROMs, the screen for the older ones, the beeps for the ones that
+only beep. `pnpm --filter chipvoice-conform roms` runs every NES ROM under
+`packages/conform/roms` and `roms:dmg` every Game Boy one; `roms:sheet` and
+`roms:dmg:sheet` write each verdict on the chip's sheet by name.
 
 **3. Formula tests.** `test/clock.mjs` for the 2A03: every voice's rate against
 the datasheet formula, the LFSR's sequence lengths, the frame counter's phase.

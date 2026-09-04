@@ -44,6 +44,11 @@ jobs:
       # purpose. Every one of them has to pass.
       - run: pnpm --filter chipvoice-conform roms
 
+      # The Game Boy: the same two checks, against Gb_Snd_Emu and on the
+      # harness's SM83 with blargg's dmg_sound ROMs.
+      - run: pnpm --filter chipvoice-conform check:dmg
+      - run: pnpm --filter chipvoice-conform roms:dmg
+
       # The mixer against blargg's cancellation tests: each channel has to
       # cancel against the DMC as well as his console did. The recordings are
       # decoded when the runner has ffmpeg; the floor holds either way.

@@ -132,11 +132,14 @@ Done when the sheet meets the definition in CONFORMANCE.md.
 
 ### Phase 3. Game Boy
 
-1. Port SameBoy's APU, which is MIT, or write from Pan Docs with SameBoy as the
-   oracle. Corpus from VGM and from GBS files played through a reference.
+1. The DMG APU, written from Pan Docs and blargg's notes and verified by his
+   `dmg_sound` ROMs on an SM83 the harness carries, with Gb_Snd_Emu as the
+   first oracle. Done in 0.8.0: twelve of twelve ROMs. A stronger oracle and a
+   corpus from real games (GBS files on the SM83) are P3-4.
 2. The wave channel forces the wavetable instrument shape. Rewrite `ChipSpec`,
    `RegisterEvent` and the driver's instrument model against two real chips.
-3. A sheet, from the harness, before the chip is exposed in the API.
+3. A sheet, from the harness, before the chip is exposed in the API. Done:
+   `docs/chips/dmg.md`.
 
 Done when the same four lines play on both chips through their own drivers, and
 the Game Boy sheet is generated.
@@ -191,7 +194,7 @@ five archetypes, and only as additions to a proven shape.
 | Chip | Machine | Archetype | Core | Licence | Oracle |
 | --- | --- | --- | --- | --- | --- |
 | Ricoh 2A03 | NES, Famicom | Tables per frame | Own, `dsp.ts` | MIT | Nes_Snd_Emu, Visual2A03 as arbiter |
-| DMG APU | Game Boy | Tables plus wavetable | SameBoy's `apu.c`, ported | MIT | SameBoy, blargg's ROMs |
+| DMG APU | Game Boy | Tables plus wavetable | Own, `gb/dsp.ts`, from Pan Docs and blargg's notes | MIT | blargg's `dmg_sound` ROMs, Gb_Snd_Emu; SameBoy to come |
 | YM2612 + SN76489 | Mega Drive | FM plus PSG | Nuked-OPN2, MAME `sn76496`, WebAssembly | LGPL, BSD-3 | Nuked itself, die-derived; hardware captures |
 | S-DSP | SNES | Samples | snes_spc or ares, WebAssembly | LGPL, ISC | Captures of the serial DAC stream |
 | SID 6581, 8580 | C64 | Analog filter | reSID-fp or own | GPL, or MIT if rewritten | reSID-fp per profile; analog tolerance only |

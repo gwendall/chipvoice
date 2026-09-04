@@ -1,0 +1,566 @@
+{
+  "chip": "dmg",
+  "oracle": {
+    "id": "gb-snd-emu",
+    "name": "Gb_Snd_Emu 0.1.4 (blargg)"
+  },
+  "voices": [
+    "ch1",
+    "ch2",
+    "ch3",
+    "ch4"
+  ],
+  "date": "2026-09-04",
+  "files": 6,
+  "cycles": 128345700,
+  "identical": 81889085,
+  "diverging": 6,
+  "results": [
+    {
+      "name": "script-envelopes",
+      "source": "src/corpus/generate-dmg.mjs",
+      "writes": 49,
+      "cycles": 21390950,
+      "identical": 9175737,
+      "first": {
+        "cycle": 421021,
+        "voice": 0,
+        "a": 0,
+        "b": 15
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 11257481,
+          "a": 3208,
+          "b": 3181,
+          "exact": 2,
+          "near": 0,
+          "onlyA": 3206,
+          "onlyB": 3179,
+          "shift": 0,
+          "aligned": 2,
+          "runs": {
+            "ours": 3130,
+            "theirs": 3139,
+            "alignedTimes": 3124,
+            "alignedValues": 3103,
+            "maxShift": 1153097
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 17577621,
+          "a": 648,
+          "b": 654,
+          "exact": 2,
+          "near": 0,
+          "onlyA": 646,
+          "onlyB": 652,
+          "shift": 0,
+          "aligned": 2,
+          "runs": {
+            "ours": 631,
+            "theirs": 635,
+            "alignedTimes": 631,
+            "alignedValues": 631,
+            "maxShift": 180313
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-lengths",
+      "source": "src/corpus/generate-dmg.mjs",
+      "writes": 45,
+      "cycles": 21390950,
+      "identical": 17093833,
+      "first": {
+        "cycle": 421433,
+        "voice": 0,
+        "a": 0,
+        "b": 15
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 20180049,
+          "a": 246,
+          "b": 248,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 245,
+          "onlyB": 247,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 245,
+            "theirs": 247,
+            "alignedTimes": 245,
+            "alignedValues": 245,
+            "maxShift": 5343
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 20424655,
+          "a": 218,
+          "b": 222,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 217,
+          "onlyB": 221,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 217,
+            "theirs": 219,
+            "alignedTimes": 217,
+            "alignedValues": 217,
+            "maxShift": 13914379
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 19434245,
+          "a": 1946,
+          "b": 1955,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1946,
+          "onlyB": 1955,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 21227734,
+          "a": 626,
+          "b": 644,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 626,
+          "onlyB": 644,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-noise",
+      "source": "src/corpus/generate-dmg.mjs",
+      "writes": 56,
+      "cycles": 21390950,
+      "identical": 13661247,
+      "first": {
+        "cycle": 419878,
+        "voice": 3,
+        "a": 0,
+        "b": 15
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 13661247,
+          "a": 184042,
+          "b": 183904,
+          "exact": 4,
+          "near": 32991,
+          "onlyA": 151047,
+          "onlyB": 150909,
+          "shift": -7,
+          "aligned": 32995,
+          "runs": {
+            "ours": 472,
+            "theirs": 476,
+            "alignedTimes": 326,
+            "alignedValues": 289,
+            "maxShift": 157119
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-pulses",
+      "source": "src/corpus/generate-dmg.mjs",
+      "writes": 152,
+      "cycles": 21390950,
+      "identical": 9276824,
+      "first": {
+        "cycle": 423437,
+        "voice": 1,
+        "a": 0,
+        "b": 15
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 14482822,
+          "a": 3842,
+          "b": 3842,
+          "exact": 2,
+          "near": 198,
+          "onlyA": 3642,
+          "onlyB": 3642,
+          "shift": -1,
+          "aligned": 198,
+          "runs": {
+            "ours": 1957,
+            "theirs": 1957,
+            "alignedTimes": 1953,
+            "alignedValues": 1952,
+            "maxShift": 9767
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 13694012,
+          "a": 1964,
+          "b": 1968,
+          "exact": 4,
+          "near": 0,
+          "onlyA": 1960,
+          "onlyB": 1964,
+          "shift": 0,
+          "aligned": 4,
+          "runs": {
+            "ours": 1417,
+            "theirs": 1416,
+            "alignedTimes": 1415,
+            "alignedValues": 1415,
+            "maxShift": 32033
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-sweep",
+      "source": "src/corpus/generate-dmg.mjs",
+      "writes": 33,
+      "cycles": 21390950,
+      "identical": 16851366,
+      "first": {
+        "cycle": 424197,
+        "voice": 0,
+        "a": 0,
+        "b": 15
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 16851366,
+          "a": 735,
+          "b": 728,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 734,
+          "onlyB": 727,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 633,
+            "theirs": 630,
+            "alignedTimes": 625,
+            "alignedValues": 625,
+            "maxShift": 3326555
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-wave",
+      "source": "src/corpus/generate-dmg.mjs",
+      "writes": 202,
+      "cycles": 21390950,
+      "identical": 15830078,
+      "first": {
+        "cycle": 419430,
+        "voice": 2,
+        "a": 0,
+        "b": 1
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 15830078,
+          "a": 7312,
+          "b": 7312,
+          "exact": 6,
+          "near": 0,
+          "onlyA": 7306,
+          "onlyB": 7306,
+          "shift": 0,
+          "aligned": 6,
+          "runs": {
+            "ours": 912,
+            "theirs": 912,
+            "alignedTimes": 909,
+            "alignedValues": 908,
+            "maxShift": 1513
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 21390950,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

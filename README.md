@@ -5,7 +5,8 @@ Game audio on real sound chips, in a browser and on a server.
 A Ricoh 2A03, the NES chip, emulated at the clock level and running in an
 AudioWorklet or rendered offline to a file. A driver and a tracker on top, so music
 is four lines of text. And the one thing the hardware forced on every game: sound
-effects take channels away from the music.
+effects take channels away from the music. The Game Boy's chip is in the package
+too, verified the same way; the driver does not speak to it yet.
 
 **[chipvoice.dev](https://chipvoice.dev)** to try it. `npm i chipvoice` to use it.
 
@@ -41,11 +42,14 @@ A measurement, not an adjective. Every chip has a conformance sheet, held to the
 method in [`docs/CONFORMANCE.md`](docs/CONFORMANCE.md), that says what was verified
 against which oracle and what is known to differ. The 2A03's is
 [`docs/chips/2a03.md`](docs/chips/2a03.md): its pulses are identical to blargg's
-reference emulator cycle for cycle on every song in the corpus, and every
-divergence found so far is a convention of that 2005 oracle, read there. The
-analog stage and the test ROMs still say **unverified**, honestly. The
-[roadmap](docs/ROADMAP.md) is the order in which those lines change, and the
-[backlog](docs/BACKLOG.md) is what is being done about it this week.
+reference emulator cycle for cycle on every song in the corpus, all twenty-nine
+of his APU test ROMs pass on a 6502 the harness carries, and its mixer cancels
+against his recordings of a real NES as well as the console did. The Game Boy's
+is [`docs/chips/dmg.md`](docs/chips/dmg.md): twelve of twelve `dmg_sound` ROMs
+on an SM83. What still says **unverified** on both, honestly: the analog stage,
+which needs a real unit's line-out. The [roadmap](docs/ROADMAP.md) is the order
+in which those lines change, and the [backlog](docs/BACKLOG.md) is what is being
+done about it this week.
 
 ## Where it is going
 
