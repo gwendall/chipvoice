@@ -81,11 +81,47 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3 |
 | P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the kit is on the PSG noise for now |
 
+## Phase 6. SNES
+
+| # | Ticket | Status | Where |
+| --- | --- | --- | --- |
+| P6-1 | snes_spc's S-DSP vendored as the oracle: built natively, driven by a register log with the sample RAM from the log's memory lines, its stereo output traced per sample | done | `packages/conform/oracles/snes-spc` |
+| P6-2 | The S-DSP in TypeScript, ported from snes_spc line for line, behind `DigitalChip`: the digital stereo output is the voice pair | done | `chips/snes/sdsp.ts`; identical to snes_spc on every log, first run |
+| P6-3 | The SNES chip: 64 KB of sample RAM, the DSP reached through the SPC700's `$F2`/`$F3`, a placeholder output stage, a worklet | done | `chips/snes/dsp.ts` |
+| P6-4 | A BRR encoder, and the sample instrument shape: `Instrument.sample` | done | `chips/snes/brr.ts`; `ChipDriver.memory()` |
+| P6-5 | The SNES's driver and arranger: samples synthesised per intent, ADSR, the echo as the signature, the kit as samples | done | `chips/snes/driver.ts`, `arranger.ts` |
+| P6-6 | The chip in the API, the studio and the skill. VGM has no S-DSP; SPC export is a driver in the file and comes later | done | skill 0.7.0; SPC export is P6-9 |
+| P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
+| P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit |
+| P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | |
+| P6-10 | Real triads across voices for the chord, the SNES's idiom, and the noise voice for hats | todo | the arranger arpeggiates for now |
+
 ## Later phases
 
-SNES, C64: see the roadmap. Not ticketed until phase 5 is done.
+C64: see the roadmap. Not ticketed until phase 6 is done.
 
 ## Discoveries
+
+**2026-09-04, P6-1 to P6-7.** The fourth chip, and the port was identical to
+its oracle on the first run: snes_spc's S-DSP, line for line, compared on the
+DSP's output stream, which on this chip is the chip's output. Everything the
+first run found was in the programs. The DSP powers on in a state captured
+from a console: an echo buffer 28 KB long from wherever ESA points, which
+wraps round the top of RAM and over the samples until the old buffer runs
+out; and voices keyed on with the noise routed to some of them and the noise
+clock stopped, a constant on the output that grows with an envelope and
+looked, for an hour, like a drift in the chip. The IPL ROM keyed every voice
+off and every program disabled echo writes and waited the old delay out
+before enabling them; the driver, the scripts and the formula tests now do
+both, and the chip was never wrong. The BRR encoder's first version was wrong
+by a factor of two: the decoder works on half-scale values and doubles the
+result, so a nibble is worth `2^shift` on the scale of the samples and the
+prediction counts double; a sine encoded with the wrong unit saturated. Note
+off on this chip is the voice's own GAIN rather than KOFF, because KOFF is one
+register for eight voices and a driver that writes notes out of time order
+cannot hold its state. `ChipDriver.memory()` and `Instrument.sample` are the
+sample instrument shape: a chip whose instruments are samples names them from
+a bank the driver puts in memory at power-on.
 
 **2026-09-04, P5-1 to P5-7.** The third chip, in a day, and the first whose
 verification is against the die. Nuked-OPN2 is a reading of the YM3438's

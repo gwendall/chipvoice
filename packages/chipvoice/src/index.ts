@@ -3,6 +3,7 @@ import { getChip, type ChipDefinition } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
 import { mdChip } from "./chips/md/index.js";
+import { snesChip } from "./chips/snes/index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
 export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
@@ -46,6 +47,9 @@ export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export { MEGA_DRIVE, mdChip } from "./chips/md/index.js";
 export { Ym2612 } from "./chips/md/ym2612.js";
 export { Sn76489 } from "./chips/md/sn76489.js";
+export { SNES, snesChip } from "./chips/snes/index.js";
+export { SDsp } from "./chips/snes/sdsp.js";
+export { encodeBrr } from "./chips/snes/brr.js";
 export type { Pattern, PercussionKit, Song } from "./sequencer.js";
 export { DEFAULT_KIT, NES_ROLES, softKit } from "./sequencer.js";
 export { arrange, instrumentsFor, resolveIntent, INTENTS, DEFAULT_INTENT } from "./score.js";
@@ -90,6 +94,7 @@ export function chipFor(id: string): ChipDefinition | null {
   if (id === "2a03") return nesChip;
   if (id === "dmg") return gbChip;
   if (id === "md") return mdChip;
+  if (id === "snes") return snesChip;
   return getChip(id);
 }
 

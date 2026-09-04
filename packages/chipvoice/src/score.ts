@@ -3,6 +3,7 @@ import type { PercussionKit, Song } from "./sequencer.js";
 import { nesInstruments } from "./chips/nes/arranger.js";
 import { gbInstruments } from "./chips/gb/arranger.js";
 import { mdInstruments } from "./chips/md/arranger.js";
+import { snesInstruments } from "./chips/snes/arranger.js";
 
 /**
  * The score: what the music is, before any chip has done anything with it.
@@ -87,6 +88,7 @@ export function instrumentsFor(chipId: string, intent: Intent | undefined): Inst
   const resolved = resolveIntent(intent);
   if (chipId === "dmg") return gbInstruments(resolved);
   if (chipId === "md") return mdInstruments(resolved);
+  if (chipId === "snes") return snesInstruments(resolved);
   return nesInstruments(resolved);
 }
 

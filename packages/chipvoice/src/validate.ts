@@ -2,6 +2,7 @@ import { chips, getChip, type VoiceSpec } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
 import { mdChip } from "./chips/md/index.js";
+import { snesChip } from "./chips/snes/index.js";
 import { INTENTS } from "./score.js";
 import { noteToFreq } from "./driver.js";
 import type { Pattern, Song } from "./sequencer.js";
@@ -88,7 +89,7 @@ export function validateSong(song: unknown): ValidationResult {
   const s = song as Partial<Song> & { chip?: string; intent?: unknown };
 
   const chipId = s.chip ?? "2a03";
-  const chip = chipId === "2a03" ? nesChip : chipId === "dmg" ? gbChip : chipId === "md" ? mdChip : getChip(chipId);
+  const chip = chipId === "2a03" ? nesChip : chipId === "dmg" ? gbChip : chipId === "md" ? mdChip : chipId === "snes" ? snesChip : getChip(chipId);
   if (!chip) {
     return fail(`unknown chip "${chipId}". This build knows: ${chips().map((c) => c.id).join(", ")}`);
   }

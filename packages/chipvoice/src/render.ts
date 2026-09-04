@@ -2,6 +2,7 @@ import { getChip, type ChipCore, type ChipDefinition, type RegisterEvent } from 
 import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
 import { mdChip } from "./chips/md/index.js";
+import { snesChip } from "./chips/snes/index.js";
 import { Sequencer, type Song } from "./sequencer.js";
 import { OfflineDriver } from "./driver.js";
 
@@ -20,7 +21,7 @@ export interface RenderOptions {
   /** How long to render. Defaults to two times round the song's loop. */
   seconds?: number;
   sampleRate?: number;
-  /** Which chip: `"2a03"` (the default), `"dmg"` or `"md"`. */
+  /** Which chip: `"2a03"` (the default), `"dmg"`, `"md"` or `"snes"`. */
   chip?: string;
   /** 0 to 1, applied by the chip's own output stage. */
   gain?: number;
@@ -59,7 +60,7 @@ export function loopSeconds(song: Song): number {
  * registry, which a caller filled.
  */
 function chipFor(id: string): ChipDefinition {
-  const chip = id === "2a03" ? nesChip : id === "dmg" ? gbChip : id === "md" ? mdChip : getChip(id);
+  const chip = id === "2a03" ? nesChip : id === "dmg" ? gbChip : id === "md" ? mdChip : id === "snes" ? snesChip : getChip(id);
   if (!chip) throw new Error(`unknown chip: ${id}`);
   return chip;
 }
@@ -123,16 +124,19 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
 export function recordSong(
   song: Song,
   options: { seconds?: number; chip?: string } = {},
-): { events: RegisterEvent[]; cycles: number } {
+): { events: RegisterEvent[]; cycles: number; memory: { address: number; bytes: Uint8Array }[] } {
   const chip = chipFor(options.chip ?? "2a03");
   const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
   const cycles = Math.round(seconds * chip.spec.clockHz);
   const events: RegisterEvent[] = [];
+  const memory: { address: number; bytes: Uint8Array }[] = [];
   const core: ChipCore = {
     schedule: (batch) => {
       for (const e of batch) events.push(e);
     },
-    load() {},
+    load(address, bytes) {
+      memory.push({ address, bytes: bytes.slice() });
+    },
     render() {},
     setGain() {},
     reset() {},
@@ -153,6 +157,7 @@ export function recordSong(
   return {
     events: events.filter((e) => e.at < cycles).sort((a, b) => a.at - b.at),
     cycles,
+    memory,
   };
 }
 

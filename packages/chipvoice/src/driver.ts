@@ -83,6 +83,12 @@ export interface Instrument {
    * without it plays the chip's default patch.
    */
   fm?: FmPatch;
+  /**
+   * For a sample voice, the name of a sample in the chip's bank. A chip
+   * without samples ignores it; a sample voice without it plays the chip's
+   * default for the role.
+   */
+  sample?: string;
 }
 
 /**
@@ -253,6 +259,7 @@ export class APU implements NoteSink {
     const detune = opts.detune ?? 0;
     const wave = inst.wave ?? null;
     const fm = inst.fm ?? null;
+    const sample = inst.sample ?? null;
     let pitchAcc = 0;
 
     const states: NoteFrame[] = [];
@@ -304,6 +311,7 @@ export class APU implements NoteSink {
         pitchOffset: pitchAcc,
         wave,
         fm,
+        sample,
       });
     }
 
@@ -318,8 +326,9 @@ export class APU implements NoteSink {
     this.silence(channel, this.cycleAt(at ?? this.ctx.currentTime));
   }
 
-  /** What a program did first: the chip's own driver says what. */
+  /** What a program did first: its samples into memory, then the chip's own driver's writes. */
   protected powerOn() {
+    for (const block of this.encoder.memory?.() ?? []) this.load(block.address, block.bytes);
     for (const e of this.encoder.powerOn()) this.enqueue(e);
   }
 

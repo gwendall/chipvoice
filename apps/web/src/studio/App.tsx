@@ -206,7 +206,7 @@ export default function App() {
             chip<span>voice</span>
           </h1>
           <p>
-            The NES's sound chip, the Game Boy's or the Mega Drive's, in a browser tab. Press{" "}
+            The NES's sound chip, the Game Boy's, the Mega Drive's or the SNES's, in a browser tab. Press{" "}
             <b>Fire</b> while it plays: the shot takes pulse&nbsp;2, and you
             watch the chord row go dark. No other library does that, because no
             other one emulates the chip.

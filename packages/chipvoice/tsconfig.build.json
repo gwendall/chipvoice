@@ -5,5 +5,5 @@
   // The worklet is bundled into a string by scripts/build-worklet.mjs and
   // registers a processor the moment it runs. It is type-checked with the
   // rest of src by tsconfig.json; it has no business in dist.
-  "exclude": ["src/chips/nes/worklet.ts", "src/chips/gb/worklet.ts", "src/chips/md/worklet.ts"]
+  "exclude": ["src/chips/nes/worklet.ts", "src/chips/gb/worklet.ts", "src/chips/md/worklet.ts", "src/chips/snes/worklet.ts"]
 }

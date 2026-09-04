@@ -1,8 +1,8 @@
-import { arrange, GB_DMG, MEGA_DRIVE, NES_2A03, type Song } from "chipvoice";
+import { arrange, GB_DMG, MEGA_DRIVE, NES_2A03, SNES, type Song } from "chipvoice";
 
 /** The chips the studio offers, by the id the API stores. */
-export type ChipId = "2a03" | "dmg" | "md";
-export const CHIP_LABEL: Record<ChipId, string> = { "2a03": "NES", dmg: "Game Boy", md: "Mega Drive" };
+export type ChipId = "2a03" | "dmg" | "md" | "snes";
+export const CHIP_LABEL: Record<ChipId, string> = { "2a03": "NES", dmg: "Game Boy", md: "Mega Drive", snes: "SNES" };
 
 /**
  * The playground's song, as the four lines of tokens the library takes.
@@ -30,7 +30,7 @@ export const CHANNEL_LABEL: Record<ChannelName, string> = {
 
 /** Which chip voice each line ends up on, which is what the stealing acts on. */
 export function channelVoice(chip: ChipId, channel: ChannelName): string {
-  return (chip === "dmg" ? GB_DMG : chip === "md" ? MEGA_DRIVE : NES_2A03).roles[channel];
+  return (chip === "dmg" ? GB_DMG : chip === "md" ? MEGA_DRIVE : chip === "snes" ? SNES : NES_2A03).roles[channel];
 }
 
 export const STEPS = 64;

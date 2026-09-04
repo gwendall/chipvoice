@@ -38,7 +38,7 @@ export const SongInput = z.object({
   patterns: z.array(PatternSchema).min(1).max(16),
   order: z.array(z.number().int().min(0)).min(1).max(64),
   /** Which chip: the NES's 2A03, or the Game Boy's. */
-  chip: z.enum(["2a03", "dmg", "md"]).default("2a03"),
+  chip: z.enum(["2a03", "dmg", "md", "snes"]).default("2a03"),
   /** What each role should sound like. Absent roles take the default word. */
   intent: IntentSchema.optional(),
   /** Free-form. Meant for an agent to say who or what made it. */

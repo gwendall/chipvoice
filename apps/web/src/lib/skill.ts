@@ -2,7 +2,7 @@ import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 const UPDATED = "2026-09-04";
 
 /**
@@ -26,7 +26,7 @@ export function skillMarkdown(): string {
 
   return `---
 name: chipvoice
-description: Write chiptune for the emulated sound chips of the old machines - the NES's 2A03, the Game Boy's APU, the Mega Drive's YM2612 and PSG - as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - each chip is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
+description: Write chiptune for the emulated sound chips of the old machines - the NES's 2A03, the Game Boy's APU, the Mega Drive's YM2612 and PSG, the SNES's S-DSP - as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - each chip is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
 compatibility: Requires curl and network access. Nothing to install.
 homepage: ${SITE}
 metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","openclaw":{"requires":{"bins":["curl"]},"capabilities":[],"emoji":"musical_keyboard","homepage":"${SITE}"}}
@@ -35,8 +35,8 @@ metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","op
 # chipvoice - chiptune agents can write
 
 Music for the sound chips of the old machines - the Ricoh 2A03 in the NES, the
-APU in the Game Boy, the YM2612 and its PSG in the Mega Drive - as text you can
-read and diff. Post four lines, get a link and an MP3 that plays anywhere. The
+APU in the Game Boy, the YM2612 and its PSG in the Mega Drive, the S-DSP in the
+SNES - as text you can read and diff. Post four lines, get a link and an MP3 that plays anywhere. The
 same four lines play on any of them, each in its own idiom.
 
 > **Skill version ${VERSION} (${UPDATED}).** To check for updates, fetch \`${SITE}/skill.md\`
@@ -74,11 +74,17 @@ same four lines play on any of them, each in its own idiom.
 > lead and the bass become four-operator FM patches, the chord a PSG square,
 > the drums the PSG's noise. The FM chip is a port of a reading of the die and
 > is identical to it cycle for cycle.
+>
+> Since 0.7.0: a fourth chip, the SNES's. Send \`"chip": "snes"\` and everything
+> becomes a sample - waveforms the driver synthesised for the pitched roles, a
+> kit of drums - with the echo the machine is known for. The DSP is a port of
+> snes_spc and identical to it sample for sample.
 
 How accurate each chip is, and how that is measured, is on its conformance sheet:
 https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md,
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md and
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md,
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md and
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md
 
 ## The one thing to understand first
 
@@ -103,12 +109,12 @@ evidence, which is the class of fault you cannot hear for yourself.
 
 Four channels, one token per sixteenth note. That is the whole language.
 
-| Channel | On the 2A03 | On the Game Boy | On the Mega Drive | Takes |
-| --- | --- | --- | --- | --- |
-| \`lead\` | Pulse 1 | Pulse 1 | FM 1 | Note names |
-| \`chord\` | Pulse 2 | Pulse 2 | PSG 1 | Note names, arpeggiated by \`chordShape\` |
-| \`bass\` | Triangle | Wave channel | FM 2 | Note names. **Its token count sets the pattern length** |
-| \`perc\` | Noise | Noise | PSG noise | \`K\` kick, \`S\` snare, \`H\` hat, \`O\` open hat |
+| Channel | On the 2A03 | On the Game Boy | On the Mega Drive | On the SNES | Takes |
+| --- | --- | --- | --- | --- | --- |
+| \`lead\` | Pulse 1 | Pulse 1 | FM 1 | Voice 0, a waveform | Note names |
+| \`chord\` | Pulse 2 | Pulse 2 | PSG 1 | Voice 1, a waveform | Note names, arpeggiated by \`chordShape\` |
+| \`bass\` | Triangle | Wave channel | FM 2 | Voice 2, a waveform | Note names. **Its token count sets the pattern length** |
+| \`perc\` | Noise | Noise | PSG noise | Voice 3, sampled drums | \`K\` kick, \`S\` snare, \`H\` hat, \`O\` open hat |
 
 A note is a letter A-G, an optional \`#\` or \`b\`, then an octave: \`A4\`, \`F#3\`, \`Bb2\`.
 \`.\` holds the previous note. \`=\` cuts it.
@@ -126,7 +132,7 @@ which is why the validator does.
 | \`order\` | yes | Which patterns play, in which order. \`[0,0,1,0]\` is four bars from two |
 | \`title\` | no | Shown on the page and **drawn onto the share card** |
 | \`author\` | no | Who or what made it |
-| \`chip\` | no | \`"2a03"\` (the NES, the default), \`"dmg"\` (the Game Boy) or \`"md"\` (the Mega Drive) |
+| \`chip\` | no | \`"2a03"\` (the NES, the default), \`"dmg"\` (the Game Boy), \`"md"\` (the Mega Drive) or \`"snes"\` (the SNES) |
 | \`intent\` | no | A word per role for what it should sound like; see below. \`{"lead": "bright", "bass": "hollow"}\` |
 
 **Titles are filtered, and it is worth knowing why before you get a 422.** The
@@ -220,6 +226,17 @@ is a level in decibels rather than a linear 0 to 15, so a decay in a table
 sounds longer here; FM notes have their own release after the note ends. The
 PSG cannot go below about 110 Hz. Everything comes out in stereo, every voice
 on both sides.
+
+**The SNES (\`"snes"\`).** Eight sample voices and an echo; four are used. The
+lead, the chord and the bass are looped waveforms the driver synthesised -
+\`"soft"\` a triangle, \`"bright"\` a sawtooth, \`"round"\` a sine; the bass
+words the same an octave down, \`"hollow"\` a square - played through the chip's
+Gaussian interpolation, which rounds everything off: this is the softest of the
+four machines. The drums are synthesised samples, a kick that sweeps down, a
+snare, two hats. Every pitched voice goes through the echo, 48 ms with the
+low-pass filter most games used, and that echo is most of what makes it sound
+like the machine: write with space for it. Volume is the voice's own, so
+tables work as on the NES.
 
 ## Endpoints
 
@@ -350,8 +367,8 @@ trip at a time.
 ## Limits
 
 Writes are rate limited per address; reads are not. Rendering is capped at five
-minutes of audio per request. Three chips today, the 2A03, the Game Boy's and
-the Mega Drive's, and \`chip\` picks one; the SNES and the C64 are on the roadmap,
-and the same \`intent\` words will play on them.
+minutes of audio per request. Four chips today, the 2A03, the Game Boy's, the
+Mega Drive's and the SNES's, and \`chip\` picks one; the C64 is on the roadmap,
+and the same \`intent\` words will play on it.
 `;
 }
