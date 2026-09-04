@@ -26,21 +26,33 @@ try {
   console.log(`project: ${dir}`);
   run("npm init -y");
 
+  // No audit and no funding notice: both are registry round trips that have
+  // nothing to do with whether the tarball works, and on a runner with a
+  // placeholder token they are minutes of retries before npm gives up on them.
   if (wanted) {
     console.log(`installing chipvoice@${wanted} from the registry`);
-    run(`npm i chipvoice@${wanted}`);
+    run(`npm i chipvoice@${wanted} --no-audit --no-fund`);
   } else {
     console.log("packing the working tree");
     const tarball = run("npm pack --silent", root).trim().split("\n").pop();
-    run(`npm i ${path.join(root, tarball)}`);
+    run(`npm i ${path.join(root, tarball)} --no-audit --no-fund`);
     fs.unlinkSync(path.join(root, tarball));
   }
 
   fs.copyFileSync(path.join(root, "test/fresh/index.html"), path.join(dir, "index.html"));
 
+  /*
+   * The package's own `serve`, not one fetched by npx at test time.
+   *
+   * It used to be `npx --yes serve` inside the empty project, which downloads
+   * serve from the registry on every run. On the release runner that download
+   * never completed, and the release failed on a fetch that had nothing to do
+   * with the package. A test of what `npm install` hands over should not
+   * itself depend on the network once the tarball is installed.
+   */
   const port = 4180;
-  server = spawn("npx", ["--yes", "serve", ".", "-l", String(port)], {
-    cwd: dir,
+  server = spawn(path.join(root, "node_modules/.bin/serve"), [dir, "-l", String(port)], {
+    cwd: root,
     stdio: "ignore",
     detached: true,
   });

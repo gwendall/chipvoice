@@ -49,7 +49,13 @@ try {
     const buf = new Float32Array(analyser.fftSize);
     const peaks = [];
     const positions = new Set();
-    for (let i = 0; i < 40; i++) {
+    // Two seconds of audio time, not of wall time. A cold headless Chromium
+    // brings its audio thread up slowly, and two seconds on the wall clock can
+    // be a tenth of a second of audio - which reads as a sequencer that never
+    // moved, and failed a release for a reason that had nothing to do with it.
+    const t0 = chip.currentTime;
+    const deadline = Date.now() + 15000;
+    while (chip.currentTime - t0 < 2 && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 50));
       analyser.getFloatTimeDomainData(buf);
       let peak = 0;
@@ -63,6 +69,7 @@ try {
       steps: positions.size,
       songId: chip.songId,
       playing: chip.playing,
+      audioSeconds: Math.round((chip.currentTime - t0) * 10) / 10,
     };
   });
 
