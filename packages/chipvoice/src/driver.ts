@@ -146,6 +146,7 @@ export class APU implements NoteSink {
     });
     this.node.connect(destination);
     this.ready = true;
+    this.powerOn();
     return true;
   }
 
@@ -161,6 +162,7 @@ export class APU implements NoteSink {
   reset() {
     this.queue.length = 0;
     this.post({ type: "reset" });
+    this.powerOn();
   }
 
   /**
@@ -221,9 +223,13 @@ export class APU implements NoteSink {
     const isTriangle = channel === "tri";
     const isNoise = isNoiseChannel;
 
-    let lastPeriod = -1;
-    let lastVolume = -1;
-    let lastDuty = -1;
+    // The channel's register block, and what this note last wrote to it, so
+    // a held note costs nothing after its first frame.
+    const base =
+      channel === "p1" ? 0x4000 : channel === "p2" ? 0x4004 : channel === "tri" ? 0x4008 : 0x400c;
+    let lastControl = -1;
+    let lastLo = -1;
+    let lastHi = -1;
     let pitchAcc = 0;
 
     for (let f = 0; f < frames; f++) {
@@ -265,89 +271,123 @@ export class APU implements NoteSink {
         period = Math.max(0, Math.min(0x7ff, period + Math.round(pitchAcc)));
       }
 
-      const ev: RegisterEvent = { at, ch: channel };
-      let dirty = false;
-
       if (isNoise) {
         // Noise has 16 periods rather than a frequency, so arpeggio and slide
         // walk the period index instead of transposing.
         const idx = Math.max(0, Math.min(15, Math.round(noiseBase + semis)));
-        if (idx !== lastPeriod) {
-          ev.periodIndex = idx;
-          lastPeriod = idx;
-          dirty = true;
-        }
+        const control = 0x30 | vol; // halted, constant volume
+        const mode = (inst.noiseMode ? 0x80 : 0) | idx;
         if (f === 0) {
-          ev.mode = !!inst.noiseMode;
-          dirty = true;
+          this.enqueue({ at, addr: 0x400c, value: control });
+          this.enqueue({ at, addr: 0x400e, value: mode });
+          // Length 31, halted above, and the envelope restarted.
+          this.enqueue({ at, addr: 0x400f, value: 31 << 3 });
+        } else {
+          if (control !== lastControl) this.enqueue({ at, addr: 0x400c, value: control });
+          if (mode !== lastLo) this.enqueue({ at, addr: 0x400e, value: mode });
         }
-      } else if (period !== lastPeriod) {
-        ev.period = period;
-        lastPeriod = period;
-        dirty = true;
+        lastControl = control;
+        lastLo = mode;
+        continue;
       }
 
-      if (!isTriangle) {
-        if (vol !== lastVolume) {
-          ev.volume = vol;
-          ev.constant = true;
-          lastVolume = vol;
-          dirty = true;
+      const lo = period & 0xff;
+      const hi = period >> 8;
+      if (isTriangle) {
+        if (f === 0) {
+          // Control flag set and the linear counter at its longest: the
+          // triangle plays until told otherwise, and the driver ends notes
+          // itself.
+          this.enqueue({ at, addr: 0x4008, value: 0xff });
+          this.enqueue({ at, addr: 0x400a, value: lo });
+          this.enqueue({ at, addr: 0x400b, value: (31 << 3) | hi });
+        } else {
+          if (lo !== lastLo) this.enqueue({ at, addr: 0x400a, value: lo });
+          if (hi !== lastHi) this.enqueue({ at, addr: 0x400b, value: (31 << 3) | hi });
         }
-        if (!isNoise) {
-          const duty = Array.isArray(inst.duty)
-            ? inst.duty[f % inst.duty.length]
-            : (inst.duty ?? 2);
-          if (duty !== lastDuty) {
-            ev.duty = duty;
-            lastDuty = duty;
-            dirty = true;
-          }
+        this.triangleHi = hi;
+      } else {
+        const duty = Array.isArray(inst.duty)
+          ? inst.duty[f % inst.duty.length]
+          : (inst.duty ?? 2);
+        const control = (duty << 6) | 0x30 | vol; // halted, constant volume
+        if (f === 0) {
+          this.enqueue({ at, addr: base, value: control });
+          // Sweep off, negate set. With negate clear the sweep's target is
+          // twice the period, and anything at $400 or above - G#2 and below -
+          // is muted. Every driver on the hardware wrote this byte.
+          this.enqueue({ at, addr: base + 1, value: 0x08 });
+          this.enqueue({ at, addr: base + 2, value: lo });
+          // Length 31, halted above; the phase and the envelope restart.
+          this.enqueue({ at, addr: base + 3, value: (31 << 3) | hi });
+        } else {
+          if (control !== lastControl) this.enqueue({ at, addr: base, value: control });
+          if (lo !== lastLo) this.enqueue({ at, addr: base + 2, value: lo });
+          // The only road to the high bits, and it restarts the phase. A
+          // slide or a vibrato across the boundary clicks here, as on a NES.
+          if (hi !== lastHi) this.enqueue({ at, addr: base + 3, value: (31 << 3) | hi });
         }
-      } else if (f === 0) {
-        // The triangle has no volume; it plays or it does not.
-        ev.linear = 127;
-        ev.trigger = true;
-        dirty = true;
+        lastControl = control;
       }
-
-      if (f === 0) {
-        ev.length = 31; // longest, since the driver ends notes explicitly
-        ev.loop = true;
-        ev.trigger = true;
-        if (!isTriangle) ev.constant = true;
-        dirty = true;
-      }
-
-      if (dirty) this.enqueue(ev);
+      lastLo = lo;
+      lastHi = hi;
     }
 
     // Explicit note off, the way a driver would.
-    this.enqueue({
-      at: this.cycleAt(start + frames * FRAME_TIME),
-      ch: channel,
-      stop: true,
-    });
+    this.silence(channel, this.cycleAt(start + frames * FRAME_TIME));
   }
 
-  /** Silences one channel immediately. */
+  /** Silences one channel immediately, or at `at`. */
   stop(channel: Channel, at?: number) {
     if (!this.ready) return;
-    this.enqueue({
-      at: this.cycleAt(at ?? this.ctx.currentTime),
-      ch: channel,
-      stop: true,
-    });
+    this.silence(channel, this.cycleAt(at ?? this.ctx.currentTime));
+  }
+
+  /** The triangle's last period high bits, for silencing it without a blip. */
+  private triangleHi = 0;
+
+  /**
+   * What a program did first: enable the four voices.
+   *
+   * `$4015` is written once here and never again. It sets every enable at
+   * once, and a driver that schedules notes two hundred milliseconds ahead
+   * cannot know what the other channels will be doing on the cycle a write
+   * lands: an effect stopping pulse 2 now would carry a lead that ends later,
+   * or miss one that starts later. Silence goes through each channel's own
+   * registers instead.
+   */
+  protected powerOn() {
+    this.enqueue({ at: 0, addr: 0x4015, value: 0x0f });
+  }
+
+  /**
+   * Quiet, through the channel's own registers.
+   *
+   * A pulse or the noise goes quiet with a constant volume of 0. The triangle
+   * has no volume, so its linear counter is told to reload with 0, which the
+   * next quarter frame does - at most four milliseconds away - and the
+   * sequencer stops where it is. `$400B` carries the period high bits, hence
+   * the copy kept above: zeros there would pitch the last milliseconds up an
+   * octave or more.
+   */
+  private silence(channel: Channel, at: number) {
+    switch (channel) {
+      case "p1":
+        this.enqueue({ at, addr: 0x4000, value: 0x30 });
+        return;
+      case "p2":
+        this.enqueue({ at, addr: 0x4004, value: 0x30 });
+        return;
+      case "noi":
+        this.enqueue({ at, addr: 0x400c, value: 0x30 });
+        return;
+      case "tri":
+        this.enqueue({ at, addr: 0x4008, value: 0x00 });
+        this.enqueue({ at, addr: 0x400b, value: this.triangleHi });
+        return;
+    }
   }
 }
-
-/** Percussion built from the noise channel, plus a triangle thump for kicks. */
-export const NOISE_KIT = {
-  kick: { periodIndex: 6, volume: [15, 13, 9, 5, 2], sweep: -1 },
-  snare: { periodIndex: 9, volume: [14, 11, 8, 5, 3, 1] },
-  hat: { periodIndex: 13, volume: [6, 3, 1], mode: true },
-  openHat: { periodIndex: 12, volume: [8, 7, 6, 5, 4, 3, 2, 1], mode: true },
-} as const;
 
 
 /**
@@ -372,6 +412,7 @@ export class OfflineDriver extends APU implements NoteSink {
     super({ currentTime: 0 } as unknown as AudioContext);
     this.core = core;
     this.ready = true;
+    this.powerOn();
   }
 
   protected override enqueue(event: RegisterEvent) {
@@ -392,5 +433,6 @@ export class OfflineDriver extends APU implements NoteSink {
   override reset() {
     this.pending.length = 0;
     this.core.reset();
+    this.powerOn();
   }
 }

@@ -90,12 +90,15 @@ export interface ChipCore {
 }
 
 /**
- * One register write, stamped with the cycle it lands on.
+ * One register write, as the CPU would make it, stamped with the cycle it
+ * lands on.
  *
- * The fields are the 2A03's, and this is the first thing a second chip will
- * force open - an FM patch write has no `duty`. When that happens the right
- * move is a per-chip event type rather than a union of everything, because a
- * driver only ever talks to one chip.
+ * A byte to an address, and nothing else, because that is what every chip is
+ * from the outside and what every log of one contains. An earlier shape
+ * carried decoded fields - `duty`, `period`, `trigger` - and let the driver do
+ * two things the hardware cannot: change a pulse's period high bits without
+ * restarting its phase, and skip the sweep register, which on a NES mutes any
+ * low note until it is written. A byte cannot skip anything.
  */
 export interface RegisterEvent {
   /**
@@ -108,20 +111,10 @@ export interface RegisterEvent {
    * any rate, and a VGM file is this list with a different header.
    */
   at: number;
-  /** Voice id, from the chip's spec. */
-  ch: string;
-  duty?: number;
-  period?: number;
-  periodIndex?: number;
-  volume?: number;
-  constant?: boolean;
-  loop?: boolean;
-  length?: number;
-  linear?: number;
-  trigger?: boolean;
-  mode?: boolean;
-  stop?: boolean;
-  sweep?: { period: number; negate: boolean; shift: number } | null;
+  /** The register, as the CPU addresses it: `$4000` to `$4017` on the 2A03. */
+  addr: number;
+  /** The byte. */
+  value: number;
 }
 
 export interface ChipDefinition {

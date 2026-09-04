@@ -143,6 +143,30 @@ agent that published before it knows the drums moved. Package and site are
 released together, because the end-to-end test compares their renders byte for
 byte.
 
+### 11. Register writes are bytes (2026-09-04)
+
+`RegisterEvent` is `{ at, addr, value }`: a byte to an address on the chip's
+clock. The core decodes `$4000` to `$4017` the way the chip does, and the driver
+encodes its notes into those bytes. The decoded shape - `duty`, `period`,
+`trigger`, `stop` - is gone.
+
+**Why.** Bytes are what every chip is from the outside, what every log of a real
+machine contains, what a VGM file is, and what an oracle takes. The decoded shape
+also let the driver do two things the hardware cannot: change a pulse's period
+high bits without restarting its phase, and never write the sweep register,
+which on a NES mutes every pulse note at period `$400` or above until `$4001`
+holds `$08`. A byte interface cannot skip a register or invent a path. Whatever
+the driver does through it, a program on the hardware could have done.
+
+**What changed.** Silence goes through each channel's own registers, never
+`$4015`: that register sets every enable at once, and a driver scheduling two
+hundred milliseconds ahead cannot know what the other channels will be doing on
+the cycle a write lands. A vibrato or a slide across a period high-byte boundary
+now restarts the phase, as on a NES; the sweep-unit trick that avoids it is a
+ticket. Low pulse notes play. The 5-step frame sequence and the `$4017` write
+delay came with the decoder. `RegisterEvent` is now chip-agnostic, which is one
+less thing the Game Boy has to force open.
+
 ## Open
 
 ### B. The SID's licence
