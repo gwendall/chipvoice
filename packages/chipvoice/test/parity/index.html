@@ -33,9 +33,25 @@ document.getElementById("go").onclick = async () => {
 
   // Sample the analyser repeatedly and concatenate. Not a perfect recording -
   // windows overlap - but the statistics it feeds are what is being compared.
-  const started = performance.now();
+  //
+  // The four seconds start when the sound does, not when the button was
+  // pressed. A cold headless Chromium can take a couple of seconds to bring
+  // its audio thread up, and a capture that counted from the click was half
+  // silence on a slow start - which measured as a chip that had gone quiet
+  // and dark, and failed the run for a reason that had nothing to do with
+  // the chip.
+  const pressed = performance.now();
+  let started = null;
   const tick = () => {
     analyser.getFloatTimeDomainData(buf);
+    if (started === null) {
+      if (!buf.some((v) => v !== 0)) {
+        if (performance.now() - pressed < 15000) requestAnimationFrame(tick);
+        else window.captured = [];  // nothing ever sounded; let the test say so
+        return;
+      }
+      started = performance.now();
+    }
     // Every sample, not every fourth: decimating folds the high harmonics
     // back down and makes the signal measure brighter than it is - which is
     // the opposite of what a brightness comparison should do.
