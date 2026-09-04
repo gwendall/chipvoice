@@ -75,16 +75,21 @@ function withSine(extra = []) {
   at(start + Math.round(CLOCK * 0.002));
   reg(0x5c, 0x01);
   chip.schedule(writes);
-  // The burst's onset, the silence after it, and the echo's onset.
+  // The burst's onset, the silence after it, and the echo's onset. The trace
+  // reports changes, and a sine crosses zero, so silence is a zero that
+  // lasts five milliseconds.
   let onset = -1;
-  let silentFrom = -1;
+  let zeroSince = -1;
   let echoAt = -1;
   chip.trace(start + Math.round(CLOCK * 0.2), (c, v, value) => {
-    if (v !== 0) return;
-    // The trace reports changes: the one zero after the burst is its end.
-    if (onset < 0 && value !== 0) onset = c;
-    else if (onset > 0 && silentFrom < 0 && value === 0) silentFrom = c;
-    else if (silentFrom > 0 && echoAt < 0 && value !== 0) echoAt = c;
+    if (v !== 0 || echoAt > 0) return;
+    if (onset < 0) {
+      if (value !== 0) onset = c;
+      return;
+    }
+    if (value === 0) zeroSince = c;
+    else if (zeroSince > 0 && c - zeroSince >= CLOCK * 0.005) echoAt = c;
+    else zeroSince = -1;
   });
   const ms = ((echoAt - onset) / CLOCK) * 1000;
   check('the echo brings a burst back a delay of 2 * 16 ms after it', onset > 0 && echoAt > 0 && ms > 30 && ms < 38, `${ms.toFixed(1)} ms`);
