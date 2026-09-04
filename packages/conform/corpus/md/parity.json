@@ -1,0 +1,890 @@
+{
+  "chip": "md",
+  "oracle": {
+    "id": "nuked-opn2",
+    "name": "Nuked-OPN2 1.0.12 (Nuke.YKT)"
+  },
+  "voices": [
+    "fm1",
+    "fm2",
+    "fm3",
+    "fm4",
+    "fm5",
+    "fm6"
+  ],
+  "date": "2026-09-04",
+  "files": 7,
+  "cycles": 1798721365,
+  "identical": 1798721365,
+  "diverging": 0,
+  "results": [
+    {
+      "name": "script-algorithms",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 1640,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 273835193,
+          "a": 241084,
+          "b": 241084,
+          "exact": 241084,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 241084,
+          "runs": {
+            "ours": 1182,
+            "theirs": 1182,
+            "alignedTimes": 1182,
+            "alignedValues": 1182,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-detune-lfo",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 1314,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 273835193,
+          "a": 235695,
+          "b": 235695,
+          "exact": 235695,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 235695,
+          "runs": {
+            "ours": 1785,
+            "theirs": 1785,
+            "alignedTimes": 1785,
+            "alignedValues": 1785,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 273835193,
+          "a": 195942,
+          "b": 195942,
+          "exact": 195942,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 195942,
+          "runs": {
+            "ours": 106,
+            "theirs": 106,
+            "alignedTimes": 106,
+            "alignedValues": 106,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 273835193,
+          "a": 84832,
+          "b": 84832,
+          "exact": 84832,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 84832,
+          "runs": {
+            "ours": 1862,
+            "theirs": 1862,
+            "alignedTimes": 1862,
+            "alignedValues": 1862,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-envelopes",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 414,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 273835193,
+          "a": 171195,
+          "b": 171195,
+          "exact": 171195,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 171195,
+          "runs": {
+            "ours": 6412,
+            "theirs": 6412,
+            "alignedTimes": 6412,
+            "alignedValues": 6412,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 273835193,
+          "a": 126874,
+          "b": 126874,
+          "exact": 126874,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 126874,
+          "runs": {
+            "ours": 3205,
+            "theirs": 3205,
+            "alignedTimes": 3205,
+            "alignedValues": 3205,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 273835193,
+          "a": 10802,
+          "b": 10802,
+          "exact": 10802,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 10802,
+          "runs": {
+            "ours": 1391,
+            "theirs": 1391,
+            "alignedTimes": 1391,
+            "alignedValues": 1391,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 273835193,
+          "a": 125994,
+          "b": 125994,
+          "exact": 125994,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 125994,
+          "runs": {
+            "ours": 872,
+            "theirs": 872,
+            "alignedTimes": 872,
+            "alignedValues": 872,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 273835193,
+          "a": 69981,
+          "b": 69981,
+          "exact": 69981,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 69981,
+          "runs": {
+            "ours": 7353,
+            "theirs": 7353,
+            "alignedTimes": 7353,
+            "alignedValues": 7353,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 273835193,
+          "a": 112,
+          "b": 112,
+          "exact": 112,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 112,
+          "runs": {
+            "ours": 9,
+            "theirs": 9,
+            "alignedTimes": 9,
+            "alignedValues": 9,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-psg",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 123,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-ssg-ch3-dac",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 1038,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 273835193,
+          "a": 101843,
+          "b": 101843,
+          "exact": 101843,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 101843,
+          "runs": {
+            "ours": 7162,
+            "theirs": 7162,
+            "alignedTimes": 7162,
+            "alignedValues": 7162,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 273835193,
+          "a": 65431,
+          "b": 65431,
+          "exact": 65431,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 65431,
+          "runs": {
+            "ours": 1211,
+            "theirs": 1211,
+            "alignedTimes": 1211,
+            "alignedValues": 1211,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-bright",
+      "source": "the same lines with a bright lead and a bright bass",
+      "writes": 2038,
+      "cycles": 214772700,
+      "identical": 214772700,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 214772700,
+          "a": 191137,
+          "b": 191137,
+          "exact": 191137,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 191137,
+          "runs": {
+            "ours": 462,
+            "theirs": 462,
+            "alignedTimes": 462,
+            "alignedValues": 462,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 214772700,
+          "a": 166647,
+          "b": 166647,
+          "exact": 166647,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 166647,
+          "runs": {
+            "ours": 1852,
+            "theirs": 1852,
+            "alignedTimes": 1852,
+            "alignedValues": 1852,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-golden",
+      "source": "packages/chipvoice/test/golden-md.mjs",
+      "writes": 1900,
+      "cycles": 214772700,
+      "identical": 214772700,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 214772700,
+          "a": 169736,
+          "b": 169736,
+          "exact": 169736,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 169736,
+          "runs": {
+            "ours": 1151,
+            "theirs": 1151,
+            "alignedTimes": 1151,
+            "alignedValues": 1151,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 214772700,
+          "a": 97120,
+          "b": 97120,
+          "exact": 97120,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 97120,
+          "runs": {
+            "ours": 565,
+            "theirs": 565,
+            "alignedTimes": 565,
+            "alignedValues": 565,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

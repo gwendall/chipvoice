@@ -13,13 +13,14 @@ export function GET() {
   const lines = endpointRows().map((r) => `- ${r.method} ${r.path} - ${r.summary}`);
   const body = `# chipvoice
 
-> Chiptune on the emulated sound chips of the old machines - the NES's 2A03 and
-> the Game Boy's APU - written as four lines of text. Post a song, get a link
-> and an MP3. Songs fork like code.
+> Chiptune on the emulated sound chips of the old machines - the NES's 2A03,
+> the Game Boy's APU, the Mega Drive's YM2612 and PSG - written as four lines
+> of text. Post a song, get a link and an MP3. Songs fork like code.
 
 The format is one token per sixteenth note across four channels: lead, chord,
 bass, perc. On the 2A03 they are pulse 1, pulse 2, the triangle and the noise; on
-the Game Boy (\`"chip": "dmg"\`) pulse 1, pulse 2, the wave channel and the noise.
+the Game Boy (\`"chip": "dmg"\`) pulse 1, pulse 2, the wave channel and the noise; on
+the Mega Drive (\`"chip": "md"\`) FM 1, PSG 1, FM 2 and the PSG's noise.
 An optional \`intent\` gives each role a word for what it should sound like
 (lead: soft, bright, round; chord: plucked, held; bass: round, hollow, bright;
 perc: tight, soft), the same words on every chip. A note is a letter A-G, an optional

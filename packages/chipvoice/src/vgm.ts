@@ -19,6 +19,8 @@
 import type { RegisterEvent } from "./chip.js";
 import { CPU_HZ } from "./chips/nes/dsp.js";
 import { CLOCK_HZ as GB_HZ } from "./chips/gb/dsp.js";
+import { YM_INPUT_HZ } from "./chips/md/dsp.js";
+import { PSG_CLOCK_HZ } from "./chips/md/sn76489.js";
 
 const SAMPLE_RATE = 44100;
 const VERSION = 0x161;
@@ -45,7 +47,29 @@ export interface VgmOptions {
 const CHIPS: Record<string, { clock: number; command: number; base: number; last: number; clockOffset: number; system: string }> = {
   "2a03": { clock: CPU_HZ, command: 0xb4, base: 0x4000, last: 0x401f, clockOffset: 0x84, system: "Nintendo Entertainment System" },
   dmg: { clock: GB_HZ, command: 0xb3, base: 0xff10, last: 0xff3f, clockOffset: 0x80, system: "Nintendo Game Boy" },
+  // The Mega Drive is two chips and the log is in master cycles; its writes
+  // are translated below rather than by this table.
+  md: { clock: 53693175, command: 0, base: 0, last: 0xffffff, clockOffset: 0, system: "Sega Mega Drive / Genesis" },
 };
+
+/**
+ * The Mega Drive's writes as VGM has them: a YM2612 write is one command
+ * carrying the register and the data, so an address byte on a port is kept
+ * until the data byte that follows it; a PSG byte is its own command.
+ */
+function megaDriveCommands(writes: { at: number; addr: number; value: number }[]): { at: number; bytes: number[] }[] {
+  const out: { at: number; bytes: number[] }[] = [];
+  const address = [0, 0];
+  for (const w of writes) {
+    if (w.addr === 0xc00011) out.push({ at: w.at, bytes: [0x50, w.value] });
+    else if ((w.addr & 0xfffffc) === 0xa04000) {
+      const port = (w.addr & 2) >> 1;
+      if (w.addr & 1) out.push({ at: w.at, bytes: [0x52 + port, address[port], w.value] });
+      else address[port] = w.value;
+    }
+  }
+  return out;
+}
 
 /**
  * @param events register writes, stamped in the chip's cycles
@@ -56,10 +80,11 @@ export function toVgm(events: RegisterEvent[], cycles: number, options: VgmOptio
   if (!chip) throw new Error(`no VGM format for chip: ${options.chip}`);
   const samples = (cycle: number) => Math.round((cycle * SAMPLE_RATE) / chip.clock);
   const total = samples(cycles);
-  const writes = events
-    .filter((e) => e.at < cycles && e.addr >= chip.base && e.addr <= chip.last)
-    .map((e) => ({ at: samples(e.at), addr: (e.addr - chip.base) & 0xff, value: e.value & 0xff }))
-    .sort((a, b) => a.at - b.at);
+  const kept = events.filter((e) => e.at < cycles && e.addr >= chip.base && e.addr <= chip.last).sort((a, b) => a.at - b.at);
+  const commands: { at: number; bytes: number[] }[] =
+    options.chip === "md"
+      ? megaDriveCommands(kept.map((e) => ({ at: samples(e.at), addr: e.addr, value: e.value & 0xff })))
+      : kept.map((e) => ({ at: samples(e.at), bytes: [chip.command, (e.addr - chip.base) & 0xff, e.value & 0xff] }));
 
   const body: number[] = [];
   let position = 0;
@@ -87,13 +112,13 @@ export function toVgm(events: RegisterEvent[], cycles: number, options: VgmOptio
     position = until;
   };
 
-  for (const w of writes) {
+  for (const w of commands) {
     if (loopAt >= 0 && loopOffset < 0 && w.at >= loopAt) {
       wait(loopAt);
       loopOffset = body.length;
     }
     wait(w.at);
-    body.push(chip.command, w.addr, w.value);
+    body.push(...w.bytes);
   }
   if (loopAt >= 0 && loopOffset < 0) {
     wait(loopAt);
@@ -120,7 +145,14 @@ export function toVgm(events: RegisterEvent[], cycles: number, options: VgmOptio
   }
   view.setUint32(0x24, 60, true);
   view.setUint32(0x34, HEADER - 0x34, true);
-  view.setUint32(chip.clockOffset, chip.clock, true);
+  if (options.chip === "md") {
+    view.setUint32(0x0c, PSG_CLOCK_HZ, true);
+    view.setUint16(0x28, 0x0009, true);
+    view.setUint8(0x2a, 16);
+    view.setUint32(0x2c, YM_INPUT_HZ, true);
+  } else {
+    view.setUint32(chip.clockOffset, chip.clock, true);
+  }
 
   file.set(body, HEADER);
   file.set(gd3, HEADER + body.length);

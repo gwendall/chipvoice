@@ -57,10 +57,24 @@ const CHIPS = [
       'Remains: a stronger oracle than Gb_Snd_Emu (SameBoy); a unit\'s line-out; the sweep and the length counters, which no instrument reaches.',
     ],
   },
+  {
+    id: 'md',
+    machine: 'Mega Drive, Genesis',
+    chip: 'YM2612 + SN76489',
+    sheet: 'docs/chips/md.md',
+    since: '0.11.0',
+    analog: { done: 0, label: 'none' },
+    driver: { reached: 4, voices: 10 },
+    notes: [
+      'The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the die. The PSG is from the documents and has no oracle yet.',
+      'Analog: unmeasured; Nuked\'s own DAC model is marked unverified, the mix and the Model 1 filter are placeholders.',
+      'Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten.',
+      'Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit\'s line-out.',
+    ],
+  },
 ];
 
 const PLANNED = [
-  { machine: 'Mega Drive, Genesis', chip: 'YM2612 + SN76489', phase: 5, plan: 'Nuked-OPN2, derived from the die, and MAME\'s `sn76496`, both compiled to WebAssembly; parity with Nuked is parity with the silicon.' },
   { machine: 'Super Nintendo', chip: 'S-DSP', phase: 6, plan: 'snes_spc or ares compiled to WebAssembly; captures of the DSP\'s serial stream to the DAC exist and are the oracle.' },
   { machine: 'Commodore 64', chip: 'SID 6581, 8580', phase: 7, plan: 'reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B.' },
   { machine: 'Later', chip: 'PC Engine, GBA, Amiga, POKEY, YM2151, YM2610', phase: null, plan: 'After the five, by demand.' },

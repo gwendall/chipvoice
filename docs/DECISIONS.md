@@ -90,6 +90,12 @@ packages under LGPL, with source, and `chipvoice` depends on them optionally.
 **Why.** A permissive package is what gets adopted in games, and the licence of a
 core is a property of the core, not something to negotiate per file.
 
+*Amended by 17:* the YM2612 is a port, not a WebAssembly build, and it is one
+LGPL file inside the package rather than a second package. The licence field
+says `(MIT AND LGPL-2.1-or-later)` and the licence file names the file, so the
+boundary is as explicit as a package's would be and a consumer who cannot take
+LGPL knows which file to leave out.
+
 ### 8. Documents live in the repository, in English (2026-09-04)
 
 `docs/` holds the roadmap, the method, the sheets and this file. They are written
@@ -268,6 +274,28 @@ and nothing on a NES, which no parameter could express and a word says.
 skill read the catalogue; the studio arranges the same way the API renders;
 the validator names a word that is not in the catalogue. `SCORE.md` moved from
 draft to decided.
+
+### 17. The YM2612 is Nuked-OPN2 ported line for line, and Nuked is its oracle (2026-09-04)
+
+`chips/md/ym2612.ts` is Nuked-OPN2's `ym3438.c` in TypeScript with Nuked's
+names kept, so the two can be read side by side. Nuked itself, built natively
+in the harness, is the oracle the port is compared with. A line-for-line port
+is a derivative work, so that one file is under the LGPL 2.1 as Nuked is,
+with the notice in the file, the package's licence field saying
+`MIT AND LGPL-2.1-or-later`, and the licence file naming the file; the rest
+of the package stays MIT.
+
+**Why.** The roadmap said "compiled to WebAssembly". A WebAssembly build
+would have kept the package's dependency-free, readable-in-devtools character
+for every chip but this one, added a toolchain, and made the chip a black box
+the harness could only compare from outside. A port keeps the code inspectable
+and the harness's trace inside it, and the die-derived reference is still the
+authority, because it is the oracle. Decision 14 chose writing over porting
+for the Game Boy because the verification came from ROMs, not the source;
+here the source *is* the verification, so the port is the point.
+
+**What changed.** The chip's file carries the LGPL 2.1 notice and the package
+README says which file is under which licence.
 
 ## Open
 

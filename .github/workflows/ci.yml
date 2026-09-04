@@ -49,6 +49,10 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform roms:dmg
 
+      # The Mega Drive: the YM2612 against Nuked-OPN2, the die-derived core
+      # it is ported from, built here with the system C compiler.
+      - run: pnpm --filter chipvoice-conform check:md
+
       # The mixer against blargg's cancellation tests: each channel has to
       # cancel against the DMC as well as his console did. The recordings are
       # decoded when the runner has ffmpeg; the floor holds either way.

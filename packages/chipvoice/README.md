@@ -222,6 +222,17 @@ which pass, and compares it with Gb_Snd_Emu. Its sheet is
 `test/gb-driver.mjs` checks what the driver writes to it, and `test/golden-dmg.mjs`
 locks its render the way `golden.mjs` locks the 2A03's.
 
+The third chip is the Mega Drive's, `mdChip`: a YM2612 at `src/chips/md/ym2612.ts`
+that is Nuked-OPN2 ported line for line - the harness compares the two and they
+are identical cycle for cycle on every voice - and an SN76489 from the documents.
+`Chip.create({ chip: "md" })` puts the lead and the bass on FM patches, the
+chord on the PSG and the kit on its noise; `Instrument.fm` is a patch of four
+operators for a host that wants its own. Its sheet is
+[`docs/chips/md.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md).
+**Licence:** that one file is a derivative of Nuked-OPN2 and is LGPL 2.1; the
+package's licence field says `(MIT AND LGPL-2.1-or-later)` and everything else
+is MIT.
+
 ## The song, as bytes: VGM
 
 A NES saw a song as register writes, and so does this library, so the most honest

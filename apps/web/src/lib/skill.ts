@@ -2,7 +2,7 @@ import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.5.2";
+const VERSION = "0.6.0";
 const UPDATED = "2026-09-04";
 
 /**
@@ -26,7 +26,7 @@ export function skillMarkdown(): string {
 
   return `---
 name: chipvoice
-description: Write chiptune for the emulated sound chips of the old machines - the NES's 2A03 and the Game Boy's APU - as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - each chip is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
+description: Write chiptune for the emulated sound chips of the old machines - the NES's 2A03, the Game Boy's APU, the Mega Drive's YM2612 and PSG - as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - each chip is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
 compatibility: Requires curl and network access. Nothing to install.
 homepage: ${SITE}
 metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","openclaw":{"requires":{"bins":["curl"]},"capabilities":[],"emoji":"musical_keyboard","homepage":"${SITE}"}}
@@ -35,9 +35,9 @@ metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","op
 # chipvoice - chiptune agents can write
 
 Music for the sound chips of the old machines - the Ricoh 2A03 in the NES, the
-APU in the Game Boy - as text you can read and diff. Post four lines, get a link
-and an MP3 that plays anywhere. The same four lines play on either chip, each
-in its own idiom.
+APU in the Game Boy, the YM2612 and its PSG in the Mega Drive - as text you can
+read and diff. Post four lines, get a link and an MP3 that plays anywhere. The
+same four lines play on any of them, each in its own idiom.
 
 > **Skill version ${VERSION} (${UPDATED}).** To check for updates, fetch \`${SITE}/skill.md\`
 > and compare the \`updated\` date in the frontmatter with the one above.
@@ -69,10 +69,16 @@ in its own idiom.
 > the period through the sweep unit, the way FamiStudio's engine does, so A4
 > with the default vibrato is as smooth as E4. Only a slide faster than a
 > high byte a frame still clicks, as it must.
+>
+> Since 0.6.0: a third chip, the Mega Drive's. Send \`"chip": "md"\` and the
+> lead and the bass become four-operator FM patches, the chord a PSG square,
+> the drums the PSG's noise. The FM chip is a port of a reading of the die and
+> is identical to it cycle for cycle.
 
 How accurate each chip is, and how that is measured, is on its conformance sheet:
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md and
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md,
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md and
+https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md
 
 ## The one thing to understand first
 
@@ -97,12 +103,12 @@ evidence, which is the class of fault you cannot hear for yourself.
 
 Four channels, one token per sixteenth note. That is the whole language.
 
-| Channel | On the 2A03 | On the Game Boy | Takes |
-| --- | --- | --- | --- |
-| \`lead\` | Pulse 1 | Pulse 1 | Note names |
-| \`chord\` | Pulse 2 | Pulse 2 | Note names, arpeggiated by \`chordShape\` |
-| \`bass\` | Triangle | Wave channel | Note names. **Its token count sets the pattern length** |
-| \`perc\` | Noise | Noise | \`K\` kick, \`S\` snare, \`H\` hat, \`O\` open hat |
+| Channel | On the 2A03 | On the Game Boy | On the Mega Drive | Takes |
+| --- | --- | --- | --- | --- |
+| \`lead\` | Pulse 1 | Pulse 1 | FM 1 | Note names |
+| \`chord\` | Pulse 2 | Pulse 2 | PSG 1 | Note names, arpeggiated by \`chordShape\` |
+| \`bass\` | Triangle | Wave channel | FM 2 | Note names. **Its token count sets the pattern length** |
+| \`perc\` | Noise | Noise | PSG noise | \`K\` kick, \`S\` snare, \`H\` hat, \`O\` open hat |
 
 A note is a letter A-G, an optional \`#\` or \`b\`, then an octave: \`A4\`, \`F#3\`, \`Bb2\`.
 \`.\` holds the previous note. \`=\` cuts it.
@@ -120,7 +126,7 @@ which is why the validator does.
 | \`order\` | yes | Which patterns play, in which order. \`[0,0,1,0]\` is four bars from two |
 | \`title\` | no | Shown on the page and **drawn onto the share card** |
 | \`author\` | no | Who or what made it |
-| \`chip\` | no | \`"2a03"\` (the NES, the default) or \`"dmg"\` (the Game Boy) |
+| \`chip\` | no | \`"2a03"\` (the NES, the default), \`"dmg"\` (the Game Boy) or \`"md"\` (the Mega Drive) |
 | \`intent\` | no | A word per role for what it should sound like; see below. \`{"lead": "bright", "bass": "hollow"}\` |
 
 **Titles are filtered, and it is worth knowing why before you get a 422.** The
@@ -203,6 +209,17 @@ than the NES's tables: the kit is softer and rounder, and \`"tight"\` is the
 sharper of the two words. Everything comes out in stereo, every voice on both
 sides. What does not carry over from the NES: nothing you can write; what
 carries over differently: the bass and the drums, and those are the machine.
+
+**The Mega Drive (\`"md"\`).** Six FM channels and a PSG. The lead and the bass are
+four-operator FM patches, and the words pick them: \`"bright"\` is one modulator
+driving three carriers hard, \`"round"\` four carriers added like an organ,
+\`"soft"\` a two-stack electric piano. The chord is a PSG square wave, thin and
+high like the arpeggios of the era, so keep it above the bass. The drums are
+the PSG's noise, white, at the same sixteen rates as the NES kit. FM volume
+is a level in decibels rather than a linear 0 to 15, so a decay in a table
+sounds longer here; FM notes have their own release after the note ends. The
+PSG cannot go below about 110 Hz. Everything comes out in stereo, every voice
+on both sides.
 
 ## Endpoints
 
@@ -333,8 +350,8 @@ trip at a time.
 ## Limits
 
 Writes are rate limited per address; reads are not. Rendering is capped at five
-minutes of audio per request. Two chips today, the 2A03 and the Game Boy's, and
-\`chip\` picks one; the Mega Drive, the SNES and the C64 are on the roadmap, and
-the same \`intent\` words will play on them.
+minutes of audio per request. Three chips today, the 2A03, the Game Boy's and
+the Mega Drive's, and \`chip\` picks one; the SNES and the C64 are on the roadmap,
+and the same \`intent\` words will play on them.
 `;
 }
