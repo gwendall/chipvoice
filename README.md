@@ -154,7 +154,9 @@ the community's test ROMs, or borrowed from a core the community has already
 verified against silicon; that the sheet is the contract; and that the product
 is a [portable score](docs/SCORE.md) that an agent or a person writes once and
 that plays on a NES, a Game Boy, a Mega Drive, a SNES or a C64 in that
-machine's own idiom. All five play today.
+machine's own idiom. All five play today. What comes next is not a sixth chip:
+it is the site as an instrument, phase 8 of the roadmap, so that the five are
+one gesture apart for whoever lands here.
 
 ## Releasing
 

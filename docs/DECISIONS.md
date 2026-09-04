@@ -326,6 +326,29 @@ one its authors described. The code is chipvoice's; the facts are the chip's.
 its own licence file and README; the package's licence field is unchanged.
 The sheet says which of the chip's behaviours come from which document.
 
+### 19. No new systems: the site is an instrument first (2026-09-04)
+
+Five chips are shipped, verified and released, and no sixth is started until
+the site is the most interesting thing to land on. The engine, the score, the
+harness and the sheets stay as they are; the work is the layer in front of
+them, phase 8 of the roadmap, in the backlog's order of importance: the
+first tap works, the page opens playing, the five machines are one gesture,
+a tap is a sound, the rows show their level, pitch is height, the drums are
+pads, then live play, MIDI and exports.
+
+**Why.** The product is judged by someone landing on chipvoice.dev, and what
+they meet today is an editor for people who read notes and know a tracker:
+four steps between a tap and a sound, the machines in a dropdown, an empty
+output box. A sixth chip changes nothing for that person; five machines one
+click apart changes everything, and it is the one thing nobody else has. The
+browser music tools that people share have no setup, one gesture per sound
+and nothing that can sound wrong; the hardware the chiptune scene plays is
+pads with sixteen sounds; the producers' reference is a chip under a MIDI
+keyboard. None of that needs another chip.
+
+**What changed.** Phase 8 in the backlog and the roadmap; the roadmap's later
+systems closed until it is done; the README points at it.
+
 ## Open
 
 ### B. The SID's licence

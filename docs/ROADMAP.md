@@ -56,6 +56,7 @@ and someone porting a piece from NES to Mega Drive all end up.
 | 5. Mega Drive | 4 to 6 | FM through Nuked-OPN2 in WebAssembly, the FM instrument shape |
 | 6. SNES | 6 to 10 | S-DSP, a BRR encoder, the sample instrument shape |
 | 7. C64 | 4 to 6 | SID from the documents, a 6581 profile, reSID-fp as the oracle |
+| 8. The site as an instrument | 3 to 5 | The first tap works, the page opens playing, the five machines as one gesture, sound on touch, meters, pitch as height, drum pads, live play, MIDI, exports |
 
 Weeks assume one person, most of their time. Phase 4 starts alongside phase 3 and
 keeps going under everything after it.
@@ -202,10 +203,25 @@ the chord on the third, as a rule in the sequencer. Still to come: VICE's SID
 test programs on a 6510 (P7-7), a unit's line-out (P7-8), the filter in the
 arranger (P7-9), the 8580 (P7-10).
 
+### Phase 8. The site as an instrument
+
+The five chips are shipped and verified; what someone landing on chipvoice.dev
+meets is an editor, not an instrument: four steps between a tap and a sound, a
+palette of note names, the machines behind a dropdown, an empty output box.
+Phase 8 puts an instrument in front of the engine, in the order that changes
+the first minute most: the first tap works, the page opens playing on presets
+written for each machine, the five machines are five toggles that switch the
+chip while the song plays, a tap is a sound, every row shows its level, pitch
+is height in the song's key, the drums are pads, then live play from the
+keyboard and from MIDI, and exports for producers. The engine, the score, the
+harness and the sheets do not change. Decision 19 closes new systems until it
+is done; the tickets are in the backlog.
+
 ### Later
 
-PC Engine, Game Boy Advance, Amiga Paula, POKEY, YM2151, YM2610. Only after the
-five archetypes, and only as additions to a proven shape.
+PC Engine, Game Boy Advance, Amiga Paula, POKEY, YM2151, YM2610. Closed by
+decision 19 until phase 8 is done, and then only as additions to a proven
+shape.
 
 ## Chips, in order
 

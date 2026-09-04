@@ -112,9 +112,39 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | todo | |
 | P7-11 | The harness holds every change of every stream in memory, and a SID sawtooth changes every cycle: the corpus keeps dense waveforms short. A streaming compare, or a change stream as typed arrays, would lift that | todo | hit while generating the corpus: an 8 s script of three sawtooths ran the harness out of memory |
 
+## Phase 8. The site as an instrument
+
+Decision 19: no new system until this is done. The engine, the score, the
+harness and the grid stay; this is the layer in front of them. What the
+studio is today is an editor for someone who reads notes and knows a
+tracker: four steps between a tap and a sound, a palette of note names, the
+five machines behind a dropdown in a corner, an empty output box. The order
+below is by how much each ticket changes the first minute of someone landing
+on chipvoice.dev, and it is the order of work. Every ticket ships on its own,
+checked in a real browser on the production build under Playwright as the
+chips were, and the prod e2e keeps its checks.
+
+| # | Ticket | Status | Where |
+| --- | --- | --- | --- |
+| P8-1 | The first tap works. Right after load, a tap on a cell and a tap on TEXT did nothing visible on two tries; find why (hydration, the audio unlock, a click eaten) and fix it, with the e2e tapping once and asserting the response | todo | `apps/web/src/studio/App.tsx`, `useGridGestures.ts`, `test-e2e.mjs` |
+| P8-2 | The page opens playing. The first click anywhere starts a tune; six to eight presets in different styles, each written to show what its machine does best, loadable in one click, with "remix this" | todo | a presets module in the studio; the score format as it is |
+| P8-3 | The five machines as five big toggles at the top of the instrument, switching the chip while the song plays without losing the step; the dropdown goes. The one thing nobody else has, as one gesture | todo | `App.tsx`, `useChip.ts` (`selectChip` keeps the position) |
+| P8-4 | Sound on touch. Tapping a cell or a palette note auditions the note at once on the chosen machine's voice, through the arbiter, so a tap is a sound | todo | `Grid.tsx`, `useChip.ts`, `Chip.sfx` on the role's voice |
+| P8-5 | Life on the page. A level meter or a scope per row, in the machine's colour, in place of the empty output box; the chord row visibly dims when the shot takes its voice | todo | `Scope.tsx`; the worklet posts per-voice levels each block |
+| P8-6 | Pitch as height. Notes stacked low to high in a lane per row, limited to the song's key so nothing is wrong; at the least the palette becomes a vertical keyboard | todo | `Grid.tsx`, `notes.ts` |
+| P8-7 | Drums as four pads with an icon each, their row as dots: a drum machine, the one interface everyone knows | todo | `Grid.tsx` |
+| P8-8 | The order of the page. The instrument first; the title, sign in, save and the link once there is something to keep; the header says five machines and shows them | todo | `App.tsx`, `app/page.tsx` |
+| P8-9 | Cells you can hit. Sixteen steps per screen with bars paged, touch-sized targets, a phone layout | todo | `Grid.tsx`, `style.css` |
+| P8-10 | Play live. The computer keyboard plays the lead over the running pattern and the pads the drums, quantised to the step, as a Pocket Operator's punch-in | todo | `useChip.ts`, the arbiter |
+| P8-11 | Web MIDI in. A keyboard or a pad controller plays the chip, through the arbiter, with nothing to install: a real SID or 2A03 under the fingers in a tab | todo | the Web MIDI API in the studio |
+| P8-12 | Export for producers. Stems per voice, "render on all five" giving five files, VGM where the chip has it | todo | the audio route, `render.ts` |
+| P8-13 | The SID's filter reached from the site: the sweep everyone expects of a C64 demo. The work is P7-9; this is its place in the order | todo | P7-9 |
+| P8-14 | The site's own numbers: time to first sound, machines switched, presets loaded, shares, counted without tracking people, so "interesting" is measured the way parity is | todo | |
+
 ## Later phases
 
-After the five: see the roadmap.
+New systems are closed by decision 19 until phase 8 is done. After that, see
+the roadmap.
 
 ## Discoveries
 
