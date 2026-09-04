@@ -1,4 +1,4 @@
-import { DEFAULT_KIT, GB_DMG, NES_2A03, type Instrument, type Song } from "chipvoice";
+import { arrange, GB_DMG, NES_2A03, type Song } from "chipvoice";
 
 /** The chips the studio offers, by the id the API stores. */
 export type ChipId = "2a03" | "dmg";
@@ -74,47 +74,36 @@ export function emptyTrack(): Track {
   return { lead: blank(), chord: blank(), bass: blank(), perc: blank() };
 }
 
-const LEAD_INSTRUMENT: Instrument = {
-  duty: 1,
-  volume: [15, 15, 14, 13, 12, 12, 11, 11, 10, 10, 10, 9, 9, 9, 8],
-  sustain: true,
-  vibrato: { depth: 0.18, rate: 8, delay: 12 },
-};
-
-const CHORD_INSTRUMENT: Instrument = {
-  duty: 0,
-  volume: [9, 8, 7, 7, 6],
-  sustain: true,
-};
-
-const BASS_INSTRUMENT: Instrument = { volume: [15], sustain: true };
-
 const MINOR = [0, 3, 7];
 const MAJOR = [0, 4, 7];
 
-export function toSong(track: Track, bpm: number): Song {
-  return {
-    // The id carries the content, so editing a note while it plays restarts the
-    // piece with the change in it. Identity would not: `play` short-circuits on
-    // a matching id, which is what stops it restarting sixty times a second.
-    id: `pg:${bpm}:${hash(track)}`,
-    bpm,
-    patterns: [
-      {
-        lead: track.lead.join(" "),
-        chord: track.chord.join(" "),
-        bass: track.bass.join(" "),
-        perc: track.perc.join(" "),
-        chordShape: [MINOR, MINOR, MINOR, MAJOR, MAJOR],
-      },
-    ],
-    order: [0],
-    gain: 1,
-    lead: LEAD_INSTRUMENT,
-    chord: CHORD_INSTRUMENT,
-    bass: BASS_INSTRUMENT,
-    perc: DEFAULT_KIT,
-  };
+/**
+ * The grid as a score, arranged for the chip: the same instruments the API
+ * gives a song with no intent, so the studio plays what the MP3 will be.
+ */
+export function toSong(track: Track, bpm: number, chip: ChipId = "2a03"): Song {
+  return arrange(
+    {
+      // The id carries the content, so editing a note while it plays restarts
+      // the piece with the change in it. Identity would not: `play`
+      // short-circuits on a matching id, which is what stops it restarting
+      // sixty times a second.
+      id: `pg:${bpm}:${hash(track)}`,
+      bpm,
+      patterns: [
+        {
+          lead: track.lead.join(" "),
+          chord: track.chord.join(" "),
+          bass: track.bass.join(" "),
+          perc: track.perc.join(" "),
+          chordShape: [MINOR, MINOR, MINOR, MAJOR, MAJOR],
+        },
+      ],
+      order: [0],
+      gain: 1,
+    },
+    chip,
+  );
 }
 
 function hash(track: Track): string {

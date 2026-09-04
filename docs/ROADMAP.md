@@ -150,10 +150,14 @@ the Game Boy sheet is generated.
 
 The centre of the product, and the phase without a clean end.
 
-1. The score: roles and intents, as drafted in [SCORE.md](SCORE.md).
-2. An arranger per chip: roles to voices, intents to instruments, idioms applied.
+1. The score: roles and intents, as drafted in [SCORE.md](SCORE.md). Done in
+   0.9.0: `Score`, `arrange`, a catalogue of words per role.
+2. An arranger per chip: roles to voices, intents to instruments, idioms
+   applied. Done in 0.9.0 for both chips: `chips/*/arranger.ts` for the
+   intents, `ChipSpec.roles` and `ChipDriver` for the voices and the idioms.
 3. Instruments exposed in the API and the wire format, so a published song can
-   have a timbre of its own. Today every published song shares one.
+   have a timbre of its own. Done in 0.9.0 as `intent`: words, not tables, so
+   the same song keeps its timbre across chips.
 4. VGM export from the register-event stream. Real hardware through any VGM
    player, and every chiptune player, in one step. Done in 0.6.0: `toVgm`,
    and the harness imports VGM files into the corpus.

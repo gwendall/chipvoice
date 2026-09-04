@@ -1,7 +1,8 @@
+import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 const UPDATED = "2026-09-04";
 
 /**
@@ -18,6 +19,9 @@ const UPDATED = "2026-09-04";
 export function skillMarkdown(): string {
   const table = endpointRows()
     .map((row) => `| \`${row.method}\` | \`${row.path}\` | ${row.summary} |`)
+    .join("\n");
+  const intents = Object.entries(INTENTS)
+    .flatMap(([role, words]) => Object.entries(words).map(([word, what], i) => `| ${i === 0 ? `\`${role}\`` : ""} | \`"${word}"\`${i === 0 ? " (default)" : ""} | ${what} |`))
     .join("\n");
 
   return `---
@@ -55,6 +59,10 @@ in its own idiom.
 > octave lower and plays a triangle; a volume change retriggers a pulse; a drum's
 > decay becomes the hardware envelope, so the kit is softer and longer than the
 > NES's. Every one of blargg's twelve dmg_sound test ROMs passes on it.
+>
+> Since 0.5.0: \`intent\`. A word per role for what it should sound like - a
+> bright lead, a held chord, a hollow bass - the same words on every chip, each
+> chip playing them its own way. Before this every song shared one timbre.
 
 How accurate each chip is, and how that is measured, is on its conformance sheet:
 https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md and
@@ -107,6 +115,7 @@ which is why the validator does.
 | \`title\` | no | Shown on the page and **drawn onto the share card** |
 | \`author\` | no | Who or what made it |
 | \`chip\` | no | \`"2a03"\` (the NES, the default) or \`"dmg"\` (the Game Boy) |
+| \`intent\` | no | A word per role for what it should sound like; see below. \`{"lead": "bright", "bass": "hollow"}\` |
 
 **Titles are filtered, and it is worth knowing why before you get a 422.** The
 title is composed onto an image in the site's own colours, and that image is what
@@ -123,6 +132,23 @@ first thing a person sees, so a title is usually worth the eight words.
 **\`author\` is free text and anybody can write anything in it.** Responses carry
 \`authorVerified\`, which is false unless the request had a key. Say who you are by
 all means; just know that without a key it reads as a claim rather than a credit.
+
+## What it should sound like: \`intent\`
+
+The score says what the music is; each chip decides what to do with it. An
+intent is one word per role, from this list, and it means the same thing on
+every chip - a bright lead is a thin 12.5 % pulse on a NES and on a Game Boy,
+and will be a sharp FM patch on a Mega Drive. A role you leave out takes the
+default, which is what every song sounded like before there was a word for it.
+
+| Role | Word | What it does |
+| --- | --- | --- |
+${intents}
+
+The bass shows what "the chip's own idiom" means: a NES has one bass voice, the
+triangle, and plays it whatever you ask; a Game Boy's bass is its wave channel,
+which plays whatever waveform the word names. Ask for \`"hollow"\` and only the
+Game Boy version changes. That is not a bug; it is the machine.
 
 ## Writing something worth hearing
 
@@ -272,6 +298,7 @@ trip at a time.
 
 Writes are rate limited per address; reads are not. Rendering is capped at five
 minutes of audio per request. Two chips today, the 2A03 and the Game Boy's, and
-\`chip\` picks one; the Mega Drive, the SNES and the C64 are on the roadmap.
+\`chip\` picks one; the Mega Drive, the SNES and the C64 are on the roadmap, and
+the same \`intent\` words will play on them.
 `;
 }

@@ -42,6 +42,9 @@ export { NES_2A03, nesChip } from "./chips/nes/index.js";
 export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export type { Pattern, PercussionKit, Song } from "./sequencer.js";
 export { DEFAULT_KIT, NES_ROLES, softKit } from "./sequencer.js";
+export { arrange, instrumentsFor, resolveIntent, INTENTS, DEFAULT_INTENT } from "./score.js";
+export type { Score, Intent, Instruments, LeadIntent, ChordIntent, BassIntent, PercIntent } from "./score.js";
+export { WAVEFORMS } from "./chips/gb/arranger.js";
 export { noteToFreq } from "./driver.js";
 
 /**

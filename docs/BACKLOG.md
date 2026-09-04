@@ -52,10 +52,11 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
 | P4-1 | VGM export from the event stream, and VGM import into the corpus | done | PR #4. `toVgm`, `recordSong`; `import-vgm` in the harness |
-| P4-2 | The score: roles and intents | todo | |
-| P4-3 | An arranger per chip | todo | |
-| P4-4 | Instruments in the API and the wire format | todo | |
-| P4-5 | Idioms per chip in the skill and the MCP server | todo | |
+| P4-2 | The score: roles and intents | done | `score.ts`: `Score`, `arrange`, `INTENTS`; decision 16 |
+| P4-3 | An arranger per chip | done | `chips/nes/arranger.ts`, `chips/gb/arranger.ts`; the roles and idioms in `ChipSpec.roles` and `ChipDriver` since P3-2 |
+| P4-4 | Instruments in the API and the wire format | done | as `intent`, words from the catalogue, stored, forked, rendered; skill 0.5.0 |
+| P4-5 | Idioms per chip in the skill and the MCP server | doing | the skill has the catalogue with what each word does per chip; a section per chip on how to write for it is still to come |
+| P4-8 | Intent pickers in the studio, one per row | todo | the studio arranges with the default words |
 | P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | todo | found in P1-2 |
 | P4-7 | "Agent-written music sounds good" as a named goal with its own measures | todo | |
 
@@ -70,6 +71,21 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 Mega Drive, SNES, C64: see the roadmap. Not ticketed until phase 3 is done.
 
 ## Discoveries
+
+**2026-09-04, P4-2, P4-3, P4-4.** The second chip turned the score sketch into
+a design in an afternoon, and the design is smaller than the sketch. The roles
+kept their names, because renaming `chord` to harmony would have broken every
+stored song for a nicer word. The intents are words from a catalogue, not
+parameters, and the Game Boy's bass is what decided it: `"hollow"` is a square
+wave in wave RAM there and nothing on a NES, which a word says and a
+brightness of 0.6 could not. Instruments never entered the wire format; the
+API stores a word per role and each chip's arranger maps it, so a song keeps
+its timbre across chips. Both golden hashes did not move: a score with no
+intent arranges to the instruments every song had, to the number, and the
+studio now arranges the same way the API renders, which removed a copy of
+those instruments that had been kept by hand in two places. What the two
+chips could not test: the voice budget - both have four voices for four roles
+- and arrangement-level validation, which the SN76489's tone floor will force.
 
 **2026-09-04, P3-2.** The driver split where the second chip said it should:
 at the frame. Reading an instrument's tables, the arpeggio, the slide, the
