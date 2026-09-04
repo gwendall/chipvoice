@@ -159,6 +159,15 @@ export class APU implements NoteSink {
     this.post({ type: "gain", value });
   }
 
+  /**
+   * Puts sample data where the DMC reads it: the CPU's address space, from
+   * `$8000` up, and in practice `$C000` up, which is where `$4012` can point.
+   * The bytes are copied; the caller keeps its own.
+   */
+  load(address: number, bytes: Uint8Array) {
+    this.post({ type: "memory", address, bytes: bytes.slice() });
+  }
+
   reset() {
     this.queue.length = 0;
     this.post({ type: "reset" });
@@ -428,6 +437,10 @@ export class OfflineDriver extends APU implements NoteSink {
 
   override setGain(value: number) {
     this.core.setGain(value);
+  }
+
+  override load(address: number, bytes: Uint8Array) {
+    this.core.load(address, bytes);
   }
 
   override reset() {

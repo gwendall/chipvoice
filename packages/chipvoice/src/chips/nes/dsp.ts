@@ -264,7 +264,104 @@ class Noise {
   }
 }
 
-/** The order `trace` reports voices in. The DMC is a voice; it is not built yet. */
+// DMC rates, NTSC: CPU cycles between output bits, indexed by the 4-bit rate.
+const DMC_RATES = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54];
+
+/**
+ * The delta modulation channel: a 7-bit level that a stream of bits nudges
+ * up or down by two, at one of sixteen rates, from bytes it reads out of
+ * memory at `$C000` and up. It is what a NES used for drums and speech,
+ * and it is the voice this core lacked longest.
+ *
+ * Two halves, as on the chip. The reader fetches a byte whenever its buffer
+ * is empty and bytes remain, restarting the sample if it loops. The output
+ * unit takes the buffer as a shift register at the start of each eight-bit
+ * cycle, or goes silent for that cycle if there was nothing to take - and
+ * silent means the level holds, not that it drops. The level also takes a
+ * direct write through `$4011`, which is how a game played PCM through it.
+ */
+class Dmc {
+  irqEnabled = false;
+  loop = false;
+  /** CPU cycles per output bit. */
+  period = DMC_RATES[0];
+  timer = 0;
+  /** The 7-bit output, which is the voice's value. */
+  level = 0;
+  sampleAddress = 0xc000;
+  sampleLength = 1;
+  address = 0;
+  bytesRemaining = 0;
+  buffer = 0;
+  bufferEmpty = true;
+  shift = 0;
+  bitsRemaining = 8;
+  silence = true;
+  irq = false;
+  readonly memory: Uint8Array;
+
+  constructor(memory: Uint8Array) {
+    this.memory = memory;
+  }
+
+  /** `$4015` bit 4 set with nothing left to play: the sample starts over. */
+  start() {
+    this.address = this.sampleAddress;
+    this.bytesRemaining = this.sampleLength;
+    this.fetch();
+  }
+
+  /** The reader: one byte into the buffer, when it is empty and bytes remain. */
+  fetch() {
+    if (!this.bufferEmpty || this.bytesRemaining === 0) return;
+    this.buffer = this.memory[this.address];
+    this.address = this.address === 0xffff ? 0x8000 : this.address + 1;
+    this.bufferEmpty = false;
+    this.bytesRemaining--;
+    if (this.bytesRemaining === 0) {
+      if (this.loop) {
+        this.address = this.sampleAddress;
+        this.bytesRemaining = this.sampleLength;
+      } else if (this.irqEnabled) {
+        this.irq = true;
+      }
+    }
+  }
+
+  /** Runs at the CPU rate; the period is the rate table's, in CPU cycles. */
+  clock() {
+    if (this.timer > 0) {
+      this.timer--;
+      return;
+    }
+    this.timer = this.period - 1;
+    if (!this.silence) {
+      if (this.shift & 1) {
+        if (this.level <= 125) this.level += 2;
+      } else if (this.level >= 2) {
+        this.level -= 2;
+      }
+    }
+    this.shift >>= 1;
+    if (--this.bitsRemaining === 0) {
+      this.bitsRemaining = 8;
+      if (this.bufferEmpty) {
+        this.silence = true;
+      } else {
+        this.silence = false;
+        this.shift = this.buffer;
+        this.bufferEmpty = true;
+        this.fetch();
+      }
+    }
+  }
+
+  output(): number {
+    return this.level;
+  }
+}
+
+/** The order `trace` reports voices in. */
 export const NES_VOICES = ["p1", "p2", "tri", "noi", "dmc"] as const;
 
 /**
@@ -277,16 +374,23 @@ export const NES_VOICES = ["p1", "p2", "tri", "noi", "dmc"] as const;
  * `NesOutputStage`'s business, and keeping it out is what lets this be
  * compared with an oracle.
  *
- * The four voices, `write` and the three clock methods are public for the
+ * The five voices, `write` and the three clock methods are public for the
  * tests, which drive the chip directly and count what the timers do. They are
  * not API.
  */
 export class Nes2A03 implements DigitalChip {
   readonly voices = NES_VOICES;
+  /**
+   * The CPU's address space, as the DMC sees it: 64 KiB, of which the DMC
+   * reads `$8000` and up. A cartridge's sample data goes in with `load`.
+   * Kept across `reset`, as a cartridge is.
+   */
+  readonly memory = new Uint8Array(0x10000);
   pulse1 = new Pulse(1);
   pulse2 = new Pulse(2);
   triangle = new Triangle();
   noise = new Noise();
+  dmc = new Dmc(this.memory);
 
   private apuToggle = false;
 
@@ -390,20 +494,40 @@ export class Nes2A03 implements DigitalChip {
         ch.env.start = true;
         return;
       }
-      case 0x4010:
+      case 0x4010: {
+        const dmc = this.dmc;
+        dmc.irqEnabled = (v & 0x80) !== 0;
+        dmc.loop = (v & 0x40) !== 0;
+        dmc.period = DMC_RATES[v & 15];
+        if (!dmc.irqEnabled) dmc.irq = false;
+        return;
+      }
       case 0x4011:
+        this.dmc.level = v & 0x7f;
+        return;
       case 0x4012:
+        this.dmc.sampleAddress = 0xc000 + v * 64;
+        return;
       case 0x4013:
-        // The DMC. Not built; the sheet says so.
+        this.dmc.sampleLength = v * 16 + 1;
         return;
       case 0x4015: {
         // Enable bits. A cleared bit forces that length counter to 0, and it
-        // stays there: loads are ignored until the bit is set again.
+        // stays there: loads are ignored until the bit is set again. The DMC's
+        // bit restarts its sample when nothing is left to play, and clearing
+        // it drops what is left; the byte already in the shift register plays
+        // out.
         const units = [this.pulse1, this.pulse2, this.triangle, this.noise];
         for (let i = 0; i < units.length; i++) {
           const on = ((v >> i) & 1) !== 0;
           units[i].enabled = on;
           if (!on) units[i].lengthCounter = 0;
+        }
+        this.dmc.irq = false;
+        if ((v & 0x10) !== 0) {
+          if (this.dmc.bytesRemaining === 0) this.dmc.start();
+        } else {
+          this.dmc.bytesRemaining = 0;
         }
         return;
       }
@@ -440,9 +564,10 @@ export class Nes2A03 implements DigitalChip {
     this.pulse2.clockSweep();
   }
 
-  /** One CPU cycle. The APU units run at half that, except the triangle. */
+  /** One CPU cycle. The APU units run at half that, except the triangle and the DMC. */
   clockCPU() {
     this.triangle.clock();
+    this.dmc.clock();
     this.apuToggle = !this.apuToggle;
     if (this.apuToggle) {
       this.pulse1.clock();
@@ -490,13 +615,18 @@ export class Nes2A03 implements DigitalChip {
     this.cycle++;
   }
 
-  /** The five voices, now. `into[4]` is the DMC, which is 0 until it exists. */
+  /** The five voices, now: four 4-bit values and the DMC's 7-bit level. */
   outputs(into: number[]) {
     into[0] = this.pulse1.output();
     into[1] = this.pulse2.output();
     into[2] = this.triangle.output();
     into[3] = this.noise.output();
-    into[4] = 0;
+    into[4] = this.dmc.output();
+  }
+
+  /** Puts bytes into the CPU's address space, for the DMC to read. */
+  load(address: number, bytes: Uint8Array) {
+    this.memory.set(bytes.subarray(0, Math.max(0, 0x10000 - address)), address);
   }
 
   /** Queues register writes. Each one is applied at the cycle it names. */
@@ -535,6 +665,7 @@ export class Nes2A03 implements DigitalChip {
   /**
    * Power-on: every unit fresh, `$4015` and `$4017` at zero, nothing queued.
    * The cycle count is left alone; it belongs to whoever is driving the chip.
+   * So is the memory: a reset does not empty a cartridge.
    */
   reset() {
     this.events.length = 0;
@@ -542,6 +673,7 @@ export class Nes2A03 implements DigitalChip {
     this.pulse2 = new Pulse(2);
     this.triangle = new Triangle();
     this.noise = new Noise();
+    this.dmc = new Dmc(this.memory);
     this.apuToggle = false;
     this.frameMode = 0;
     this.frameCycles = 0;
@@ -735,6 +867,10 @@ export class NesApuCore implements ChipCore {
 
   schedule(events: RegisterEvent[]) {
     this.chip.schedule(events);
+  }
+
+  load(address: number, bytes: Uint8Array) {
+    this.chip.load(address, bytes);
   }
 
   setGain(value: number) {

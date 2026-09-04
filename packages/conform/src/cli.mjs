@@ -59,8 +59,8 @@ const results = [];
 let anyDivergence = false;
 for (const file of files) {
   const log = parseLog(fs.readFileSync(path.join(corpusDir, file), 'utf8'));
-  const ours = chip.trace(log.writes, log.cycles);
-  const theirs = oracle.trace(log.writes, log.cycles);
+  const ours = chip.trace(log.writes, log.cycles, log.memory);
+  const theirs = oracle.trace(log.writes, log.cycles, log.memory);
   const result = compare(ours, theirs, { cycles: log.cycles, voices });
   const pct = (100 * result.identical) / result.cycles;
   const name = file.replace(/\.log$/, '');

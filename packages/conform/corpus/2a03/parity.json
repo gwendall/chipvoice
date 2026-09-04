@@ -7,14 +7,106 @@
   "voices": [
     "p1",
     "p2",
-    "tri"
+    "tri",
+    "dmc"
   ],
   "date": "2026-09-04",
-  "files": 12,
-  "cycles": 86625011,
-  "identical": 26157375,
-  "diverging": 8,
+  "files": 13,
+  "cycles": 92173307,
+  "identical": 26364021,
+  "diverging": 9,
   "results": [
+    {
+      "name": "script-dmc",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 13,
+      "cycles": 5548296,
+      "identical": 206646,
+      "first": {
+        "cycle": 179602,
+        "voice": 4,
+        "a": 2,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 206646,
+          "a": 26104,
+          "b": 26103,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 26104,
+          "onlyB": 26103,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 3,
+            "theirs": 3,
+            "alignedTimes": 2,
+            "alignedValues": 0,
+            "maxShift": 54
+          }
+        }
+      ]
+    },
     {
       "name": "script-envelope",
       "source": "packages/conform/src/corpus/generate.mjs",
@@ -68,6 +160,25 @@
         },
         {
           "voice": "tri",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
           "identical": 5548296,
           "a": 0,
           "b": 0,
@@ -156,6 +267,25 @@
             "alignedValues": 1,
             "maxShift": 1795
           }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
         }
       ]
     },
@@ -227,6 +357,25 @@
             "alignedTimes": 3,
             "alignedValues": 1,
             "maxShift": 2030
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
           }
         }
       ]
@@ -300,6 +449,25 @@
             "alignedValues": 1,
             "maxShift": 2030
           }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
         }
       ]
     },
@@ -351,6 +519,25 @@
         },
         {
           "voice": "tri",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
           "identical": 3758523,
           "a": 0,
           "b": 0,
@@ -434,6 +621,25 @@
             "alignedValues": 0,
             "maxShift": 0
           }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
         }
       ]
     },
@@ -501,6 +707,25 @@
             "alignedValues": 0,
             "maxShift": 0
           }
+        },
+        {
+          "voice": "dmc",
+          "identical": 1073864,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
         }
       ]
     },
@@ -552,6 +777,25 @@
         },
         {
           "voice": "tri",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
           "identical": 3758523,
           "a": 0,
           "b": 0,
@@ -640,6 +884,25 @@
             "alignedValues": 0,
             "maxShift": 0
           }
+        },
+        {
+          "voice": "dmc",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
         }
       ]
     },
@@ -711,6 +974,25 @@
             "alignedTimes": 51,
             "alignedValues": 1,
             "maxShift": 1888
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 17897730,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
           }
         }
       ]
@@ -784,6 +1066,25 @@
             "alignedValues": 1,
             "maxShift": 1869
           }
+        },
+        {
+          "voice": "dmc",
+          "identical": 7159092,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
         }
       ]
     },
@@ -855,6 +1156,25 @@
             "alignedTimes": 61,
             "alignedValues": 1,
             "maxShift": 2115
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 21477276,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
           }
         }
       ]

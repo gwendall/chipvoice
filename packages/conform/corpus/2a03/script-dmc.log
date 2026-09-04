@@ -1,0 +1,22 @@
+# chipvoice register log v1
+# name: script-dmc
+# chip: 2a03
+# clock: 1789773
+# cycles: 5548296
+# source: packages/conform/src/corpus/generate.mjs
+# notes: the DMC: a 33-byte sample at $C000 looping at rate 15 then rate 8, a direct $4011 write, a one-shot play, and $4015 clearing its bit mid-sample
+# memory C000: FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF0000000000000000
+# memory C020: 55
+0 4015 0F
+178977 4010 4F
+178977 4011 00
+178977 4012 00
+178977 4013 02
+178977 4015 1F
+1073864 4010 48
+1968750 4011 40
+2863637 4015 0F
+3042614 4010 0F
+3042614 4015 1F
+3758523 4015 1F
+4653410 4015 0F

@@ -21,9 +21,27 @@
 
 #include "nes_apu/Nes_Apu.h"
 
-// The DMC reads sample memory through this. No log written so far enables the
-// DMC, and when one does, a memory image will come with it.
-static int read_rom( void*, cpu_addr_t ) { return 0; }
+// The CPU's address space, filled from the log's `# memory ADDR: hex` lines.
+// The DMC reads it through read_rom.
+static unsigned char memory [0x10000];
+static int read_rom( void*, cpu_addr_t addr ) { return memory [addr & 0xFFFF]; }
+
+static void load_memory( const char* line )
+{
+	unsigned addr;
+	int used = 0;
+	if ( sscanf( line, "# memory %x: %n", &addr, &used ) < 1 || used == 0 )
+		return;
+	const char* p = line + used;
+	while ( p [0] && p [1] && addr < 0x10000 )
+	{
+		unsigned byte;
+		if ( sscanf( p, "%2x", &byte ) != 1 )
+			break;
+		memory [addr++] = (unsigned char) byte;
+		p += 2;
+	}
+}
 
 struct Change {
 	long cycle;
@@ -46,7 +64,7 @@ int main()
 	apu.reset( false, 0 );
 
 	long cycles = -1;
-	char line [256];
+	char line [1024];
 	long last = 0;
 	while ( fgets( line, sizeof line, stdin ) )
 	{
@@ -54,6 +72,8 @@ int main()
 		{
 			if ( strncmp( line, "# cycles:", 9 ) == 0 )
 				cycles = strtol( line + 9, NULL, 10 );
+			else if ( strncmp( line, "# memory ", 9 ) == 0 )
+				load_memory( line );
 			continue;
 		}
 		long cycle;

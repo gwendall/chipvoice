@@ -123,6 +123,7 @@ export function recordSong(
     schedule: (batch) => {
       for (const e of batch) events.push(e);
     },
+    load() {},
     render() {},
     setGain() {},
     reset() {},

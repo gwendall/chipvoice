@@ -13,9 +13,11 @@ export const chip2a03 = {
   /**
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
+   * @param {{ address: number, bytes: Uint8Array }[]} [memory] for the DMC
    */
-  trace(writes, cycles) {
+  trace(writes, cycles, memory = []) {
     const chip = nesChip.digital();
+    for (const block of memory) chip.load(block.address, block.bytes);
     chip.schedule(writes.map((w) => ({ at: w.at, addr: w.addr, value: w.value })));
     const changes = [];
     chip.trace(cycles, (cycle, voice, value) => changes.push({ cycle, voice, value }));

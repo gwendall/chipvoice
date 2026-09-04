@@ -81,6 +81,12 @@ export interface ChipCore {
   /** Queues register writes, each stamped with the cycle it applies at. */
   schedule(events: RegisterEvent[]): void;
   /**
+   * Puts bytes into the chip's memory, for a voice that plays samples: the
+   * 2A03's DMC reads the CPU's address space from `$8000` up. A chip with no
+   * such voice ignores it.
+   */
+  load(address: number, bytes: Uint8Array): void;
+  /**
    * Fills a buffer. `startSample` is the absolute position of `left[0]` on
    * the sample clock; the core derives its own cycle position from it.
    */
@@ -132,6 +138,8 @@ export interface DigitalChip {
   readonly voices: readonly string[];
   /** Queues register writes, each stamped with the cycle it applies at. */
   schedule(events: RegisterEvent[]): void;
+  /** Puts bytes into the chip's memory, for a voice that plays samples. */
+  load(address: number, bytes: Uint8Array): void;
   /**
    * Runs `cycles` cycles and reports each change of a voice's value as it
    * happens. Every voice starts from 0. A list of changes says the same as
@@ -162,6 +170,7 @@ export interface ChipDefinition {
  */
 export type WorkletMessage =
   | { type: "events"; events: RegisterEvent[] }
+  | { type: "memory"; address: number; bytes: Uint8Array }
   | { type: "gain"; value: number }
   | { type: "reset" };
 

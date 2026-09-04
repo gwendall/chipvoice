@@ -27,6 +27,10 @@ export const NES_2A03: ChipSpec = {
     // Sixteen periods rather than pitches: the noise channel has no notion of
     // a note, and handing it "A4" is a mistake a validator should catch.
     { id: "noi", label: "Noise", kind: "noise", notes: "period" },
+    // A 7-bit level that a bit stream from memory nudges up and down: drums
+    // and speech on the hardware. No instrument reaches it yet; the chip has
+    // it, and the harness compares it.
+    { id: "dmc", label: "DMC", kind: "sample", notes: "sample" },
   ],
 };
 

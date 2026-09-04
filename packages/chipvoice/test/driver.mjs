@@ -20,6 +20,7 @@ function recorder() {
   const writes = [];
   const core = {
     schedule: (events) => writes.push(...events),
+    load() {},
     render() {},
     setGain() {},
     reset() {},
