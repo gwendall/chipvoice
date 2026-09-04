@@ -23,6 +23,7 @@ bass, perc. On the 2A03 they are pulse 1, pulse 2, the triangle and the noise; o
 the Game Boy (\`"chip": "dmg"\`) pulse 1, pulse 2, the wave channel and the noise; on
 the Mega Drive (\`"chip": "md"\`) FM 1, PSG 1, FM 2 and the PSG's noise; on the
 SNES (\`"chip": "snes"\`) four sample voices, everything a sample, with the echo.
+C64 (\`"chip": "c64"\`) the SID's three voices, the drums cutting the chord on the third; a triangle, a pulse or a sawtooth for the bass.
 An optional \`intent\` gives each role a word for what it should sound like
 (lead: soft, bright, round; chord: plucked, held; bass: round, hollow, bright;
 perc: tight, soft), the same words on every chip. A note is a letter A-G, an optional

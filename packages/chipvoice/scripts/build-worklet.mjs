@@ -23,6 +23,7 @@ const WORKLETS = [
   { entry: 'src/chips/gb/worklet.ts', out: 'src/chips/gb/worklet-inline.ts' },
   { entry: 'src/chips/md/worklet.ts', out: 'src/chips/md/worklet-inline.ts' },
   { entry: 'src/chips/snes/worklet.ts', out: 'src/chips/snes/worklet-inline.ts' },
+  { entry: 'src/chips/c64/worklet.ts', out: 'src/chips/c64/worklet-inline.ts' },
 ];
 
 const options = (entry) => ({

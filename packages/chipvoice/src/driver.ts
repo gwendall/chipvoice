@@ -23,6 +23,7 @@ import {
   type FmPatch,
   type NoteFrame,
   type RegisterEvent,
+  type Waveform,
   type WorkletMessage,
 } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
@@ -71,6 +72,12 @@ export interface Instrument {
   arpLoop?: boolean;
   vibrato?: { depth: number; rate: number; delay?: number };
   noiseMode?: boolean;
+  /**
+   * For a voice that picks a fixed waveform, which: one for the note, or one
+   * per frame, the last held. The SID's kick is a triangle and its snare a
+   * pulse for a frame, then noise. A chip without the choice ignores it.
+   */
+  waveform?: Waveform | Waveform[];
   /**
    * For a wavetable voice, the waveform: 32 samples, 0 to 15. The first
    * instrument attribute that is not a table of frames; a chip without such a
@@ -258,6 +265,7 @@ export class APU implements NoteSink {
     const gain = opts.gain ?? 1;
     const detune = opts.detune ?? 0;
     const wave = inst.wave ?? null;
+    const waveforms = inst.waveform === undefined ? null : Array.isArray(inst.waveform) ? inst.waveform : [inst.waveform];
     const fm = inst.fm ?? null;
     const sample = inst.sample ?? null;
     let pitchAcc = 0;
@@ -309,6 +317,7 @@ export class APU implements NoteSink {
         duty,
         noiseMode: inst.noiseMode === true,
         pitchOffset: pitchAcc,
+        waveform: waveforms ? waveforms[Math.min(f, waveforms.length - 1)] : null,
         wave,
         fm,
         sample,

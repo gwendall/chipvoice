@@ -159,6 +159,12 @@ export interface DigitalChip {
 }
 
 /**
+ * A fixed waveform, for a chip whose voices choose among a few: the SID's
+ * four. A chip with pulses alone reads the duty and ignores this.
+ */
+export type Waveform = "pulse" | "triangle" | "sawtooth" | "noise";
+
+/**
  * One frame of a note, after the instrument has been read: what the voice
  * should be doing for the next sixtieth of a second, in terms no chip owns.
  *
@@ -183,6 +189,8 @@ export interface FrameState {
   noiseMode: boolean;
   /** A cumulative bend from the instrument's pitch table, in 2A03 period units. */
   pitchOffset: number;
+  /** For a voice that picks a fixed waveform: which; null for the chip's own default. */
+  waveform: Waveform | null;
   /** For a wavetable voice: 32 samples, 0 to 15; null for the chip's own default. */
   wave: number[] | null;
   /** For an FM voice: the patch; null for the chip's own default. */

@@ -38,10 +38,11 @@ way for anyone, human or machine, to pick the instrument up and play it.
 ## What it is
 
 - **The chips, emulated at the clock level**, running in an AudioWorklet in a
-  browser or rendered offline to a file on a server. Four so far: the NES's
+  browser or rendered offline to a file on a server. Five so far: the NES's
   Ricoh 2A03, the Game Boy's DMG APU, the Mega Drive's YM2612 with its
-  SN76489, and the SNES's S-DSP, the last two ports of the reference cores
-  and identical to them. The C64 is on the [roadmap](docs/ROADMAP.md).
+  SN76489, the SNES's S-DSP and the C64's SID 6581; the Mega Drive's and the
+  SNES's are ports of the reference cores and identical to them, the others
+  are written from the documents and compared with the community's cores.
 - **A driver and a tracker on top**, so a tune is four lines of text - lead,
   chord, bass, percussion - and a word per line for what it should sound like.
   The same four lines and the same words play on every chip, each in its own
@@ -72,7 +73,7 @@ hand. Each chip's sheet has the detail behind every cell, and
 | Game Boy | DMG APU | **74 %** | ✅ 98 % | ✅ 12/12 | ❌ none | ✅ 4/4 | [dmg](docs/chips/dmg.md) |
 | Mega Drive, Genesis | YM2612 + SN76489 | **35 %** | ✅ 100 % | ⬜ | ❌ none | 🟡 4/10 | [md](docs/chips/md.md) |
 | Super Nintendo | S-DSP | **38 %** | ✅ 100 % | ⬜ | ❌ none | 🟡 4/8 | [snes](docs/chips/snes.md) |
-| Commodore 64 | SID 6581, 8580 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | phase 7 |
+| Commodore 64 | MOS 6581 SID | **50 %** | ✅ 100 % | ⬜ | ❌ profile | ✅ 3/3 | [c64](docs/chips/c64.md) |
 | Later | PC Engine, GBA, Amiga, POKEY, YM2151, YM2610 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | later |
 
 Written by `conform` on 2026-09-04. The columns:
@@ -93,7 +94,7 @@ Written by `conform` on 2026-09-04. The columns:
 
 **Super Nintendo** (S-DSP, since 0.12.0). Digital: snes_spc 0.9.0 (blargg), 5 logs, 23.9M cycles; runs aligned on step times 100.0 % (183 of 183); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR. Analog: unmeasured; the DAC and the console's filter are a placeholder. A capture of the DSP's output would compare directly with the stream. Driver: a bank of synthesised samples in BRR, four voices of eight, the echo on the pitched ones. Remains: real triads across voices; a unit's line-out; SPC export.
 
-**Commodore 64** (SID 6581, 8580). Planned, phase 7: reSID-fp per chip profile, or a rewrite from the documents; analog, so a tolerance rather than a bit-for-bit sheet. Licence open, decision B.
+**Commodore 64** (MOS 6581 SID, since 0.13.0). Digital: reSID-fp (libsidplayfp, drfiemost), as a 6581, 7 logs, 30.5M cycles; runs aligned on step times 100.0 % (1207 of 1207); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter. Analog: a profile from the documents, unmeasured: the 6581's non-linear DAC ladders, the filter on a measured cutoff curve, the output stage's corners. The 8580 is not modelled. Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did. Remains: the filter in the arranger; the 8580; a unit's line-out; VICE's SID test programs on a 6510.
 
 **Later** (PC Engine, GBA, Amiga, POKEY, YM2151, YM2610). After the five, by demand.
 <!-- status:end -->
@@ -137,8 +138,10 @@ is [`docs/chips/dmg.md`](docs/chips/dmg.md): twelve of twelve `dmg_sound` ROMs
 on an SM83. The Mega Drive's is [`docs/chips/md.md`](docs/chips/md.md): its
 YM2612 is identical to Nuked-OPN2, a reading of the die, on every cycle of the
 corpus. The SNES's is [`docs/chips/snes.md`](docs/chips/snes.md): its S-DSP is
-identical to snes_spc on every sample of its output stream. What still says
-**unverified** on all four, honestly: the analog stage, which needs a real
+identical to snes_spc on every sample of its output stream. The C64's is
+[`docs/chips/c64.md`](docs/chips/c64.md): its SID, written from the documents,
+is identical to reSID-fp on both digital values of every voice. What still says
+**unverified** on all five, honestly: the analog stage, which needs a real
 unit's line-out. The [roadmap](docs/ROADMAP.md) is the order
 in which those lines change, and the [backlog](docs/BACKLOG.md) is what is being
 done about it this week.
@@ -151,7 +154,7 @@ the community's test ROMs, or borrowed from a core the community has already
 verified against silicon; that the sheet is the contract; and that the product
 is a [portable score](docs/SCORE.md) that an agent or a person writes once and
 that plays on a NES, a Game Boy, a Mega Drive, a SNES or a C64 in that
-machine's own idiom. Two of the five play today.
+machine's own idiom. All five play today.
 
 ## Releasing
 

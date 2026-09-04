@@ -3,6 +3,7 @@ import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
 import { mdChip } from "./chips/md/index.js";
 import { snesChip } from "./chips/snes/index.js";
+import { c64Chip } from "./chips/c64/index.js";
 import { Sequencer, type Song } from "./sequencer.js";
 import { OfflineDriver } from "./driver.js";
 
@@ -21,7 +22,7 @@ export interface RenderOptions {
   /** How long to render. Defaults to two times round the song's loop. */
   seconds?: number;
   sampleRate?: number;
-  /** Which chip: `"2a03"` (the default), `"dmg"`, `"md"` or `"snes"`. */
+  /** Which chip: `"2a03"` (the default), `"dmg"`, `"md"`, `"snes"` or `"c64"`. */
   chip?: string;
   /** 0 to 1, applied by the chip's own output stage. */
   gain?: number;
@@ -60,7 +61,7 @@ export function loopSeconds(song: Song): number {
  * registry, which a caller filled.
  */
 function chipFor(id: string): ChipDefinition {
-  const chip = id === "2a03" ? nesChip : id === "dmg" ? gbChip : id === "md" ? mdChip : id === "snes" ? snesChip : getChip(id);
+  const chip = id === "2a03" ? nesChip : id === "dmg" ? gbChip : id === "md" ? mdChip : id === "snes" ? snesChip : id === "c64" ? c64Chip : getChip(id);
   if (!chip) throw new Error(`unknown chip: ${id}`);
   return chip;
 }

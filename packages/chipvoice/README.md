@@ -241,6 +241,17 @@ and encodes to BRR (`encodeBrr` is exported), with the machine's echo on.
 `Instrument.sample` names a sample in the driver's bank. Its sheet is
 [`docs/chips/snes.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md).
 
+The fifth is the Commodore 64's, `c64Chip`: a 6581 SID at `src/chips/c64/sid.ts`,
+written from the documents and identical to reSID-fp, the harness's oracle, on
+both digital values of every voice. Three voices for the score's four lines:
+`Chip.create({ chip: "c64" })` puts the lead and the bass on a voice each and the
+chord and the kit on the third, where a drum cuts the chord and the chord comes
+back after it. `Instrument.waveform` picks a voice's waveform, one for the note
+or one per frame. The analog stage is a profile, `SID_6581_PROFILE`: the chip's
+non-linear DAC ladders, its filter on a measured curve, the output stage. Its
+sheet is
+[`docs/chips/c64.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/c64.md).
+
 ## The song, as bytes: VGM
 
 A NES saw a song as register writes, and so does this library, so the most honest
@@ -302,7 +313,7 @@ What is still 2A03 in disguise, named rather than hidden:
   waveform chips. An FM patch is four operators with an envelope each, an algorithm
   and a feedback level, and should not be forced into this shape
 - `Pattern` names four voices. Eight do not fit four named fields
-- percussion assumes a noise channel; the SNES has none, its drums are samples
+- percussion assumes a noise channel; the SNES has none, its drums are samples, and the C64's noise is pitched, so its kit names pitches
 
 **Each chip is a project, not a file.** The 2A03 is the simplest and best-documented
 one; the SNES is a small sampler with a 64 KiB budget and BRR compression.

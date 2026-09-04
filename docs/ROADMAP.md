@@ -55,7 +55,7 @@ and someone porting a piece from NES to Mega Drive all end up.
 | 4. The portable score | 6 to 8 | Arrangers, instruments in the API, VGM export, idioms in the skill |
 | 5. Mega Drive | 4 to 6 | FM through Nuked-OPN2 in WebAssembly, the FM instrument shape |
 | 6. SNES | 6 to 10 | S-DSP, a BRR encoder, the sample instrument shape |
-| 7. C64 | 4 to 6 | SID with 6581 and 8580 profiles |
+| 7. C64 | 4 to 6 | SID from the documents, a 6581 profile, reSID-fp as the oracle |
 
 Weeks assume one person, most of their time. Phase 4 starts alongside phase 3 and
 keeps going under everything after it.
@@ -193,9 +193,14 @@ voices for the chord (P6-10), SPC export (P6-9), a capture of a unit (P6-8).
 
 ### Phase 7. C64
 
-The SID has no analog 100 %. reSID-fp is GPL, so it is either a separate package
-under GPL or a rewrite from the documentation. The sheet carries two profiles,
-6581 and 8580, each with its own tolerance.
+Done in 0.13.0, the way the Game Boy was: the SID's digital part written from
+the documents and compared with reSID-fp, built natively in the harness and
+nowhere else because it is GPL (decision 18) - identical on both digital
+values of every voice on every log. A 6581 profile for the analog stage, from
+the documents and unmeasured; three voices for four lines, the drums cutting
+the chord on the third, as a rule in the sequencer. Still to come: VICE's SID
+test programs on a 6510 (P7-7), a unit's line-out (P7-8), the filter in the
+arranger (P7-9), the 8580 (P7-10).
 
 ### Later
 
@@ -210,7 +215,7 @@ five archetypes, and only as additions to a proven shape.
 | DMG APU | Game Boy | Tables plus wavetable | Own, `gb/dsp.ts`, from Pan Docs and blargg's notes | MIT | blargg's `dmg_sound` ROMs, Gb_Snd_Emu; SameBoy to come |
 | YM2612 + SN76489 | Mega Drive | FM plus PSG | Nuked-OPN2 ported line for line (`md/ym2612.ts`); the PSG from the documents | LGPL 2.1 for the one file, MIT for the rest | Nuked itself, die-derived: identical on every voice; the PSG's oracle to come |
 | S-DSP | SNES | Samples | snes_spc's SPC_DSP ported line for line (`snes/sdsp.ts`) | LGPL 2.1 for the one file, MIT for the rest | snes_spc itself, written against the hardware's output: identical on the stream; a capture of a unit to come |
-| SID 6581, 8580 | C64 | Analog filter | reSID-fp or own | GPL, or MIT if rewritten | reSID-fp per profile; analog tolerance only |
+| SID 6581 | C64 | Analog filter | Own, `c64/sid.ts`, from the documents | MIT | reSID-fp, in the harness only: identical on both digital values of every voice; the 8580 and a unit's capture to come |
 
 ## Not on the roadmap
 

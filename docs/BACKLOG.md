@@ -96,11 +96,51 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | |
 | P6-10 | Real triads across voices for the chord, the SNES's idiom, and the noise voice for hats | todo | the arranger arpeggiates for now |
 
+## Phase 7. C64
+
+| # | Ticket | Status | Where |
+| --- | --- | --- | --- |
+| P7-1 | reSID-fp vendored as the SID oracle, in the harness only: it is GPL and never ships in the package (decision B) | done | `packages/conform/oracles/residfp`, `src/oracles/residfp.mjs` |
+| P7-2 | The SID's digital part from the documents: oscillators, the noise register, waveform selection and combination, sync and ring modulation, the envelopes with their rate counters and the ADSR delay bug, behind `DigitalChip` | done | `packages/chipvoice/src/chips/c64/sid.ts`; identical to reSID-fp on every log |
+| P7-3 | The SID's analog stage as a profile: the 6581's DAC ladders, the filter, the output stage | done | `chips/c64/dsp.ts`, `SID_6581_PROFILE`; unmeasured, the 8580 left for P7-10 |
+| P7-4 | The C64's driver and arranger: waveforms and the envelope for the intents, three voices for four roles with the classic sharing | done | `chips/c64/driver.ts`, `arranger.ts`; the sharing rule in `Sequencer.scheduleStep` |
+| P7-5 | The chip in the API, the studio and the skill | done | schema, openapi, skill 0.8.0, llms.txt, studio |
+| P7-6 | The C64 sheet: parity with reSID-fp on the digital voices, a corpus of scripts and songs | done | `docs/chips/c64.md`, `corpus/c64`, `check:c64` in CI |
+| P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | todo | needs a 6510 the way the NES has a 6502 |
+| P7-8 | A 6581's line-out captured under a known script, and the analog profile fitted to it: the DAC's zero, the filter's curve, the output stage | todo | needs a unit |
+| P7-9 | The filter in the arranger: a word that opens it, a sweep for a lead | todo | |
+| P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | todo | |
+| P7-11 | The harness holds every change of every stream in memory, and a SID sawtooth changes every cycle: the corpus keeps dense waveforms short. A streaming compare, or a change stream as typed arrays, would lift that | todo | hit while generating the corpus: an 8 s script of three sawtooths ran the harness out of memory |
+
 ## Later phases
 
-C64: see the roadmap. Not ticketed until phase 6 is done.
+After the five: see the roadmap.
 
 ## Discoveries
+
+**2026-09-04, P7-1 to P7-6.** The fifth chip, and the first written from the
+documents since the Game Boy: the SID's digital part is chipvoice's own code,
+from the datasheet, kevtris's rate values, plogue's ADSR findings and what
+VICE and reSID published from the die, and reSID-fp, GPL, stays in the
+harness as the oracle (decision 18). It was identical to reSID-fp on every
+stream of every log once two things were right, both facts about the
+hardware: power-on is a reset, which clocks the noise register once as the
+reset line goes; and rate 8 of the envelope is 392 cycles a step, one more
+than the datasheet's 391, which is what the register value kevtris read off
+the chip says. The combined waveforms are a model with six numbers per
+combination, bits pulling on their neighbours and the pulse pulling from
+above; it matches the oracle's tables on every entry, and the harness scores
+it (`fit:c64`). Three voices for four lines is the first time the score has
+more lines than the chip has voices, and the rule went into the sequencer
+rather than the driver, because the driver expands a note into writes when
+the note is scheduled and cannot take a write back: a drum cuts the chord,
+and the chord comes back after it until the next drum, as on every C64 tune
+with drums. The drums are the SID's own, pitched, and every one is shorter
+than a step because a drum's note off lands where its duration says on every
+chip. The harness holds every change of every stream in memory, and a SID
+sawtooth at an audible pitch changes every cycle: an 8 s script of three
+sawtooths ran it out of memory, and the corpus now uses pulses wherever the
+waveform is not what is under test (P7-11).
 
 **2026-09-04, P6-1 to P6-7.** The fourth chip, and the port was identical to
 its oracle on the first run: snes_spc's S-DSP, line for line, compared on the

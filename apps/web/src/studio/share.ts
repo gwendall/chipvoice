@@ -21,7 +21,7 @@ export function decode(raw: string): { track: Track; bpm: number; chip: ChipId }
     const [head, ...lines] = text.split("\n");
     const [bpmText, chipText] = head.trim().split(/\s+/);
     const bpm = Number(bpmText);
-    const chip: ChipId = chipText === "dmg" || chipText === "md" || chipText === "snes" ? chipText : "2a03";
+    const chip: ChipId = chipText === "dmg" || chipText === "md" || chipText === "snes" || chipText === "c64" ? chipText : "2a03";
     if (!Number.isFinite(bpm) || bpm < 40 || bpm > 300) return null;
     if (lines.length !== CHANNELS.length) return null;
 
