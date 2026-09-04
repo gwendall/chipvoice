@@ -17,7 +17,8 @@ One repository, three things that ship separately and are built from the same co
 | --- | --- |
 | [`packages/chipvoice`](packages/chipvoice) | The npm package: the chip, the driver, the tracker, the validator, the offline renderer. Its [README](packages/chipvoice/README.md) is the API reference |
 | [`apps/web`](apps/web) | [chipvoice.dev](https://chipvoice.dev): the editor, the API agents write music with, the shareable links and the MP3s behind them |
-| [`docs`](docs) | Where the project is going, how a chip is verified, and what has been decided |
+| [`packages/conform`](packages/conform) | The conformance harness: a corpus of register logs through the chip and through a reference emulator, compared cycle for cycle. Writes the numbers on the chip's sheet |
+| [`docs`](docs) | Where the project is going, how a chip is verified, what has been decided, and the backlog |
 
 ## Running it
 
@@ -25,7 +26,8 @@ One repository, three things that ship separately and are built from the same co
 pnpm install
 pnpm build            # the package, then the site
 pnpm dev              # the editor and the API on http://localhost:3010
-pnpm test:unit        # the validator, the clocks against the formulas, the golden hash
+pnpm test:unit        # the validator, the clocks against the formulas, the driver, VGM, the golden hash
+pnpm --filter chipvoice-conform check   # the corpus against the reference, no regression against the baseline
 pnpm test:e2e         # production, end to end, through the package, the API and a browser
 ```
 
@@ -38,9 +40,12 @@ gate; CI runs the unit tests on every push.
 A measurement, not an adjective. Every chip has a conformance sheet, held to the
 method in [`docs/CONFORMANCE.md`](docs/CONFORMANCE.md), that says what was verified
 against which oracle and what is known to differ. The 2A03's is
-[`docs/chips/2a03.md`](docs/chips/2a03.md), and today it says **unverified** on
-most lines, honestly. The [roadmap](docs/ROADMAP.md) is the order in which those
-lines change.
+[`docs/chips/2a03.md`](docs/chips/2a03.md): its pulses are identical to blargg's
+reference emulator cycle for cycle on every song in the corpus, and every
+divergence found so far is a convention of that 2005 oracle, read there. The
+analog stage and the test ROMs still say **unverified**, honestly. The
+[roadmap](docs/ROADMAP.md) is the order in which those lines change, and the
+[backlog](docs/BACKLOG.md) is what is being done about it this week.
 
 ## Where it is going
 

@@ -12,7 +12,9 @@
     "8-bit",
     "famitracker",
     "emulation",
-    "tracker"
+    "tracker",
+    "vgm",
+    "dmc"
   ],
   "license": "MIT",
   "author": "Gwendall Esnault (https://gwendall.com)",

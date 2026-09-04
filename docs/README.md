@@ -8,7 +8,8 @@ What the project is doing and why, kept next to the code so the two cannot drift
 | [CONFORMANCE.md](CONFORMANCE.md) | How a chip is verified: what 100 % means, the oracles, the corpus, the harness, the sheet |
 | [SCORE.md](SCORE.md) | The portable score - one song, many machines. A draft |
 | [DECISIONS.md](DECISIONS.md) | Decisions taken, with the reasoning, so they are not re-litigated by accident |
-| [chips/](chips/) | One conformance sheet per chip. [TEMPLATE.md](chips/TEMPLATE.md) is the blank one, [2a03.md](chips/2a03.md) is the NES |
+| [BACKLOG.md](BACKLOG.md) | The tickets, kept current at the start and end of every pull request, and a log of the discoveries that changed the plan |
+| [chips/](chips/) | One conformance sheet per chip. [TEMPLATE.md](chips/TEMPLATE.md) is the blank one, [2a03.md](chips/2a03.md) is the NES; its parity numbers are written by the harness |
 
 The package's own [README](../packages/chipvoice/README.md) covers the API. The
 documents here are about the project: what it is trying to be, how it checks that

@@ -1,7 +1,7 @@
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 const UPDATED = "2026-09-04";
 
 /**
@@ -39,6 +39,14 @@ four lines, get a link and an MP3 that plays anywhere.
 > Since 0.1.0: the noise channel ran at half the hardware rate, so every drum was
 > an octave darker than a NES. Fixed. A song published before this date sounds
 > brighter on its drums now than it did when it was written.
+>
+> Since 0.2.0: the chip now takes register writes as bytes, the way a NES did,
+> and two things follow. Pulse notes at G#2 and below were silent - the sweep
+> unit mutes them until a register is written - and now sound. And a vibrato or
+> a slide on \`lead\` or \`chord\` that crosses a period boundary restarts the
+> pulse's phase with a click, as on the hardware: A4 with the default vibrato
+> does, E4 does not. The chip is compared with a reference emulator on every
+> change; the pulses are identical to it cycle for cycle.
 
 How accurate the chip is, and how that is measured, is on its conformance sheet:
 https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md

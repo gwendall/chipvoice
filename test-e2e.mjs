@@ -275,11 +275,24 @@ try {
   p.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
   await p.goto(SITE, { waitUntil: "domcontentloaded" });
-  await p.click(".transport .primary");
-  const started = await p
-    .waitForFunction(() => !!window.chipvoice, null, { timeout: 20000 })
-    .then(() => true)
-    .catch(() => false);
+  /*
+   * Click until the chip appears, not once.
+   *
+   * Right after a deploy the page arrives before its JavaScript has, and a
+   * click on a button React has not yet wired does nothing - so a single
+   * click followed by a twenty second wait failed this check on a cold site
+   * three times in a day, against an editor that worked. Clicking again every
+   * few seconds until `window.chipvoice` exists is what a person does.
+   */
+  let started = false;
+  const deadline = Date.now() + 25000;
+  while (!started && Date.now() < deadline) {
+    await p.click(".transport .primary");
+    started = await p
+      .waitForFunction(() => !!window.chipvoice, null, { timeout: 3000 })
+      .then(() => true)
+      .catch(() => false);
+  }
   check("the chip starts in a browser", started);
 
   if (started) {
