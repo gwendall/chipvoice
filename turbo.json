@@ -9,7 +9,7 @@
         "dist/**",
         ".next/**",
         "!.next/cache/**",
-        "src/chips/nes/worklet-inline.ts"
+        "src/chips/*/worklet-inline.ts"
       ]
     },
     "typecheck": {

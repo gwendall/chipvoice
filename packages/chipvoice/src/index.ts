@@ -1,5 +1,6 @@
 import { APU, type Channel, type Instrument } from "./driver.js";
 import "./chips/nes/index.js";
+import "./chips/gb/index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
 export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
@@ -33,6 +34,7 @@ export {
   type VoiceSpec,
 } from "./chip.js";
 export { NES_2A03, nesChip } from "./chips/nes/index.js";
+export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export type { Pattern, PercussionKit, Song } from "./sequencer.js";
 export { DEFAULT_KIT, softKit } from "./sequencer.js";
 export { noteToFreq } from "./driver.js";
