@@ -46,6 +46,8 @@ export class Nes {
     /** Cycles at which pulse 1 started an audible note: blargg's beeps. */
     this.beeps = [];
     this.pulseLow = 0;
+    /** Every register write, stamped with its cycle: a ROM as a corpus log. */
+    this.log = [];
   }
 
   /**
@@ -115,6 +117,7 @@ export class Nes {
       else {
         if (addr === 0x4002) this.pulseLow = value;
         if (addr === 0x4003 && (((value & 7) << 8) | this.pulseLow) >= 8) this.beeps.push(this.cpu.cycles);
+        this.log.push({ at: this.cpu.cycles, addr, value });
         this.chip.write(addr, value);
       }
     } else if (addr >= 0x6000 && addr < 0x8000) this.wram[addr - 0x6000] = value;

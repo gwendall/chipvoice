@@ -123,7 +123,9 @@ for the envelope and the sweep is on the backlog.
 3. Add the 5-step frame counter mode and `$4017` write timing, because the test
    ROMs check them. Done, and they pass.
 4. Choose a reference unit for the analog stage, capture it, measure the error,
-   put it on the sheet.
+   put it on the sheet. Half done: the mixer is measured against blargg's
+   recordings of his NES and matches; the filters still want a unit's line
+   output.
 5. Release, with the sheet linked from the package README and the skill.
 
 Done when the sheet meets the definition in CONFORMANCE.md.

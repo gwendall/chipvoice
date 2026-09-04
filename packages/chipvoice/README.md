@@ -177,7 +177,9 @@ are identical to it on every song, and what differs, and why it is the oracle's
 convention rather than a bug here, is on the sheet. And it runs every one of
 blargg's APU test ROMs on a 6502 it carries for the purpose - length counters,
 frame timing to the cycle, the IRQ, the reset button, the DMC - and all
-twenty-nine pass.
+twenty-nine pass. Blargg's mixer tests, which cancel each channel against the
+DMC's DAC and which he recorded on a real NES, cancel here as well as they did on
+his console: the DAC curves are measured, not assumed.
 
 ## The song, as bytes: VGM
 

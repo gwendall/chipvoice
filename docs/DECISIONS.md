@@ -64,14 +64,11 @@ hash moved by the sub-sample shift and nothing else. The same event stream now
 applies its writes on the same cycles at 44100 and 48000, which `test/clock.mjs`
 checks. VGM export is a serialisation of the event stream.
 
-### 5. The triangle starts at a zero-output phase (2026-09-04)
+### 5. The triangle starts at a zero-output phase (2026-09-04) - superseded by 13
 
-The core's triangle powers on at sequencer step 15, which outputs 0. The hardware
-powers on at step 0, which outputs 15.
-
-**Why.** A held 15 at power-on is a DC step through two high-pass filters, which
-is a click at the head of every render. The deviation affects only the initial
-state and is listed on the sheet as deliberate.
+The core's triangle powered on at sequencer step 15, which outputs 0, where the
+hardware powers on at step 0, which outputs 15, to spare every render a DC step
+through the high-pass filters. Superseded the same day: see 13.
 
 ### 6. CI runs the unit tests; the release runs the browser (2026-09-04)
 
@@ -186,6 +183,24 @@ baseline moves toward 100 and the check stays the same.
 
 **What changes.** A pull request that changes the chip's sound shows it in
 `parity.json` as well as in `golden.json`, and both diffs say in which direction.
+
+### 13. The triangle powers on as the hardware does; the output stage primes (2026-09-04)
+
+The triangle starts at step 0, which outputs 15. `NesOutputStage` sets its
+filters, on the first sample, to the state they would have reached on a steady
+input at that level, so the power-on 15 puts no step through them.
+
+**Why.** Blargg's `apu_mixer` test walks the triangle from power-on to the
+sequence's zero and leaves it there while it checks the mixing table against the
+DMC. From step 15 it landed on 15 instead, and the whole table read 22 dB worse
+than his recording of a real NES. From step 0 it lands on 0 and the core cancels
+as well as his console. The digital chip has one truth, the hardware's; a click
+is the analog stage's problem, and a console that has been on for a second has
+no click either.
+
+**What changed.** Decision 5 is withdrawn. The golden hash moved with the
+triangle's phase, and the parity baseline moved with it too: the oracle powers
+its triangle on at 0, so every silent cycle now differs on that voice.
 
 ## Open
 

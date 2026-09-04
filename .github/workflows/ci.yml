@@ -43,3 +43,8 @@ jobs:
       # blargg's APU test ROMs, on a 6502 the harness carries for the
       # purpose. Every one of them has to pass.
       - run: pnpm --filter chipvoice-conform roms
+
+      # The mixer against blargg's cancellation tests: each channel has to
+      # cancel against the DMC as well as his console did. The recordings are
+      # decoded when the runner has ffmpeg; the floor holds either way.
+      - run: pnpm --filter chipvoice-conform mixer

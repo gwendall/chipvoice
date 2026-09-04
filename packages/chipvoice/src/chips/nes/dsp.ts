@@ -228,12 +228,16 @@ class Triangle implements LengthCounted {
   lengthPending: number | null = null;
   lengthClocked = false;
   /**
-   * Step 15 outputs 0. The hardware powers on at step 0, which outputs 15 and
-   * holds it until the first note - and a held 15 is a DC step through the
-   * high-pass filters, which is a click at the head of every render. A
-   * deliberate deviation, listed on the sheet.
+   * Step 0, which outputs 15, as the hardware powers on. It held 15 until the
+   * first note, and a version of this core started at step 15, which outputs
+   * 0, to spare every render a DC step through the high-pass filters. Then
+   * blargg's mixer test showed why the hardware's position matters: the test
+   * walks the triangle from power-on to the sequence's zero and leaves it
+   * there, and from the wrong start it lands on 15 instead, which detunes the
+   * whole mixing table. The step is the hardware's; the click is the output
+   * stage's problem, and it settles its filters on the first sample.
    */
-  step = 15;
+  step = 0;
   lengthCounter = 0;
   lengthHalt = false;
   linearCounter = 0;
@@ -852,6 +856,14 @@ export class NesOutputStage {
   readonly profile: OutputProfile;
   private sum = 0;
   private count = 0;
+  /**
+   * Whether the filters have seen a sample. On the first one they are set
+   * to the state they would have reached on a steady input at that level, so
+   * a chip that powers on with a DC level - the triangle outputs 15 until its
+   * first note - does not put a step through the high-pass sections. A
+   * console that has been on for a second is in the same state.
+   */
+  private primed = false;
 
   // The three filters, as one-pole sections, and their state.
   private readonly hp1Coef: number;
@@ -884,6 +896,10 @@ export class NesOutputStage {
   /** The sample: the average, filtered, scaled by `gain`, clamped. */
   end(gain: number): number {
     let sample = this.count > 0 ? this.sum / this.count : 0;
+    if (!this.primed) {
+      this.primed = true;
+      this.lastIn1 = sample;
+    }
 
     const hp1Out = this.hp1Coef * (this.hp1 + sample - this.lastIn1);
     this.lastIn1 = sample;

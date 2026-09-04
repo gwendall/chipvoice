@@ -33,7 +33,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | --- | --- | --- | --- |
 | P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | todo | |
 | P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
-| P2-3 | A reference unit for the analog stage, captured and measured | todo | |
+| P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output |
 | P2-4 | Release with the sheet linked from the package README and the skill | todo | |
 
 ## Phase 3. Game Boy
@@ -76,6 +76,16 @@ sweep unit's mute condition silenced any pulse note with a period of `$400` or
 more - roughly G#2 and below. Drivers on the hardware wrote `$4001 = $08` for
 that reason. Both are now what the hardware does: a note that crosses a period
 high-byte boundary restarts its phase, and low pulse notes play.
+
+**2026-09-04, P2-3.** Blargg's `apu_mixer` ROMs come with recordings of a real
+NES, and they measure the mixer without owning one: each has a channel play a
+waveform while the DMC plays its inverse, and how silent the middle is says how
+right the DAC curves are. Ours cancels to -32.7 dB on the pulses, -33 dB on the
+triangle and -31 dB on the DMC, where his console does -32.2, -30.9 and -27.2.
+It did not at first: the triangle's power-on position, which decision 5 had
+moved to spare a click, put it on the wrong value for the whole test and read
+22 dB worse. The hardware's position is back and the click is handled where it
+belongs, in the output stage. A measurement beat a reasonable-sounding choice.
 
 **2026-09-04, P1-11.** Every one of blargg's APU test ROMs passes on a 6502
 the harness carries: the 2011 `apu_test` and `apu_reset`, the `dmc_tests`, and
