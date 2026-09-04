@@ -82,7 +82,9 @@ function withSine(extra = []) {
   let zeroSince = -1;
   let echoAt = -1;
   chip.trace(start + Math.round(CLOCK * 0.2), (c, v, value) => {
-    if (v !== 0 || echoAt > 0) return;
+    // Nothing before the burst counts: the voices the DSP powers on with
+    // take a few milliseconds to release.
+    if (v !== 0 || echoAt > 0 || c < start) return;
     if (onset < 0) {
       if (value !== 0) onset = c;
       return;
