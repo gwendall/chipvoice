@@ -53,7 +53,8 @@ jobs:
       # Installs the tarball into an empty project and drives it in a browser.
       # It is the only check that sees what `npm install` actually hands over.
       - run: npx playwright install --with-deps chromium
-      - run: node test/validate.mjs
+      # The validator, the clocks against the formulas, the golden hash.
+      - run: pnpm test:unit
         working-directory: packages/chipvoice
       - run: pnpm test:fresh
         working-directory: packages/chipvoice
