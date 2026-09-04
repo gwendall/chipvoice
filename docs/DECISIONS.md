@@ -167,6 +167,26 @@ ticket. Low pulse notes play. The 5-step frame sequence and the `$4017` write
 delay came with the decoder. `RegisterEvent` is now chip-agnostic, which is one
 less thing the Game Boy has to force open.
 
+### 12. CI checks a parity baseline, not zero divergence (2026-09-04)
+
+`conform` runs the corpus against the oracle on every push and fails only when a
+voice's identical count on any log falls below the committed baseline,
+`packages/conform/corpus/2a03/parity.json`. The baseline is rewritten by hand,
+with `pnpm --filter chipvoice-conform baseline`, in the same commit as the change
+that moved it, and the diff of it is that change's evidence.
+
+**Why.** The first oracle, Nes_Snd_Emu 0.1.7, predates some of what nesdev now
+knows, and diverges from this core by its own conventions: frame steps two cycles
+late, a triangle that steps at once on reload, envelopes left armed by its
+reset, a DMC that starts a bit period early. None of those is a bug here, so
+"no divergence" is not a check this oracle can pass, and a check that cannot
+pass is a check nobody reads. What must not happen is a regression, and that is
+what the baseline catches. When a second oracle settles the conventions, the
+baseline moves toward 100 and the check stays the same.
+
+**What changes.** A pull request that changes the chip's sound shows it in
+`parity.json` as well as in `golden.json`, and both diffs say in which direction.
+
 ## Open
 
 ### B. The SID's licence
