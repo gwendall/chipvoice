@@ -111,9 +111,10 @@ for the oracle only when it has to locate a divergence.
 
 ## What a core must provide to be testable
 
-- **Events timestamped in chip cycles.** The sample clock is derived from the
-  cycle clock, never the other way round. The 2A03 core timestamps in samples
-  today; phase 1 changes that, and VGM export falls out of the same change.
+- **Events timestamped in chip cycles.** `ChipSpec.clockHz` names the clock,
+  and a write lands on its cycle wherever that falls inside a sample. The
+  sample clock is derived from the cycle clock, never the other way round, and
+  the same stream applies its writes on the same cycles at any sample rate.
 - **A digital output**, one value per cycle, before resampling and before the
   analog stage. This is what parity is measured on.
 - **The analog stage as a separate model** with a named profile, so "NES-101" and

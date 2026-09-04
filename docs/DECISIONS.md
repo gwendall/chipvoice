@@ -45,17 +45,24 @@ are rewritten against two real chips, before the portable score is designed.
 produces a bad abstraction. The Game Boy is the cheapest second case with a real
 difference, the wave channel.
 
-### 4. Event time moves to chip cycles (2026-09-04, to be done in phase 1)
+### 4. Event time is in chip cycles (2026-09-04)
 
-`RegisterEvent.at` becomes a count of the chip's clock cycles. The sample position
-is derived inside the core from the cycle count and the sample rate.
+`RegisterEvent.at` is a count of the chip's clock cycles, `ChipSpec.clockHz` of
+them a second, from the same origin as the sample clock. A write lands on its
+cycle wherever that falls inside a sample. The core derives its cycle position
+from the sample position it is asked to render from, in exact integer
+arithmetic, so one second of samples is exactly one second of cycles.
 
 **Why.** Every oracle reasons in cycles, VGM is written in cycles, and the driver
-thinks in frames and does not care. Timestamps in samples tie the event stream to
-one sample rate and make bit-exact comparison a conversion problem.
+thinks in frames and does not care. Timestamps in samples tied the event stream
+to one sample rate, applied every write at the start of a sample rather than on
+its cycle, and made bit-exact comparison a conversion problem.
 
-**What changes.** The worklet converts `currentFrame` to cycles on the way in.
-VGM export becomes a serialisation of the event stream.
+**What changed.** The driver stamps writes with `Math.round(seconds * clockHz)`
+and needs no sample rate, so the offline driver lost its override. The golden
+hash moved by the sub-sample shift and nothing else. The same event stream now
+applies its writes on the same cycles at 44100 and 48000, which `test/clock.mjs`
+checks. VGM export is a serialisation of the event stream.
 
 ### 5. The triangle starts at a zero-output phase (2026-09-04)
 

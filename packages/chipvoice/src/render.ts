@@ -73,7 +73,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
    * that block. Rendering the whole thing in one call would leave the sequencer
    * with nothing scheduled past the first fifth of a second.
    */
-  const driver = new OfflineDriver(core, sampleRate);
+  const driver = new OfflineDriver(core);
   let clock = 0;
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false });
   sequencer.play(song);

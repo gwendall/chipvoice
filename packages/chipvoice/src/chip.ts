@@ -60,6 +60,15 @@ export interface ChipSpec {
   instruments: "table" | "fm" | "sample";
   /** Native sample rate, when the chip has one. Null means it follows the host. */
   nativeSampleRate: number | null;
+  /**
+   * The clock `RegisterEvent.at` counts in, in Hz.
+   *
+   * For the 2A03 it is the CPU clock, 1789773 on NTSC. A driver stamps its
+   * writes with it, and a log of writes captured from a real machine is in the
+   * same unit - which is what makes the two comparable, and what an oracle
+   * needs to replay one against the other.
+   */
+  clockHz: number;
 }
 
 /**
@@ -69,16 +78,19 @@ export interface ChipSpec {
  * only in where the sample clock comes from.
  */
 export interface ChipCore {
-  /** Queues register writes, each stamped with the sample it applies at. */
+  /** Queues register writes, each stamped with the cycle it applies at. */
   schedule(events: RegisterEvent[]): void;
-  /** Fills a buffer. `startSample` is the absolute position of `left[0]`. */
+  /**
+   * Fills a buffer. `startSample` is the absolute position of `left[0]` on
+   * the sample clock; the core derives its own cycle position from it.
+   */
   render(left: Float32Array, right: Float32Array | null, startSample: number): void;
   setGain(value: number): void;
   reset(): void;
 }
 
 /**
- * One register write, stamped with the sample it lands on.
+ * One register write, stamped with the cycle it lands on.
  *
  * The fields are the 2A03's, and this is the first thing a second chip will
  * force open - an FM patch write has no `duty`. When that happens the right
@@ -86,7 +98,15 @@ export interface ChipCore {
  * driver only ever talks to one chip.
  */
 export interface RegisterEvent {
-  /** Absolute sample index. */
+  /**
+   * Absolute cycle on the chip's clock, `ChipSpec.clockHz` of them a second,
+   * counted from the same origin as the sample clock: sample 0 is cycle 0.
+   *
+   * Cycles rather than samples because the chip is a cycle machine and the
+   * sample rate is the host's business. A write lands on its cycle wherever
+   * that falls inside a sample, the same event stream renders the same way at
+   * any rate, and a VGM file is this list with a different header.
+   */
   at: number;
   /** Voice id, from the chip's spec. */
   ch: string;

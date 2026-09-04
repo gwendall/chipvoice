@@ -125,7 +125,7 @@ function compile(p: Pattern): CompiledPattern {
 
 /**
  * Schedules the song ahead of the clock. setTimeout only decides *what* to
- * queue; the worklet applies it sample-exactly.
+ * queue; the chip applies it on the cycle it names.
  */
 export class Sequencer {
   private readonly apu: NoteSink;
@@ -206,7 +206,7 @@ export class Sequencer {
    *
    * Rez's cheapest trick: a player's own sounds snap to the beat, so somebody
    * with no rhythm still sounds like a musician. The hard half was already
-   * done here - the APU is sample-exact and the sequencer knows the bar -
+   * done here - the APU is cycle-exact and the sequencer knows the bar -
    * and nothing was using it.
    */
   nextEighth(from: number): number | null {

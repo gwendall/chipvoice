@@ -49,8 +49,8 @@ structural rather than a matter of tuning:
 
 So this steps 8-entry duty sequences and a 15-bit LFSR at the chip clock, mixes them
 through the hardware's own DAC curves, and runs the filters. Register writes arrive
-timestamped and are applied sample-exactly, so a slide lands on the frame it was
-scheduled for.
+stamped with a CPU cycle and land on that cycle, wherever it falls inside a sample,
+so a slide lands on the frame it was scheduled for.
 
 ## Four channels, and the fight over them
 

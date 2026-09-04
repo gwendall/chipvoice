@@ -4,8 +4,8 @@
  * Real NES games did not "play a sound"; a driver rewrote the APU registers
  * every NMI, sixty times a second. Instruments here are the same idea, and the
  * same shape FamiTracker settled on: per-frame tables for volume, arpeggio,
- * pitch and duty. Everything is expanded into timestamped writes and handed to
- * a chip, which applies them sample-exactly.
+ * pitch and duty. Everything is expanded into writes stamped with a CPU cycle
+ * and handed to a chip, which applies each one on the cycle it names.
  *
  * This layer is 2A03-shaped and will move when a second chip arrives: `duty`
  * and the two period formulas below are pulse-and-triangle facts, not facts
@@ -14,9 +14,9 @@
  */
 
 import { type ChipCore, type RegisterEvent, type WorkletMessage } from "./chip.js";
+import { CPU_HZ } from "./chips/nes/dsp.js";
 import { nesChip } from "./chips/nes/index.js";
 
-const CPU_HZ = 1789773;
 export const FRAME_RATE = 60;
 export const FRAME_TIME = 1 / FRAME_RATE;
 
@@ -187,8 +187,14 @@ export class APU implements NoteSink {
     this.queue = [];
   }
 
-  protected sampleAt(time: number) {
-    return Math.max(0, Math.round(time * this.ctx.sampleRate));
+  /**
+   * Seconds on the context clock to cycles on the chip's, which is what a
+   * `RegisterEvent` is stamped with. Both count from the same origin - the
+   * context's frame 0 is the chip's cycle 0 - and neither involves the sample
+   * rate, which is why the offline driver needs no override here.
+   */
+  protected cycleAt(time: number) {
+    return Math.max(0, Math.round(time * CPU_HZ));
   }
 
   /**
@@ -221,7 +227,7 @@ export class APU implements NoteSink {
     let pitchAcc = 0;
 
     for (let f = 0; f < frames; f++) {
-      const at = this.sampleAt(start + f * FRAME_TIME);
+      const at = this.cycleAt(start + f * FRAME_TIME);
 
       // Volume table, held at its last value when the instrument sustains.
       let vol: number;
@@ -318,7 +324,7 @@ export class APU implements NoteSink {
 
     // Explicit note off, the way a driver would.
     this.enqueue({
-      at: this.sampleAt(start + frames * FRAME_TIME),
+      at: this.cycleAt(start + frames * FRAME_TIME),
       ch: channel,
       stop: true,
     });
@@ -328,7 +334,7 @@ export class APU implements NoteSink {
   stop(channel: Channel, at?: number) {
     if (!this.ready) return;
     this.enqueue({
-      at: this.sampleAt(at ?? this.ctx.currentTime),
+      at: this.cycleAt(at ?? this.ctx.currentTime),
       ch: channel,
       stop: true,
     });
@@ -358,15 +364,13 @@ export const NOISE_KIT = {
  */
 export class OfflineDriver extends APU implements NoteSink {
   private readonly core: ChipCore;
-  private readonly rate: number;
   private pending: RegisterEvent[] = [];
 
-  constructor(core: ChipCore, sampleRate: number) {
-    // The base class only uses the context for `currentTime` and the sample
-    // rate, both of which are supplied here instead.
-    super({ currentTime: 0, sampleRate } as unknown as AudioContext);
+  constructor(core: ChipCore) {
+    // The base class reads one thing from the context: `currentTime`, as the
+    // default start of a note. Offline, that is the origin.
+    super({ currentTime: 0 } as unknown as AudioContext);
     this.core = core;
-    this.rate = sampleRate;
     this.ready = true;
   }
 
@@ -388,9 +392,5 @@ export class OfflineDriver extends APU implements NoteSink {
   override reset() {
     this.pending.length = 0;
     this.core.reset();
-  }
-
-  protected override sampleAt(time: number) {
-    return Math.max(0, Math.round(time * this.rate));
   }
 }

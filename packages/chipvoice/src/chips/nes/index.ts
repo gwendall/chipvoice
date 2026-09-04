@@ -1,5 +1,5 @@
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
-import { NesApuCore, PROCESSOR_NAME } from "./dsp.js";
+import { CPU_HZ, NesApuCore, PROCESSOR_NAME } from "./dsp.js";
 import { WORKLET_SOURCE } from "./worklet-inline.js";
 
 /**
@@ -17,6 +17,9 @@ export const NES_2A03: ChipSpec = {
   // The chip runs from the CPU clock and resamples to whatever the host uses,
   // so there is no rate it prefers.
   nativeSampleRate: null,
+  // Events are stamped in CPU cycles: the APU is on the CPU's die and runs
+  // from its clock, and every document about it counts in these.
+  clockHz: CPU_HZ,
   voices: [
     { id: "p1", label: "Pulse 1", kind: "pulse", notes: "pitch" },
     { id: "p2", label: "Pulse 2", kind: "pulse", notes: "pitch" },

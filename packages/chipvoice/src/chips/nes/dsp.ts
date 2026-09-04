@@ -7,8 +7,11 @@
  * them through the hardware's non-linear DAC curves, then run the three analog
  * filters that give the NES its boxy voice.
  *
- * Register writes arrive as timestamped events and are applied sample-exactly,
- * so slides and arpeggios land on the frame they were scheduled for.
+ * Register writes arrive as events stamped with the CPU cycle they land on,
+ * and are applied on that cycle - not at the start of the sample around it -
+ * so slides and arpeggios land on the frame they were scheduled for, and so a
+ * log of writes from a real game can be replayed here and against an oracle
+ * and expected to agree.
  *
  * The same module runs in two places. Node imports it. The worklet gets it
  * bundled with `worklet.ts` into one self-contained script by
@@ -267,9 +270,27 @@ export class NesApuCore implements ChipCore {
   readonly triangle = new Triangle();
   readonly noise = new Noise();
 
-  private readonly cyclesPerSample: number;
-  private cycleAcc = 0;
   private apuToggle = false;
+
+  /**
+   * Where the cycle clock stands against the sample clock, in integers.
+   *
+   * `cycle` is the absolute CPU cycle about to be clocked, counted from sample
+   * 0. Events are stamped on the same clock, so it is what decides when a
+   * write lands. `remainder` is how far the sample clock has got into that
+   * cycle, in units of one sample rate: each sample adds CPU_HZ to it and
+   * clocks a cycle for every whole sample rate it holds. Exact arithmetic, so
+   * the two clocks cannot drift apart over a long render the way a floating
+   * accumulator would let them.
+   *
+   * `nextSample` is where the last block ended. When a caller renders from
+   * somewhere else - the first block, or a worklet that came up with the
+   * context already running - both are re-derived from the sample position
+   * rather than carried on from a place the chip never was.
+   */
+  private cycle = 0;
+  private remainder = 0;
+  private nextSample = -1;
 
   // Frame counter: quarter frames at 240 Hz drive envelopes, half frames at
   // 120 Hz drive length counters and sweeps.
@@ -291,7 +312,6 @@ export class NesApuCore implements ChipCore {
 
   constructor(sampleRate: number) {
     this.sampleRate = sampleRate;
-    this.cyclesPerSample = CPU_HZ / sampleRate;
     this.hp90Coef = Math.exp((-2 * Math.PI * 90) / sampleRate);
     this.hp440Coef = Math.exp((-2 * Math.PI * 440) / sampleRate);
     this.lpCoef = 1 - Math.exp((-2 * Math.PI * 14000) / sampleRate);
@@ -432,30 +452,32 @@ export class NesApuCore implements ChipCore {
   /**
    * Fills a buffer, advancing the chip one sample at a time.
    *
-   * `startSample` is the absolute position of `left[0]` on the sample clock,
-   * which is what makes a scheduled event land on the sample it was booked for.
-   * Pass null for `right` to render mono.
+   * `startSample` is the absolute position of `left[0]` on the sample clock.
+   * The cycle clock is derived from it, and a scheduled write lands on the
+   * cycle it was stamped with, wherever that falls inside a sample. Pass null
+   * for `right` to render mono.
    */
   render(left: Float32Array, right: Float32Array | null, startSample: number) {
     const n = left.length;
+    if (startSample !== this.nextSample) this.seek(startSample);
+
     for (let i = 0; i < n; i++) {
-      const now = startSample + i;
-
-      while (this.events.length > 0 && this.events[0].at <= now) {
-        const ev = this.events[0];
-        this.events.shift();
-        this.applyEvent(ev);
-      }
-
       // Advance the chip, averaging over the cycles that make up this sample.
       // Plain decimation would alias harshly; the box filter keeps the grit
       // without the artefacts.
       let sum = 0;
       let count = 0;
-      this.cycleAcc += this.cyclesPerSample;
-      while (this.cycleAcc >= 1) {
-        this.cycleAcc -= 1;
+      this.remainder += CPU_HZ;
+      while (this.remainder >= this.sampleRate) {
+        this.remainder -= this.sampleRate;
+        // A write lands on its cycle, before that cycle is clocked.
+        while (this.events.length > 0 && this.events[0].at <= this.cycle) {
+          const ev = this.events[0];
+          this.events.shift();
+          this.applyEvent(ev);
+        }
         this.clockCPU();
+        this.cycle++;
         sum +=
           mixPulses(this.pulse1.output(), this.pulse2.output()) +
           mixTND(this.triangle.output(), this.noise.output(), 0);
@@ -483,6 +505,19 @@ export class NesApuCore implements ChipCore {
       left[i] = v;
       if (right) right[i] = v;
     }
+    this.nextSample = startSample + n;
+  }
+
+  /**
+   * Re-derives the cycle clock from a sample position: the whole cycles that
+   * fit before it, and how far into the next one the sample clock has got.
+   * `sample * CPU_HZ` is an exact integer, so one second of samples lands on
+   * exactly CPU_HZ cycles rather than a float's idea of it.
+   */
+  private seek(sample: number) {
+    const scaled = sample * CPU_HZ;
+    this.cycle = Math.floor(scaled / this.sampleRate);
+    this.remainder = scaled - this.cycle * this.sampleRate;
   }
 
   /** Queues register writes. Each one is applied at the sample it names. */

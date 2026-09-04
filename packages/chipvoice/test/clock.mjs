@@ -112,5 +112,50 @@ check('the long noise sequence is 32767 steps', sequenceLength(false) === 32767,
   check('half frames fall on the second and fourth steps', halves.slice(0, 2).join() === '14913,29829', halves.slice(0, 2).join());
 }
 
+// ---- the event clock: a write lands on the cycle it names, at any position
+
+{
+  const core = fresh();
+  const landed = [];
+  const apply = core.applyEvent.bind(core);
+  core.applyEvent = (ev) => { landed.push(core.cycle); apply(ev); };
+  core.schedule([
+    { at: 1000, ch: 'p1', period: 100 },
+    { at: 123456, ch: 'p1', period: 200 },
+  ]);
+  core.render(new Float32Array(4096), null, 0);
+  check('a write lands on the cycle it names', landed.join() === '1000,123456', landed.join());
+}
+
+{
+  // A worklet that comes up mid-context renders from wherever the context is.
+  // One second of samples has to be exactly one second of cycles, not a
+  // float's idea of it, or a write stamped for that second lands a cycle off.
+  const core = fresh();
+  const landed = [];
+  const apply = core.applyEvent.bind(core);
+  core.applyEvent = (ev) => { landed.push(core.cycle); apply(ev); };
+  core.schedule([{ at: CPU_HZ, ch: 'p1', period: 100 }]);
+  core.render(new Float32Array(128), null, 44100);
+  check('rendering from sample 44100 starts at cycle 1789773', landed.join() === String(CPU_HZ), landed.join());
+}
+
+{
+  // The same event stream, rendered at two rates, applies its writes on the
+  // same cycles: the stream does not know the sample rate, and nor should it.
+  const landedAt = (rate) => {
+    const core = nesChip.create(rate);
+    const landed = [];
+    const apply = core.applyEvent.bind(core);
+    core.applyEvent = (ev) => { landed.push(core.cycle); apply(ev); };
+    core.schedule([{ at: 29831, ch: 'noi', periodIndex: 3 }, { at: 700001, ch: 'tri', period: 50 }]);
+    core.render(new Float32Array(Math.ceil(rate * 0.5)), null, 0);
+    return landed.join();
+  };
+  const a = landedAt(44100);
+  const b = landedAt(48000);
+  check('the same cycles at 44100 and 48000', a === b && a === '29831,700001', `${a} vs ${b}`);
+}
+
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
