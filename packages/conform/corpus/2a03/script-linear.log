@@ -1,0 +1,15 @@
+# chipvoice register log v1
+# name: script-linear
+# chip: 2a03
+# clock: 1789773
+# cycles: 5548296
+# source: packages/conform/src/corpus/generate.mjs
+# notes: the triangle with the control flag clear: linear counter loads of 10, 60 and 127 run out
+0 4015 0F
+178977 4008 0A
+178977 400A F8
+178977 400B FB
+1968750 4008 3C
+1968750 400B FB
+3758523 4008 7F
+3758523 400B FB

@@ -109,7 +109,11 @@ The most important phase, and the one that makes no sound.
    the prose.
 
 Done when the harness runs the CI subset against Nes_Snd_Emu on every push and
-writes `docs/chips/2a03.md`'s numbers itself.
+writes `docs/chips/2a03.md`'s numbers itself. **Status:** steps 1 to 4 and 6 are
+done; the harness runs in CI against a committed baseline and writes the sheet.
+The corpus is this project's songs and nine scripts rather than real games, which
+wait on step 5, and the oracle turned out to predate nesdev on frame timing and
+on the triangle's start, so a second one is on the backlog.
 
 ### Phase 2. NES to 100 %
 

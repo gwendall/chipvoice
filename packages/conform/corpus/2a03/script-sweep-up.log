@@ -1,0 +1,16 @@
+# chipvoice register log v1
+# name: script-sweep-up
+# chip: 2a03
+# clock: 1789773
+# cycles: 3758523
+# source: packages/conform/src/corpus/generate.mjs
+# notes: pulse 1 sweeps up from period $100 with shift 2 until the mute at $7FF; pulse 2 sweeps down from $100 with negate and shift 3
+0 4015 0F
+178977 4000 BF
+178977 4001 8A
+178977 4002 00
+178977 4003 F9
+178977 4004 BF
+178977 4005 9B
+178977 4006 00
+178977 4007 F9

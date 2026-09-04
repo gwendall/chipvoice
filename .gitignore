@@ -10,3 +10,5 @@ packages/chipvoice/src/chips/nes/worklet-inline.ts
 next-env.d.ts
 .chipvoice-dev.db*
 .DS_Store
+packages/conform/oracles/*/build/
+packages/conform/build/

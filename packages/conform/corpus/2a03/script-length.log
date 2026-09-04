@@ -1,0 +1,24 @@
+# chipvoice register log v1
+# name: script-length
+# chip: 2a03
+# clock: 1789773
+# cycles: 5548296
+# source: packages/conform/src/corpus/generate.mjs
+# notes: length counters count down and end notes: loads of 2, 20, 254 on pulse 1, the triangle and the noise, with halt clear
+0 4015 0F
+178977 4000 9F
+178977 4001 08
+178977 4002 FD
+178977 4003 18
+178977 4008 7F
+178977 400A F8
+178977 400B 13
+178977 400C 1F
+178977 400E 07
+178977 400F 08
+1968750 4003 10
+1968750 400B 13
+1968750 400F 10
+3758523 4003 08
+3758523 400B 0B
+3758523 400F 08

@@ -34,3 +34,8 @@ jobs:
       # No browser: that is what the release runs.
       - run: pnpm test:unit
         working-directory: packages/chipvoice
+
+      # The corpus against the oracle, which is built here with the system
+      # C++ compiler. Fails only if a voice's identical count fell below the
+      # committed baseline: an imperfect oracle diverges somewhere by design.
+      - run: pnpm --filter chipvoice-conform check
