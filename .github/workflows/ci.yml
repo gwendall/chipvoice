@@ -39,3 +39,7 @@ jobs:
       # C++ compiler. Fails only if a voice's identical count fell below the
       # committed baseline: an imperfect oracle diverges somewhere by design.
       - run: pnpm --filter chipvoice-conform check
+
+      # blargg's APU test ROMs, on a 6502 the harness carries for the
+      # purpose. Every one of them has to pass.
+      - run: pnpm --filter chipvoice-conform roms

@@ -118,7 +118,38 @@ class Envelope {
   }
 }
 
-class Pulse {
+/**
+ * What a length counter does at the end of a cycle, after the frame counter
+ * has had its say.
+ *
+ * Two of blargg's 2005 measurements: a change to the halt flag written on
+ * the same cycle as a length clock takes effect after that clock, not
+ * before; and a length reload written on the same cycle as a length clock
+ * is ignored when the counter was not zero. So a write to the halt bit or a
+ * length load is held here and settled by `settleLength` once the cycle's
+ * clocking is done, and `lengthClocked` says whether the clock counted.
+ */
+interface LengthCounted {
+  lengthCounter: number;
+  lengthHalt: boolean;
+  haltPending: boolean | null;
+  lengthPending: number | null;
+  lengthClocked: boolean;
+}
+
+function settleLength(ch: LengthCounted) {
+  if (ch.lengthPending !== null) {
+    if (!ch.lengthClocked) ch.lengthCounter = ch.lengthPending;
+    ch.lengthPending = null;
+  }
+  if (ch.haltPending !== null) {
+    ch.lengthHalt = ch.haltPending;
+    ch.haltPending = null;
+  }
+  ch.lengthClocked = false;
+}
+
+class Pulse implements LengthCounted {
   /** 1 or 2. Affects the sweep's negate behaviour. */
   readonly channel: 1 | 2;
   /** The `$4015` bit. Off, the length counter is 0 and stays 0. */
@@ -130,6 +161,9 @@ class Pulse {
   readonly env = new Envelope();
   lengthCounter = 0;
   lengthHalt = false;
+  haltPending: boolean | null = null;
+  lengthPending: number | null = null;
+  lengthClocked = false;
   sweepEnabled = false;
   sweepPeriod = 0;
   sweepNegate = false;
@@ -186,10 +220,13 @@ class Pulse {
   }
 }
 
-class Triangle {
+class Triangle implements LengthCounted {
   enabled = false;
   timer = 0;
   period = 0;
+  haltPending: boolean | null = null;
+  lengthPending: number | null = null;
+  lengthClocked = false;
   /**
    * Step 15 outputs 0. The hardware powers on at step 0, which outputs 15 and
    * holds it until the first note - and a held 15 is a DC step through the
@@ -232,7 +269,7 @@ class Triangle {
   }
 }
 
-class Noise {
+class Noise implements LengthCounted {
   enabled = false;
   shift = 1;
   mode = false;
@@ -242,6 +279,9 @@ class Noise {
   readonly env = new Envelope();
   lengthCounter = 0;
   lengthHalt = false;
+  haltPending: boolean | null = null;
+  lengthPending: number | null = null;
+  lengthClocked = false;
 
   clock() {
     if (this.timer > 0) {
@@ -402,11 +442,17 @@ export class Nes2A03 implements DigitalChip {
   cycle = 0;
 
   // The frame counter: which sequence, where in it, and a pending reset from
-  // a `$4017` write, which lands 3 or 4 cycles after the write.
+  // a `$4017` write, which lands 3 or 4 cycles after the write. The IRQ flag
+  // is set on the last three cycles of the 4-step sequence unless inhibited,
+  // and read back and cleared through `$4015`.
   private frameMode = 0;
   private frameCycles = 0;
   private frameStep = 0;
   private frameResetIn = 0;
+  private frameIrqInhibit = false;
+  frameIrq = false;
+  /** What `$4017` last took: a reset button writes it again. */
+  lastFrameWrite = 0;
 
   private events: RegisterEvent[] = [];
 
@@ -426,8 +472,8 @@ export class Nes2A03 implements DigitalChip {
       case 0x4004: {
         const ch = addr === 0x4000 ? this.pulse1 : this.pulse2;
         ch.duty = v >> 6;
-        ch.lengthHalt = (v & 0x20) !== 0;
-        ch.env.loop = ch.lengthHalt;
+        ch.haltPending = (v & 0x20) !== 0;
+        ch.env.loop = (v & 0x20) !== 0;
         ch.env.constant = (v & 0x10) !== 0;
         ch.env.volume = v & 15;
         return;
@@ -452,7 +498,7 @@ export class Nes2A03 implements DigitalChip {
       case 0x4007: {
         const ch = addr === 0x4003 ? this.pulse1 : this.pulse2;
         ch.period = (ch.period & 0xff) | ((v & 7) << 8);
-        if (ch.enabled) ch.lengthCounter = LENGTH_TABLE[v >> 3];
+        if (ch.enabled) ch.lengthPending = LENGTH_TABLE[v >> 3];
         ch.env.start = true;
         // The sequencer restarts at the first step of its duty sequence. The
         // timer is not touched: that is the hardware, and the click it makes.
@@ -460,7 +506,7 @@ export class Nes2A03 implements DigitalChip {
         return;
       }
       case 0x4008: {
-        this.triangle.lengthHalt = (v & 0x80) !== 0;
+        this.triangle.haltPending = (v & 0x80) !== 0;
         this.triangle.linearReload = v & 0x7f;
         return;
       }
@@ -471,14 +517,14 @@ export class Nes2A03 implements DigitalChip {
       case 0x400b: {
         const ch = this.triangle;
         ch.period = (ch.period & 0xff) | ((v & 7) << 8);
-        if (ch.enabled) ch.lengthCounter = LENGTH_TABLE[v >> 3];
+        if (ch.enabled) ch.lengthPending = LENGTH_TABLE[v >> 3];
         ch.linearReloadFlag = true;
         return;
       }
       case 0x400c: {
         const ch = this.noise;
-        ch.lengthHalt = (v & 0x20) !== 0;
-        ch.env.loop = ch.lengthHalt;
+        ch.haltPending = (v & 0x20) !== 0;
+        ch.env.loop = (v & 0x20) !== 0;
         ch.env.constant = (v & 0x10) !== 0;
         ch.env.volume = v & 15;
         return;
@@ -490,7 +536,7 @@ export class Nes2A03 implements DigitalChip {
       }
       case 0x400f: {
         const ch = this.noise;
-        if (ch.enabled) ch.lengthCounter = LENGTH_TABLE[v >> 3];
+        if (ch.enabled) ch.lengthPending = LENGTH_TABLE[v >> 3];
         ch.env.start = true;
         return;
       }
@@ -521,7 +567,10 @@ export class Nes2A03 implements DigitalChip {
         for (let i = 0; i < units.length; i++) {
           const on = ((v >> i) & 1) !== 0;
           units[i].enabled = on;
-          if (!on) units[i].lengthCounter = 0;
+          if (!on) {
+            units[i].lengthCounter = 0;
+            units[i].lengthPending = null;
+          }
         }
         this.dmc.irq = false;
         if ((v & 0x10) !== 0) {
@@ -534,13 +583,61 @@ export class Nes2A03 implements DigitalChip {
       case 0x4017: {
         // Bit 7 picks the sequence. The reset lands 3 cycles after the write
         // when it fell on an APU cycle and 4 when it fell between two, and in
-        // 5-step mode the sequencer is clocked once as it lands.
+        // 5-step mode the sequencer is clocked once as it lands. Bit 6
+        // inhibits the frame IRQ and clears its flag at once.
+        this.lastFrameWrite = v;
         this.frameMode = v >> 7;
+        this.frameIrqInhibit = (v & 0x40) !== 0;
+        if (this.frameIrqInhibit) this.frameIrq = false;
         this.frameResetIn = this.apuToggle ? 3 : 4;
         return;
       }
       default:
         return;
+    }
+  }
+
+  /**
+   * `$4015` read back: which length counters are running, whether the DMC
+   * has bytes left, and the two interrupt flags. Reading clears the frame
+   * flag - unless it is being set on this very cycle, which the caller
+   * arranges by reading before the cycle is clocked.
+   */
+  readStatus(): number {
+    let v = 0;
+    if (this.pulse1.lengthCounter > 0) v |= 0x01;
+    if (this.pulse2.lengthCounter > 0) v |= 0x02;
+    if (this.triangle.lengthCounter > 0) v |= 0x04;
+    if (this.noise.lengthCounter > 0) v |= 0x08;
+    if (this.dmc.bytesRemaining > 0) v |= 0x10;
+    if (this.frameIrq) v |= 0x40;
+    if (this.dmc.irq) v |= 0x80;
+    this.frameIrq = false;
+    return v;
+  }
+
+  /** The interrupt line to a CPU, when there is one: level, from two flags. */
+  irqLine(): boolean {
+    return (this.frameIrq && !this.frameIrqInhibit) || this.dmc.irq;
+  }
+
+  /**
+   * The console's reset button, as blargg measured what it does to the APU
+   * and his `apu_reset` ROMs check: `$4015` cleared, so every length counter
+   * stops; `$4017` written again with what it last had, which restarts the
+   * frame sequence; both interrupt flags cleared; and the length counter
+   * halt bits of the pulses and the noise cleared - the triangle's control
+   * flag is left alone. Registers, memory and the triangle's phase survive.
+   */
+  resetButton() {
+    this.write(0x4015, 0x00);
+    this.write(0x4017, this.lastFrameWrite);
+    this.frameIrq = false;
+    this.dmc.irq = false;
+    for (const ch of [this.pulse1, this.pulse2, this.noise]) {
+      ch.lengthHalt = false;
+      ch.haltPending = null;
+      ch.env.loop = false;
     }
   }
 
@@ -558,7 +655,10 @@ export class Nes2A03 implements DigitalChip {
 
   clockHalfFrame() {
     for (const ch of [this.pulse1, this.pulse2, this.noise, this.triangle]) {
-      if (!ch.lengthHalt && ch.lengthCounter > 0) ch.lengthCounter--;
+      if (!ch.lengthHalt && ch.lengthCounter > 0) {
+        ch.lengthCounter--;
+        ch.lengthClocked = true;
+      }
     }
     this.pulse1.clockSweep();
     this.pulse2.clockSweep();
@@ -582,6 +682,7 @@ export class Nes2A03 implements DigitalChip {
         this.clockQuarterFrame();
         this.clockHalfFrame();
       }
+      this.settle();
       return;
     }
 
@@ -595,10 +696,23 @@ export class Nes2A03 implements DigitalChip {
       if (sequence.half[this.frameStep]) this.clockHalfFrame();
       this.frameStep++;
     }
+    // The frame IRQ flag: the last three cycles of the 4-step sequence.
+    if (this.frameMode === 0 && !this.frameIrqInhibit && this.frameCycles >= sequence.period - 2) {
+      this.frameIrq = true;
+    }
     if (this.frameCycles >= sequence.period) {
       this.frameCycles = 0;
       this.frameStep = 0;
     }
+    this.settle();
+  }
+
+  /** The end of a cycle: held halt bits and length loads land. */
+  private settle() {
+    settleLength(this.pulse1);
+    settleLength(this.pulse2);
+    settleLength(this.triangle);
+    settleLength(this.noise);
   }
 
   /**
@@ -679,6 +793,9 @@ export class Nes2A03 implements DigitalChip {
     this.frameCycles = 0;
     this.frameStep = 0;
     this.frameResetIn = 0;
+    this.frameIrqInhibit = false;
+    this.frameIrq = false;
+    this.lastFrameWrite = 0;
   }
 }
 

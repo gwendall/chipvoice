@@ -28,6 +28,8 @@ it is trusted for and what it is not; in short:
 
 - Its frame sequence is 7458 cycles a step with corrections, not nesdev's
   7457, 14913, 22371, 29829, and its steps land two cycles after nesdev's.
+  Blargg's own later test ROMs, which the harness runs, check that timing to
+  the cycle and agree with nesdev, so the oracle is the one that is off.
 - Its noise register starts at `1 << 14` and outputs the volume when bit 0 is
   *set*, the inverse of the documented polarity, and it does not clock the
   register exactly while the voice is muted.

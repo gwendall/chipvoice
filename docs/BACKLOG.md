@@ -22,9 +22,9 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P1-8 | The sheet's numbers written by the harness | done | PR #3, `--sheet` between markers |
 | P1-9 | `conform` in CI on the subset | done | PR #3, against a committed baseline |
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
-| P1-11 | A 6502 test fixture to run blargg's APU ROMs | todo | |
+| P1-11 | A 6502 test fixture to run blargg's APU ROMs | done | PR #7. 29 of 29 pass, in CI |
 | P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | todo | needs P1-11 or an NSF player |
-| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - to settle the frame timing and the triangle's start, where Nes_Snd_Emu 0.1.7 predates nesdev | todo | found in P1-6 |
+| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | todo | found in P1-6; the frame timing is settled by the ROMs |
 | P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 
 ## Phase 2. NES to 100 %
@@ -76,6 +76,16 @@ sweep unit's mute condition silenced any pulse note with a period of `$400` or
 more - roughly G#2 and below. Drivers on the hardware wrote `$4001 = $08` for
 that reason. Both are now what the hardware does: a note that crosses a period
 high-byte boundary restarts its phase, and low pulse notes play.
+
+**2026-09-04, P1-11.** Every one of blargg's APU test ROMs passes on a 6502
+the harness carries: the 2011 `apu_test` and `apu_reset`, the `dmc_tests`, and
+the 2005 frame counter set, twenty-nine ROMs. That settles the one question the
+2005 oracle raised: the frame timing is nesdev's, to the cycle, and the oracle
+is the one that is two cycles off. Two things the ROMs knew that the wiki says
+less plainly are now in the chip: a halt flag written on a length clock's cycle
+takes effect after the clock, and a length reload on that cycle is ignored
+unless the counter was zero. What no ROM checks: the envelope, the sweep and the
+linear counter near a clock, and any voice's output.
 
 **2026-09-04, P2-2.** The DMC's steps are identical to the oracle's, one bit
 period apart: its output unit powers on with one bit remaining in Nes_Snd_Emu

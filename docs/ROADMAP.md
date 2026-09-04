@@ -103,17 +103,17 @@ The most important phase, and the one that makes no sound.
 4. **The corpus.** NSFs from real games played through a reference player with
    a write logger, a few hundred pieces, chosen to cover sweeps, envelope decay,
    both noise modes, the DMC, length counters expiring. Twenty short ones for CI.
-5. **The test ROM bench.** A minimal 6502, only to run blargg's APU ROMs against
-   the core. It never ships.
+5. **The test ROM bench.** Done. A minimal 6502, only to run blargg's APU ROMs
+   against the core; every one of them passes, in CI.
 6. **The sheet, generated.** The harness writes the numbers; the template holds
    the prose.
 
 Done when the harness runs the CI subset against Nes_Snd_Emu on every push and
-writes `docs/chips/2a03.md`'s numbers itself. **Status:** steps 1 to 4 and 6 are
-done; the harness runs in CI against a committed baseline and writes the sheet.
-The corpus is this project's songs and nine scripts rather than real games, which
-wait on step 5, and the oracle turned out to predate nesdev on frame timing and
-on the triangle's start, so a second one is on the backlog.
+writes `docs/chips/2a03.md`'s numbers itself. **Status:** done, except that the
+corpus is this project's songs and ten scripts rather than real games. The
+oracle turned out to predate nesdev on frame timing and on the triangle's start;
+blargg's test ROMs settled the timing in nesdev's favour, and a modern oracle
+for the envelope and the sweep is on the backlog.
 
 ### Phase 2. NES to 100 %
 
@@ -121,7 +121,7 @@ on the triangle's start, so a second one is on the backlog.
 2. Add the DMC. Done in 0.6.0: the chip has it, the harness compares it, and
    the driver does not use it yet - sampled percussion is a phase 4 instrument.
 3. Add the 5-step frame counter mode and `$4017` write timing, because the test
-   ROMs check them.
+   ROMs check them. Done, and they pass.
 4. Choose a reference unit for the analog stage, capture it, measure the error,
    put it on the sheet.
 5. Release, with the sheet linked from the package README and the skill.

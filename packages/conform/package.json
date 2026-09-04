@@ -8,7 +8,9 @@
     "conform": "node src/cli.mjs",
     "check": "node src/cli.mjs 2a03 --corpus corpus/2a03 --oracle nes-snd-emu --baseline corpus/2a03/parity.json",
     "baseline": "node src/cli.mjs 2a03 --corpus corpus/2a03 --oracle nes-snd-emu --baseline corpus/2a03/parity.json --write-baseline --sheet ../../docs/chips/2a03.md",
-    "corpus": "node src/corpus/generate.mjs"
+    "corpus": "node src/corpus/generate.mjs",
+    "roms": "node src/roms/run.mjs",
+    "roms:sheet": "node src/roms/run.mjs --sheet ../../docs/chips/2a03.md --json build/roms.json"
   },
   "dependencies": {
     "chipvoice": "workspace:*"
