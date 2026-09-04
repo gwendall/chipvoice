@@ -222,6 +222,30 @@ did, the roadmap's reasoning still holds and that one is ported.
 **What changed.** Ticket P3-1's wording, the roadmap's chip table, and the
 sheet's "Core" line. The harness carries an SM83 next to its 6502.
 
+### 15. The driver splits at the frame (2026-09-04)
+
+One driver reads instruments and produces frames - `FrameState`: a volume, a
+pitch in hertz, a duty, a noise index, a bend - and each chip has a
+`ChipDriver` that turns a note's frames into its registers. A song's four
+lines are roles, and `ChipSpec.roles` says which voice each lands on.
+
+**Why.** The instrument model is FamiTracker's, tables read one frame at a
+time, and it is the right model for every chip whose programs rewrote the
+registers every frame - which is all of them until the SNES. What differs
+between chips is not the reading of the table but what a frame costs: a
+volume is a byte on the 2A03 and a retrigger on the Game Boy, a bass note is a
+triangle period on one and a waveform in RAM on the other. Putting that below
+the frame keeps the arpeggios, slides and vibratos in one place and lets a
+chip say, in its own file, what its idiom is. The alternative - a per-chip
+driver each reading the tables its own way - would have drifted the moment a
+third chip arrived. The 2A03's golden hash did not move through the rewrite,
+which is the proof that the frame was where the split already was.
+
+**What is still the 2A03's.** The noise index and the pitch table's units.
+Both are named as such on `FrameState` rather than generalised, because the
+songs were written in them and a generalisation without a third chip to test
+it against is the bad abstraction the roadmap warned about.
+
 ## Open
 
 ### B. The SID's licence

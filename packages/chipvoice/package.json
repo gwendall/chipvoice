@@ -46,7 +46,7 @@
     "prepublishOnly": "npm run build",
     "dev": "npm run worklet && (npm run worklet -- --watch & tsc -p tsconfig.build.json --watch)",
     "test:fresh": "node scripts/fresh-install-test.mjs",
-    "test:unit": "node test/validate.mjs && node test/clock.mjs && node test/gb.mjs && node test/driver.mjs && node test/vgm.mjs && node test/golden.mjs",
+    "test:unit": "node test/validate.mjs && node test/clock.mjs && node test/gb.mjs && node test/driver.mjs && node test/gb-driver.mjs && node test/vgm.mjs && node test/golden.mjs && node test/golden-dmg.mjs",
     "test": "npm run test:unit && npm run test:fresh",
     "test:parity": "node test/parity.mjs"
   },

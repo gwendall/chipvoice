@@ -41,7 +41,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
 | P3-1 | DMG APU from Pan Docs and blargg's notes, verified by his dmg_sound ROMs on an SM83 fixture | done | `packages/chipvoice/src/chips/gb`, `packages/conform/src/roms/{sm83,gb}.mjs` |
-| P3-2 | `ChipSpec`, `RegisterEvent` and the instrument model rewritten against two chips | todo | |
+| P3-2 | `ChipSpec`, `RegisterEvent` and the instrument model rewritten against two chips | done | `ChipDriver`, `FrameState`, `ChipSpec.roles`; `chips/{nes,gb}/driver.ts`. The 2A03's golden hash did not move |
 | P3-3 | The Game Boy sheet, generated | done | `docs/chips/dmg.md` |
 | P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | todo | Gb_Snd_Emu is 2005 and takes its first step at the trigger |
 | P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3 |
@@ -69,6 +69,27 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 Mega Drive, SNES, C64: see the roadmap. Not ticketed until phase 3 is done.
 
 ## Discoveries
+
+**2026-09-04, P3-2.** The driver split where the second chip said it should:
+at the frame. Reading an instrument's tables, the arpeggio, the slide, the
+vibrato and the frame clock produce a `FrameState` - a volume, a pitch in hertz,
+a duty, a noise index - that no chip owns, and each chip's own `ChipDriver`
+turns a note's frames into its registers. `RegisterEvent` did not need to
+change: a byte to an address on a clock was already what both chips are.
+`ChipSpec` gained one thing, the map of a song's four roles onto the chip's
+voices, which is the arranger in its smallest form. What the Game Boy's idiom
+turned out to be, against the same instrument tables: a pulse's volume takes
+effect on a trigger, so a volume change retriggers the voice, which the
+hardware makes cheap by keeping the duty position; the bass goes on the wave
+channel, whose RAM is only writable while it is off; and a noise drum's volume
+table cannot be followed frame by frame, because a retrigger restarts the
+register and mutes it for its first fifteen shifts, which at the rates drums
+use is most of a frame - so the table is fitted to the hardware envelope at the
+note's start. The 2A03's golden hash did not move through the rewrite. Two
+things the instrument model still carries from the 2A03, named as such rather
+than hidden: the noise index is the 2A03's and other chips map it onto their
+rates, and a pitch table is in 2A03 period units, applied elsewhere as the
+ratio it would have made there.
 
 **2026-09-04, P3-1.** The Game Boy's APU was written from Pan Docs and blargg's
 "Game Boy Sound Operation" rather than ported from SameBoy as the ticket first

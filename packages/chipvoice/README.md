@@ -1,11 +1,16 @@
 # chipvoice
 
-Game audio on a real sound chip.
+The sound chips of the old machines, emulated to the cycle and measured against
+the hardware, in a browser and on a server.
 
-A **Ricoh 2A03** - the NES chip - emulated at the clock level and running in an
-AudioWorklet, with a driver and a tracker on top, and one thing no other browser
-library does: **sound effects take channels away from the music**, the way the
-hardware forced them to.
+Two chips so far, the NES's **Ricoh 2A03** and the Game Boy's **DMG APU**, each
+running at its own clock in an AudioWorklet or rendered offline to a file, each
+taking the bytes a program on the hardware wrote, each with a conformance sheet
+that says what has been verified against the real thing. A driver and a tracker
+on top, so a tune is four lines of text that play on either chip in its own
+idiom. And one thing no other browser library does: **sound effects take
+channels away from the music**, the way the hardware forced them to. The
+repository's [README](https://github.com/gwendall/chipvoice#why) says why.
 
 ```bash
 npm i chipvoice
@@ -28,6 +33,18 @@ chip.sfx("p2", {
 
 No files to copy, no build step, no setup. The worklet is inlined and handed to the
 browser as a blob URL, so `npm install` is the whole installation.
+
+The same song on a Game Boy is one option away. Each chip maps the song's four
+lines onto its own voices and writes its registers in its own idiom: the bass
+moves to the wave channel, a volume change becomes a retrigger, a drum's decay
+becomes the hardware envelope.
+
+```ts
+const gb = await Chip.create({ chip: "dmg" });
+gb.play(THEME);                       // the same four lines
+gb.sfx("ch2", { note: "B6", instrument: LASER, duration: 0.1 });
+gb.spec.voices;                       // ch1, ch2, ch3, ch4 - what to hand sfx()
+```
 
 **[Try it](https://chipvoice.dev)** - a grid, a playhead, and a Fire button
 that takes a channel away from the music while you watch. The song lives in the URL,
@@ -181,14 +198,13 @@ twenty-nine pass. Blargg's mixer tests, which cancel each channel against the
 DMC's DAC and which he recorded on a real NES, cancel here as well as they did on
 his console: the DAC curves are measured, not assumed.
 
-The package carries a second chip, the Game Boy's, at `src/chips/gb/dsp.ts`,
-exported as `gbChip` and held to the same method: `test/gb.mjs` checks its
-clocks against the formulas, and the harness runs blargg's twelve `dmg_sound`
-ROMs on an SM83 of its own, all of which pass. Its sheet is
+The Game Boy's chip, at `src/chips/gb/dsp.ts` and exported as `gbChip`, is held
+to the same method: `test/gb.mjs` checks its clocks against the formulas, the
+harness runs blargg's twelve `dmg_sound` ROMs on an SM83 of its own, all of
+which pass, and compares it with Gb_Snd_Emu. Its sheet is
 [`docs/chips/dmg.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md).
-The driver and `Chip` do not speak to it yet; that is the next piece of work,
-and the reason the chip is here first is that a second real chip is what the
-driver's instrument model has to be rewritten against.
+`test/gb-driver.mjs` checks what the driver writes to it, and `test/golden-dmg.mjs`
+locks its render the way `golden.mjs` locks the 2A03's.
 
 ## The song, as bytes: VGM
 

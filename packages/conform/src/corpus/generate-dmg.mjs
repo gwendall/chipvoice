@@ -1,14 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { recordSong } from 'chipvoice';
 import { formatLog } from '../log.mjs';
 
 /**
  * The DMG corpus, generated.
  *
- * Scripts only, for now: the driver does not speak to this chip yet (P3-2),
- * so there are no songs through it. The scripts are hand-written writes that
- * reach every voice - duties and frequencies, envelopes in both directions,
+ * Two kinds of log, as for the 2A03. *Songs* are this project's own music,
+ * run through the real driver and sequencer on this chip with a core that
+ * records what they write: real register traffic, in the Game Boy's idiom -
+ * retriggers on every volume change, the bass on the wave channel, drums as
+ * envelopes. *Scripts* are hand-written writes that reach every voice - duties and frequencies, envelopes in both directions,
  * the wave channel with three waveforms at its three levels, the noise
  * register in both widths across its divisors and shifts, the sweep both
  * ways, lengths on every voice. Each starts by powering the chip and setting
@@ -80,6 +83,36 @@ function noise(t, { envelope = 0xf0, divisor = 0, shift = 4, narrow = false, len
     [t, 0xff23, 0x80 | (lengthOn ? 0x40 : 0)],
   ];
 }
+
+// ---- songs, through the real driver
+
+const SONGS = [
+  {
+    name: 'song-golden',
+    source: 'packages/chipvoice/test/golden-dmg.mjs',
+    seconds: 4,
+    song: {
+      id: 'golden', bpm: 152, order: [0], gain: 1,
+      patterns: [{
+        bass: 'A1 . A1 . A1 . A1 . A1 . A1 . A1 . G1 .',
+        lead: 'E4 . . . G4 . A4 . . . B4 . C5 . . .',
+        chord: 'A3 . . . . . . . . . . . . . . .',
+        chordShape: [[0, 3, 7]],
+        perc: 'K . H . S . H . K . H K S . H .',
+      }],
+      lead: { duty: 1, volume: [15, 14, 13, 12, 11], sustain: true, vibrato: { depth: 0.18, rate: 8, delay: 6 } },
+      chord: { duty: 0, volume: [9, 8, 7], sustain: true },
+      bass: { volume: [15], sustain: true },
+    },
+  },
+];
+
+function songLog({ name, source, seconds, song }) {
+  const { events, cycles } = recordSong(song, { seconds, chip: 'dmg' });
+  return { name, text: formatLog({ name, chip: 'dmg', clock: CLOCK, cycles, source, notes: `${song.bpm} bpm, ${seconds} s, through the driver` }, events) };
+}
+
+// ---- scripts
 
 const SCRIPTS = [
   {
@@ -200,8 +233,7 @@ function scriptLog({ name, notes, cycles, writes }) {
 }
 
 fs.mkdirSync(OUT, { recursive: true });
-for (const script of SCRIPTS) {
-  const log = scriptLog(script);
+for (const log of [...SONGS.map(songLog), ...SCRIPTS.map(scriptLog)]) {
   fs.writeFileSync(path.join(OUT, `${log.name}.log`), log.text);
   console.log(`${log.name}.log`);
 }

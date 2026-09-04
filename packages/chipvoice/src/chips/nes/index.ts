@@ -1,5 +1,6 @@
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { CPU_HZ, Nes2A03, NesApuCore, PROCESSOR_NAME } from "./dsp.js";
+import { NesDriver } from "./driver.js";
 import { WORKLET_SOURCE } from "./worklet-inline.js";
 
 /**
@@ -32,12 +33,16 @@ export const NES_2A03: ChipSpec = {
     // it, and the harness compares it.
     { id: "dmc", label: "DMC", kind: "sample", notes: "sample" },
   ],
+  // The lead on pulse 1 and the chord on pulse 2, because drivers claimed
+  // pulse 2 for effects first and losing the lead is the more noticeable.
+  roles: { lead: "p1", chord: "p2", bass: "tri", perc: "noi" },
 };
 
 export const nesChip: ChipDefinition = {
   spec: NES_2A03,
   create: (sampleRate: number) => new NesApuCore(sampleRate),
   digital: () => new Nes2A03(),
+  driver: () => new NesDriver(),
   workletSource: WORKLET_SOURCE,
   processorName: PROCESSOR_NAME,
 };

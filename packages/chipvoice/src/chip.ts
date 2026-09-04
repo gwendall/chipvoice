@@ -45,6 +45,13 @@ export interface VoiceSpec {
   notes: "pitch" | "period" | "sample";
 }
 
+/**
+ * What a song's four lines are, before they are voices: a lead, a chord, a
+ * bass, and percussion. Every chip maps them onto its own voices, and that
+ * map is the first, smallest form of the arranger the roadmap describes.
+ */
+export type Role = "lead" | "chord" | "bass" | "perc";
+
 export interface ChipSpec {
   /** Stable id. Songs record it, so it is part of the data format. */
   id: string;
@@ -53,6 +60,8 @@ export interface ChipSpec {
   /** The machine it is best known from. */
   system: string;
   voices: VoiceSpec[];
+  /** Which voice each of a song's roles lands on. */
+  roles: Record<Role, string>;
   /**
    * The shape an instrument takes for this chip. `table` is the FamiTracker
    * model: per-frame arrays for volume, duty, arpeggio and pitch.
@@ -149,12 +158,66 @@ export interface DigitalChip {
   reset(): void;
 }
 
+/**
+ * One frame of a note, after the instrument has been read: what the voice
+ * should be doing for the next sixtieth of a second, in terms no chip owns.
+ *
+ * The driver expands an instrument into these; a chip's own driver turns them
+ * into its registers. A pitch is in hertz and a volume is 0 to 15 because
+ * every chip so far takes those or something a formula away from them. The
+ * two things that are one chip's are named as such: `period` is the 2A03's
+ * noise index, which the songs were written in and other chips map onto their
+ * own rates; `pitchOffset` is in 2A03 period units, cumulative, because the
+ * instruments' pitch tables are.
+ */
+export interface FrameState {
+  /** 0 to 15. */
+  volume: number;
+  /** Hertz, for a voice that takes a pitch; 0 otherwise. */
+  freq: number;
+  /** The 2A03's noise period index, 0 to 15, for a noise voice. */
+  period: number;
+  /** 0 to 3. */
+  duty: number;
+  /** The noise's short sequence. */
+  noiseMode: boolean;
+  /** A cumulative bend from the instrument's pitch table, in 2A03 period units. */
+  pitchOffset: number;
+  /** For a wavetable voice: 32 samples, 0 to 15; null for the chip's own default. */
+  wave: number[] | null;
+}
+
+/** A frame, stamped with the cycle it starts on. */
+export interface NoteFrame extends FrameState {
+  at: number;
+}
+
+/**
+ * A chip's own driver: the part of the driver that knows the registers.
+ *
+ * Everything above it - reading an instrument's tables, arpeggios, slides,
+ * vibrato, the frame clock - is one piece of code for every chip. What a
+ * frame's state costs in bytes to which addresses is this. It is stateful,
+ * because the cheapest write is the one not made: a held note is one write
+ * on a 2A03 and the driver has to remember what it wrote.
+ */
+export interface ChipDriver {
+  /** What a program wrote first: the enables, the master volume. */
+  powerOn(): RegisterEvent[];
+  /** A whole note, frame by frame. Returns every write it takes. */
+  note(voice: string, frames: NoteFrame[]): RegisterEvent[];
+  /** Quiet, through the voice's own registers, on that cycle. */
+  noteOff(voice: string, at: number): RegisterEvent[];
+}
+
 export interface ChipDefinition {
   spec: ChipSpec;
   /** Builds a core at a sample rate. */
   create(sampleRate: number): ChipCore;
   /** Builds the digital chip alone, for a harness. */
   digital(): DigitalChip;
+  /** Builds the chip's own driver. */
+  driver(): ChipDriver;
   /** The worklet source, ready to be handed to `addModule` as a blob. */
   workletSource: string;
   /** The processor name the worklet registers. */
@@ -184,7 +247,7 @@ export function getChip(id: string): ChipDefinition | null {
   return registry.get(id) ?? null;
 }
 
-/** Every chip this build knows about. One, for now. */
+/** Every chip this build knows about. */
 export function chips(): ChipSpec[] {
   return [...registry.values()].map((d) => d.spec);
 }

@@ -1,6 +1,6 @@
-import { getChip, type ChipCore, type RegisterEvent } from "./chip.js";
-import { CPU_HZ } from "./chips/nes/dsp.js";
+import { getChip, type ChipCore, type ChipDefinition, type RegisterEvent } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
+import { gbChip } from "./chips/gb/index.js";
 import { Sequencer, type Song } from "./sequencer.js";
 import { OfflineDriver } from "./driver.js";
 
@@ -19,11 +19,11 @@ export interface RenderOptions {
   /** How long to render. Defaults to two times round the song's loop. */
   seconds?: number;
   sampleRate?: number;
-  /** Which chip. One today; the parameter is the door for the next. */
+  /** Which chip: `"2a03"` (the default) or `"dmg"`. */
   chip?: string;
   /** 0 to 1, applied by the chip's own output stage. */
   gain?: number;
-  /** Render both channels. The 2A03 is mono, so this duplicates. */
+  /** Render both channels. The 2A03 is mono, so this duplicates; the Game Boy is stereo. */
   stereo?: boolean;
 }
 
@@ -52,13 +52,20 @@ export function loopSeconds(song: Song): number {
   return steps * stepTime;
 }
 
+/**
+ * The chip for an id. Same reason as the driver: the two shipped chips are
+ * imported so a bundler cannot drop them; anything else goes through the
+ * registry, which a caller filled.
+ */
+function chipFor(id: string): ChipDefinition {
+  const chip = id === "2a03" ? nesChip : id === "dmg" ? gbChip : getChip(id);
+  if (!chip) throw new Error(`unknown chip: ${id}`);
+  return chip;
+}
+
 export function renderSong(song: Song, options: RenderOptions = {}): RenderResult {
   const sampleRate = options.sampleRate ?? 44100;
-  // Same reason as the driver: the default is imported so a bundler cannot
-  // drop it. Anything else goes through the registry, which a caller filled.
-  const id = options.chip ?? "2a03";
-  const chip = id === "2a03" ? nesChip : getChip(id);
-  if (!chip) throw new Error(`unknown chip: ${id}`);
+  const chip = chipFor(options.chip ?? "2a03");
 
   const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
   const total = Math.max(1, Math.round(seconds * sampleRate));
@@ -74,9 +81,9 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
    * that block. Rendering the whole thing in one call would leave the sequencer
    * with nothing scheduled past the first fifth of a second.
    */
-  const driver = new OfflineDriver(core);
+  const driver = new OfflineDriver(core, chip);
   let clock = 0;
-  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false });
+  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles });
   sequencer.play(song);
 
   const left = new Float32Array(total);
@@ -114,10 +121,11 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
  */
 export function recordSong(
   song: Song,
-  options: { seconds?: number } = {},
+  options: { seconds?: number; chip?: string } = {},
 ): { events: RegisterEvent[]; cycles: number } {
+  const chip = chipFor(options.chip ?? "2a03");
   const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
-  const cycles = Math.round(seconds * CPU_HZ);
+  const cycles = Math.round(seconds * chip.spec.clockHz);
   const events: RegisterEvent[] = [];
   const core: ChipCore = {
     schedule: (batch) => {
@@ -128,9 +136,9 @@ export function recordSong(
     setGain() {},
     reset() {},
   };
-  const driver = new OfflineDriver(core);
+  const driver = new OfflineDriver(core, chip);
   let clock = 0;
-  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false });
+  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles });
   sequencer.play(song);
   // The renderer's block, so a song records the way it renders.
   const block = 4096 / 44100;

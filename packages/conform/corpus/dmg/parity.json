@@ -11,10 +11,10 @@
     "ch4"
   ],
   "date": "2026-09-04",
-  "files": 6,
-  "cycles": 128345700,
-  "identical": 81889085,
-  "diverging": 6,
+  "files": 7,
+  "cycles": 145122916,
+  "identical": 83302844,
+  "diverging": 7,
   "results": [
     {
       "name": "script-envelopes",
@@ -558,6 +558,97 @@
             "alignedTimes": 0,
             "alignedValues": 0,
             "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-golden",
+      "source": "packages/chipvoice/test/golden-dmg.mjs",
+      "writes": 1036,
+      "cycles": 16777216,
+      "identical": 1413759,
+      "first": {
+        "cycle": 419430,
+        "voice": 2,
+        "a": 0,
+        "b": 1
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 10187544,
+          "a": 3174,
+          "b": 3181,
+          "exact": 8,
+          "near": 41,
+          "onlyA": 3125,
+          "onlyB": 3132,
+          "shift": -1,
+          "aligned": 41,
+          "runs": {
+            "ours": 1579,
+            "theirs": 1584,
+            "alignedTimes": 1561,
+            "alignedValues": 1555,
+            "maxShift": 94210
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 12848200,
+          "a": 2072,
+          "b": 2074,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 2072,
+          "onlyB": 2074,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1036,
+            "theirs": 1037,
+            "alignedTimes": 1036,
+            "alignedValues": 1036,
+            "maxShift": 128888
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 2478606,
+          "a": 5957,
+          "b": 5956,
+          "exact": 17,
+          "near": 0,
+          "onlyA": 5940,
+          "onlyB": 5939,
+          "shift": 0,
+          "aligned": 17,
+          "runs": {
+            "ours": 410,
+            "theirs": 410,
+            "alignedTimes": 391,
+            "alignedValues": 391,
+            "maxShift": 2679
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 13025425,
+          "a": 52337,
+          "b": 52346,
+          "exact": 5,
+          "near": 0,
+          "onlyA": 52332,
+          "onlyB": 52341,
+          "shift": 7,
+          "aligned": 22293,
+          "runs": {
+            "ours": 328,
+            "theirs": 331,
+            "alignedTimes": 212,
+            "alignedValues": 190,
+            "maxShift": 638199
           }
         }
       ]
