@@ -62,16 +62,16 @@ function attenuation(volume: number): number {
   return Math.round((-20 * Math.log10(volume / 15)) / 0.75);
 }
 
-/** Block and F-number for a pitch: F = 144 f 2^(21-B) / clock, with B chosen so F fits in eleven bits. */
-function fmFrequency(freq: number): { block: number; fnum: number } {
-  if (freq <= 0) return { block: 0, fnum: 0 };
+/** Packed block/F-number register word: F = 144 f 2^(21-B) / clock, with B chosen so F fits in eleven bits. */
+function fmFrequency(freq: number): number {
+  if (freq <= 0) return 0;
   let block = 0;
   let fnum = (144 * freq * Math.pow(2, 21)) / YM_INPUT_HZ;
   while (fnum >= 2048 && block < 7) {
     fnum /= 2;
     block++;
   }
-  return { block, fnum: Math.max(0, Math.min(2047, Math.round(fnum))) };
+  return (block << 11) | Math.max(0, Math.min(2047, Math.round(fnum)));
 }
 
 /** A PSG tone period for a pitch: f = clock / (32 N). */
@@ -122,29 +122,30 @@ export class MdDriver implements ChipDriver {
     const port = channel < 3 ? 0 : 2;
     const sub = channel % 3;
     const keyIndex = channel < 3 ? channel : channel + 1;
-    let lastBlock = -1;
-    let lastFnum = -1;
-    frames.forEach((s, f) => {
-      let t = s.at + offset;
-      const reg = (address: number, value: number) => {
-        out.push({ at: t, addr: YM_PORT + port, value: address });
-        out.push({ at: t + PAIR, addr: YM_PORT + port + 1, value: value & 0xff });
-        t += GAP;
-      };
-      const global = (address: number, value: number) => {
-        out.push({ at: t, addr: YM_PORT, value: address });
-        out.push({ at: t + PAIR, addr: YM_PORT + 1, value: value & 0xff });
-        t += GAP;
-      };
+    let lastFrequency = -1;
+    let t = 0;
+    const reg = (address: number, value: number) => {
+      out.push({ at: t, addr: YM_PORT + port, value: address });
+      out.push({ at: t + PAIR, addr: YM_PORT + port + 1, value: value & 0xff });
+      t += GAP;
+    };
+    const global = (address: number, value: number) => {
+      out.push({ at: t, addr: YM_PORT, value: address });
+      out.push({ at: t + PAIR, addr: YM_PORT + 1, value: value & 0xff });
+      t += GAP;
+    };
+    const writeVolume = (patch: FmPatch, level: number) => {
+      for (const op of CARRIERS[patch.algorithm & 7]) {
+        reg(0x40 + OP_OFFSET[op] + sub, Math.min(127, patch.ops[op].tl + level));
+      }
+    };
+    for (let f = 0; f < frames.length; f++) {
+      const s = frames[f];
+      t = s.at + offset;
       const patch = s.fm ?? DEFAULT_PATCH;
       const carriers = CARRIERS[patch.algorithm & 7];
       const level = attenuation(s.volume);
-      const writeVolume = () => {
-        for (const op of carriers) {
-          reg(0x40 + OP_OFFSET[op] + sub, Math.min(127, patch.ops[op].tl + level));
-        }
-      };
-      const { block, fnum } = fmFrequency(s.freq);
+      const frequency = fmFrequency(s.freq);
       if (f === 0) {
         global(0x28, keyIndex); // key off, so a note on a sounding channel restarts
         if (this.loaded[channel] !== patch) {
@@ -165,35 +166,36 @@ export class MdDriver implements ChipDriver {
           reg(0xb4 + sub, 0xc0 | ((patch.ams ?? 0) << 4) | (patch.pms ?? 0));
           this.loaded[channel] = patch;
         }
-        writeVolume();
+        writeVolume(patch, level);
         this.lastVolume[channel] = level;
-        reg(0xa4 + sub, (block << 3) | (fnum >> 8));
-        reg(0xa0 + sub, fnum & 0xff);
+        reg(0xa4 + sub, frequency >> 8);
+        reg(0xa0 + sub, frequency & 0xff);
         global(0x28, 0xf0 | keyIndex);
       } else {
         if (level !== this.lastVolume[channel]) {
-          writeVolume();
+          writeVolume(patch, level);
           this.lastVolume[channel] = level;
         }
-        if (block !== lastBlock || fnum !== lastFnum) {
-          reg(0xa4 + sub, (block << 3) | (fnum >> 8));
-          reg(0xa0 + sub, fnum & 0xff);
+        if (frequency !== lastFrequency) {
+          reg(0xa4 + sub, frequency >> 8);
+          reg(0xa0 + sub, frequency & 0xff);
         }
       }
-      lastBlock = block;
-      lastFnum = fnum;
-    });
+      lastFrequency = frequency;
+    }
   }
 
   private psgNote(channel: number, frames: NoteFrame[], offset: number, out: RegisterEvent[]) {
     let lastPeriod = -1;
     let lastVolume = -1;
-    frames.forEach((s) => {
-      let t = s.at + offset;
-      const byte = (value: number) => {
-        out.push({ at: t, addr: PSG_PORT, value });
-        t += 60;
-      };
+    let t = 0;
+    const byte = (value: number) => {
+      out.push({ at: t, addr: PSG_PORT, value });
+      t += 60;
+    };
+    for (let f = 0; f < frames.length; f++) {
+      const s = frames[f];
+      t = s.at + offset;
       const period = psgPeriod(s.freq);
       if (period !== lastPeriod) {
         byte(0x80 | (channel << 5) | (period & 0x0f));
@@ -203,19 +205,21 @@ export class MdDriver implements ChipDriver {
       if (volume !== lastVolume) byte(0x90 | (channel << 5) | volume);
       lastPeriod = period;
       lastVolume = volume;
-    });
+    }
   }
 
   /** The noise, clocked by tone 3 at the 2A03's rate for the index, white. */
   private noiseNote(frames: NoteFrame[], offset: number, out: RegisterEvent[]) {
     let lastPeriod = -1;
     let lastVolume = -1;
-    frames.forEach((s, f) => {
-      let t = s.at + offset;
-      const byte = (value: number) => {
-        out.push({ at: t, addr: PSG_PORT, value });
-        t += 60;
-      };
+    let t = 0;
+    const byte = (value: number) => {
+      out.push({ at: t, addr: PSG_PORT, value });
+      t += 60;
+    };
+    for (let f = 0; f < frames.length; f++) {
+      const s = frames[f];
+      t = s.at + offset;
       const rate = 1789773 / NES_NOISE_PERIODS[Math.max(0, Math.min(15, s.period))];
       const period = Math.max(1, Math.min(1023, Math.round(PSG_CLOCK_HZ / (32 * rate))));
       if (period !== lastPeriod) {
@@ -228,7 +232,7 @@ export class MdDriver implements ChipDriver {
       if (volume !== lastVolume) byte(0xf0 | volume);
       lastPeriod = period;
       lastVolume = volume;
-    });
+    }
   }
 
   noteOff(voice: string, at: number): RegisterEvent[] {

@@ -189,19 +189,27 @@ export class Sequencer {
    */
   private timeline: Array<{ at: number; step: number; orderIndex: number }> = [];
 
-  positionAt(time: number): { step: number; orderIndex: number } | null {
+  /** Optional storage belongs to the caller; default calls return independent snapshots. */
+  positionAt(time: number, into?: { step: number; orderIndex: number }): { step: number; orderIndex: number } | null {
+    const entry = this.advanceTimeline(time);
+    if (!entry) return null;
+    if (!into) return { step: entry.step, orderIndex: entry.orderIndex };
+    into.step = entry.step;
+    into.orderIndex = entry.orderIndex;
+    return into;
+  }
+
+  private advanceTimeline(time: number) {
     if (!this.running) return null;
-    let current: { step: number; orderIndex: number } | null = null;
     while (this.timeline.length > 0 && this.timeline[0].at <= time) {
       const entry = this.timeline[0];
       // Keep the last one that has already sounded: it is the one playing.
       if (this.timeline.length === 1 || this.timeline[1].at > time) {
-        current = { step: entry.step, orderIndex: entry.orderIndex };
-        break;
+        return entry;
       }
       this.timeline.shift();
     }
-    return current;
+    return null;
   }
 
   /**
@@ -316,7 +324,7 @@ export class Sequencer {
     // If we fell far behind (tab was hidden), resync rather than catching up.
     if (this.nextTime < now - 0.5) this.nextTime = now + 0.05;
 
-    this.positionAt(now);
+    this.advanceTimeline(now);
     while (this.nextTime < (until ?? now + lookahead)) {
       this.scheduleStep(this.nextTime, stepTime);
       this.resumeStep = false;
@@ -431,4 +439,3 @@ export class Sequencer {
     }
   }
 }
-

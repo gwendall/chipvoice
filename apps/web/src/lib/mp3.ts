@@ -20,24 +20,26 @@ export function encodeMp3(
   right?: Float32Array | null,
 ): Uint8Array {
   const encoder = new Mp3Encoder(right ? 2 : 1, sampleRate, right ? 192 : BITRATE);
-  const chunks: Uint8Array[] = [];
+  // The published types say Uint8Array; the current runtime returns Int8Array.
+  const chunks: (Int8Array | Uint8Array)[] = [];
 
   // LAME wants 16-bit signed integers, and the renderer produces floats.
   const pcm = new Int16Array(BLOCK);
-  const pcmRight = new Int16Array(BLOCK);
+  const pcmRight = right ? new Int16Array(BLOCK) : null;
   for (let offset = 0; offset < samples.length; offset += BLOCK) {
     const size = Math.min(BLOCK, samples.length - offset);
     for (let i = 0; i < size; i++) {
       const v = Math.max(-1, Math.min(1, samples[offset + i]));
       pcm[i] = Math.round(v * 32767);
-      if (right) pcmRight[i] = Math.round(Math.max(-1, Math.min(1, right[offset + i])) * 32767);
+      if (right && pcmRight) pcmRight[i] = Math.round(Math.max(-1, Math.min(1, right[offset + i])) * 32767);
     }
-    const frame = encoder.encodeBuffer(pcm.subarray(0, size), right ? pcmRight.subarray(0, size) : undefined);
-    if (frame.length > 0) chunks.push(new Uint8Array(frame));
+    const frame = encoder.encodeBuffer(size === BLOCK ? pcm : pcm.subarray(0, size), pcmRight ? (size === BLOCK ? pcmRight : pcmRight.subarray(0, size)) : undefined);
+    // lamejs returns an owned copy, including for flush; retain it until concat.
+    if (frame.length > 0) chunks.push(frame);
   }
 
   const tail = encoder.flush();
-  if (tail.length > 0) chunks.push(new Uint8Array(tail));
+  if (tail.length > 0) chunks.push(tail);
 
   // The tag goes in front of the first frame, which is where every reader
   // looks for it.

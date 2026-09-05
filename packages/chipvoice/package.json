@@ -46,7 +46,7 @@
     "prepublishOnly": "npm run build",
     "dev": "npm run worklet && (npm run worklet -- --watch & tsc -p tsconfig.build.json --watch)",
     "test:fresh": "node scripts/fresh-install-test.mjs",
-    "test:unit": "node test/validate.mjs && node test/clock.mjs && node test/gb.mjs && node test/md.mjs && node test/snes.mjs && node test/c64.mjs && node test/driver.mjs && node test/transport.mjs && node test/event-queue.mjs && node test/gb-driver.mjs && node test/md-driver.mjs && node test/snes-driver.mjs && node test/c64-driver.mjs && node test/score.mjs && node test/vgm.mjs && node test/golden.mjs && node test/golden-dmg.mjs && node test/golden-md.mjs && node test/golden-snes.mjs && node test/golden-c64.mjs",
+    "test:unit": "node test/validate.mjs && node test/clock.mjs && node test/gb.mjs && node test/md.mjs && node test/snes.mjs && node test/c64.mjs && node test/driver.mjs && node test/transport.mjs && node test/event-queue.mjs && node test/hot-path.mjs && node test/gb-driver.mjs && node test/md-driver.mjs && node test/snes-driver.mjs && node test/c64-driver.mjs && node test/score.mjs && node test/vgm.mjs && node test/golden.mjs && node test/golden-dmg.mjs && node test/golden-md.mjs && node test/golden-snes.mjs && node test/golden-c64.mjs",
     "test": "npm run test:unit && npm run test:fresh",
     "test:parity": "node test/parity.mjs"
   },

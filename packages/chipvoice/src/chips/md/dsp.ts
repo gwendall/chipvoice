@@ -253,7 +253,8 @@ export class MdOutputStage {
     this.count++;
   }
 
-  end(gain: number): [number, number] {
+  /** Supply caller-owned scratch storage on the audio path; omitted storage is a fresh snapshot. */
+  end(gain: number, into: [number, number] = [0, 0]): [number, number] {
     const inL = (this.count ? this.sumL / this.count : 0) * this.profile.scale;
     const inR = (this.count ? this.sumR / this.count : 0) * this.profile.scale;
     this.lpL += this.lpA * (inL - this.lpL);
@@ -264,7 +265,9 @@ export class MdOutputStage {
     this.hpInR = this.lpR;
     this.hpL = outL;
     this.hpR = outR;
-    return [outL * gain, outR * gain];
+    into[0] = outL * gain;
+    into[1] = outR * gain;
+    return into;
   }
 }
 
@@ -275,6 +278,7 @@ export class MdCore implements ChipCore {
   private remainder = 0;
   private nextSample = -1;
   private masterGain = 1;
+  private readonly stereo: [number, number] = [0, 0];
   private readonly psg = [0, 0, 0, 0];
 
   constructor(sampleRate: number, profile: MdOutputProfile = MD1_PROFILE) {
@@ -304,9 +308,9 @@ export class MdCore implements ChipCore {
           stage.add(chip.ym.mol, chip.ym.mor, this.psg);
         }
       }
-      const [l, r] = stage.end(this.masterGain);
-      left[i] = l;
-      if (right) right[i] = r;
+      stage.end(this.masterGain, this.stereo);
+      left[i] = this.stereo[0];
+      if (right) right[i] = this.stereo[1];
     }
     this.nextSample = startSample + n;
   }

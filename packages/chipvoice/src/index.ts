@@ -86,7 +86,9 @@ class Arbiter implements ChannelClaim {
   }
 
   canPlay(channel: Channel, at: number) {
-    return !(this.busy.get(channel) ?? []).some(i => at >= i.from && at < i.until);
+    const intervals = this.busy.get(channel);
+    if (intervals) for (const interval of intervals) if (at >= interval.from && at < interval.until) return false;
+    return true;
   }
 
   clear() {
@@ -295,9 +297,11 @@ export class Chip {
    * *audible* position rather than the scheduled one: the sequencer queues up
    * to 200ms ahead, and a playhead drawn from the queue leads the sound by a
    * fifth of a second, which reads as a broken display rather than as latency.
+   * Pass caller-owned `into` storage to reuse it in an animation loop. Without
+   * it each call returns an independent snapshot; null leaves `into` untouched.
    */
-  position(): { step: number; orderIndex: number } | null {
-    return this.sequencer.positionAt(this.ctx.currentTime);
+  position(into?: { step: number; orderIndex: number }): { step: number; orderIndex: number } | null {
+    return this.sequencer.positionAt(this.ctx.currentTime, into);
   }
 
   /**

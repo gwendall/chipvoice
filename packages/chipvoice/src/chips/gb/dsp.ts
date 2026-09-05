@@ -42,6 +42,7 @@ const DUTY = [
 
 // The noise divisor, by the low three bits of NR43, in T-cycles before the shift.
 const NOISE_DIVISOR = [8, 16, 32, 48, 64, 80, 96, 112];
+const WAVE_SHIFT = [4, 0, 1, 2];
 
 /** A T-cycle count per frame sequencer step: 4194304 / 512. */
 const FRAME_STEP = 8192;
@@ -222,7 +223,7 @@ class Wave implements Voice {
   output(): number {
     if (!this.enabled || !this.dac) return 0;
     const sample = this.position & 1 ? this.buffer & 15 : this.buffer >> 4;
-    const shift = [4, 0, 1, 2][this.level];
+    const shift = WAVE_SHIFT[this.level];
     return sample >> shift;
   }
 }
@@ -278,6 +279,8 @@ export class GbApu implements DigitalChip {
   readonly ch2 = new Pulse(false);
   readonly ch3 = new Wave();
   readonly ch4 = new Noise();
+  // Channel instances survive power/reset through Object.assign.
+  private readonly channels = [this.ch1, this.ch2, this.ch3, this.ch4];
 
   power = false;
   /** NR50: bit 7 and 3 are VIN, bits 6-4 and 2-0 the left and right volumes. */
@@ -595,7 +598,7 @@ export class GbApu implements DigitalChip {
     this.frameStep = (this.frameStep + 1) & 7;
     const step = this.frameStep;
     if (step % 2 === 0) {
-      for (const ch of [this.ch1, this.ch2, this.ch3, this.ch4]) {
+      for (const ch of this.channels) {
         if (ch.lengthEnabled && ch.length > 0) {
           ch.length--;
           if (ch.length === 0) ch.enabled = false;
@@ -749,8 +752,9 @@ export class GbOutputStage {
     this.count++;
   }
 
-  /** The two samples: averaged, high-passed, scaled, clamped. */
-  end(gain: number): [number, number] {
+  /** The two samples: averaged, high-passed, scaled, clamped.
+   * Supply caller-owned scratch storage on the audio path; omitted storage is a fresh snapshot. */
+  end(gain: number, into: [number, number] = [0, 0]): [number, number] {
     let l = this.count > 0 ? this.sumL / this.count : 0;
     let r = this.count > 0 ? this.sumR / this.count : 0;
     if (!this.primed) {
@@ -765,7 +769,9 @@ export class GbOutputStage {
     this.lastR = r;
     this.hpR = outR;
     const s = gain * this.profile.scale;
-    return [Math.max(-1, Math.min(1, outL * s)), Math.max(-1, Math.min(1, outR * s))];
+    into[0] = Math.max(-1, Math.min(1, outL * s));
+    into[1] = Math.max(-1, Math.min(1, outR * s));
+    return into;
   }
 }
 
@@ -777,6 +783,7 @@ export class GbApuCore implements ChipCore {
   private remainder = 0;
   private nextSample = -1;
   private masterGain = 1;
+  private readonly stereo: [number, number] = [0, 0];
   private readonly values = [0, 0, 0, 0];
   private readonly dacs = [false, false, false, false];
 
@@ -800,9 +807,9 @@ export class GbApuCore implements ChipCore {
         chip.dacs(this.dacs);
         stage.add(this.values, this.dacs, chip.nr50, chip.nr51);
       }
-      const [l, r] = stage.end(this.masterGain);
-      left[i] = l;
-      if (right) right[i] = r;
+      stage.end(this.masterGain, this.stereo);
+      left[i] = this.stereo[0];
+      if (right) right[i] = this.stereo[1];
     }
     this.nextSample = startSample + n;
   }

@@ -139,8 +139,9 @@ export class SnesOutputStage {
     this.heldR = r;
   }
 
-  /** One host sample of what the DAC holds, through the filter. */
-  end(gain: number): [number, number] {
+  /** One host sample of what the DAC holds, through the filter.
+   * Supply caller-owned scratch storage on the audio path; omitted storage is a fresh snapshot. */
+  end(gain: number, into: [number, number] = [0, 0]): [number, number] {
     const inL = this.heldL * this.profile.scale;
     const inR = this.heldR * this.profile.scale;
     this.lpL += this.lpA * (inL - this.lpL);
@@ -151,7 +152,9 @@ export class SnesOutputStage {
     this.hpInR = this.lpR;
     this.hpL = outL;
     this.hpR = outR;
-    return [outL * gain, outR * gain];
+    into[0] = outL * gain;
+    into[1] = outR * gain;
+    return into;
   }
 }
 
@@ -162,6 +165,7 @@ export class SnesCore implements ChipCore {
   private remainder = 0;
   private nextSample = -1;
   private masterGain = 1;
+  private readonly stereo: [number, number] = [0, 0];
 
   constructor(sampleRate: number, profile: SnesOutputProfile = SNES_PROFILE) {
     this.sampleRate = sampleRate;
@@ -180,9 +184,9 @@ export class SnesCore implements ChipCore {
         chip.step();
         if (chip.dsp.sampleReady) stage.hold(chip.dsp.outL, chip.dsp.outR);
       }
-      const [l, r] = stage.end(this.masterGain);
-      left[i] = l;
-      if (right) right[i] = r;
+      stage.end(this.masterGain, this.stereo);
+      left[i] = this.stereo[0];
+      if (right) right[i] = this.stereo[1];
     }
     this.nextSample = startSample + n;
   }

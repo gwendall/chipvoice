@@ -464,3 +464,19 @@ hardware FIFO wraparound, offline clock/expiry/reset, five-chip block-size and
 audio regressions, the mixer capture that originally crashed, and browser audio.
 See [the scheduling evaluation](evals/SCHEDULING-2026-09-06.md). Host timings are
 not representative: the user's machine was heavily loaded.
+
+### 24. Reuse hot-path scratch without sharing retained results (2026-09-06)
+
+Audio cores own reusable stereo scratch; BRR encodes own two search buffers;
+the demo owns its position polling buffer. Default snapshot-returning calls
+remain independent, including `Chip.position()`. Callers can opt into
+`position(into)` without mutating the sequencer timeline. React state receives
+snapshots only when values change, never mutable scratch storage.
+
+Keep pending register records and musical frames independent until consumed;
+zero-copy PCM views remain preferable to extra sample copies. Optimize repeated
+object/array construction and copying where ownership allows it, rather than
+introducing global pools or moving every scalar variable out of its loop.
+The [hot-path audit](evals/HOT-PATHS-2026-09-06.md) records the corrected sites,
+compatibility checks and the distinction between source-level construction
+counts and measured GC/CPU behavior.

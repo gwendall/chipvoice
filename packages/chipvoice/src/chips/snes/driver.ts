@@ -249,13 +249,15 @@ export class SnesDriver implements ChipDriver {
     const entry = this.bank[source];
     let lastVolume = -1;
     let lastPitch = -1;
-    frames.forEach((s, f) => {
-      let t = s.at + offset;
-      const reg = (address: number, value: number) => {
-        out.push({ at: t, addr: F2, value: address });
-        out.push({ at: t + PAIR, addr: F3, value: value & 0xff });
-        t += GAP;
-      };
+    let t = 0;
+    const reg = (address: number, value: number) => {
+      out.push({ at: t, addr: F2, value: address });
+      out.push({ at: t + PAIR, addr: F3, value: value & 0xff });
+      t += GAP;
+    };
+    for (let f = 0; f < frames.length; f++) {
+      const s = frames[f];
+      t = s.at + offset;
       const volume = Math.round((Math.max(0, Math.min(15, s.volume)) * 127) / 15);
       // A looped waveform plays its base pitch at $1000; a drum plays as recorded.
       const pitch = entry.loop && entry.baseHz > 0 ? Math.max(1, Math.min(0x3fff, Math.round((s.freq * 0x1000) / entry.baseHz))) : 0x1000;
@@ -280,7 +282,7 @@ export class SnesDriver implements ChipDriver {
       }
       lastVolume = volume;
       lastPitch = pitch;
-    });
+    }
     return out;
   }
 

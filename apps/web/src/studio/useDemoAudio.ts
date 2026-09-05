@@ -97,22 +97,44 @@ export function useDemoAudio(song: SongDocument, muted: Role[]) {
 
   useEffect(() => {
     mounted.current = true;
-    let raf = 0;
-    let last = '';
-    const tick = () => {
-      const chip = current.current;
-      const pos = chip?.position() ?? null;
-      const busy = chip?.spec.voices.filter(v => !chip.canPlay(v.id)).map(v => v.id) ?? [];
-      const key = JSON.stringify([pos, busy, chip?.playing]);
-      if (key !== last) { last = key; setPosition(pos); setStolen(busy); setPlaying(chip?.playing ?? false); }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
     return () => {
-      mounted.current = false; generation.current++; creating.current = null; cancelAnimationFrame(raf);
+      mounted.current = false; generation.current++; creating.current = null;
       current.current?.dispose(); current.current = null;
       void context.current?.close(); context.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!output) return; // Nothing to poll before the first explicit audio start.
+    let raf = 0;
+    const scratch = { step: 0, orderIndex: 0 };
+    let lastStep = -1, lastOrder = -1, lastBusy = 0, lastPlaying = false;
+    let lastChip: Chip | null = null;
+    const tick = () => {
+      const chip = current.current;
+      const pos = chip?.position(scratch) ?? null;
+      const step = pos?.step ?? -1, order = pos?.orderIndex ?? -1;
+      if (step !== lastStep || order !== lastOrder) {
+        lastStep = step; lastOrder = order;
+        // React owns this snapshot; never hand it the mutable polling buffer.
+        setPosition(pos ? { step, orderIndex: order } : null);
+      }
+      let busy = 0;
+      // The five demo machines have at most ten voices.
+      if (chip) for (let i = 0; i < chip.spec.voices.length; i++) {
+        if (!chip.canPlay(chip.spec.voices[i].id)) busy |= 1 << i;
+      }
+      if (busy !== lastBusy || chip !== lastChip) {
+        const voices: string[] = [];
+        if (chip) for (let i = 0; i < chip.spec.voices.length; i++) if (busy & (1 << i)) voices.push(chip.spec.voices[i].id);
+        lastBusy = busy; lastChip = chip; setStolen(voices);
+      }
+      const isPlaying = chip?.playing ?? false;
+      if (isPlaying !== lastPlaying) { lastPlaying = isPlaying; setPlaying(isPlaying); }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [output]);
   return { playing, loading, error, position, stolen, output, effect, toggle, fire, preview };
 }

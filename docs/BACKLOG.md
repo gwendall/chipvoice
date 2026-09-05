@@ -163,6 +163,7 @@ rewrite.
 | AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | todo | Before claiming every syntactically valid score plays unchanged |
 | AUD-5 | Use versioned database migrations with precise error handling | todo | Alongside identity/schema work |
 | AUD-6 | Align root/npm README, package metadata, capabilities and licence statements; distinguish corpus parity from physical verification, remove misleading global completeness claims | partial | Root/npm introductions, metadata and licences aligned; full capability-copy audit remains follow-up |
+| AUD-7 | Audit hot-path allocation/copy sites in five cores, drivers, encoding and demo animation; reuse scratch with explicit ownership | implemented | [Audit and qualification](evals/HOT-PATHS-2026-09-06.md); representative-device CPU/GC measurements remain alongside AUD-3 |
 
 ## Later phases
 

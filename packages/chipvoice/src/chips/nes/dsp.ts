@@ -568,13 +568,13 @@ export class Nes2A03 implements DigitalChip {
         // bit restarts its sample when nothing is left to play, and clearing
         // it drops what is left; the byte already in the shift register plays
         // out.
-        const units = [this.pulse1, this.pulse2, this.triangle, this.noise];
-        for (let i = 0; i < units.length; i++) {
+        for (let i = 0; i < 4; i++) {
+          const unit = i === 0 ? this.pulse1 : i === 1 ? this.pulse2 : i === 2 ? this.triangle : this.noise;
           const on = ((v >> i) & 1) !== 0;
-          units[i].enabled = on;
+          unit.enabled = on;
           if (!on) {
-            units[i].lengthCounter = 0;
-            units[i].lengthPending = null;
+            unit.lengthCounter = 0;
+            unit.lengthPending = null;
           }
         }
         this.dmc.irq = false;
@@ -659,14 +659,19 @@ export class Nes2A03 implements DigitalChip {
   }
 
   clockHalfFrame() {
-    for (const ch of [this.pulse1, this.pulse2, this.noise, this.triangle]) {
-      if (!ch.lengthHalt && ch.lengthCounter > 0) {
-        ch.lengthCounter--;
-        ch.lengthClocked = true;
-      }
-    }
+    this.clockLength(this.pulse1);
+    this.clockLength(this.pulse2);
+    this.clockLength(this.noise);
+    this.clockLength(this.triangle);
     this.pulse1.clockSweep();
     this.pulse2.clockSweep();
+  }
+
+  private clockLength(ch: Pulse | Noise | Triangle) {
+    if (!ch.lengthHalt && ch.lengthCounter > 0) {
+      ch.lengthCounter--;
+      ch.lengthClocked = true;
+    }
   }
 
   /** One CPU cycle. The APU units run at half that, except the triangle and the DMC. */

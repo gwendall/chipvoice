@@ -542,11 +542,11 @@ export class Sid implements DigitalChip {
 
   /** One cycle of the three voices, then the sync between them. */
   clockVoices() {
-    const [a, b, c] = this.osc;
+    const a = this.osc[0], b = this.osc[1], c = this.osc[2];
     a.clock();
     b.clock();
     c.clock();
-    for (const env of this.env) env.clock();
+    for (let i = 0; i < 3; i++) this.env[i].clock();
     // Each voice is modulated by the one before it: 1 by 3, 2 by 1, 3 by 2.
     a.compute(c);
     b.compute(a);
