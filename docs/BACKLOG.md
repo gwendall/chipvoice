@@ -56,7 +56,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P4-3 | An arranger per chip | done | `chips/nes/arranger.ts`, `chips/gb/arranger.ts`; the roles and idioms in `ChipSpec.roles` and `ChipDriver` since P3-2 |
 | P4-4 | Instruments in the API and the wire format | done | as `intent`, words from the catalogue, stored, forked, rendered; skill 0.5.0 |
 | P4-5 | Idioms per chip in the skill | done | skill 0.5.1: the catalogue per word, and a section per chip on how to write for it. There is no MCP server; the skill is the file an agent reads |
-| P4-8 | Intent pickers in the studio, one per row | todo | the studio arranges with the default words |
+| P4-8 | Intent pickers in the studio, one per row | done | Role timbre choices shipped with P8-6 in PR #20 |
 | P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | done | `NesDriver.smoothHighByte`; golden hash moved; see the log |
 | P4-7 | "Agent-written music sounds good" as a named goal with its own measures | todo | |
 
@@ -134,14 +134,14 @@ PR; deployment and real-device checks are distinct from local completion.
 | P8-8 | Instrument-first layout: presets, machines, display and pads. Title, account and publication controls appear when relevant; playing needs no account | implemented | B. DEMO.md visual direction; no marketing hero prerequisite |
 | P8-14 | Measure first sound, machine comparisons, effects, edits and shares without identity or score content. Observe usability sessions and establish a baseline | partial | Session-only counters implemented; observed human sessions and performance baseline deferred until a representative device is available |
 | P8-4 | Sound on touch and an eight-note audition palette; document keyboard shortcuts, preserve a scale-assisted and a chromatic path | implemented | C. After P8-16; live recording remains P8-10 |
-| P8-6 | Simple pitch-by-height editing of the selected pattern; preserve the full score and provide existing intent choices per role | implemented | C. After P8-15; incorporates P4-8, which is not yet done |
+| P8-6 | Simple pitch-by-height editing of the selected pattern; preserve the full score and provide existing intent choices per role | implemented | C. Shipped in PR #20; incorporates P4-8 |
 | P8-7 | Drum creation as a readable step grid with immediate audition. Distinguish musical drum controls from arcade SFX pads | implemented | C. After P8-15/16 |
 | P8-9 | Phone editing with large enough targets and an overview; scroll/pinch never paint. Keyboard activation/navigation; do not shrink targets merely to fit sixteen steps | partial | Controls and touch-emulated editor implemented; real-phone scroll/pinch check deferred |
 | P8-19 | Undo/redo and automatic local draft recovery. Raw text remains editable while incomplete, with validation before application | implemented | C. After P8-15; repairs text input and provides reversible exploration |
 | P8-20 | View/copy the current score and runnable library code; share reopens the complete song and chosen machine. Clearly separate draft from publication | implemented | C. After P8-15; verify round trip and copied example |
 | P8-21 | Coherent audio downloads: render identity/cache contract, stereo where appropriate, correct machine tags. Stable song links survive asset versioning | implemented | C. Before claiming exported audio reproduces the demo |
 | P8-22 | Put critical production-build web journeys in CI with a temporary database; verify actual transport output, score preservation, input and sharing | implemented | A regressions, B/C journeys; no production writes from CI |
-| P8-10 | Quantized live recording and overdubbing from the note palette and drums, with undo | todo | D. After V1; audition exists earlier in P8-4 |
+| P8-10 | Quantized live recording and overdubbing from the note palette and drums, with undo | implemented | D. Audio-clock tap capture, stable backing loop, one Undo per take and draft recovery; [qualification](evals/RECORDING-2026-09-06.md). Physical-phone checks remain P8-9 |
 | P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | todo | D. After V1 |
 | P8-11 | Web MIDI input using the same tested transport and ownership model | todo | D. After V1 |
 | P8-12 | Producer exports: stems, render on all five machines, VGM where supported | todo | D. After P8-21; basic audio download is in V1 |

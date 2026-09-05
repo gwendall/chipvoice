@@ -21,7 +21,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   if (!ready) throw new Error(`Server did not start: ${log}`);
-  for (const script of ['test-api.mjs', 'test-demo.mjs']) {
+  for (const script of ['test-recording.mjs', 'test-api.mjs', 'test-demo.mjs']) {
     const child = spawn(process.execPath, [script], { env, stdio: 'inherit' });
     const code = await new Promise(resolve => child.on('exit', resolve));
     if (code !== 0) throw new Error(`${script} exited ${code}`);

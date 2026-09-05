@@ -5,7 +5,7 @@ import { effectFor, type EffectId } from './effects';
 import { musicSong, type SongDocument } from './document';
 import { measure } from './metrics';
 
-export function useDemoAudio(song: SongDocument, muted: Role[]) {
+export function useDemoAudio(song: SongDocument, muted: Role[], recording = false) {
   const current = useRef<Chip | null>(null);
   const context = useRef<AudioContext | null>(null);
   const creating = useRef<{ id: string; token: number; promise: Promise<Chip | null> } | null>(null);
@@ -59,15 +59,21 @@ export function useDemoAudio(song: SongDocument, muted: Role[]) {
     return promise;
   }, []);
 
-  const toggle = useCallback(async () => {
-    wantPlay.current = !wantPlay.current;
-    if (!wantPlay.current) { current.current?.stop(); setPlaying(false); return; }
+  const start = useCallback(async () => {
+    wantPlay.current = true;
     const chip = await ensure();
-    if (chip && wantPlay.current && !chip.playing) chip.play(musicSong(latest.current.song, latest.current.muted));
-    if (chip && wantPlay.current) { setPlaying(true); measure('play'); }
+    if (!chip || !wantPlay.current) return null;
+    if (!chip.playing) chip.play(musicSong(latest.current.song, latest.current.muted));
+    setPlaying(true); measure('play');
+    return chip;
   }, [ensure]);
+  const toggle = useCallback(async () => {
+    if (wantPlay.current) { wantPlay.current = false; current.current?.stop(); setPlaying(false); }
+    else await start();
+  }, [start]);
 
   useEffect(() => {
+    if (recording) return; // Keep the backing loop stable while the take is overdubbed.
     if (!current.current && !creating.current) return;
     if (current.current?.spec.id !== song.chip) { void ensure(); return; }
     const chip = current.current;
@@ -78,7 +84,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[]) {
         chip.stop(); chip.play(next, pos);
       }
     }
-  }, [song, muted, ensure]);
+  }, [song, muted, ensure, recording]);
 
   const fire = useCallback(async (id: EffectId) => {
     const chip = await ensure();
@@ -94,6 +100,10 @@ export function useDemoAudio(song: SongDocument, muted: Role[]) {
     const options = role === 'perc' ? instruments.perc[note as 'K' | 'S' | 'H' | 'O'] : { note, instrument: instruments[role], duration: 0.22 };
     if (options) chip.sfx(chip.spec.roles[role], options);
   }, [ensure]);
+  const recordingPosition = useCallback(() => {
+    const chip = current.current;
+    return chip?.audioContext.state === 'running' ? chip.quantizedPosition() : null;
+  }, []);
 
   useEffect(() => {
     mounted.current = true;
@@ -136,5 +146,5 @@ export function useDemoAudio(song: SongDocument, muted: Role[]) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [output]);
-  return { playing, loading, error, position, stolen, output, effect, toggle, fire, preview };
+  return { playing, loading, error, position, stolen, output, effect, toggle, start, fire, preview, recordingPosition };
 }

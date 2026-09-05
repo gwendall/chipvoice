@@ -326,6 +326,8 @@ guessed at now.
 | `Chip.create(options?)` | Starts the chip. Resolves to `null` where AudioWorklet is missing, so a caller degrades instead of crashing |
 | `chip.play(song)` | Starts a song. A no-op if that `song.id` is already playing |
 | `chip.stop()` | Stops it and frees every channel |
+| `chip.position(into?)` | Current audible step and order index; optional caller-owned storage |
+| `chip.quantizedPosition()` | Nearest sixteenth at input time, including pattern/loop wrap; `null` before playback or in a scheduling gap |
 | `chip.sfx(channel, opts)` | Plays an effect, taking the channel from the music |
 | `chip.canPlay(channel, at?)` | Whether a channel is free |
 | `chip.beatDelay(maxWait?)` | Seconds until the next eighth, capped |

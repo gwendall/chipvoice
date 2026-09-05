@@ -3,13 +3,16 @@ import { useCallback, useEffect, useReducer, useState } from 'react';
 import { decodeDocument, readDocument, type SongDocument } from './document';
 import { PRESETS } from './presets';
 const STORAGE = 'chipvoice.draft.v1';
-type State = { past: SongDocument[]; song: SongDocument; future: SongDocument[] };
-type Action = { type: 'edit'; song: SongDocument } | { type: 'restore'; song: SongDocument } | { type: 'undo' | 'redo' };
+type Update = SongDocument | ((song: SongDocument) => SongDocument);
+type State = { past: SongDocument[]; song: SongDocument; future: SongDocument[]; group?: string };
+type Action = { type: 'edit'; song: Update; group?: string } | { type: 'restore'; song: SongDocument } | { type: 'undo' | 'redo' };
 function reducer(state: State, action: Action): State {
   if (action.type === 'restore') return { past: [], song: action.song, future: [] };
   if (action.type === 'edit') {
-    if (JSON.stringify(state.song) === JSON.stringify(action.song)) return state;
-    return { past: [...state.past.slice(-49), state.song], song: action.song, future: [] };
+    const song = typeof action.song === 'function' ? action.song(state.song) : action.song;
+    if (song === state.song || JSON.stringify(state.song) === JSON.stringify(song)) return state;
+    const continued = action.group !== undefined && action.group === state.group;
+    return { past: continued ? state.past : [...state.past.slice(-49), state.song], song, future: [], group: action.group };
   }
   if (action.type === 'undo' && state.past.length) return { past: state.past.slice(0, -1), song: state.past.at(-1)!, future: [state.song, ...state.future] };
   if (action.type === 'redo' && state.future.length) return { past: [...state.past, state.song], song: state.future[0], future: state.future.slice(1) };
@@ -33,7 +36,7 @@ export function useSongDocument(initial?: SongDocument, sourceId?: string) {
   useEffect(() => {
     if (ready) { try { localStorage.setItem(storageKey, JSON.stringify(state.song)); } catch {} }
   }, [state.song, ready, storageKey]);
-  const edit = useCallback((song: SongDocument) => dispatch({ type: 'edit', song }), []);
+  const edit = useCallback((song: Update, group?: string) => dispatch({ type: 'edit', song, group }), []);
   const undo = useCallback(() => dispatch({ type: 'undo' }), []);
   const redo = useCallback(() => dispatch({ type: 'redo' }), []);
   return { ...state, edit, undo, redo, canUndo: !!state.past.length, canRedo: !!state.future.length, ready, recovered };

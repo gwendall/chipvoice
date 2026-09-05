@@ -304,6 +304,13 @@ export class Chip {
     return this.sequencer.positionAt(this.ctx.currentTime, into);
   }
 
+  /** Nearest sixteenth for live note capture, including pattern/loop wrap.
+   * Call at input time; the clock is AudioContext time, not performance.now().
+   * Returns null before audible playback, while stopped or in a scheduling gap. */
+  quantizedPosition(at = this.ctx.currentTime): { step: number; orderIndex: number } | null {
+    return this.sequencer.quantizedPosition(at);
+  }
+
   /**
    * Is this channel free at that moment?
    *

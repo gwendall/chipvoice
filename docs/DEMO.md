@@ -153,6 +153,23 @@ baseline rather than being invented in advance.
 
 ### D. Expand after testing the demo
 
+The first follow-up implements **tap recording**: Record starts playback when
+needed, then note-palette and drum taps overdub the nearest sixteenth on the
+audio clock, captured on pointer/key press rather than release. Recording spans
+the song order, including unequal/repeated patterns.
+One take is one Undo action; draft recovery saves captured edits as they arrive.
+The backing score keeps playing unchanged until Finish take, when the updated
+score is loaded once. The display follows that backing score during capture.
+Tempo, machine, mute/solo and direct score replacement are locked during a take;
+role and audition scale may change. Stop, Undo and leaving the tab finish capture.
+Arcade effects remain live listening controls, not recorded score events.
+
+Taps use the existing grid's duration convention: a note lasts until the next
+note/cut. Held-key duration, free-time audio recording and a metronome/count-in
+are not part of this first recording interaction. No schema migration or extra
+runtime dependency is needed. `Chip.quantizedPosition()` exposes the same grid
+position calculation to library callers.
+
 - Quantized live recording and overdubbing from the eight-note palette.
 - "Surprise me": vary melody, drums or timbres, lock roles, undo the result.
   Begin with authored/rule-based variations; no remote AI dependency for play.

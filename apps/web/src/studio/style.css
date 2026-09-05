@@ -73,3 +73,9 @@ button:disabled { opacity: .35; }
 .machine-logo { display: block; width: 100%; max-width: 128px; height: 28px; background: currentColor; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
 .machines strong { display: flex; align-items: center; gap: 6px; font-size: 10px; }
 @media (max-width: 650px) { .machines button { height: 64px; padding: 6px 3px; gap: 6px; }.machine-logo { height: 23px; }.machines strong { font-size: 8px; gap: 3px; } }
+.recording-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.record-button { min-height: 44px; padding: 10px 16px; border: 1px solid #b67a65; border-radius: 6px; background: #f4e5da; font-size: 12px; font-weight: 650; }
+.record-button > span { color: #a44930; margin-right: 5px; }
+.record-button[aria-pressed=true] { color: #fff7ee; background: #994c36; border-color: #7d3d2c; }
+.record-button[aria-pressed=true] > span { color: inherit; }
+.take-status { color: #6b6c60; font-size: 11px; line-height: 1.5; }
