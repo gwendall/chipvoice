@@ -199,6 +199,25 @@ export class Sequencer {
     return into;
   }
 
+  /** Nearest sixteenth at the live audio clock; halfway rounds forward.
+   * Uses the audible step's timestamp, not the lookahead cursor or a UI frame.
+   * Startup and gaps after timer suspension have no recordable position. */
+  quantizedPosition(time: number): { step: number; orderIndex: number } | null {
+    const entry = this.advanceTimeline(time);
+    if (!entry || !this.song) return null;
+    const duration = 60 / this.song.bpm / 4;
+    if (time >= entry.at + duration) return null;
+    let step = entry.step, orderIndex = entry.orderIndex;
+    if (time >= entry.at + duration / 2) {
+      step++;
+      if (step === this.compiled[this.song.order[orderIndex]].steps) {
+        step = 0;
+        orderIndex = (orderIndex + 1) % this.song.order.length;
+      }
+    }
+    return { step, orderIndex };
+  }
+
   private advanceTimeline(time: number) {
     if (!this.running) return null;
     while (this.timeline.length > 0 && this.timeline[0].at <= time) {

@@ -13,10 +13,11 @@ export function pitch(note: string) {
   if (!match) return 48;
   return (Number(match[3]) + 1) * 12 + (semitones[match[1]] ?? 0) + (match[2] === '#' ? 1 : match[2] === 'b' ? -1 : 0);
 }
-export const Voices = memo(function Voices({ song, position, stolen, muted, solo, onMute, onSolo, effect }: {
+export const Voices = memo(function Voices({ song, position, stolen, muted, solo, onMute, onSolo, effect, disabled = false }: {
   song: SongDocument; position: { step: number; orderIndex: number } | null; stolen: string[];
   muted: Role[]; solo: Role | null; onMute: (role: Role) => void; onSolo: (role: Role) => void;
   effect: { id: EffectId; at: number } | null;
+  disabled?: boolean;
 }) {
   const orderIndex = Math.min(position?.orderIndex ?? 0, song.order.length - 1);
   const pattern = song.patterns[song.order[orderIndex]];
@@ -50,13 +51,13 @@ export const Voices = memo(function Voices({ song, position, stolen, muted, solo
     {lanes.map(({ role, notes }) => {
       const taken = stolen.includes(roleVoice(song, role));
       return <div key={role} className={`voice-lane ${role} ${muted.includes(role) ? 'is-muted' : ''} ${taken ? 'is-stolen' : ''}`} data-role={role} data-stolen={taken}>
-        <div className="voice-name"><button onClick={() => onMute(role)} aria-pressed={muted.includes(role)} aria-label={`Mute ${ROLE_NAMES[role]}`}><i />{ROLE_NAMES[role]}</button><span>{taken ? 'SFX HAS THIS VOICE' : roleVoice(song, role)}</span></div>
+        <div className="voice-name"><button disabled={disabled} onClick={() => onMute(role)} aria-pressed={muted.includes(role)} aria-label={`Mute ${ROLE_NAMES[role]}`}><i />{ROLE_NAMES[role]}</button><span>{taken ? 'SFX HAS THIS VOICE' : roleVoice(song, role)}</span></div>
         <div className="note-lane" aria-label={`${ROLE_NAMES[role]} notes`}>
           {notes.map(({ i, end, style }) => <span key={i} className={`voice-note ${position && position.step >= i && position.step < end ? 'sounding' : ''}`} style={style} />)}
           {position && <div className="playhead" style={{ left: `${position.step / count * 100}%` }} />}
           {taken && <div className="taken-label">← borrowed by a sound effect →</div>}
         </div>
-        <button className="solo-button" aria-label={`Solo ${ROLE_NAMES[role]}`} aria-pressed={solo === role} onClick={() => onSolo(role)}>S</button>
+        <button className="solo-button" disabled={disabled} aria-label={`Solo ${ROLE_NAMES[role]}`} aria-pressed={solo === role} onClick={() => onSolo(role)}>S</button>
       </div>;
     })}
     <div className="display-bottom"><span><i className={position ? 'status-light active' : 'status-light'} />{position ? 'PLAYING LIVE ON THE CHIP' : 'PRESS PLAY. THEN TRY AN ARCADE PAD.'}</span><div className="arcade-scene" aria-hidden="true" key={effect?.at ?? 0} data-effect={effect?.id ?? 'idle'}><span className="pixel-runner">▟</span><span className="pixel-coin">◆</span><span className="pixel-shot">━</span><span className="pixel-burst">✳</span></div></div>

@@ -480,3 +480,34 @@ introducing global pools or moving every scalar variable out of its loop.
 The [hot-path audit](evals/HOT-PATHS-2026-09-06.md) records the corrected sites,
 compatibility checks and the distinction between source-level construction
 counts and measured GC/CPU behavior.
+
+### 25. Record input against the audio timeline, commit playback once (2026-09-06)
+
+The demo captures note and drum presses at the live AudioContext clock.
+`Chip.quantizedPosition()` rounds to the nearest sixteenth using the sequencer's
+audible timeline; exact half steps round forward. Pattern lengths, repeated order
+entries and loop wrap belong to that calculation. Startup and scheduling gaps
+return null. The UI additionally rejects capture while the context is suspended.
+The animation frame's last position and the scheduler's future cursor are not
+input timestamps.
+
+Each take edits the full score through functional document updates and one
+history group. Edits persist to the local draft as they arrive. The backing
+score and its display remain stable throughout capture; finishing loads the
+updated score once at the existing position. This uses the existing scheduler
+and ownership restoration, with no per-tap transport restart or second player.
+Captured taps audition immediately through the current chip's SFX ownership.
+
+The user can change roles and scales during a take. Tempo, machine, mute/solo,
+cartridges and direct editing are locked until finishing. Stop, Undo, focus loss
+and tab hiding finish capture; stale asynchronous starts cannot rearm it.
+Reload recovers the edited score without resuming audio or recording. A repeated
+order entry edits its shared pattern, consistently with the grid editor.
+Chord insertion preserves existing later voicings and unused authored shapes.
+
+This is grid overdubbing: the last tap on a role/step wins, untouched tokens
+remain intact, and duration extends to the next note/cut under the score's
+existing convention. It does not record held-key duration or arcade SFX, and
+does not need a PCM stream, MIDI layer, metronome or schema migration. Those
+can be evaluated as separate interactions. See the
+[recording evaluation](evals/RECORDING-2026-09-06.md) for evidence and limits.

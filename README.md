@@ -161,8 +161,9 @@ verified against silicon; that the sheet is the contract; and that the product
 is a [portable score](docs/SCORE.md) that an agent or a person writes once and
 that plays on a NES, a Game Boy, a Mega Drive, a SNES or a C64 in that
 machine's own idiom. All five play today, and the demo puts their sounds one
-gesture apart. The next slices explore live recording, controlled variations
-and MIDI after V1 usability checks; a sixth chip is not the current priority.
+gesture apart. The demo also records quantized note and drum taps into a loop,
+with one Undo per take. The next slices explore controlled variations and MIDI;
+physical-phone usability checks remain open. A sixth chip is not the current priority.
 
 ## Releasing
 
