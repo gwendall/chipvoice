@@ -403,6 +403,9 @@ AUD-2 follow-ups, with measurements before adding infrastructure.
 
 ### 22. Cancel musical commands outside the digital chip (2026-09-05)
 
+Queue placement superseded by decision 23; ownership and cancellation semantics
+remain in force.
+
 The transport owns future writes by voice and effect, feeding the digital core
 one render block at a time. Stop removes future owned writes; an effect replaces
 a voice and restores the remaining held music with complete register state.
@@ -415,3 +418,49 @@ Discard consumed entries before merging. Regression tests compare 128- and
 4096-sample renders byte for byte and verify cancellation and recovery on actual
 output. The MD/SNES song goldens change because obsolete writes no longer
 retrigger their voices; raw corpus parity must remain unchanged.
+
+### 23. Consume one shared scheduler directly at each bus clock (2026-09-06)
+
+The mixer conformance job exposed a design problem in decision 22's wrapper:
+`push(...events)` exceeds the VM's argument limit on legitimate captured ROM
+logs. Replacing the spread alone would preserve redundant global sorting,
+per-block splicing/cloning, and a second queue in the digital core. Several
+cores also shifted the entire remaining array on every consumed write.
+
+Remove the transport wrapper. Each bus owns an internal `EventQueue`, used by
+both live music and raw capture replay and consumed directly at its existing
+hardware clock. Incoming batches become sorted runs; a heap merges their heads.
+An already ordered batch costs O(n) to enqueue plus O(log r) to insert its run;
+unsorted input sorts only that new batch. Consumption costs O(log r), or O(1)
+for a single run, where r is the number of pending runs. Equal-cycle writes keep
+arrival order. The queue caches the next timestamp for the idle per-cycle path.
+Consumed references are cleared, and no register records are cloned during
+consumption. The Mega Drive has separate YM and PSG clocks; accepted YM bus
+writes use a ring FIFO, preserving the hardware's serial write acceptance.
+
+Ownership is interpreted only by the scheduler, before register decoding.
+Cancellation compacts affected runs and rebuilds the heap; it does not undo
+accepted hardware writes. Raw writes have no owner and remain uncancelled.
+Repeated writes, triggers and address/data ordering are meaningful hardware
+operations: no arbitrary event limit, dropping or register deduplication here.
+The musical encoder can still omit unchanged state where its chip contract
+permits that optimization.
+
+The offline host now supplies its advancing render clock to the shared driver.
+Flush prunes expired music and effect history across all voices in place;
+reset initializes sample memory once after resetting the core. Live memory
+messages rely on structured cloning instead of making another preliminary copy.
+
+Tradeoffs: a run retains its reference-array capacity until consumed (objects
+are released individually); cancellation scans affected runs. Active/future
+notes still retain the frames required to restore held music. This is bounded
+by scheduled work, not a constant-memory streaming claim. The shared scheduler
+adds some code to each standalone worklet but introduces no runtime dependency.
+Packed transferable buffers or a shared-memory transport need measurements of
+real browser messaging pressure before adding another protocol.
+
+Qualification covers 500,000 writes, randomized interleaving/cancellation,
+hardware FIFO wraparound, offline clock/expiry/reset, five-chip block-size and
+audio regressions, the mixer capture that originally crashed, and browser audio.
+See [the scheduling evaluation](evals/SCHEDULING-2026-09-06.md). Host timings are
+not representative: the user's machine was heavily loaded.

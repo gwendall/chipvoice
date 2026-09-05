@@ -3,6 +3,44 @@ import { Sequencer } from '../dist/sequencer.js';
 import { nesChip, gbChip, mdChip, snesChip, c64Chip, OfflineDriver, instrumentsFor, arrange, renderSong } from '../dist/index.js';
 
 const rate = 44100;
+{
+  let now = 0;
+  const core = nesChip.create(rate);
+  const driver = new OfflineDriver(core, nesChip, () => now);
+  const note = { note: 'A4', instrument: { volume: [12], sustain: true }, duration: .1 };
+  driver.playNote('p2', note);
+  driver.playEffect('p2', { ...note, at: .05 });
+  driver.flush();
+  // Inspect retained commands specifically: audio alone cannot detect a leak.
+  assert.ok(driver.music.size > 0 && driver.interruptions.size > 0);
+  now = .5;
+  driver.flush();
+  assert.equal(driver.music.size, 0, 'idle voices release expired music without another note');
+  assert.equal(driver.interruptions.size, 0, 'expired effect history is released');
+  driver.reset(); driver.playNote('p2', note); driver.flush();
+  const control = nesChip.create(rate), explicit = new OfflineDriver(control, nesChip);
+  explicit.playNote('p2', { ...note, at: now }); explicit.flush();
+  const actual = new Float32Array(rate), expected = new Float32Array(rate);
+  core.render(actual, null, 0); control.render(expected, null, 0);
+  assert.deepEqual(actual, expected, 'implicit offline note time follows the host clock');
+  console.log('PASS offline clock schedules implicit notes and releases expired command history');
+}
+{
+  const calls = [];
+  const core = snesChip.create(rate);
+  for (const method of ['reset', 'load']) {
+    const original = core[method].bind(core);
+    core[method] = (...args) => { calls.push(method); return original(...args); };
+  }
+  const driver = new OfflineDriver(core, snesChip);
+  const initialLoads = calls.filter(c => c === 'load').length;
+  assert.ok(initialLoads > 0);
+  calls.length = 0; driver.reset();
+  assert.equal(calls[0], 'reset');
+  assert.equal(calls.filter(c => c === 'reset').length, 1);
+  assert.equal(calls.filter(c => c === 'load').length, initialLoads, 'sample memory initializes once after reset');
+  console.log('PASS offline reset initializes sample memory exactly once');
+}
 // Observe the digital register state after real rendering, not an arbiter flag.
 {
   const core = nesChip.create(rate);

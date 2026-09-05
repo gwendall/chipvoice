@@ -1,4 +1,3 @@
-import { TransportCore } from "../../transport-core.js";
 /**
  * The real-time wrapper around the core.
  *
@@ -14,7 +13,7 @@ import { TransportCore } from "../../transport-core.js";
  */
 
 import type { WorkletMessage } from "../../chip.js";
-import { CPU_HZ, NesApuCore, PROCESSOR_NAME } from "./dsp.js";
+import { NesApuCore, PROCESSOR_NAME } from "./dsp.js";
 
 // The AudioWorkletGlobalScope, which lib.dom does not describe because these
 // exist only inside a worklet. Declared here, scoped to this module.
@@ -30,7 +29,7 @@ declare function registerProcessor(
 ): void;
 
 class ApuProcessor extends AudioWorkletProcessor {
-  private readonly core = new TransportCore(new NesApuCore(sampleRate), CPU_HZ, sampleRate);
+  private readonly core = new NesApuCore(sampleRate);
   private alive = true;
 
   constructor() {

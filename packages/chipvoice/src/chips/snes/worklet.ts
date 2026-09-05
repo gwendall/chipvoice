@@ -1,4 +1,3 @@
-import { TransportCore } from "../../transport-core.js";
 /**
  * The real-time wrapper around the SNES core, bundled by
  * `scripts/build-worklet.mjs` into one self-contained script. The 2A03's
@@ -7,7 +6,7 @@ import { TransportCore } from "../../transport-core.js";
  */
 
 import type { WorkletMessage } from "../../chip.js";
-import { SPC_HZ, SNES_PROCESSOR_NAME, SnesCore } from "./dsp.js";
+import { SNES_PROCESSOR_NAME, SnesCore } from "./dsp.js";
 
 declare const sampleRate: number;
 declare const currentFrame: number;
@@ -18,7 +17,7 @@ declare abstract class AudioWorkletProcessor {
 declare function registerProcessor(name: string, processor: new () => AudioWorkletProcessor): void;
 
 class SnesProcessor extends AudioWorkletProcessor {
-  private readonly core = new TransportCore(new SnesCore(sampleRate), SPC_HZ, sampleRate);
+  private readonly core = new SnesCore(sampleRate);
   private alive = true;
 
   constructor() {

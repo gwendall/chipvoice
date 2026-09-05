@@ -1,3 +1,4 @@
+import { EventQueue } from "../../event-queue.js";
 /**
  * The Game Boy's sound, the DMG's APU, at the T-cycle.
  *
@@ -291,7 +292,7 @@ export class GbApu implements DigitalChip {
   /** The last frame step executed, 0 to 7. */
   private frameStep = 7;
 
-  private events: RegisterEvent[] = [];
+  private readonly events = new EventQueue();
 
   /** What the console's DIV write does: the divider goes to 0. */
   resetDivider() {
@@ -630,9 +631,8 @@ export class GbApu implements DigitalChip {
    * then it is clocked, then the count advances.
    */
   step() {
-    while (this.events.length > 0 && this.events[0].at <= this.cycle) {
-      const ev = this.events[0];
-      this.events.shift();
+    while (this.events.nextAt <= this.cycle) {
+      const ev = this.events.take();
       this.applyEvent(ev);
     }
     this.clockT();
@@ -658,10 +658,8 @@ export class GbApu implements DigitalChip {
     // No sample memory: the wave channel's RAM is written through registers.
   }
 
-  schedule(events: RegisterEvent[]) {
-    for (const ev of events) this.events.push(ev);
-    this.events.sort((a, b) => a.at - b.at);
-  }
+  schedule(events: RegisterEvent[]) { this.events.schedule(events); }
+  cancel(owner: string, from: number) { this.events.cancel(owner, from); }
 
   trace(cycles: number, onChange: (cycle: number, voice: number, value: number) => void) {
     const last = [0, 0, 0, 0];
@@ -681,7 +679,7 @@ export class GbApu implements DigitalChip {
 
   /** Power-on: everything cleared, the power off, the divider at 0. */
   reset() {
-    this.events.length = 0;
+    this.events.clear();
     Object.assign(this.ch1, new Pulse(true));
     Object.assign(this.ch2, new Pulse(false));
     Object.assign(this.ch3, new Wave());
@@ -818,6 +816,8 @@ export class GbApuCore implements ChipCore {
   schedule(events: RegisterEvent[]) {
     this.chip.schedule(events);
   }
+
+  cancel(owner: string, from: number) { this.chip.cancel(owner, from); }
 
   load() {}
 

@@ -257,6 +257,8 @@ export class SidCore implements ChipCore {
     this.chip.schedule(events);
   }
 
+  cancel(owner: string, from: number) { this.chip.cancel(owner, from); }
+
   load() {}
 
   setGain(value: number) {

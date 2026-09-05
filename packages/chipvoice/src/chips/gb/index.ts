@@ -1,4 +1,3 @@
-import { TransportCore } from "../../transport-core.js";
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { CLOCK_HZ, GB_PROCESSOR_NAME, GbApu, GbApuCore } from "./dsp.js";
 import { GbDriver } from "./driver.js";
@@ -37,7 +36,7 @@ export const GB_DMG: ChipSpec = {
 
 export const gbChip: ChipDefinition = {
   spec: GB_DMG,
-  create: (sampleRate: number) => new TransportCore(new GbApuCore(sampleRate), GB_DMG.clockHz, sampleRate),
+  create: (sampleRate: number) => new GbApuCore(sampleRate),
   digital: () => new GbApu(),
   driver: () => new GbDriver(),
   workletSource: WORKLET_SOURCE,

@@ -1,4 +1,3 @@
-import { TransportCore } from "../../transport-core.js";
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { C64_PROCESSOR_NAME, CLOCK_HZ, SidCore } from "./dsp.js";
 import { SidDriver } from "./driver.js";
@@ -31,7 +30,7 @@ export const C64: ChipSpec = {
 
 export const c64Chip: ChipDefinition = {
   spec: C64,
-  create: (sampleRate: number) => new TransportCore(new SidCore(sampleRate), C64.clockHz, sampleRate),
+  create: (sampleRate: number) => new SidCore(sampleRate),
   digital: () => new Sid(),
   driver: () => new SidDriver(),
   workletSource: WORKLET_SOURCE,

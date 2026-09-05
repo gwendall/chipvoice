@@ -1,3 +1,4 @@
+import { EventQueue } from "../../event-queue.js";
 /**
  * The MOS 6581 SID, the Commodore 64's sound chip: the digital part.
  *
@@ -492,7 +493,7 @@ export class Sid implements DigitalChip {
 
   /** The absolute cycle about to be clocked. */
   cycle = 0;
-  private events: RegisterEvent[] = [];
+  private readonly events = new EventQueue();
 
   /** Power-on is a reset: the accumulators and counters keep their power-on values. */
   constructor() {
@@ -565,9 +566,8 @@ export class Sid implements DigitalChip {
    * then it is clocked, then the count advances.
    */
   step() {
-    while (this.events.length > 0 && this.events[0].at <= this.cycle) {
-      const ev = this.events[0];
-      this.events.shift();
+    while (this.events.nextAt <= this.cycle) {
+      const ev = this.events.take();
       this.write(ev.addr, ev.value);
     }
     this.clockVoices();
@@ -585,10 +585,8 @@ export class Sid implements DigitalChip {
     // No memory: the SID has three oscillators and twenty-nine registers.
   }
 
-  schedule(events: RegisterEvent[]) {
-    for (const ev of events) this.events.push(ev);
-    this.events.sort((a, b) => a.at - b.at);
-  }
+  schedule(events: RegisterEvent[]) { this.events.schedule(events); }
+  cancel(owner: string, from: number) { this.events.cancel(owner, from); }
 
   trace(cycles: number, onChange: (cycle: number, voice: number, value: number) => void) {
     const last = [0, 0, 0, 0, 0, 0];
@@ -608,7 +606,7 @@ export class Sid implements DigitalChip {
 
   /** The reset line: registers cleared, the accumulators and counters left as they are. */
   reset() {
-    this.events.length = 0;
+    this.events.clear();
     for (const osc of this.osc) osc.reset();
     for (const env of this.env) env.reset();
     this.cutoff = 0;

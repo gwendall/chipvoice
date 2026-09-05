@@ -1,3 +1,5 @@
+import { Fifo } from "../../fifo.js";
+import { EventQueue } from "../../event-queue.js";
 /**
  * The Mega Drive's sound: a YM2612 and an SN76489 on one bus, at one clock.
  *
@@ -50,36 +52,29 @@ export class MdChip implements DigitalChip {
   private untilYm = YM_STEP;
   private untilPsg = PSG_STEP;
   /** Writes to each chip, in time order; a write reaches its chip on the chip's cycle that starts at or after it. */
-  private ymPending: RegisterEvent[] = [];
-  private psgPending: RegisterEvent[] = [];
-  private nextYm = 0;
-  private nextPsg = 0;
+  private readonly ymPending = new EventQueue();
+  private readonly psgPending = new EventQueue();
   /** A write waiting for the YM2612's next internal cycle, one at a time as the chip takes them. */
-  private readonly ymQueue: { port: number; value: number }[] = [];
+  private readonly ymQueue = new Fifo<{ addr: number; value: number }>();
 
   constructor(type: "ym2612" | "ym3438" = "ym2612") {
     this.ym = new Ym2612(type);
   }
 
   schedule(events: RegisterEvent[]) {
-    // Consumed writes must never be replayed when the next audio block arrives.
-    this.ymPending.splice(0, this.nextYm);
-    this.psgPending.splice(0, this.nextPsg);
-    for (const e of events) {
-      if ((e.addr & 0xfffffc) === YM_BASE) this.ymPending.push(e);
-      else if (e.addr === PSG_PORT) this.psgPending.push(e);
-    }
-    this.ymPending.sort((a, b) => a.at - b.at);
-    this.psgPending.sort((a, b) => a.at - b.at);
-    this.nextYm = 0;
-    this.nextPsg = 0;
+    this.ymPending.schedule(events, e => (e.addr & 0xfffffc) === YM_BASE);
+    this.psgPending.schedule(events, e => e.addr === PSG_PORT);
+  }
+  cancel(owner: string, from: number) {
+    this.ymPending.cancel(owner, from);
+    this.psgPending.cancel(owner, from);
   }
 
   load() {}
 
   /** A write, as the bus delivers it: to a YM port or to the PSG. */
   write(addr: number, value: number) {
-    if ((addr & 0xfffffc) === YM_BASE) this.ymQueue.push({ port: addr & 3, value: value & 0xff });
+    if ((addr & 0xfffffc) === YM_BASE) this.ymQueue.push({ addr: addr & 3, value: value & 0xff });
     else if (addr === PSG_PORT) this.psg.write(value);
   }
 
@@ -107,20 +102,20 @@ export class MdChip implements DigitalChip {
     if (this.untilYm === 0) {
       this.untilYm = YM_STEP;
       const start = target - YM_STEP;
-      while (this.nextYm < this.ymPending.length && this.ymPending[this.nextYm].at <= start) {
-        const e = this.ymPending[this.nextYm++];
-        this.ymQueue.push({ port: e.addr & 3, value: e.value & 0xff });
+      while (this.ymPending.nextAt <= start) {
+        const e = this.ymPending.take();
+        this.ymQueue.push(e);
       }
-      const w = this.ymQueue.shift();
-      if (w) this.ym.write(w.port, w.value);
+      const w = this.ymQueue.take();
+      if (w) this.ym.write(w.addr & 3, w.value & 0xff);
       this.ym.clock();
       this.ymTicked = true;
     }
     if (this.untilPsg === 0) {
       this.untilPsg = PSG_STEP;
       const start = target - PSG_STEP;
-      while (this.nextPsg < this.psgPending.length && this.psgPending[this.nextPsg].at <= start) {
-        this.psg.write(this.psgPending[this.nextPsg++].value);
+      while (this.psgPending.nextAt <= start) {
+        this.psg.write(this.psgPending.take().value);
       }
       this.psg.clock();
     }
@@ -182,11 +177,9 @@ export class MdChip implements DigitalChip {
     this.cycle = 0;
     this.untilYm = YM_STEP;
     this.untilPsg = PSG_STEP;
-    this.ymPending = [];
-    this.psgPending = [];
-    this.nextYm = 0;
-    this.nextPsg = 0;
-    this.ymQueue.length = 0;
+    this.ymPending.clear();
+    this.psgPending.clear();
+    this.ymQueue.clear();
   }
 }
 
@@ -327,6 +320,8 @@ export class MdCore implements ChipCore {
   schedule(events: RegisterEvent[]) {
     this.chip.schedule(events);
   }
+
+  cancel(owner: string, from: number) { this.chip.cancel(owner, from); }
 
   load() {}
 

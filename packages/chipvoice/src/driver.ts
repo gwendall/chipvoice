@@ -206,7 +206,7 @@ export class APU implements NoteSink {
    * The bytes are copied; the caller keeps its own.
    */
   load(address: number, bytes: Uint8Array) {
-    this.post({ type: "memory", address, bytes: bytes.slice() });
+    this.post({ type: "memory", address, bytes }); // postMessage copies the bytes; no transfer
   }
 
   reset() {
@@ -214,7 +214,7 @@ export class APU implements NoteSink {
     this.interruptions.clear();
     this.encoder = this.chip.driver();
     this.queue.length = 0;
-    this.post({ type: "reset" });
+    this.resetCore();
     this.powerOn();
   }
 
@@ -235,7 +235,27 @@ export class APU implements NoteSink {
     }
   }
 
+  protected resetCore() { this.post({ type: "reset" }); }
+
+  /** Release expired commands independently of which voice plays next. */
+  protected prune() {
+    const now = this.cycleAt(this.ctx.currentTime);
+    for (const [voice, notes] of this.music) {
+      let kept = 0;
+      for (const note of notes) if ((note.end ?? note[note.length - 1].at) > now) notes[kept++] = note;
+      notes.length = kept;
+      if (!kept) this.music.delete(voice);
+    }
+    for (const [voice, intervals] of this.interruptions) {
+      let kept = 0;
+      for (const interval of intervals) if (interval.until > now) intervals[kept++] = interval;
+      intervals.length = kept;
+      if (!kept) this.interruptions.delete(voice);
+    }
+  }
+
   protected flush() {
+    this.prune();
     if (this.flushHandle !== null) cancelAnimationFrame(this.flushHandle);
     this.flushHandle = null;
     if (!this.node || this.queue.length === 0) return;
@@ -449,10 +469,9 @@ export class OfflineDriver extends APU implements NoteSink {
   private readonly core: ChipCore;
   private pending: (RegisterEvent & { owner?: string })[] = [];
 
-  constructor(core: ChipCore, chip: ChipDefinition = nesChip) {
-    // The base class reads one thing from the context: `currentTime`, as the
-    // default start of a note. Offline, that is the origin.
-    super({ currentTime: 0 } as unknown as AudioContext, chip);
+  constructor(core: ChipCore, chip: ChipDefinition = nesChip, currentTime: () => number = () => 0) {
+    // The host owns the offline clock; expiry follows rendered time.
+    super({ get currentTime() { return currentTime(); } } as AudioContext, chip);
     this.core = core;
     this.ready = true;
     this.powerOn();
@@ -469,6 +488,7 @@ export class OfflineDriver extends APU implements NoteSink {
 
   /** Hands everything queued to the chip. Called once per rendered block. */
   override flush() {
+    this.prune();
     if (this.pending.length === 0) return;
     this.core.schedule(this.pending);
     this.pending = [];
@@ -482,10 +502,8 @@ export class OfflineDriver extends APU implements NoteSink {
     this.core.load(address, bytes);
   }
 
-  override reset() {
-    super.reset();
+  protected override resetCore() {
     this.pending.length = 0;
     this.core.reset();
-    this.powerOn();
   }
 }

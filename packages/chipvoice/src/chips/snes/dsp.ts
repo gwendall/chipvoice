@@ -1,3 +1,4 @@
+import { EventQueue } from "../../event-queue.js";
 /**
  * The SNES's sound: the S-DSP and its 64 KB, on the SPC700's clock.
  *
@@ -34,15 +35,10 @@ export class SnesChip implements DigitalChip {
   /** The absolute cycle about to be clocked. */
   cycle = 0;
   private selected = 0;
-  private pending: RegisterEvent[] = [];
-  private next = 0;
+  private readonly pending = new EventQueue();
 
-  schedule(events: RegisterEvent[]) {
-    this.pending.splice(0, this.next);
-    for (const e of events) this.pending.push(e);
-    this.pending.sort((a, b) => a.at - b.at);
-    this.next = 0;
-  }
+  schedule(events: RegisterEvent[]) { this.pending.schedule(events); }
+  cancel(owner: string, from: number) { this.pending.cancel(owner, from); }
 
   /** Bytes into the RAM the DSP reads its samples from. */
   load(address: number, bytes: Uint8Array) {
@@ -57,8 +53,8 @@ export class SnesChip implements DigitalChip {
 
   /** One clock: the writes stamped at or before it, then one phase of the DSP. */
   step() {
-    while (this.next < this.pending.length && this.pending[this.next].at <= this.cycle) {
-      const e = this.pending[this.next++];
+    while (this.pending.nextAt <= this.cycle) {
+      const e = this.pending.take();
       this.write(e.addr, e.value);
     }
     this.dsp.run(1);
@@ -94,8 +90,7 @@ export class SnesChip implements DigitalChip {
     this.dsp.reset();
     this.cycle = 0;
     this.selected = 0;
-    this.pending = [];
-    this.next = 0;
+    this.pending.clear();
   }
 }
 
@@ -201,6 +196,8 @@ export class SnesCore implements ChipCore {
   schedule(events: RegisterEvent[]) {
     this.chip.schedule(events);
   }
+
+  cancel(owner: string, from: number) { this.chip.cancel(owner, from); }
 
   load(address: number, bytes: Uint8Array) {
     this.chip.load(address, bytes);

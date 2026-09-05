@@ -1,4 +1,3 @@
-import { TransportCore } from "../../transport-core.js";
 /**
  * The real-time wrapper around the Game Boy core, bundled by
  * `scripts/build-worklet.mjs` into one self-contained script. The 2A03's
@@ -7,7 +6,7 @@ import { TransportCore } from "../../transport-core.js";
  */
 
 import type { WorkletMessage } from "../../chip.js";
-import { CLOCK_HZ, GB_PROCESSOR_NAME, GbApuCore } from "./dsp.js";
+import { GB_PROCESSOR_NAME, GbApuCore } from "./dsp.js";
 
 declare const sampleRate: number;
 declare const currentFrame: number;
@@ -18,7 +17,7 @@ declare abstract class AudioWorkletProcessor {
 declare function registerProcessor(name: string, processor: new () => AudioWorkletProcessor): void;
 
 class GbApuProcessor extends AudioWorkletProcessor {
-  private readonly core = new TransportCore(new GbApuCore(sampleRate), CLOCK_HZ, sampleRate);
+  private readonly core = new GbApuCore(sampleRate);
   private alive = true;
 
   constructor() {
@@ -26,7 +25,7 @@ class GbApuProcessor extends AudioWorkletProcessor {
     this.port.onmessage = (e: MessageEvent<WorkletMessage>) => {
       const data = e.data;
       if (data.type === "events") this.core.schedule(data.events);
-      else if (data.type === "memory") this.core.load(data.address, data.bytes);
+      else if (data.type === "memory") this.core.load();
       else if (data.type === "gain") this.core.setGain(data.value);
       else if (data.type === "reset") this.core.reset();
       else if (data.type === "cancel") this.core.cancel(data.owner, data.from);

@@ -89,7 +89,7 @@ export interface ChipSpec {
 export interface ChipCore {
   /** Queues register writes, each stamped with the cycle it applies at. */
   schedule(events: RegisterEvent[]): void;
-  /** Transport metadata is handled outside the digital chip. */
+  /** Removes future owned writes from the scheduler, before register decoding. */
   cancel?(owner: string, from: number): void;
   /**
    * Puts bytes into the chip's memory, for a voice that plays samples: the

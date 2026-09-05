@@ -1,4 +1,3 @@
-import { TransportCore } from "../../transport-core.js";
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { CPU_HZ, Nes2A03, NesApuCore, PROCESSOR_NAME } from "./dsp.js";
 import { NesDriver } from "./driver.js";
@@ -41,7 +40,7 @@ export const NES_2A03: ChipSpec = {
 
 export const nesChip: ChipDefinition = {
   spec: NES_2A03,
-  create: (sampleRate: number) => new TransportCore(new NesApuCore(sampleRate), NES_2A03.clockHz, sampleRate),
+  create: (sampleRate: number) => new NesApuCore(sampleRate),
   digital: () => new Nes2A03(),
   driver: () => new NesDriver(),
   workletSource: WORKLET_SOURCE,

@@ -1,4 +1,3 @@
-import { TransportCore } from "../../transport-core.js";
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { SNES_PROCESSOR_NAME, SPC_HZ, SnesChip, SnesCore } from "./dsp.js";
 import { SnesDriver } from "./driver.js";
@@ -32,7 +31,7 @@ export const SNES: ChipSpec = {
 
 export const snesChip: ChipDefinition = {
   spec: SNES,
-  create: (sampleRate: number) => new TransportCore(new SnesCore(sampleRate), SNES.clockHz, sampleRate),
+  create: (sampleRate: number) => new SnesCore(sampleRate),
   digital: () => new SnesChip(),
   driver: () => new SnesDriver(),
   workletSource: WORKLET_SOURCE,

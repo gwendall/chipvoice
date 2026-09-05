@@ -1,3 +1,4 @@
+import { EventQueue } from "../../event-queue.js";
 /**
  * A clock-driven emulation of the Ricoh 2A03 APU.
  *
@@ -458,7 +459,7 @@ export class Nes2A03 implements DigitalChip {
   /** What `$4017` last took: a reset button writes it again. */
   lastFrameWrite = 0;
 
-  private events: RegisterEvent[] = [];
+  private readonly events = new EventQueue();
 
   /**
    * A register write, `$4000` to `$4017`, as the CPU would make it.
@@ -724,9 +725,8 @@ export class Nes2A03 implements DigitalChip {
    * then it is clocked, then the count advances.
    */
   step() {
-    while (this.events.length > 0 && this.events[0].at <= this.cycle) {
-      const ev = this.events[0];
-      this.events.shift();
+    while (this.events.nextAt <= this.cycle) {
+      const ev = this.events.take();
       this.applyEvent(ev);
     }
     this.clockCPU();
@@ -748,12 +748,8 @@ export class Nes2A03 implements DigitalChip {
   }
 
   /** Queues register writes. Each one is applied at the cycle it names. */
-  schedule(events: RegisterEvent[]) {
-    for (const ev of events) this.events.push(ev);
-    // Keep the queue ordered; scheduling can interleave. The sort is stable,
-    // so two writes on the same cycle land in the order they were queued.
-    this.events.sort((a, b) => a.at - b.at);
-  }
+  schedule(events: RegisterEvent[]) { this.events.schedule(events); }
+  cancel(owner: string, from: number) { this.events.cancel(owner, from); }
 
   /**
    * Runs `cycles` cycles from where the chip is, and reports each change of a
@@ -786,7 +782,7 @@ export class Nes2A03 implements DigitalChip {
    * So is the memory: a reset does not empty a cartridge.
    */
   reset() {
-    this.events.length = 0;
+    this.events.clear();
     this.pulse1 = new Pulse(1);
     this.pulse2 = new Pulse(2);
     this.triangle = new Triangle();
@@ -1001,6 +997,8 @@ export class NesApuCore implements ChipCore {
   schedule(events: RegisterEvent[]) {
     this.chip.schedule(events);
   }
+
+  cancel(owner: string, from: number) { this.chip.cancel(owner, from); }
 
   load(address: number, bytes: Uint8Array) {
     this.chip.load(address, bytes);

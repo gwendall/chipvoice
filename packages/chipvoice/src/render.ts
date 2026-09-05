@@ -84,8 +84,8 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
    * that block. Rendering the whole thing in one call would leave the sequencer
    * with nothing scheduled past the first fifth of a second.
    */
-  const driver = new OfflineDriver(core, chip);
   let clock = 0;
+  const driver = new OfflineDriver(core, chip, () => clock);
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles });
   sequencer.play(song);
 
@@ -142,8 +142,8 @@ export function recordSong(
     setGain() {},
     reset() {},
   };
-  const driver = new OfflineDriver(core, chip);
   let clock = 0;
+  const driver = new OfflineDriver(core, chip, () => clock);
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles });
   sequencer.play(song);
   // The renderer's block, so a song records the way it renders.
