@@ -1,3 +1,4 @@
+import { EventQueue } from "../../event-queue.js";
 /**
  * The SNES's sound: the S-DSP and its 64 KB, on the SPC700's clock.
  *
@@ -34,14 +35,10 @@ export class SnesChip implements DigitalChip {
   /** The absolute cycle about to be clocked. */
   cycle = 0;
   private selected = 0;
-  private pending: RegisterEvent[] = [];
-  private next = 0;
+  private readonly pending = new EventQueue();
 
-  schedule(events: RegisterEvent[]) {
-    for (const e of events) this.pending.push(e);
-    this.pending.sort((a, b) => a.at - b.at);
-    this.next = 0;
-  }
+  schedule(events: RegisterEvent[]) { this.pending.schedule(events); }
+  cancel(owner: string, from: number) { this.pending.cancel(owner, from); }
 
   /** Bytes into the RAM the DSP reads its samples from. */
   load(address: number, bytes: Uint8Array) {
@@ -56,8 +53,8 @@ export class SnesChip implements DigitalChip {
 
   /** One clock: the writes stamped at or before it, then one phase of the DSP. */
   step() {
-    while (this.next < this.pending.length && this.pending[this.next].at <= this.cycle) {
-      const e = this.pending[this.next++];
+    while (this.pending.nextAt <= this.cycle) {
+      const e = this.pending.take();
       this.write(e.addr, e.value);
     }
     this.dsp.run(1);
@@ -93,8 +90,7 @@ export class SnesChip implements DigitalChip {
     this.dsp.reset();
     this.cycle = 0;
     this.selected = 0;
-    this.pending = [];
-    this.next = 0;
+    this.pending.clear();
   }
 }
 
@@ -143,8 +139,9 @@ export class SnesOutputStage {
     this.heldR = r;
   }
 
-  /** One host sample of what the DAC holds, through the filter. */
-  end(gain: number): [number, number] {
+  /** One host sample of what the DAC holds, through the filter.
+   * Supply caller-owned scratch storage on the audio path; omitted storage is a fresh snapshot. */
+  end(gain: number, into: [number, number] = [0, 0]): [number, number] {
     const inL = this.heldL * this.profile.scale;
     const inR = this.heldR * this.profile.scale;
     this.lpL += this.lpA * (inL - this.lpL);
@@ -155,7 +152,9 @@ export class SnesOutputStage {
     this.hpInR = this.lpR;
     this.hpL = outL;
     this.hpR = outR;
-    return [outL * gain, outR * gain];
+    into[0] = outL * gain;
+    into[1] = outR * gain;
+    return into;
   }
 }
 
@@ -166,6 +165,7 @@ export class SnesCore implements ChipCore {
   private remainder = 0;
   private nextSample = -1;
   private masterGain = 1;
+  private readonly stereo: [number, number] = [0, 0];
 
   constructor(sampleRate: number, profile: SnesOutputProfile = SNES_PROFILE) {
     this.sampleRate = sampleRate;
@@ -184,9 +184,9 @@ export class SnesCore implements ChipCore {
         chip.step();
         if (chip.dsp.sampleReady) stage.hold(chip.dsp.outL, chip.dsp.outR);
       }
-      const [l, r] = stage.end(this.masterGain);
-      left[i] = l;
-      if (right) right[i] = r;
+      stage.end(this.masterGain, this.stereo);
+      left[i] = this.stereo[0];
+      if (right) right[i] = this.stereo[1];
     }
     this.nextSample = startSample + n;
   }
@@ -200,6 +200,8 @@ export class SnesCore implements ChipCore {
   schedule(events: RegisterEvent[]) {
     this.chip.schedule(events);
   }
+
+  cancel(owner: string, from: number) { this.chip.cancel(owner, from); }
 
   load(address: number, bytes: Uint8Array) {
     this.chip.load(address, bytes);

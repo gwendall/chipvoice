@@ -5,7 +5,7 @@ import "@/studio/style.css";
 export const metadata = {
   title: "chipvoice",
   description:
-    "Write music on a real NES sound chip. An API for agents, and a link anyone can play.",
+    "Play five classic sound chips. Make a tune, borrow a voice with arcade effects, and take the music into your own project.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

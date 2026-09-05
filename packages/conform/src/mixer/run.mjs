@@ -162,7 +162,7 @@ for (const name of TESTS) {
   core.setGain(1);
   core.load(0x8000, nes.prg.subarray(0, Math.min(nes.prg.length, 0x8000)));
   if (nes.prg.length === 16384) core.load(0xc000, nes.prg);
-  core.schedule(nes.log.map((w) => ({ at: w.at, addr: w.addr, value: w.value })));
+  core.schedule(nes.log);
   const total = Math.round((cycles / CPU_HZ) * RATE);
   const ours = new Float32Array(total);
   for (let at = 0; at < total; at += 4096) core.render(ours.subarray(at, Math.min(total, at + 4096)), null, at);

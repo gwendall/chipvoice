@@ -125,14 +125,20 @@ export interface PlayNoteOptions {
   detune?: number;
 }
 
+type NoteFrames = NoteFrame[] & { end?: number };
+
+const loadedModules = new WeakMap<AudioContext, Map<string, Promise<void>>>();
+
 export class APU implements NoteSink {
   private node: AudioWorkletNode | null = null;
   private readonly ctx: AudioContext;
   /** The chip this drives. */
   readonly chip: ChipDefinition;
-  private readonly encoder: ChipDriver;
+  private encoder: ChipDriver;
+  private music = new Map<string, NoteFrames[]>();
+  private interruptions = new Map<string, { from: number; until: number }[]>();
   private readonly noiseVoices: Set<string>;
-  private queue: RegisterEvent[] = [];
+  private queue: (RegisterEvent & { owner?: string })[] = [];
   private flushHandle: number | null = null;
   ready = false;
 
@@ -165,16 +171,15 @@ export class APU implements NoteSink {
   async init(destination: AudioNode): Promise<boolean> {
     if (!this.ctx.audioWorklet) return false;
     const chip = this.chip;
-    const url = URL.createObjectURL(
-      new Blob([chip.workletSource], { type: "application/javascript" }),
-    );
-    try {
-      await this.ctx.audioWorklet.addModule(url);
-    } catch {
-      return false;
-    } finally {
-      URL.revokeObjectURL(url);
+    let modules = loadedModules.get(this.ctx);
+    if (!modules) { modules = new Map(); loadedModules.set(this.ctx, modules); }
+    let loading = modules.get(chip.processorName);
+    if (!loading) {
+      const url = URL.createObjectURL(new Blob([chip.workletSource], { type: "application/javascript" }));
+      loading = this.ctx.audioWorklet.addModule(url).finally(() => URL.revokeObjectURL(url));
+      modules.set(chip.processorName, loading);
     }
+    try { await loading; } catch { modules.delete(chip.processorName); return false; }
     this.node = new AudioWorkletNode(this.ctx, chip.processorName, {
       numberOfInputs: 0,
       numberOfOutputs: 1,
@@ -201,12 +206,15 @@ export class APU implements NoteSink {
    * The bytes are copied; the caller keeps its own.
    */
   load(address: number, bytes: Uint8Array) {
-    this.post({ type: "memory", address, bytes: bytes.slice() });
+    this.post({ type: "memory", address, bytes }); // postMessage copies the bytes; no transfer
   }
 
   reset() {
+    this.music.clear();
+    this.interruptions.clear();
+    this.encoder = this.chip.driver();
     this.queue.length = 0;
-    this.post({ type: "reset" });
+    this.resetCore();
     this.powerOn();
   }
 
@@ -220,14 +228,35 @@ export class APU implements NoteSink {
    * because a copy drifts, and a slide that drifts is a file that does not
    * match what the player heard.
    */
-  protected enqueue(event: RegisterEvent) {
+  protected enqueue(event: RegisterEvent & { owner?: string }) {
     this.queue.push(event);
     if (this.flushHandle === null) {
       this.flushHandle = requestAnimationFrame(() => this.flush());
     }
   }
 
+  protected resetCore() { this.post({ type: "reset" }); }
+
+  /** Release expired commands independently of which voice plays next. */
+  protected prune() {
+    const now = this.cycleAt(this.ctx.currentTime);
+    for (const [voice, notes] of this.music) {
+      let kept = 0;
+      for (const note of notes) if ((note.end ?? note[note.length - 1].at) > now) notes[kept++] = note;
+      notes.length = kept;
+      if (!kept) this.music.delete(voice);
+    }
+    for (const [voice, intervals] of this.interruptions) {
+      let kept = 0;
+      for (const interval of intervals) if (interval.until > now) intervals[kept++] = interval;
+      intervals.length = kept;
+      if (!kept) this.interruptions.delete(voice);
+    }
+  }
+
   protected flush() {
+    this.prune();
+    if (this.flushHandle !== null) cancelAnimationFrame(this.flushHandle);
     this.flushHandle = null;
     if (!this.node || this.queue.length === 0) return;
     this.post({ type: "events", events: this.queue });
@@ -247,8 +276,8 @@ export class APU implements NoteSink {
   /**
    * Expands an instrument into frames, and the frames into the chip's writes.
    */
-  playNote(channel: Channel, opts: PlayNoteOptions) {
-    if (!this.ready) return;
+  private frames(channel: Channel, opts: PlayNoteOptions): NoteFrames {
+    if (!this.ready) return [];
     const inst = opts.instrument;
     const start = opts.at ?? this.ctx.currentTime;
     const isNoise = this.noiseVoices.has(channel);
@@ -259,7 +288,7 @@ export class APU implements NoteSink {
         ? noteToFreq(opts.note)
         : opts.note;
     const noiseBase = isNoise ? Number(opts.note) : 0;
-    if (!isNoise && !baseFreq) return;
+    if (!isNoise && !baseFreq) return [];
 
     const frames = Math.max(1, Math.round(opts.duration * FRAME_RATE));
     const gain = opts.gain ?? 1;
@@ -270,7 +299,7 @@ export class APU implements NoteSink {
     const sample = inst.sample ?? null;
     let pitchAcc = 0;
 
-    const states: NoteFrame[] = [];
+    const states: NoteFrames = [];
     for (let f = 0; f < frames; f++) {
       const at = this.cycleAt(start + f * FRAME_TIME);
 
@@ -324,15 +353,92 @@ export class APU implements NoteSink {
       });
     }
 
-    for (const e of this.encoder.note(channel, states)) this.enqueue(e);
-    // Explicit note off, the way a driver would.
-    this.silence(channel, this.cycleAt(start + frames * FRAME_TIME));
+    states.end = this.cycleAt(start + frames * FRAME_TIME);
+    return states;
   }
 
-  /** Silences one channel immediately, or at `at`. */
+  private writeFrames(channel: string, frames: NoteFrames, owner = channel, release = true) {
+    if (!frames.length) return;
+    for (const e of this.encoder.note(channel, frames)) this.enqueue({ ...e, owner });
+    if (release) this.silence(channel, frames.end ?? frames[frames.length - 1].at + this.cycleAt(FRAME_TIME), owner);
+  }
+
+  /** Keep the musical command until its last frame, so an effect can release
+   * the voice back to the correct envelope/pitch, including a held note. */
+  playNote(channel: Channel, opts: PlayNoteOptions) {
+    const frames = this.frames(channel, opts);
+    if (!frames.length) return;
+    const now = this.cycleAt(this.ctx.currentTime);
+    const notes = (this.music.get(channel) ?? []).filter(n => n[n.length - 1].at + this.cycleAt(FRAME_TIME) > now);
+    notes.push(frames);
+    this.music.set(channel, notes);
+    let remaining = frames;
+    for (const interruption of this.interruptions.get(channel) ?? []) {
+      if (!remaining.length) break;
+      if ((remaining.end ?? remaining.at(-1)!.at) <= interruption.from) break;
+      if (remaining[0].at >= interruption.until) continue;
+      this.writeFrames(channel, remaining.filter(f => f.at < interruption.from), channel, false);
+      remaining = this.tail(remaining, interruption.until);
+      this.encoder = this.chip.driver();
+    }
+    this.writeFrames(channel, remaining);
+  }
+
+  private tail(frames: NoteFrames, at: number): NoteFrames {
+    const end = frames.end ?? frames[frames.length - 1].at + this.cycleAt(FRAME_TIME);
+    if (end <= at) return [];
+    if (frames[0].at >= at) return frames;
+    const previous = frames.filter(f => f.at <= at).at(-1)!;
+    return Object.assign([{ ...previous, at }, ...frames.filter(f => f.at > at)], { end });
+  }
+
+  /** Effect ownership is separate from musical ownership, even when both
+   * produce writes to a shared hardware register such as a select/data port. */
+  playEffect(channel: Channel, opts: PlayNoteOptions) {
+    const from = this.cycleAt(opts.at ?? this.ctx.currentTime);
+    const until = from + this.cycleAt(Math.max(FRAME_TIME, Math.round(opts.duration * FRAME_RATE) * FRAME_TIME));
+    this.cancel(channel, from);
+    this.cancel(`fx:${channel}`, from);
+    const now = this.cycleAt(this.ctx.currentTime);
+    const preceding = (this.interruptions.get(channel) ?? []).filter(i => i.until > now && i.from < from).map(i => ({ ...i, until: Math.min(i.until, from) }));
+    this.interruptions.set(channel, [...preceding, { from, until }]);
+    this.encoder = this.chip.driver();
+    this.writeFrames(channel, this.frames(channel, opts), `fx:${channel}`);
+    // Re-encode full register state at release, not just the differences the
+    // old note would have written assuming it still owned the voice.
+    const notes = (this.music.get(channel) ?? []).filter(n => n[n.length - 1].at + this.cycleAt(FRAME_TIME) > from);
+    for (const frames of notes.sort((a, b) => a[0].at - b[0].at)) {
+      this.encoder = this.chip.driver();
+      this.writeFrames(channel, this.tail(frames, until));
+    }
+    this.encoder = this.chip.driver();
+    this.flush();
+  }
+
+  protected cancel(owner: string, from: number) {
+    this.queue = this.queue.filter(e => e.owner !== owner || e.at < from);
+    this.post({ type: "cancel", owner, from });
+  }
+
   stop(channel: Channel, at?: number) {
     if (!this.ready) return;
-    this.silence(channel, this.cycleAt(at ?? this.ctx.currentTime));
+    const cycle = this.cycleAt(at ?? this.ctx.currentTime);
+    this.cancel(channel, cycle);
+    this.encoder = this.chip.driver();
+    this.music.set(channel, (this.music.get(channel) ?? []).map(n => Object.assign(n.filter(f => f.at < cycle), { end: Math.min(n.end ?? cycle, cycle) })).filter(n => n.length > 0));
+    const taken = (this.interruptions.get(channel) ?? []).some(i => cycle >= i.from && cycle < i.until);
+    if (!taken) this.silence(channel, cycle);
+  }
+
+  dispose() {
+    if (this.flushHandle !== null) cancelAnimationFrame(this.flushHandle);
+    this.queue = [];
+    this.music.clear();
+    this.post({ type: "dispose" });
+    this.node?.disconnect();
+    this.node?.port.close();
+    this.node = null;
+    this.ready = false;
   }
 
   /** What a program did first: its samples into memory, then the chip's own driver's writes. */
@@ -341,8 +447,8 @@ export class APU implements NoteSink {
     for (const e of this.encoder.powerOn()) this.enqueue(e);
   }
 
-  private silence(channel: Channel, at: number) {
-    for (const e of this.encoder.noteOff(channel, at)) this.enqueue(e);
+  private silence(channel: Channel, at: number, owner = channel) {
+    for (const e of this.encoder.noteOff(channel, at)) this.enqueue({ ...e, owner });
   }
 }
 
@@ -361,23 +467,28 @@ export class APU implements NoteSink {
  */
 export class OfflineDriver extends APU implements NoteSink {
   private readonly core: ChipCore;
-  private pending: RegisterEvent[] = [];
+  private pending: (RegisterEvent & { owner?: string })[] = [];
 
-  constructor(core: ChipCore, chip: ChipDefinition = nesChip) {
-    // The base class reads one thing from the context: `currentTime`, as the
-    // default start of a note. Offline, that is the origin.
-    super({ currentTime: 0 } as unknown as AudioContext, chip);
+  constructor(core: ChipCore, chip: ChipDefinition = nesChip, currentTime: () => number = () => 0) {
+    // The host owns the offline clock; expiry follows rendered time.
+    super({ get currentTime() { return currentTime(); } } as AudioContext, chip);
     this.core = core;
     this.ready = true;
     this.powerOn();
   }
 
-  protected override enqueue(event: RegisterEvent) {
+  protected override enqueue(event: RegisterEvent & { owner?: string }) {
     this.pending.push(event);
+  }
+
+  protected override cancel(owner: string, from: number) {
+    this.pending = this.pending.filter(e => e.owner !== owner || e.at < from);
+    this.core.cancel?.(owner, from);
   }
 
   /** Hands everything queued to the chip. Called once per rendered block. */
   override flush() {
+    this.prune();
     if (this.pending.length === 0) return;
     this.core.schedule(this.pending);
     this.pending = [];
@@ -391,9 +502,8 @@ export class OfflineDriver extends APU implements NoteSink {
     this.core.load(address, bytes);
   }
 
-  override reset() {
+  protected override resetCore() {
     this.pending.length = 0;
     this.core.reset();
-    this.powerOn();
   }
 }

@@ -17,6 +17,7 @@ declare function registerProcessor(name: string, processor: new () => AudioWorkl
 
 class MdProcessor extends AudioWorkletProcessor {
   private readonly core = new MdCore(sampleRate);
+  private alive = true;
 
   constructor() {
     super();
@@ -26,10 +27,13 @@ class MdProcessor extends AudioWorkletProcessor {
       else if (data.type === "memory") this.core.load();
       else if (data.type === "gain") this.core.setGain(data.value);
       else if (data.type === "reset") this.core.reset();
+      else if (data.type === "cancel") this.core.cancel(data.owner, data.from);
+      else if (data.type === "dispose") { this.alive = false; this.core.reset(); this.port.close(); }
     };
   }
 
   process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+    if (!this.alive) return false;
     const out = outputs[0];
     this.core.render(out[0], out.length > 1 ? out[1] : null, currentFrame);
     return true;

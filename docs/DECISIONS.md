@@ -126,7 +126,7 @@ without.
 `dsp.generated.ts` are gone. The golden hash did not move, which is the proof
 that the conversion changed nothing but the language.
 
-### 10. Audio URLs stay immutable; a deploy changes what they serve next (2026-09-04)
+### 10. Audio URLs stay immutable; a deploy changes what they serve next (2026-09-04, superseded by 21)
 
 `/s/{id}.mp3` keeps its one-year immutable cache and its URL. When the engine
 changes - phase 0 changed the sound of every drum - a new deployment is what
@@ -328,6 +328,9 @@ The sheet says which of the chip's behaviours come from which document.
 
 ### 19. No new systems: the site is an instrument first (2026-09-04)
 
+Updated by decision 20: the playable-demo spec sets V1 scope and order. The
+first sound is explicit, and targeted transport/score repairs precede the UI.
+
 Five chips are shipped, verified and released, and no sixth is started until
 the site is the most interesting thing to land on. The engine, the score, the
 harness and the sheets stay as they are; the work is the layer in front of
@@ -349,9 +352,131 @@ keyboard. None of that needs another chip.
 **What changed.** Phase 8 in the backlog and the roadmap; the roadmap's later
 systems closed until it is done; the README points at it.
 
+### 20. A playable library demo, with two foundations repaired first (2026-09-05)
+
+The product discussion following the audit defines chipvoice.dev as a playful
+demonstration of the library. [DEMO.md](DEMO.md) is the implementation spec.
+V1 is three composed presets, five machine selectors, four reactive role lanes,
+four arcade effect pads, simple editing, sharing and runnable code export.
+Sound starts on an explicit musical gesture, not an arbitrary first click.
+
+**Why.** The demonstration should make the library's capabilities audible:
+portable music, machine-specific sound and real voice stealing. The audit
+reproduced loss of score structure on fork and pending music overwriting Stop
+or SFX. Those two defects prevent an honest demo and must be repaired first.
+Existing cores and framework stay; their transport and integration can change.
+
+**Order.** Repair score preservation and event cancellation with behavioral
+regressions; deliver the first playable screen; complete editing, sharing and
+code export. Instrument the first slice. Identity recovery and other audit
+work have explicit follow-ups, but do not block anonymous play unnecessarily.
+Live recording, controlled variations, MIDI and stems follow V1. New systems
+remain closed until V1 acceptance, then are considered by demand; optional
+later features do not make that gate indefinite.
+
+**What changes.** This supersedes decision 19's arbitrary-click autoplay,
+unchangeable-engine constraint and all-fourteen-tickets release scope. The
+backlog preserves existing ticket IDs and assigns delivery slices. The earlier
+decision remains above as historical reasoning.
+
 ## Open
 
 ### B. The SID's licence
 
 Closed by decision 18: written from the documents, reSID-fp in the harness
 only, and the sheet is not weaker for it.
+
+### 21. Stable audio URLs revalidate the current renderer (2026-09-05)
+
+Supersedes decision 10. Published scores remain immutable, but the engine,
+arranger and output profile deployed by the server determine their current
+render. `/s/{id}.mp3` and `.wav` keep their URLs and return `Cache-Control:
+public, no-cache` with an ETag derived from the rendered bytes. A browser must
+revalidate; a deployment cannot silently leave a year of stale browser audio.
+Existence/deletion is checked before rendering. Saved downloads retain their
+bytes. MP3 and WAV preserve stereo; tags identify the selected machine.
+
+This contract deliberately does not promise archival reproduction across engine
+versions. Pin the npm package and keep the full score for reproducible projects.
+A content-addressed render cache and engine-versioned archival assets remain
+AUD-2 follow-ups, with measurements before adding infrastructure.
+
+### 22. Cancel musical commands outside the digital chip (2026-09-05)
+
+Queue placement superseded by decision 23; ownership and cancellation semantics
+remain in force.
+
+The transport owns future writes by voice and effect, feeding the digital core
+one render block at a time. Stop removes future owned writes; an effect replaces
+a voice and restores the remaining held music with complete register state.
+Canceled initialization invalidates the driver's patch/sample cache. Raw bus
+writes and the conformance oracle API retain their original semantics.
+
+Incremental scheduling exposed an existing MD/SNES queue defect: adding writes
+reset a cursor without discarding consumed entries, replaying old registers.
+Discard consumed entries before merging. Regression tests compare 128- and
+4096-sample renders byte for byte and verify cancellation and recovery on actual
+output. The MD/SNES song goldens change because obsolete writes no longer
+retrigger their voices; raw corpus parity must remain unchanged.
+
+### 23. Consume one shared scheduler directly at each bus clock (2026-09-06)
+
+The mixer conformance job exposed a design problem in decision 22's wrapper:
+`push(...events)` exceeds the VM's argument limit on legitimate captured ROM
+logs. Replacing the spread alone would preserve redundant global sorting,
+per-block splicing/cloning, and a second queue in the digital core. Several
+cores also shifted the entire remaining array on every consumed write.
+
+Remove the transport wrapper. Each bus owns an internal `EventQueue`, used by
+both live music and raw capture replay and consumed directly at its existing
+hardware clock. Incoming batches become sorted runs; a heap merges their heads.
+An already ordered batch costs O(n) to enqueue plus O(log r) to insert its run;
+unsorted input sorts only that new batch. Consumption costs O(log r), or O(1)
+for a single run, where r is the number of pending runs. Equal-cycle writes keep
+arrival order. The queue caches the next timestamp for the idle per-cycle path.
+Consumed references are cleared, and no register records are cloned during
+consumption. The Mega Drive has separate YM and PSG clocks; accepted YM bus
+writes use a ring FIFO, preserving the hardware's serial write acceptance.
+
+Ownership is interpreted only by the scheduler, before register decoding.
+Cancellation compacts affected runs and rebuilds the heap; it does not undo
+accepted hardware writes. Raw writes have no owner and remain uncancelled.
+Repeated writes, triggers and address/data ordering are meaningful hardware
+operations: no arbitrary event limit, dropping or register deduplication here.
+The musical encoder can still omit unchanged state where its chip contract
+permits that optimization.
+
+The offline host now supplies its advancing render clock to the shared driver.
+Flush prunes expired music and effect history across all voices in place;
+reset initializes sample memory once after resetting the core. Live memory
+messages rely on structured cloning instead of making another preliminary copy.
+
+Tradeoffs: a run retains its reference-array capacity until consumed (objects
+are released individually); cancellation scans affected runs. Active/future
+notes still retain the frames required to restore held music. This is bounded
+by scheduled work, not a constant-memory streaming claim. The shared scheduler
+adds some code to each standalone worklet but introduces no runtime dependency.
+Packed transferable buffers or a shared-memory transport need measurements of
+real browser messaging pressure before adding another protocol.
+
+Qualification covers 500,000 writes, randomized interleaving/cancellation,
+hardware FIFO wraparound, offline clock/expiry/reset, five-chip block-size and
+audio regressions, the mixer capture that originally crashed, and browser audio.
+See [the scheduling evaluation](evals/SCHEDULING-2026-09-06.md). Host timings are
+not representative: the user's machine was heavily loaded.
+
+### 24. Reuse hot-path scratch without sharing retained results (2026-09-06)
+
+Audio cores own reusable stereo scratch; BRR encodes own two search buffers;
+the demo owns its position polling buffer. Default snapshot-returning calls
+remain independent, including `Chip.position()`. Callers can opt into
+`position(into)` without mutating the sequencer timeline. React state receives
+snapshots only when values change, never mutable scratch storage.
+
+Keep pending register records and musical frames independent until consumed;
+zero-copy PCM views remain preferable to extra sample copies. Optimize repeated
+object/array construction and copying where ownership allows it, rather than
+introducing global pools or moving every scalar variable out of its loop.
+The [hot-path audit](evals/HOT-PATHS-2026-09-06.md) records the corrected sites,
+compatibility checks and the distinction between source-level construction
+counts and measured GC/CPU behavior.

@@ -56,7 +56,7 @@ and someone porting a piece from NES to Mega Drive all end up.
 | 5. Mega Drive | 4 to 6 | FM through Nuked-OPN2 in WebAssembly, the FM instrument shape |
 | 6. SNES | 6 to 10 | S-DSP, a BRR encoder, the sample instrument shape |
 | 7. C64 | 4 to 6 | SID from the documents, a 6581 profile, reSID-fp as the oracle |
-| 8. The site as an instrument | 3 to 5 | The first tap works, the page opens playing, the five machines as one gesture, sound on touch, meters, pitch as height, drum pads, live play, MIDI, exports |
+| 8. The playable library demo | Re-estimate after foundation repairs | Three presets, five machines, reactive voices, arcade pads, simple editing, sharing and runnable code; [spec](DEMO.md) |
 
 Weeks assume one person, most of their time. Phase 4 starts alongside phase 3 and
 keeps going under everything after it.
@@ -205,22 +205,28 @@ arranger (P7-9), the 8580 (P7-10).
 
 ### Phase 8. The site as an instrument
 
-The five chips are shipped and verified; what someone landing on chipvoice.dev
-meets is an editor, not an instrument: four steps between a tap and a sound, a
-palette of note names, the machines behind a dropdown, an empty output box.
-Phase 8 puts an instrument in front of the engine, in the order that changes
-the first minute most: the first tap works, the page opens playing on presets
-written for each machine, the five machines are five toggles that switch the
-chip while the song plays, a tap is a sound, every row shows its level, pitch
-is height in the song's key, the drums are pads, then live play from the
-keyboard and from MIDI, and exports for producers. The engine, the score, the
-harness and the sheets do not change. Decision 19 closes new systems until it
-is done; the tickets are in the backlog.
+The five chips provide the material for a playful library demonstration.
+[DEMO.md](DEMO.md) defines V1 and its acceptance criteria; decision 20 updates
+decision 19 following the audit and product discussion.
+
+V1 is implemented on `feat/playable-demo`, awaiting PR review and deployment.
+The evaluation report records completed checks and the real-device follow-up.
+
+The implementation repairs complete-score preservation and cancellation of scheduled music
+under Stop/SFX, and includes three presets, explicit Play, five machine selectors
+that preserve position, four reactive musical lanes and four arcade pads.
+It completes the loop with simple editing, timbre choices, undo, draft recovery,
+sharing and runnable code export. Session-only usage counters accompany the demo.
+
+Keep the existing cores and framework; repair their integration where the
+audible experience requires it. Live recording, controlled variations, MIDI,
+stems and richer machine-specific arrangements follow V1. These later features
+are not prerequisites for calling the initial demonstration complete.
 
 ### Later
 
 PC Engine, Game Boy Advance, Amiga Paula, POKEY, YM2151, YM2610. Closed by
-decision 19 until phase 8 is done, and then only as additions to a proven
+decision 20 until phase 8 V1 acceptance, and then only as additions to a proven
 shape.
 
 ## Chips, in order
@@ -238,8 +244,8 @@ shape.
 - **Full system emulation.** No CPU, no ROMs, no video. Other projects do that.
   This one emulates chips and writes the driver, which is what a music tool needs.
 - **Competing with BeepBox, FamiStudio or Furnace as an editor.** They are better
-  editors and will stay so. The editor here is a viewer and a fork button for
-  links.
+  editors and will stay so. The demo offers approachable loop editing and
+  remixing as specified in DEMO.md, without a full DAW's scope.
 - **Reverse engineering silicon.** See the first principle.
 - **The long tail of arcade chips** before the five archetypes are done.
 

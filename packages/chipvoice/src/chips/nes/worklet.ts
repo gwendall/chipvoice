@@ -30,6 +30,7 @@ declare function registerProcessor(
 
 class ApuProcessor extends AudioWorkletProcessor {
   private readonly core = new NesApuCore(sampleRate);
+  private alive = true;
 
   constructor() {
     super();
@@ -39,10 +40,13 @@ class ApuProcessor extends AudioWorkletProcessor {
       else if (data.type === "memory") this.core.load(data.address, data.bytes);
       else if (data.type === "gain") this.core.setGain(data.value);
       else if (data.type === "reset") this.core.reset();
+      else if (data.type === "cancel") this.core.cancel(data.owner, data.from);
+      else if (data.type === "dispose") { this.alive = false; this.core.reset(); this.port.close(); }
     };
   }
 
   process(_inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+    if (!this.alive) return false;
     const out = outputs[0];
     // currentFrame is the context-wide sample clock, so an event scheduled
     // against ctx.currentTime lands on the sample it was booked for.

@@ -114,39 +114,74 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 ## Phase 8. The site as an instrument
 
-Decision 19: no new system until this is done. The engine, the score, the
-harness and the grid stay; this is the layer in front of them. What the
-studio is today is an editor for someone who reads notes and knows a
-tracker: four steps between a tap and a sound, a palette of note names, the
-five machines behind a dropdown in a corner, an empty output box. The order
-below is by how much each ticket changes the first minute of someone landing
-on chipvoice.dev, and it is the order of work. Every ticket ships on its own,
-checked in a real browser on the production build under Playwright as the
-chips were, and the prod e2e keeps its checks.
+[DEMO.md](DEMO.md) is the agreed product spec. Decision 20 updates decision 19.
+Delivery slices: **A** repairs the two foundations; **B** delivers the first
+playable screen; **C** completes V1 editing and sharing; **D** contains later
+extensions. Work in that order, using the dependencies below. Keep existing
+IDs so historical references remain useful. V1 implementation is grouped in one
+PR; deployment and real-device checks are distinct from local completion.
 
-| # | Ticket | Status | Where |
+| # | Ticket | Status | Slice / dependencies |
 | --- | --- | --- | --- |
-| P8-1 | The first tap works. Right after load, a tap on a cell and a tap on TEXT did nothing visible on two tries; find why (hydration, the audio unlock, a click eaten) and fix it, with the e2e tapping once and asserting the response | todo | `apps/web/src/studio/App.tsx`, `useGridGestures.ts`, `test-e2e.mjs` |
-| P8-2 | The page opens playing. The first click anywhere starts a tune; six to eight presets in different styles, each written to show what its machine does best, loadable in one click, with "remix this" | todo | a presets module in the studio; the score format as it is |
-| P8-3 | The five machines as five big toggles at the top of the instrument, switching the chip while the song plays without losing the step; the dropdown goes. The one thing nobody else has, as one gesture | todo | `App.tsx`, `useChip.ts` (`selectChip` keeps the position) |
-| P8-4 | Sound on touch. Tapping a cell or a palette note auditions the note at once on the chosen machine's voice, through the arbiter, so a tap is a sound | todo | `Grid.tsx`, `useChip.ts`, `Chip.sfx` on the role's voice |
-| P8-5 | Life on the page. A level meter or a scope per row, in the machine's colour, in place of the empty output box; the chord row visibly dims when the shot takes its voice | todo | `Scope.tsx`; the worklet posts per-voice levels each block |
-| P8-6 | Pitch as height. Notes stacked low to high in a lane per row, limited to the song's key so nothing is wrong; at the least the palette becomes a vertical keyboard | todo | `Grid.tsx`, `notes.ts` |
-| P8-7 | Drums as four pads with an icon each, their row as dots: a drum machine, the one interface everyone knows | todo | `Grid.tsx` |
-| P8-8 | The order of the page. The instrument first; the title, sign in, save and the link once there is something to keep; the header says five machines and shows them | todo | `App.tsx`, `app/page.tsx` |
-| P8-9 | Cells you can hit. Sixteen steps per screen with bars paged, touch-sized targets, a phone layout | todo | `Grid.tsx`, `style.css` |
-| P8-10 | Play live. The computer keyboard plays the lead over the running pattern and the pads the drums, quantised to the step, as a Pocket Operator's punch-in | todo | `useChip.ts`, the arbiter |
-| P8-11 | Web MIDI in. A keyboard or a pad controller plays the chip, through the arbiter, with nothing to install: a real SID or 2A03 under the fingers in a tab | todo | the Web MIDI API in the studio |
-| P8-12 | Export for producers. Stems per voice, "render on all five" giving five files, VGM where the chip has it | todo | the audio route, `render.ts` |
-| P8-13 | The SID's filter reached from the site: the sweep everyone expects of a C64 demo. The work is P7-9; this is its place in the order | todo | P7-9 |
-| P8-14 | The site's own numbers: time to first sound, machines switched, presets loaded, shares, counted without tracking people, so "interesting" is measured the way parity is | todo | |
+| P8-15 | Preserve the complete score across load, editor, playback and fork: patterns, order, chord shapes, intents and machine. A title-only fork changes no music | implemented | A. Audit finding 1; shared document model before editing UI |
+| P8-16 | Cancel scheduled music on Stop and voice stealing; define restoration after SFX and ownership of shared registers. Test resulting writes/audio, including overlapping effects | implemented | A. Audit finding 2; prerequisite for reliable switching and arcade pads |
+| P8-17 | Fail conformance on a missing/invalid baseline and unexpected corpus membership; retain explicit subset runs. Add the foundation regressions | implemented | A. Audit finding 7; supports P8-15/16 |
+| P8-1 | The first musical gesture works once on the production build. Handle audio unlock, pending creation and obsolete switches; a nonmusical click does not start playback | implemented | B. After P8-16; browser lifecycle and hydration |
+| P8-2 | Three excellent composed cartridges, each playable on all five machines. A tune is loaded at opening; explicit Play starts it | implemented | B. Replaces arbitrary-click autoplay and six-to-eight-preset scope |
+| P8-3 | Five visible machine selectors; switching preserves musical position and edits, with no overlapping player or unexpected start | implemented | B. After P8-15/16; selectChip does not currently preserve position |
+| P8-5 | Four reactive role lanes showing notes, duration, playback and real voice ownership. Mute/solo; measured levels only when actually measured. Small scene actions accompany SFX | implemented | B. After P8-16; respect C64 shared voices and reduced motion |
+| P8-18 | Four arcade pads: Jump, Coin, Laser, Explosion. Chip-appropriate sounds, touch and keyboard, visual action and truthful voice interruption/recovery | implemented | B. After P8-16; no full game required |
+| P8-8 | Instrument-first layout: presets, machines, display and pads. Title, account and publication controls appear when relevant; playing needs no account | implemented | B. DEMO.md visual direction; no marketing hero prerequisite |
+| P8-14 | Measure first sound, machine comparisons, effects, edits and shares without identity or score content. Observe usability sessions and establish a baseline | partial | Session-only counters implemented; observed human sessions and performance baseline deferred until a representative device is available |
+| P8-4 | Sound on touch and an eight-note audition palette; document keyboard shortcuts, preserve a scale-assisted and a chromatic path | implemented | C. After P8-16; live recording remains P8-10 |
+| P8-6 | Simple pitch-by-height editing of the selected pattern; preserve the full score and provide existing intent choices per role | implemented | C. After P8-15; incorporates P4-8, which is not yet done |
+| P8-7 | Drum creation as a readable step grid with immediate audition. Distinguish musical drum controls from arcade SFX pads | implemented | C. After P8-15/16 |
+| P8-9 | Phone editing with large enough targets and an overview; scroll/pinch never paint. Keyboard activation/navigation; do not shrink targets merely to fit sixteen steps | partial | Controls and touch-emulated editor implemented; real-phone scroll/pinch check deferred |
+| P8-19 | Undo/redo and automatic local draft recovery. Raw text remains editable while incomplete, with validation before application | implemented | C. After P8-15; repairs text input and provides reversible exploration |
+| P8-20 | View/copy the current score and runnable library code; share reopens the complete song and chosen machine. Clearly separate draft from publication | implemented | C. After P8-15; verify round trip and copied example |
+| P8-21 | Coherent audio downloads: render identity/cache contract, stereo where appropriate, correct machine tags. Stable song links survive asset versioning | implemented | C. Before claiming exported audio reproduces the demo |
+| P8-22 | Put critical production-build web journeys in CI with a temporary database; verify actual transport output, score preservation, input and sharing | implemented | A regressions, B/C journeys; no production writes from CI |
+| P8-10 | Quantized live recording and overdubbing from the note palette and drums, with undo | todo | D. After V1; audition exists earlier in P8-4 |
+| P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | todo | D. After V1 |
+| P8-11 | Web MIDI input using the same tested transport and ownership model | todo | D. After V1 |
+| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | todo | D. After P8-21; basic audio download is in V1 |
+| P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | todo | D. P7-9, P6-10, P5-10; no simulated generic substitute |
+
+## Audit follow-ups
+
+The [audit](AUDIT-2026-09-05.md) contains evidence and the distinction between
+reproduced defects and risks found by inspection. Score, transport, frontend,
+cache and CI work is tracked in phase 8 above. These remaining repairs are
+explicitly tracked without turning anonymous demo delivery into a platform
+rewrite.
+
+| # | Ticket | Status | Priority / dependency |
+| --- | --- | --- | --- |
+| AUD-1 | Separate stable user identity, API keys and browser sessions; recover publications across logins, consume magic tokens atomically, and do not rotate an agent key on browser login | todo | Before relying on account recovery/sign-in; does not block anonymous play |
+| AUD-2 | Profile render CPU, bound/cache request variants and deduplicate concurrent renders; add worker/storage only as measurements justify | todo | Before expanding expensive export usage; alongside P8-21 |
+| AUD-3 | Make low-sample-rate offline scheduling correct, bound the timeline without a position reader and fix beatDelay's contract | partial | Scheduling fixes, host-driven offline expiry and direct shared bus queues included (decision 23); low-rate performance qualification remains separate |
+| AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | todo | Before claiming every syntactically valid score plays unchanged |
+| AUD-5 | Use versioned database migrations with precise error handling | todo | Alongside identity/schema work |
+| AUD-6 | Align root/npm README, package metadata, capabilities and licence statements; distinguish corpus parity from physical verification, remove misleading global completeness claims | partial | Root/npm introductions, metadata and licences aligned; full capability-copy audit remains follow-up |
+| AUD-7 | Audit hot-path allocation/copy sites in five cores, drivers, encoding and demo animation; reuse scratch with explicit ownership | implemented | [Audit and qualification](evals/HOT-PATHS-2026-09-06.md); representative-device CPU/GC measurements remain alongside AUD-3 |
 
 ## Later phases
 
-New systems are closed by decision 19 until phase 8 is done. After that, see
-the roadmap.
+New systems remain closed until phase 8 V1 acceptance under decision 20.
+Slice D is optional later work and does not indefinitely extend that gate.
+After V1, additions are driven by demand; see the roadmap.
 
 ## Discoveries
+
+**2026-09-05, phase 8 and audit follow-ups.** The user clarified that the site
+is a playful library demo. DEMO.md captures the agreed V1 and later ideas.
+The audit reproduced complete-score loss on a title-only fork and musical
+register writes returning after Stop or overwriting SFX. Repair those two
+foundations first, then ship the visible instrument. Explicit Play replaces
+arbitrary-click autoplay; three strong cartridges replace the larger initial
+preset target. Live recording, MIDI, variations and stems follow V1. Existing
+phase 8 IDs are retained, new prerequisites and missing outcomes are added,
+and no implementation is marked complete by writing this specification.
 
 **2026-09-04, P7-1 to P7-6.** The fifth chip, and the first written from the
 documents since the Game Boy: the SID's digital part is chipvoice's own code,

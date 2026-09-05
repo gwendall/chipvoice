@@ -1,10 +1,16 @@
 # chipvoice
 
-The sound chips of the old machines, emulated to the cycle and measured against
-the hardware, in a browser and on a server, so that people and their agents can
+Five classic sound chips, emulated to the cycle and checked against reference
+cores and hardware test ROMs, in a browser and on a server, so that people and their agents can
 write music for them and hear it the way the machine played it.
 
-**[chipvoice.dev](https://chipvoice.dev)** to try it. `npm i chipvoice` to use it.
+**[chipvoice.dev](https://chipvoice.dev)** to play it. `npm i chipvoice` to use it.
+
+The demo is a little musical console: three composed cartridges, five machines,
+four arcade pads, a note editor, recoverable local drafts and score/code/audio
+export. Start with Play, compare the same passage on another chip, then hear an
+effect borrow a voice. No account is required. See the [demo spec](docs/DEMO.md)
+and [audit](docs/AUDIT-2026-09-05.md) for scope and tracked limitations.
 
 ## Why
 
@@ -154,13 +160,15 @@ the community's test ROMs, or borrowed from a core the community has already
 verified against silicon; that the sheet is the contract; and that the product
 is a [portable score](docs/SCORE.md) that an agent or a person writes once and
 that plays on a NES, a Game Boy, a Mega Drive, a SNES or a C64 in that
-machine's own idiom. All five play today. What comes next is not a sixth chip:
-it is the site as an instrument, phase 8 of the roadmap, so that the five are
-one gesture apart for whoever lands here.
+machine's own idiom. All five play today, and the demo puts their sounds one
+gesture apart. The next slices explore live recording, controlled variations
+and MIDI after V1 usability checks; a sixth chip is not the current priority.
 
 ## Releasing
 
 A tag publishes the package from GitHub Actions over trusted publishing. See
 [the package README](packages/chipvoice/README.md#releasing).
 
-MIT.
+MIT for the original code; LGPL-2.1-or-later for the derived YM2612 and S-DSP
+cores. The package licence is `(MIT AND LGPL-2.1-or-later)`. See the source
+headers and bundled licence notices. Console marks retain their owners’ rights.

@@ -102,6 +102,7 @@ export function arrange(score: Score, chipId = score.chip ?? "2a03"): Song {
   const instruments = instrumentsFor(chipId, score.intent);
   return {
     id: score.id ?? `score:${chipId}:${fingerprint(score)}`,
+    chip: chipId,
     bpm: score.bpm,
     patterns: score.patterns,
     order: score.order,

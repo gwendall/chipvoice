@@ -89,6 +89,8 @@ export interface ChipSpec {
 export interface ChipCore {
   /** Queues register writes, each stamped with the cycle it applies at. */
   schedule(events: RegisterEvent[]): void;
+  /** Removes future owned writes from the scheduler, before register decoding. */
+  cancel?(owner: string, from: number): void;
   /**
    * Puts bytes into the chip's memory, for a voice that plays samples: the
    * 2A03's DMC reads the CPU's address space from `$8000` up. A chip with no
@@ -103,6 +105,9 @@ export interface ChipCore {
   setGain(value: number): void;
   reset(): void;
 }
+
+/** Scheduling ownership never changes a hardware address or byte. */
+export interface ScheduledEvent extends RegisterEvent { owner?: string }
 
 /**
  * One register write, as the CPU would make it, stamped with the cycle it
@@ -281,10 +286,12 @@ export interface ChipDefinition {
  * and would otherwise drift from the driver with nothing to say so.
  */
 export type WorkletMessage =
-  | { type: "events"; events: RegisterEvent[] }
+  | { type: "events"; events: ScheduledEvent[] }
   | { type: "memory"; address: number; bytes: Uint8Array }
   | { type: "gain"; value: number }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "cancel"; owner: string; from: number }
+  | { type: "dispose" };
 
 const registry = new Map<string, ChipDefinition>();
 

@@ -17,7 +17,8 @@ import { chromium } from "playwright";
  * If it ever is not, then a shared MP3 is not what its author heard, and the
  * whole reason for rendering on demand rather than storing collapses.
  */
-const SITE = process.env.SITE || "https://chipvoice.dev";
+const SITE = process.env.SITE;
+if (!SITE) throw new Error('Set SITE explicitly for release verification; use pnpm --filter chipvoice-web test for isolated local tests.');
 const guard = setTimeout(() => { console.error("TIMEOUT"); process.exit(1); }, 300000);
 guard.unref();
 
@@ -287,7 +288,7 @@ try {
   let started = false;
   const deadline = Date.now() + 25000;
   while (!started && Date.now() < deadline) {
-    await p.click(".transport .primary");
+    await p.click(".play-button");
     started = await p
       .waitForFunction(() => !!window.chipvoice, null, { timeout: 3000 })
       .then(() => true)
@@ -312,13 +313,13 @@ try {
         if (pos) steps.add(pos.step);
       }
       const at = chip.currentTime;
-      document.querySelector(".transport .fire").click();
+      document.querySelector(".arcade-pad.laser").click();
       await new Promise((r) => setTimeout(r, 60));
       return {
         peak: Math.round(peak * 1000) / 1000,
         steps: steps.size,
         stolen: chip.canPlay("p2", at + 0.05) === false,
-        rowMarked: !!document.querySelector(".row.taken"),
+        rowMarked: !!document.querySelector("[data-stolen="true"]"),
       };
     });
     check("it makes a sound", heard.peak > 0.05, `peak ${heard.peak}`);
@@ -340,9 +341,9 @@ try {
   await phone.goto(SITE, { waitUntil: "domcontentloaded" });
   await phone.waitForTimeout(1200);
   const fixed = await phone.evaluate(() => {
-    const bar = document.querySelector(".transport");
+    const bar = document.querySelector(".play-button");
     const r = bar.getBoundingClientRect();
-    return getComputedStyle(bar).position === "fixed" && r.bottom <= innerHeight + 1;
+    return r.top >= 0 && r.bottom <= innerHeight + 1;
   });
   check("the transport is reachable on a phone", fixed);
   check(

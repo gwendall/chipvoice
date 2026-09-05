@@ -64,16 +64,19 @@ export function encodeBrr(pcm: Int16Array, loop: boolean): Uint8Array {
   // last two decoded samples. They are stored doubled, as the chip stores them.
   let last1 = 0;
   let last2 = 0;
+  // Swap the candidate and winner buffers instead of allocating up to 52
+  // candidate arrays per block. Neither scratch buffer escapes this call.
+  let nibbles = new Uint8Array(16);
+  let bestNibbles = new Uint8Array(16);
   for (let b = 0; b < blocks; b++) {
     let bestError = Infinity;
-    let best: { shift: number; filter: number; nibbles: number[]; l1: number; l2: number } | null = null;
-    const filters = b === 0 ? [0] : [0, 1, 2, 3];
-    for (const filter of filters) {
+    let bestShift = 0, bestFilter = 0, best1 = 0, best2 = 0;
+    for (let filter = 0; filter < (b === 0 ? 1 : 4); filter++) {
       for (let shift = 0; shift <= 12; shift++) {
         let p1 = last1;
         let p2 = last2;
         let error = 0;
-        const nibbles: number[] = [];
+        let completed = 0;
         for (let i = 0; i < 16; i++) {
           const target = pcm[b * 16 + i] ?? 0;
           // Quantise the difference from the predictor in the chip's own
@@ -89,22 +92,22 @@ export function encodeBrr(pcm: Int16Array, loop: boolean): Uint8Array {
           const e = decoded - target;
           error += e * e;
           if (error >= bestError) break;
-          nibbles.push(n & 0xf);
+          nibbles[completed++] = n & 0xf;
           p2 = p1;
           p1 = decoded;
         }
-        if (nibbles.length === 16 && error < bestError) {
+        if (completed === 16 && error < bestError) {
           bestError = error;
-          best = { shift, filter, nibbles, l1: p1, l2: p2 };
+          bestShift = shift; bestFilter = filter; best1 = p1; best2 = p2;
+          const previous = bestNibbles; bestNibbles = nibbles; nibbles = previous;
         }
       }
     }
-    const chosen = best!;
     const end = b === blocks - 1;
-    out[b * 9] = (chosen.shift << 4) | (chosen.filter << 2) | (end && loop ? 2 : 0) | (end ? 1 : 0);
-    for (let i = 0; i < 8; i++) out[b * 9 + 1 + i] = (chosen.nibbles[2 * i] << 4) | chosen.nibbles[2 * i + 1];
-    last1 = chosen.l1;
-    last2 = chosen.l2;
+    out[b * 9] = (bestShift << 4) | (bestFilter << 2) | (end && loop ? 2 : 0) | (end ? 1 : 0);
+    for (let i = 0; i < 8; i++) out[b * 9 + 1 + i] = (bestNibbles[2 * i] << 4) | bestNibbles[2 * i + 1];
+    last1 = best1;
+    last2 = best2;
   }
   return out;
 }
