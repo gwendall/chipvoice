@@ -30,7 +30,7 @@ try {
   for (const name of ['nes', 'gb', 'md', 'snes', 'c64']) assert.equal((await page.request.get(`${base}/machines/${name}.svg`)).status(), 200);
   await page.screenshot({ path: `${artifacts}/${engine}-desktop-initial.png`, fullPage: true });
   await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await page.waitForFunction(() => window.chipvoice?.playing);
+  await page.waitForFunction(() => window.chipvoice?.playing && window.chipvoice.position());
   for (const [name, id] of machines) {
     const before = await page.evaluate(() => window.chipvoice.position());
     await page.locator('.machines').getByRole('button', { name, exact: true }).click();
@@ -164,7 +164,7 @@ try {
   const desktopVideo = page.video(); await context.close(); await desktopVideo.saveAs(`${artifacts}/${engine}-desktop.webm`);
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(engine === 'firefox' ? {} : { isMobile: true }), reducedMotion: 'reduce', recordVideo: { dir: `${artifacts}/videos`, size: { width: 390, height: 844 } } });
   const phone = await mobile.newPage(); phone.on('pageerror', e => errors.push(e.message)); await phone.goto(base);
-  await phone.getByRole('button', { name: 'Play', exact: true }).tap(); await phone.waitForFunction(() => window.chipvoice?.playing); assert.ok((await amplitude(phone)).rms > .001);
+  await phone.getByRole('button', { name: 'Play', exact: true }).tap(); await phone.waitForFunction(() => window.chipvoice?.playing && window.chipvoice.position()); assert.ok((await amplitude(phone)).rms > .001);
   await phone.screenshot({ path: `${artifacts}/${engine}-mobile-playing.png`, fullPage: true });
   await phone.getByRole('button', { name: 'Edit loop', exact: false }).tap(); const touchCell = phone.getByRole('button', { name: 'Melody step 1 C4', exact: true }); await touchCell.tap(); assert.equal(await touchCell.getAttribute('aria-pressed'), 'true');
   if (engine === 'chromium') {
@@ -180,6 +180,7 @@ try {
   await phone.screenshot({ path: `${artifacts}/${engine}-mobile-editor.png`, fullPage: true }); check('Touch audition/edit and responsive layout, reduced motion');
   const beforeTouchTake = await phone.evaluate(() => localStorage.getItem('chipvoice.draft.v1'));
   await phone.getByRole('button', { name: 'Chromatic', exact: true }).tap();
+  await phone.waitForFunction(() => document.querySelector('.keyboard-options button')?.getAttribute('aria-pressed') === 'true');
   await phone.getByRole('button', { name: 'Record notes', exact: true }).tap();
   await phone.waitForFunction(() => window.chipvoice?.position() && document.querySelector('.record-button')?.getAttribute('aria-pressed') === 'true');
   await phone.getByRole('button', { name: 'Play C#4', exact: true }).tap();
@@ -192,4 +193,16 @@ try {
   await phone.waitForFunction(before => localStorage.getItem('chipvoice.draft.v1') === before, beforeTouchTake);
   check('Touch records once per press and Undo take restores the complete score');
   const mobileVideo = phone.video(); await mobile.close(); await mobileVideo.saveAs(`${artifacts}/${engine}-mobile.webm`); assert.deepEqual(errors, []); check('No browser exceptions');
-} finally { await browser.close(); await writeFile(`${artifacts}/${engine}-report.json`, JSON.stringify({ report, errors }, null, 2)); }
+} catch (error) {
+  report.push({ name: 'Failure', evidence: String(error) });
+  let i = 0;
+  for (const context of browser.contexts()) for (const page of context.pages()) {
+    await page.screenshot({ path: `${artifacts}/${engine}-failure-${i++}.png`, fullPage: true }).catch(() => {});
+  }
+  throw error;
+} finally {
+  // Closing contexts explicitly flushes videos even when an assertion fails.
+  for (const context of browser.contexts()) await context.close();
+  await browser.close();
+  await writeFile(`${artifacts}/${engine}-report.json`, JSON.stringify({ report, errors }, null, 2));
+}

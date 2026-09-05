@@ -30,8 +30,8 @@ in [DEMO.md](../DEMO.md); ownership and timing are in decision 25.
 
 Production build, typecheck and the complete library unit suite passed. All
 five existing song goldens remain unchanged. The production API/browser suite
-passed in Chromium; the final pointer-press and mobile-take path additionally
-passed in WebKit and Firefox. CI runs the complete final Chromium journey and the existing
+passed in Chromium, WebKit and Firefox, including pointer-press capture and
+mobile one-take undo. CI runs the complete Chromium journey and the existing
 five-chip conformance/ROM/mixer qualification.
 
 The export journey checks a stereo WAV byte for byte against a fresh library
@@ -55,7 +55,17 @@ the first scheduled beat, then nonzero output (peak about 0.37). A separate
 native-click probe timed out. The full Chromium rerun passed with the original
 audio threshold and native interactions; no audio workaround or assertion
 relaxation was introduced. These observations do not establish a unique cause
-for the first failure.
+for the first failure. A later cold-start run also observed zero output before
+the clock was ready. The harness now waits for the first audible timeline
+position before measuring startup output; the amplitude threshold is unchanged.
+
+The first CI run passed desktop recording/export and all five-chip conformance
+checks, but its new mobile journey could not find C#4 after tapping Chromatic.
+The isolated touch journey and full Chromium rerun passed locally. The harness
+now explicitly checks that the palette has entered chromatic mode before
+arming recording. Failure screenshots and explicit context closure preserve
+diagnostic videos on assertion errors, instead of losing the failing page.
+This does not establish why that first palette tap was missed in CI.
 
 The host is heavily loaded, so these runs establish functional results rather
 than representative latency, CPU or GC numbers. WebKit and touch emulation are
