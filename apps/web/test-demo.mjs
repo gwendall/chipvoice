@@ -171,9 +171,17 @@ try {
     const beforeScroll = await phone.evaluate(() => localStorage.getItem('chipvoice.draft.v1'));
     await phone.locator('.grid-scroll').scrollIntoViewIfNeeded(); const box = await phone.locator('.grid-scroll').boundingBox();
     const cdp = await mobile.newCDPSession(phone); const x = box.x + 230, y = Math.max(40, Math.min(700, box.y + 75));
+    await phone.evaluate(() => {
+      const grid = document.querySelector('.grid-scroll');
+      window.touchScrollFinished = false;
+      grid.addEventListener('scrollend', () => { window.touchScrollFinished = true; }, { once: true });
+    });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
     for (let i = 1; i <= 5; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - i * 25, y }] });
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    // touchEnd can start a compositor fling. Its next tap would stop the fling
+    // instead of activating a control, even if Playwright scrolled that control into view.
+    await phone.waitForFunction(() => window.touchScrollFinished);
     assert.equal(await phone.evaluate(() => localStorage.getItem('chipvoice.draft.v1')), beforeScroll); await cdp.detach(); check('Touch scrolling does not paint notes');
   }
   assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);

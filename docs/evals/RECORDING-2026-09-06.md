@@ -61,11 +61,16 @@ position before measuring startup output; the amplitude threshold is unchanged.
 
 The first CI run passed desktop recording/export and all five-chip conformance
 checks, but its new mobile journey could not find C#4 after tapping Chromatic.
-The isolated touch journey and full Chromium rerun passed locally. The harness
-now explicitly checks that the palette has entered chromatic mode before
-arming recording. Failure screenshots and explicit context closure preserve
-diagnostic videos on assertion errors, instead of losing the failing page.
-This does not establish why that first palette tap was missed in CI.
+The isolated touch journey and full Chromium rerun passed locally. An explicit
+chromatic-mode assertion localized the second CI failure to the palette tap.
+Retained failure screenshots showed the grid continuing from column 3 to column
+5 after synthetic `touchEnd`: the compositor fling had not finished. A tap
+during that motion stops the fling instead of activating the next control.
+The gesture check now waits for the grid's `scrollend` event before tapping
+Chromatic, then verifies the mode before arming recording. Failure screenshots
+and explicit context closure preserve diagnostic videos on assertion errors,
+instead of losing the failing page. No product audio or control workaround
+was introduced for this harness sequencing issue.
 
 The host is heavily loaded, so these runs establish functional results rather
 than representative latency, CPU or GC numbers. WebKit and touch emulation are
