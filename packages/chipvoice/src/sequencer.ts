@@ -42,6 +42,8 @@ export interface PercussionKit {
 }
 
 export interface Song {
+  /** Arrangement target, retained by arrange and honored by offline render. */
+  chip?: string;
   /**
    * Stable name, used to decide whether `play` is a no-op.
    *
@@ -149,6 +151,7 @@ export class Sequencer {
   private timer: number | null = null;
   private running = false;
   private chordSlot = 0;
+  private resumeStep = false;
   private currentTime: () => number;
   /** False when something else advances the clock and calls `pump`. */
   private live: boolean;
@@ -253,15 +256,26 @@ export class Sequencer {
    * in. See Decisions.
    */
 
-  play(song: Song) {
-    if (this.song?.id === song.id && this.running) return;
+  play(song: Song, position?: { step: number; orderIndex: number }) {
+    if (!position && this.song?.id === song.id && this.running) return;
     this.stop();
     this.song = song;
     this.compiled = song.patterns.map(compile);
     this.timeline.length = 0;
     this.orderIndex = 0;
     this.step = 0;
+    if (position) {
+      this.orderIndex = Math.max(0, Math.min(song.order.length - 1, position.orderIndex));
+      this.step = Math.max(0, Math.min(this.compiled[song.order[this.orderIndex]].steps - 1, position.step));
+    }
     this.chordSlot = 0;
+    if (position) {
+      const chords = this.compiled[song.order[this.orderIndex]].chord;
+      this.chordSlot = [...chords.values()].filter(e => e.step < this.step && e.token !== "=").length;
+      const held = [...chords.values()].filter(e => e.step < this.step).at(-1);
+      if (!chords.has(this.step) && held && held.token !== "=" && this.chordSlot > 0) this.chordSlot--;
+    }
+    this.resumeStep = !!position;
     this.running = true;
     this.nextTime = this.currentTime() + 0.1;
     // A host with no timers - Node, during an offline render - drives `pump`
@@ -272,6 +286,7 @@ export class Sequencer {
   }
 
   stop() {
+    const wasRunning = this.running;
     this.running = false;
     this.timeline.length = 0;
     if (this.timer !== null) {
@@ -281,6 +296,7 @@ export class Sequencer {
     this.apu.stop(this.roles.lead);
     this.apu.stop(this.roles.chord);
     this.apu.stop(this.roles.bass);
+    if (wasRunning) this.apu.stop(this.roles.perc);
     this.song = null;
   }
 
@@ -291,7 +307,7 @@ export class Sequencer {
    * clock: offline rendering advances a counter and calls this, which is the
    * whole of what makes the same sequencer serve real time and a file.
    */
-  pump() {
+  pump(until?: number) {
     if (!this.running || !this.song) return;
     const stepTime = 60 / this.song.bpm / 4;
     const lookahead = 0.2;
@@ -300,8 +316,10 @@ export class Sequencer {
     // If we fell far behind (tab was hidden), resync rather than catching up.
     if (this.nextTime < now - 0.5) this.nextTime = now + 0.05;
 
-    while (this.nextTime < now + lookahead) {
+    this.positionAt(now);
+    while (this.nextTime < (until ?? now + lookahead)) {
       this.scheduleStep(this.nextTime, stepTime);
+      this.resumeStep = false;
       this.timeline.push({
         at: this.nextTime,
         step: this.step,
@@ -329,7 +347,13 @@ export class Sequencer {
     const pattern = this.compiled[song.order[this.orderIndex]];
 
     const { lead: leadVoice, chord: chordVoice, bass: bassVoice, perc: percVoice } = this.roles;
-    const bass = pattern.bass.get(this.step);
+    const event = (line: Map<number, Event>) => {
+      const hit = line.get(this.step);
+      if (hit || !this.resumeStep) return hit;
+      const previous = [...line.values()].filter(e => e.step < this.step).at(-1);
+      return previous ? { ...previous, length: previous.length - (this.step - previous.step) } : undefined;
+    };
+    const bass = event(pattern.bass);
     if (bass && bass.token !== "=" && this.arbiter.canPlay(bassVoice, at)) {
       this.apu.playNote(bassVoice, {
         note: bass.token,
@@ -339,7 +363,7 @@ export class Sequencer {
       });
     }
 
-    const lead = pattern.lead.get(this.step);
+    const lead = event(pattern.lead);
     if (lead && this.arbiter.canPlay(leadVoice, at)) {
       if (lead.token === "=") {
         this.apu.stop(leadVoice, at);
@@ -354,7 +378,7 @@ export class Sequencer {
       }
     }
 
-    const chord = pattern.chord.get(this.step);
+    const chord = event(pattern.chord);
     if (chord && chord.token !== "=" && this.arbiter.canPlay(chordVoice, at)) {
       const shape =
         pattern.chordShape[this.chordSlot % pattern.chordShape.length];

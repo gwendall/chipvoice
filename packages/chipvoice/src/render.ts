@@ -68,7 +68,7 @@ function chipFor(id: string): ChipDefinition {
 
 export function renderSong(song: Song, options: RenderOptions = {}): RenderResult {
   const sampleRate = options.sampleRate ?? 44100;
-  const chip = chipFor(options.chip ?? "2a03");
+  const chip = chipFor(options.chip ?? song.chip ?? "2a03");
 
   const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
   const total = Math.max(1, Math.round(seconds * sampleRate));
@@ -98,7 +98,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
     clock = offset / sampleRate;
     // Fill the queue for the block about to be rendered, then flush the
     // driver's batching - live it waits for a frame, here nothing ever paints.
-    sequencer.pump();
+    sequencer.pump(Math.max(clock + 0.2, (offset + size) / sampleRate));
     driver.flush();
     core.render(
       left.subarray(offset, offset + size),
@@ -126,7 +126,7 @@ export function recordSong(
   song: Song,
   options: { seconds?: number; chip?: string } = {},
 ): { events: RegisterEvent[]; cycles: number; memory: { address: number; bytes: Uint8Array }[] } {
-  const chip = chipFor(options.chip ?? "2a03");
+  const chip = chipFor(options.chip ?? song.chip ?? "2a03");
   const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
   const cycles = Math.round(seconds * chip.spec.clockHz);
   const events: RegisterEvent[] = [];

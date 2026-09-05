@@ -1,4 +1,4 @@
-import { APU, type Channel, type Instrument } from "./driver.js";
+import { APU, FRAME_RATE, type Channel, type Instrument } from "./driver.js";
 import { getChip, type ChipDefinition } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
@@ -78,14 +78,15 @@ export { noteToFreq } from "./driver.js";
  * not do, and losing it is most of why those libraries sound wrong.
  */
 class Arbiter implements ChannelClaim {
-  private busy = new Map<Channel, number>();
+  private busy = new Map<Channel, { from: number; until: number }[]>();
 
-  claim(channel: Channel, until: number) {
-    this.busy.set(channel, Math.max(this.busy.get(channel) ?? 0, until));
+  claim(channel: Channel, from: number, until: number, now: number) {
+    const previous = (this.busy.get(channel) ?? []).filter(i => i.until > now && i.from < from).map(i => ({ ...i, until: Math.min(i.until, from) }));
+    this.busy.set(channel, [...previous, { from, until }]);
   }
 
   canPlay(channel: Channel, at: number) {
-    return at >= (this.busy.get(channel) ?? 0);
+    return !(this.busy.get(channel) ?? []).some(i => at >= i.from && at < i.until);
   }
 
   clear() {
@@ -167,7 +168,7 @@ export class Chip {
     this.master = master;
     this.ownsContext = owns;
     this.level = gain;
-    this.sequencer = new Sequencer(apu, this.arbiter, () => ctx.currentTime, { roles: apu.chip.spec.roles });
+    this.sequencer = new Sequencer(apu, { canPlay: () => true }, () => ctx.currentTime, { roles: apu.chip.spec.roles });
   }
 
   /**
@@ -246,13 +247,14 @@ export class Chip {
    * a spread to change one field, which is the obvious way to derive one -
    * fails an identity check and restarts the piece on every call.
    */
-  play(song: Song) {
-    this.sequencer.play(song);
+  play(song: Song, position?: { step: number; orderIndex: number }) {
+    this.sequencer.play(song, position);
   }
 
   stop() {
     this.sequencer.stop();
     this.arbiter.clear();
+    this.apu.reset();
   }
 
   get playing() {
@@ -275,8 +277,8 @@ export class Chip {
    */
   sfx(channel: Channel, options: SfxOptions) {
     const at = this.ctx.currentTime + (options.delay ?? 0);
-    this.arbiter.claim(channel, at + options.duration);
-    this.apu.playNote(channel, {
+    this.arbiter.claim(channel, at, at + Math.max(1, Math.round(options.duration * FRAME_RATE)) / FRAME_RATE, this.ctx.currentTime);
+    this.apu.playEffect(channel, {
       note: options.note,
       instrument: options.instrument,
       duration: options.duration,
@@ -331,13 +333,14 @@ export class Chip {
   beatDelay(maxWait = 0.12): number {
     const beat = this.nextEighth();
     if (beat === null) return 0;
-    return Math.min(Math.max(0, beat - this.ctx.currentTime), maxWait);
+    const wait = Math.max(0, beat - this.ctx.currentTime);
+    return wait <= maxWait ? wait : 0;
   }
 
   /** Frees the worklet and, unless you supplied the context, closes it. */
   dispose() {
     this.sequencer.stop();
-    this.apu.reset();
+    this.apu.dispose();
     this.master.disconnect();
     if (this.ownsContext) void this.ctx.close();
   }

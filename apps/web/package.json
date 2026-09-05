@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node test-api.mjs && node test-studio.mjs && node test-editor.mjs"
+    "test": "node test-local.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

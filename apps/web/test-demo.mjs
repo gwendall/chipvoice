@@ -1,0 +1,133 @@
+import assert from 'node:assert/strict';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { arrange, renderSong, toWav } from '../../packages/chipvoice/dist/index.js';
+import { build } from '../../packages/chipvoice/node_modules/esbuild/lib/main.js';
+import { chromium, firefox, webkit } from 'playwright';
+const base = process.env.SITE || 'http://localhost:3017';
+const artifacts = resolve('../../.artifacts/demo');
+await mkdir(artifacts, { recursive: true });
+const engine = process.env.BROWSER || 'chromium';
+const browser = await ({ chromium, firefox, webkit }[engine]).launch();
+const machines = [['NES', '2a03'], ['Game Boy', 'dmg'], ['Mega Drive', 'md'], ['SNES', 'snes'], ['C64', 'c64']];
+const errors = []; const report = [];
+const check = (name, evidence) => { report.push({ name, evidence }); console.log('PASS', name, evidence ?? ''); };
+const songFrom = page => page.evaluate(() => JSON.parse(document.querySelector('.code-panel pre').textContent));
+async function amplitude(page) {
+  return page.evaluate(async () => {
+    const chip = window.chipvoice; const analyser = chip.audioContext.createAnalyser(); analyser.fftSize = 2048; chip.output.connect(analyser);
+    const samples = new Float32Array(2048); let peak = 0; let square = 0; let count = 0;
+    for (let i = 0; i < 12; i++) { await new Promise(r => setTimeout(r, 30)); analyser.getFloatTimeDomainData(samples); for (const v of samples) { peak = Math.max(peak, Math.abs(v)); square += v*v; count++; } }
+    chip.output.disconnect(analyser); return { peak, rms: Math.sqrt(square/count) };
+  });
+}
+try {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, recordVideo: { dir: `${artifacts}/videos`, size: { width: 1280, height: 1000 } } });
+  const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
+  await page.goto(base); await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => !!window.chipvoice), false); check('Opening the demo does not start audio');
+  assert.equal(await page.locator('.machine-logo').count(), 5);
+  for (const name of ['nes', 'gb', 'md', 'snes', 'c64']) assert.equal((await page.request.get(`${base}/machines/${name}.svg`)).status(), 200);
+  await page.screenshot({ path: `${artifacts}/${engine}-desktop-initial.png`, fullPage: true });
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.waitForFunction(() => window.chipvoice?.playing);
+  for (const [name, id] of machines) {
+    const before = await page.evaluate(() => window.chipvoice.position());
+    await page.locator('.machines').getByRole('button', { name, exact: true }).click();
+    await page.waitForFunction(id => window.chipvoice?.spec.id === id && window.chipvoice.playing, id);
+    const level = await amplitude(page); assert.ok(level.rms > .001 && Number.isFinite(level.peak), `${name} must be audible`);
+    check(`${name} produces measured audio`, { ...level, before, after: await page.evaluate(() => window.chipvoice.position()) });
+    await page.evaluate(() => {
+      window.observedOwnership = null;
+      window.ownershipObserver?.disconnect();
+      window.ownershipObserver = new MutationObserver(() => {
+        const lane = document.querySelector('[data-stolen="true"]');
+        if (lane) window.observedOwnership = { role: lane.getAttribute('data-role'), at: window.chipvoice.currentTime };
+      });
+      window.ownershipObserver.observe(document.querySelector('.voice-display'), { attributes: true, subtree: true, attributeFilter: ['data-stolen'] });
+    });
+    await page.getByRole('button', { name: 'Laser', exact: true }).click();
+    await page.waitForFunction(() => window.observedOwnership);
+    await page.screenshot({ path: `${artifacts}/${engine}-${id}-effect.png`, fullPage: false });
+  }
+  for (const name of ['NES', 'Game Boy', 'NES', 'SNES', 'C64', 'NES']) await page.locator('.machines').getByRole('button', { name, exact: true }).click();
+  await page.waitForFunction(() => window.chipvoice?.spec.id === '2a03' && window.chipvoice.playing);
+  assert.ok((await amplitude(page)).rms > .001); check('Repeated switches retain working audio');
+  for (const title of ['Overworld', 'Boss Fight', 'Midnight']) {
+    await page.getByRole('button', { name: `Load ${title}`, exact: true }).click();
+    assert.ok((await amplitude(page)).rms > .001, `${title} is audible`);
+  }
+  await page.getByRole('button', { name: 'Load Overworld', exact: true }).click();
+  const effectsBefore = await page.evaluate(() => window.chipvoiceMetrics.effect);
+  await page.keyboard.press('3');
+  await page.waitForFunction(before => window.chipvoiceMetrics.effect > before, effectsBefore);
+  check('Three cartridges play and effect shortcuts work with a focused control');
+  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  await page.waitForTimeout(400); const silent = await amplitude(page); assert.ok(silent.peak < .001, JSON.stringify(silent)); check('Stop stays silent after queued notes', silent);
+  await page.locator('.machines').getByRole('button', { name: 'Game Boy', exact: true }).click();
+  await page.waitForFunction(() => window.chipvoice?.spec.id === 'dmg'); assert.equal(await page.evaluate(() => window.chipvoice.playing), false);
+  await page.getByRole('button', { name: 'Edit loop', exact: false }).click();
+  assert.ok(await page.locator('.grid-cell.filled').count() > 0); check('Existing high notes appear in editor');
+  await page.getByRole('button', { name: 'View code', exact: false }).click(); await page.getByRole('button', { name: 'Score JSON', exact: true }).click();
+  const original = await songFrom(page); const cell = page.getByRole('button', { name: 'Melody step 1 C4', exact: true });
+  await cell.focus(); await page.keyboard.press('Enter'); assert.equal(await cell.getAttribute('aria-pressed'), 'true');
+  await page.getByRole('button', { name: 'Undo edit', exact: true }).click(); assert.deepEqual(await songFrom(page), original);
+  await page.getByRole('button', { name: 'Redo edit', exact: true }).click(); assert.equal((await songFrom(page)).patterns[0].lead.split(' ')[0], 'C4');
+  await page.getByRole('button', { name: 'Edit as text', exact: true }).click(); const raw = page.locator('#raw-notes');
+  await raw.fill('C#'); await raw.press('End'); await raw.pressSequentially('5  .  '); assert.equal(await raw.inputValue(), 'C#5  .  ');
+  await raw.fill('H4'); await page.getByRole('button', { name: 'Apply notes', exact: true }).click(); assert.ok(await page.locator('.field-error').textContent());
+  await raw.fill(original.patterns[0].lead); await page.getByRole('button', { name: 'Apply notes', exact: true }).click(); check('Keyboard edit, undo/redo and unnormalized text entry');
+  await page.getByRole('button', { name: 'Share your tune', exact: false }).click(); await page.getByRole('textbox', { name: 'Song title', exact: true }).fill('Browser draft');
+  const draft = await songFrom(page); await page.reload();
+  await page.getByRole('heading', { name: 'Browser draft', exact: true }).waitFor(); check('Local draft reload recovery');
+  await page.getByRole('button', { name: 'Share your tune', exact: false }).click();
+  await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { window.copiedText = value; } } }); });
+  await page.getByRole('button', { name: 'Copy draft link', exact: true }).click();
+  const copiedLink = await page.evaluate(() => window.copiedText); const linked = await context.newPage(); await linked.goto(copiedLink);
+  await linked.getByRole('heading', { name: 'Browser draft', exact: true }).waitFor();
+  await linked.getByRole('button', { name: 'View code', exact: false }).click(); await linked.getByRole('button', { name: 'Score JSON', exact: true }).click(); assert.deepEqual(await songFrom(linked), draft); await linked.close();
+  check('Copied draft link round-trips the complete score');
+  await page.getByRole('button', { name: 'Publish publicly', exact: true }).click();
+  await page.getByRole('link', { name: 'Published page', exact: false }).waitFor(); const publishedURL = await page.getByRole('link', { name: 'Published page', exact: false }).getAttribute('href');
+  await page.goto(base + publishedURL); await page.getByRole('button', { name: 'Share your tune', exact: false }).click(); await page.getByRole('textbox', { name: 'Song title' }).fill('Title-only fork');
+  await page.reload(); await page.getByRole('heading', { name: 'Title-only fork', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Share your tune', exact: false }).click(); await page.getByRole('button', { name: 'Publish a fork', exact: true }).click();
+  await page.getByRole('link', { name: 'Published page', exact: false }).waitFor();
+  await page.waitForFunction(original => document.querySelector('.published-links a')?.getAttribute('href') !== original, publishedURL);
+  const forkURL = await page.getByRole('link', { name: 'Published page', exact: false }).getAttribute('href');
+  const fork = await (await page.request.get(base + forkURL.replace('/s/', '/api/songs/'))).json();
+  assert.deepEqual(fork.patterns, draft.patterns); assert.deepEqual(fork.order, draft.order); assert.deepEqual(fork.intent, draft.intent); assert.equal(fork.chip, draft.chip); assert.equal(fork.title, 'Title-only fork');
+  check('Publication draft reload and title-only fork preserve the whole score');
+  await page.getByRole('button', { name: 'View code', exact: false }).click();
+  const downloading = page.waitForEvent('download', { timeout: 120000 }); await page.getByRole('button', { name: 'Download WAV', exact: true }).click();
+  const download = await downloading; const wavPath = `${artifacts}/${engine}-export.wav`; await download.saveAs(wavPath); const wav = await readFile(wavPath);
+  assert.equal(wav.toString('ascii', 0, 4), 'RIFF'); assert.equal(wav.readUInt16LE(22), 2); assert.ok(wav.length > 10000); check('Worker exports a stereo WAV', wav.length);
+  const expected = Buffer.from(toWav(renderSong(arrange({ ...draft, title: 'Title-only fork' }), { chip: draft.chip, stereo: true })));
+  assert.ok(wav.equals(expected), 'worker WAV equals current library render byte for byte'); check('Export matches arranged score byte for byte');
+  const example = await page.locator('.code-panel pre').textContent();
+  const bundled = await build({ stdin: { contents: example + '\nwindow.readExampleChip = () => chip;', resolveDir: resolve('../../packages/chipvoice') }, bundle: true, write: false, format: 'iife', platform: 'browser' });
+  const runnable = await context.newPage(); await runnable.goto(base); await runnable.evaluate(() => document.body.replaceChildren());
+  await runnable.addScriptTag({ content: bundled.outputFiles[0].text }); await runnable.getByRole('button', { name: 'Play / stop', exact: true }).click();
+  await runnable.waitForFunction(() => { window.chipvoice = window.readExampleChip(); return window.chipvoice?.playing; });
+  assert.ok((await amplitude(runnable)).rms > .001); await runnable.close(); check('Copied browser example builds and makes measured sound');
+  await page.screenshot({ path: `${artifacts}/${engine}-desktop-editor.png`, fullPage: true });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  const desktopVideo = page.video(); await context.close(); await desktopVideo.saveAs(`${artifacts}/${engine}-desktop.webm`);
+  const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(engine === 'firefox' ? {} : { isMobile: true }), reducedMotion: 'reduce', recordVideo: { dir: `${artifacts}/videos`, size: { width: 390, height: 844 } } });
+  const phone = await mobile.newPage(); phone.on('pageerror', e => errors.push(e.message)); await phone.goto(base);
+  await phone.getByRole('button', { name: 'Play', exact: true }).tap(); await phone.waitForFunction(() => window.chipvoice?.playing); assert.ok((await amplitude(phone)).rms > .001);
+  await phone.screenshot({ path: `${artifacts}/${engine}-mobile-playing.png`, fullPage: true });
+  await phone.getByRole('button', { name: 'Edit loop', exact: false }).tap(); const touchCell = phone.getByRole('button', { name: 'Melody step 1 C4', exact: true }); await touchCell.tap(); assert.equal(await touchCell.getAttribute('aria-pressed'), 'true');
+  if (engine === 'chromium') {
+    const beforeScroll = await phone.evaluate(() => localStorage.getItem('chipvoice.draft.v1'));
+    await phone.locator('.grid-scroll').scrollIntoViewIfNeeded(); const box = await phone.locator('.grid-scroll').boundingBox();
+    const cdp = await mobile.newCDPSession(phone); const x = box.x + 230, y = Math.max(40, Math.min(700, box.y + 75));
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    for (let i = 1; i <= 5; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - i * 25, y }] });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    assert.equal(await phone.evaluate(() => localStorage.getItem('chipvoice.draft.v1')), beforeScroll); await cdp.detach(); check('Touch scrolling does not paint notes');
+  }
+  assert.equal(await phone.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await phone.screenshot({ path: `${artifacts}/${engine}-mobile-editor.png`, fullPage: true }); check('Touch audition/edit and responsive layout, reduced motion');
+  const mobileVideo = phone.video(); await mobile.close(); await mobileVideo.saveAs(`${artifacts}/${engine}-mobile.webm`); assert.deepEqual(errors, []); check('No browser exceptions');
+} finally { await browser.close(); await writeFile(`${artifacts}/${engine}-report.json`, JSON.stringify({ report, errors }, null, 2)); }

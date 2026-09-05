@@ -62,6 +62,9 @@ export class MdChip implements DigitalChip {
   }
 
   schedule(events: RegisterEvent[]) {
+    // Consumed writes must never be replayed when the next audio block arrives.
+    this.ymPending.splice(0, this.nextYm);
+    this.psgPending.splice(0, this.nextPsg);
     for (const e of events) {
       if ((e.addr & 0xfffffc) === YM_BASE) this.ymPending.push(e);
       else if (e.addr === PSG_PORT) this.psgPending.push(e);

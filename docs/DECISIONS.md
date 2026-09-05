@@ -126,7 +126,7 @@ without.
 `dsp.generated.ts` are gone. The golden hash did not move, which is the proof
 that the conversion changed nothing but the language.
 
-### 10. Audio URLs stay immutable; a deploy changes what they serve next (2026-09-04)
+### 10. Audio URLs stay immutable; a deploy changes what they serve next (2026-09-04, superseded by 21)
 
 `/s/{id}.mp3` keeps its one-year immutable cache and its URL. When the engine
 changes - phase 0 changed the sound of every drum - a new deployment is what
@@ -328,6 +328,9 @@ The sheet says which of the chip's behaviours come from which document.
 
 ### 19. No new systems: the site is an instrument first (2026-09-04)
 
+Updated by decision 20: the playable-demo spec sets V1 scope and order. The
+first sound is explicit, and targeted transport/score repairs precede the UI.
+
 Five chips are shipped, verified and released, and no sixth is started until
 the site is the most interesting thing to land on. The engine, the score, the
 harness and the sheets stay as they are; the work is the layer in front of
@@ -349,9 +352,66 @@ keyboard. None of that needs another chip.
 **What changed.** Phase 8 in the backlog and the roadmap; the roadmap's later
 systems closed until it is done; the README points at it.
 
+### 20. A playable library demo, with two foundations repaired first (2026-09-05)
+
+The product discussion following the audit defines chipvoice.dev as a playful
+demonstration of the library. [DEMO.md](DEMO.md) is the implementation spec.
+V1 is three composed presets, five machine selectors, four reactive role lanes,
+four arcade effect pads, simple editing, sharing and runnable code export.
+Sound starts on an explicit musical gesture, not an arbitrary first click.
+
+**Why.** The demonstration should make the library's capabilities audible:
+portable music, machine-specific sound and real voice stealing. The audit
+reproduced loss of score structure on fork and pending music overwriting Stop
+or SFX. Those two defects prevent an honest demo and must be repaired first.
+Existing cores and framework stay; their transport and integration can change.
+
+**Order.** Repair score preservation and event cancellation with behavioral
+regressions; deliver the first playable screen; complete editing, sharing and
+code export. Instrument the first slice. Identity recovery and other audit
+work have explicit follow-ups, but do not block anonymous play unnecessarily.
+Live recording, controlled variations, MIDI and stems follow V1. New systems
+remain closed until V1 acceptance, then are considered by demand; optional
+later features do not make that gate indefinite.
+
+**What changes.** This supersedes decision 19's arbitrary-click autoplay,
+unchangeable-engine constraint and all-fourteen-tickets release scope. The
+backlog preserves existing ticket IDs and assigns delivery slices. The earlier
+decision remains above as historical reasoning.
+
 ## Open
 
 ### B. The SID's licence
 
 Closed by decision 18: written from the documents, reSID-fp in the harness
 only, and the sheet is not weaker for it.
+
+### 21. Stable audio URLs revalidate the current renderer (2026-09-05)
+
+Supersedes decision 10. Published scores remain immutable, but the engine,
+arranger and output profile deployed by the server determine their current
+render. `/s/{id}.mp3` and `.wav` keep their URLs and return `Cache-Control:
+public, no-cache` with an ETag derived from the rendered bytes. A browser must
+revalidate; a deployment cannot silently leave a year of stale browser audio.
+Existence/deletion is checked before rendering. Saved downloads retain their
+bytes. MP3 and WAV preserve stereo; tags identify the selected machine.
+
+This contract deliberately does not promise archival reproduction across engine
+versions. Pin the npm package and keep the full score for reproducible projects.
+A content-addressed render cache and engine-versioned archival assets remain
+AUD-2 follow-ups, with measurements before adding infrastructure.
+
+### 22. Cancel musical commands outside the digital chip (2026-09-05)
+
+The transport owns future writes by voice and effect, feeding the digital core
+one render block at a time. Stop removes future owned writes; an effect replaces
+a voice and restores the remaining held music with complete register state.
+Canceled initialization invalidates the driver's patch/sample cache. Raw bus
+writes and the conformance oracle API retain their original semantics.
+
+Incremental scheduling exposed an existing MD/SNES queue defect: adding writes
+reset a cursor without discarding consumed entries, replaying old registers.
+Discard consumed entries before merging. Regression tests compare 128- and
+4096-sample renders byte for byte and verify cancellation and recovery on actual
+output. The MD/SNES song goldens change because obsolete writes no longer
+retrigger their voices; raw corpus parity must remain unchanged.

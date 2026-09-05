@@ -12,3 +12,6 @@ next-env.d.ts
 .DS_Store
 packages/conform/oracles/*/build/
 packages/conform/build/
+
+# Local screenshots, recordings and audio evaluation artifacts.
+.artifacts/

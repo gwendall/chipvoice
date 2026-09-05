@@ -8,9 +8,7 @@ import { id3, type Tags } from "./id3";
  * would tie the deployment to a runtime image. This runs anywhere the rest of
  * the code does, which is the same reason the chip itself is JavaScript.
  *
- * Mono at 128 kbps. The 2A03 is mono - the two pulses, the triangle and the
- * noise are summed by the hardware into one signal - so a stereo file would be
- * twice the bytes for the same sound.
+ * Mono at 128 kbps or stereo at 192 kbps when the renderer supplies both channels.
  */
 const BITRATE = 128;
 const BLOCK = 1152; // one MPEG frame
@@ -19,19 +17,22 @@ export function encodeMp3(
   samples: Float32Array,
   sampleRate: number,
   tags?: Tags,
+  right?: Float32Array | null,
 ): Uint8Array {
-  const encoder = new Mp3Encoder(1, sampleRate, BITRATE);
+  const encoder = new Mp3Encoder(right ? 2 : 1, sampleRate, right ? 192 : BITRATE);
   const chunks: Uint8Array[] = [];
 
   // LAME wants 16-bit signed integers, and the renderer produces floats.
   const pcm = new Int16Array(BLOCK);
+  const pcmRight = new Int16Array(BLOCK);
   for (let offset = 0; offset < samples.length; offset += BLOCK) {
     const size = Math.min(BLOCK, samples.length - offset);
     for (let i = 0; i < size; i++) {
       const v = Math.max(-1, Math.min(1, samples[offset + i]));
       pcm[i] = Math.round(v * 32767);
+      if (right) pcmRight[i] = Math.round(Math.max(-1, Math.min(1, right[offset + i])) * 32767);
     }
-    const frame = encoder.encodeBuffer(pcm.subarray(0, size));
+    const frame = encoder.encodeBuffer(pcm.subarray(0, size), right ? pcmRight.subarray(0, size) : undefined);
     if (frame.length > 0) chunks.push(new Uint8Array(frame));
   }
 

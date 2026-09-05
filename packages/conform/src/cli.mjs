@@ -56,6 +56,11 @@ const voices = voiceNames.map((n) => {
   return i;
 });
 const only = option('only', null);
+const baselinePath = option('baseline', null);
+if (baselinePath && !flag('write-baseline') && !fs.existsSync(baselinePath)) {
+  console.error(`Missing baseline: ${baselinePath}`);
+  process.exit(1);
+}
 
 const files = fs.readdirSync(corpusDir).filter((f) => f.endsWith('.log') && (!only || f.includes(only))).sort();
 if (files.length === 0) {
@@ -136,21 +141,22 @@ console.log('per voice: identical %; edges exact= near~ unmatched!; the constant
  * fine and expected; the baseline is rewritten by hand with --write-baseline
  * when a change is meant, and the diff of it is the change's evidence.
  */
-const baselinePath = option('baseline', null);
+
 let regressed = false;
 if (baselinePath && fs.existsSync(baselinePath) && !flag('write-baseline')) {
   const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
   for (const r of results) {
     const was = baseline.results.find((b) => b.name === r.name);
-    if (!was) continue;
+    if (!was) { regressed = true; console.log(`REGRESSION missing baseline log: ${r.name}`); continue; }
     for (const e of r.edges) {
       const then = was.edges.find((b) => b.voice === e.voice);
-      if (then && e.identical < then.identical) {
+      if (!then || e.identical < then.identical) {
         regressed = true;
-        console.log(`REGRESSION  ${r.name} ${e.voice}: ${e.identical} identical cycles, was ${then.identical}`);
+        console.log(`REGRESSION  ${r.name} ${e.voice}: ${e.identical} identical cycles, was ${then?.identical ?? "missing"}`);
       }
     }
   }
+  if (!option('only', null) && baseline.results.some(b => !results.some(r => r.name === b.name))) regressed = true;
   if (!regressed) console.log(`no regression against ${baselinePath}`);
 }
 if (baselinePath && flag('write-baseline')) {
