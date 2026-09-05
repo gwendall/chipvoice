@@ -1,3 +1,4 @@
+import { TransportCore } from "../../transport-core.js";
 import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { MASTER_HZ, MD_PROCESSOR_NAME, MdChip, MdCore } from "./dsp.js";
 import { MdDriver } from "./driver.js";
@@ -34,7 +35,7 @@ export const MEGA_DRIVE: ChipSpec = {
 
 export const mdChip: ChipDefinition = {
   spec: MEGA_DRIVE,
-  create: (sampleRate: number) => new MdCore(sampleRate),
+  create: (sampleRate: number) => new TransportCore(new MdCore(sampleRate), MEGA_DRIVE.clockHz, sampleRate),
   digital: () => new MdChip(),
   driver: () => new MdDriver(),
   workletSource: WORKLET_SOURCE,

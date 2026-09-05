@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { find, present, SITE } from "@/lib/songs";
 import Studio from "@/studio/App";
+import { readDocument } from "@/studio/document";
 import { hasDatabase } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -66,6 +67,7 @@ export default async function SongPage({
 
   // The song is fetched here only to decide whether the page exists at all.
   // The editor loads it for itself from the same id in the path.
-  void present(found.song, found.forks);
-  return <Studio />;
+  const initial = readDocument({ ...found.song, title: found.song.title ?? undefined, author: found.song.author ?? undefined, intent: found.song.intent ?? undefined });
+  if (!initial) notFound();
+  return <Studio initial={initial} initialId={found.song.id} />;
 }

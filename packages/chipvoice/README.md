@@ -1,16 +1,14 @@
 # chipvoice
 
-The sound chips of the old machines, emulated to the cycle and measured against
-the hardware, in a browser and on a server.
+Five classic sound chips in a browser or offline: **NES (2A03), Game Boy,
+Mega Drive, SNES and Commodore 64**. A score is four musical roles arranged for
+the chosen hardware. Sound effects borrow physical voices from the music and
+return them when they finish; Stop cancels future musical writes.
 
-Two chips so far, the NES's **Ricoh 2A03** and the Game Boy's **DMG APU**, each
-running at its own clock in an AudioWorklet or rendered offline to a file, each
-taking the bytes a program on the hardware wrote, each with a conformance sheet
-that says what has been verified against the real thing. A driver and a tracker
-on top, so a tune is four lines of text that play on either chip in its own
-idiom. And one thing no other browser library does: **sound effects take
-channels away from the music**, the way the hardware forced them to. The
-repository's [README](https://github.com/gwendall/chipvoice#why) says why.
+The digital cores are checked against reference emulators and hardware test
+ROMs. The [conformance sheets](https://github.com/gwendall/chipvoice/tree/main/docs/chips)
+state verified behavior and remaining differences; this is not a claim that
+every analog characteristic has been measured on physical hardware.
 
 ```bash
 npm i chipvoice
@@ -62,7 +60,7 @@ gb.play(song);                        // a 12.5 % pulse lead, a square wave in w
 INTENTS.bass.hollow;                  // "a square wave on the Game Boy's wave channel; a NES has only the triangle"
 ```
 
-**[Try it](https://chipvoice.dev)** - a grid, a playhead, and a Fire button
+**[Try it](https://chipvoice.dev)** — three cartridges, five machines, an editor and four arcade pads
 that takes a channel away from the music while you watch. The song lives in the URL,
 so a link is the save file.
 
@@ -387,4 +385,22 @@ Extracted from [redburner.com](https://redburner.com), a wireframe rail shooter 
 in the four-shade red palette of the 1995 Virtual Boy. Every sound in it comes from
 this code, which is the only integration test that means anything.
 
-MIT.
+MIT for the original code; LGPL-2.1-or-later for the derived YM2612 and S-DSP
+cores. The package licence is `(MIT AND LGPL-2.1-or-later)`. See the source
+headers and bundled licence notices. Console marks retain their owners’ rights.
+
+
+### Demo and transport
+
+The playable demo preserves the complete score through editing, drafts and
+publication. Copy its score and runnable browser example, or export stereo WAV.
+Local mute/solo and unrecorded live effects are not part of an exported score.
+
+`chip.play(song, { step, orderIndex })` starts at a musical position. Use
+`chip.position()` when replacing an instance to compare the same passage on
+another machine. `arrange(score)` retains its target chip, which `renderSong`
+honors unless explicitly overridden. Always dispose replaced instances.
+
+Server audio links use the currently deployed renderer and revalidate their
+bytes. For reproductions across releases, retain the score and pin the package
+version. See [the demo specification](https://github.com/gwendall/chipvoice/blob/main/docs/DEMO.md).

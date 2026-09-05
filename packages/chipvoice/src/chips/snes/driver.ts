@@ -150,35 +150,37 @@ const VOICES = ["v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7"];
 /** The kit's noise indices on the other chips, mapped onto drums here. */
 const DRUM_FOR_INDEX = (index: number) => (index <= 7 ? "kick" : index <= 10 ? "snare" : index === 12 ? "ohat" : "hat");
 
-export class SnesDriver implements ChipDriver {
-  private readonly bank = makeBank();
-  private readonly brr: Uint8Array[];
-  private readonly starts: number[] = [];
-  private readonly image: Uint8Array;
+/** Compile this immutable factory bank once. Reconstructing encoder state for
+ * cancellation must not BRR-encode every drum on the UI thread again. */
+function compileBank() {
+  const bank = makeBank();
+  const brr = bank.map(b => encodeBrr(b.pcm, b.loop));
+  const image = new Uint8Array(SAMPLES + brr.reduce((n, b) => n + b.length, 0));
+  let at = SAMPLES;
+  brr.forEach((bytes, i) => {
+    image.set(bytes, at);
+    const entry = DIRECTORY + i * 4;
+    image[entry] = image[entry + 2] = at & 0xff;
+    image[entry + 1] = image[entry + 3] = at >> 8;
+    at += bytes.length;
+  });
+  if (at >= ECHO_PAGE * 0x100) throw new Error("the sample bank runs into the echo buffer");
+  return { bank, image };
+}
+let compiledBank: ReturnType<typeof compileBank> | undefined;
 
+export class SnesDriver implements ChipDriver {
+  private readonly bank: BankEntry[];
+  private readonly image: Uint8Array;
   constructor() {
-    this.brr = this.bank.map((b) => encodeBrr(b.pcm, b.loop));
-    // The directory, then the samples one after another.
-    const total = SAMPLES + this.brr.reduce((n, b) => n + b.length, 0);
-    this.image = new Uint8Array(total);
-    let at = SAMPLES;
-    this.brr.forEach((b, i) => {
-      this.starts[i] = at;
-      this.image.set(b, at);
-      const entry = DIRECTORY + i * 4;
-      this.image[entry] = at & 0xff;
-      this.image[entry + 1] = at >> 8;
-      // A loop returns to the start; a one-shot's loop address is never used.
-      this.image[entry + 2] = at & 0xff;
-      this.image[entry + 3] = at >> 8;
-      at += b.length;
-    });
-    if (at >= ECHO_PAGE * 0x100) throw new Error("the sample bank runs into the echo buffer");
+    const compiled = compiledBank ??= compileBank();
+    this.bank = compiled.bank;
+    this.image = compiled.image;
   }
 
   /** The directory and the bank, from `$0200`. */
   memory() {
-    return [{ address: DIRECTORY, bytes: this.image.subarray(DIRECTORY) }];
+    return [{ address: DIRECTORY, bytes: this.image.slice(DIRECTORY) }];
   }
 
   private index(name: string | null, fallback: string): number {

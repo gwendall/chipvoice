@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { renderSong, toWav } from "chipvoice";
 import { RenderQuery, SongId } from "@/lib/schema";
 import { find, SITE, toLibrarySong } from "@/lib/songs";
@@ -6,18 +7,11 @@ import { encodeMp3 } from "@/lib/mp3";
 import { contentDisposition } from "@/lib/id3";
 
 export const runtime = "nodejs";
-// Rendering a minute of audio is a second of CPU. The default would kill it.
+// Cycle-level rendering is CPU-bound; allow the runtime to finish long exports.
 export const maxDuration = 60;
 
-/**
- * The audio, computed on request.
- *
- * Nothing is stored. The chip is a pure function of the song and the sample
- * rate, so the same id always produces the same bytes - which means the CDN can
- * hold it forever and there is no bucket to fill, no invalidation to get wrong,
- * and no orphaned files when a song is deleted. A fork is a new id, so a
- * rendered URL is never wrong about what it contains.
- */
+/** Stable song URLs render with the current engine. Browsers must revalidate:
+ * a deploy can change audio and deletion must be checked before serving it. */
 /*
  * Reached through a rewrite from `/s/{id}.mp3`, which is the URL people and
  * agents see. Next cannot put a route handler and a page on the same dynamic
@@ -53,6 +47,7 @@ export async function GET(
     seconds: query.data.seconds,
     sampleRate: 44100,
     chip: found.song.chip,
+    stereo: true,
   });
 
   /*
@@ -71,16 +66,16 @@ export async function GET(
           artist: song.author ?? "chipvoice",
           album: "chipvoice",
           year: new Date(song.createdAt).getUTCFullYear().toString(),
-          comment: `Written on an emulated Ricoh 2A03. ${SITE}/s/${song.id}`,
+          comment: `Written on an emulated ${song.chip} sound chip. ${SITE}/s/${song.id}`,
           url: `${SITE}/s/${song.id}`,
-        });
+        }, audio.right);
 
   return new Response(new Uint8Array(body), {
     headers: {
       "Content-Type": format === "wav" ? "audio/wav" : "audio/mpeg",
       "Content-Length": String(body.length),
-      // Immutable because the song behind this id can never change.
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "public, no-cache",
+      ETag: `"${createHash("sha256").update(body).digest("hex")}"`,
       "Content-Disposition": contentDisposition(found.song.title, id, format),
       "X-Render-Ms": String(Date.now() - started),
     },

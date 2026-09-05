@@ -1,66 +1,71 @@
 name: ci
 
-# Every push and every pull request. The publish workflow is the release gate
-# and runs the fresh-install test in a browser; this is the cheap check that
-# runs all the time, so a regression is found on the commit that made it
-# rather than on the day of a release.
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**', '**/*.md']
   pull_request:
+    paths-ignore: ['docs/**', '**/*.md']
+
+# Qualify the newest PR revision once; a push to its branch does not also run
+# another workflow. Keep main checks even if another main commit arrives.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-
-      # No version here: package.json's `packageManager` field is the one
-      # source.
       - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-
       - run: pnpm install --frozen-lockfile
-
+      - uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+      - run: pnpm build
       - run: pnpm typecheck
-
-      - run: pnpm build --filter chipvoice
-
-      # The validator, the clocks against the formulas, and the golden hash.
-      # No browser: that is what the release runs.
       - run: pnpm test:unit
-        working-directory: packages/chipvoice
+      - run: pnpm exec playwright install --with-deps chromium
+      # Production Next, anonymous API flows, measured browser audio and editor
+      # recovery. Owns its server and temporary SQLite DB; never touches prod.
+      - run: pnpm --filter chipvoice-web test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demo-evaluation
+          path: .artifacts/demo
+          retention-days: 7
 
-      # The corpus against the oracle, which is built here with the system
-      # C++ compiler. Fails only if a voice's identical count fell below the
-      # committed baseline: an imperfect oracle diverges somewhere by design.
+  conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter chipvoice build
+      # Independent from browser qualification: neither suite queues behind
+      # the other, while keeping all five reference cores and hardware ROMs.
       - run: pnpm --filter chipvoice-conform check
-
-      # blargg's APU test ROMs, on a 6502 the harness carries for the
-      # purpose. Every one of them has to pass.
       - run: pnpm --filter chipvoice-conform roms
-
-      # The Game Boy: the same two checks, against Gb_Snd_Emu and on the
-      # harness's SM83 with blargg's dmg_sound ROMs.
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform roms:dmg
-
-      # The Mega Drive: the YM2612 against Nuked-OPN2, the die-derived core
-      # it is ported from, built here with the system C compiler.
       - run: pnpm --filter chipvoice-conform check:md
-
-      # The SNES: the S-DSP against snes_spc, the core it is ported from.
       - run: pnpm --filter chipvoice-conform check:snes
-
-      # The C64: the SID, written from the documents, against reSID-fp,
-      # built here with the system C++ compiler.
       - run: pnpm --filter chipvoice-conform check:c64
-
-      # The mixer against blargg's cancellation tests: each channel has to
-      # cancel against the DMC as well as his console did. The recordings are
-      # decoded when the runner has ffmpeg; the floor holds either way.
       - run: pnpm --filter chipvoice-conform mixer

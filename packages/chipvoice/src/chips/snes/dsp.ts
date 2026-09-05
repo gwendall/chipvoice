@@ -38,6 +38,7 @@ export class SnesChip implements DigitalChip {
   private next = 0;
 
   schedule(events: RegisterEvent[]) {
+    this.pending.splice(0, this.next);
     for (const e of events) this.pending.push(e);
     this.pending.sort((a, b) => a.at - b.at);
     this.next = 0;

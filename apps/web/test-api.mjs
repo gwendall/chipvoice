@@ -115,8 +115,8 @@ for (const [format, type] of [['mp3', 'audio/mpeg'], ['wav', 'audio/wav']]) {
   check(`as ${type}`, audio.headers.get('content-type') === type, audio.headers.get('content-type'));
   check(`and is a real file`, bytes.length > 20000, `${bytes.length} bytes`);
   check(
-    `cached immutably`,
-    (audio.headers.get('cache-control') ?? '').includes('immutable'),
+    `revalidated when engine or publication changes`,
+    (audio.headers.get('cache-control') ?? '').includes('no-cache'),
     audio.headers.get('cache-control'),
   );
 }
