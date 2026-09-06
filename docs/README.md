@@ -10,19 +10,19 @@ Project purpose, methods and decisions live beside the code and change with it.
 
 | Document | Purpose |
 | --- | --- |
-| [ROADMAP.md](ROADMAP.md) | Roadmap and phase acceptance |
-| [DEMO.md](DEMO.md) | Playable demo specification |
-| [UNIFIED-PLAYGROUND.md](UNIFIED-PLAYGROUND.md) | Complete arrangements and musical transport |
-| [COMPOSITION-CONTROLS.md](COMPOSITION-CONTROLS.md) | Composition controls and sourced repertoire |
-| [CONTINUOUS-PLAYBACK-LAB.md](CONTINUOUS-PLAYBACK-LAB.md) | Continuous playback and public listening lab |
-| [INTERNATIONALIZATION.md](INTERNATIONALIZATION.md) | Website dictionaries, routing and metadata |
-| [SCORE.md](SCORE.md) | Portable score and arrangement model |
-| [CONFORMANCE.md](CONFORMANCE.md) | Verification method, corpus and oracles |
-| [AUDIO-EVALUATION.md](AUDIO-EVALUATION.md) | Listening protocol and audio measurements |
-| [SNES-PALETTE.md](SNES-PALETTE.md) | SNES instruments, envelopes and chords |
-| [AUDIT-2026-09-05.md](AUDIT-2026-09-05.md) | Project audit (French original) |
-| [DECISIONS.md](DECISIONS.md) | Decisions and their reasoning |
-| [BACKLOG.md](BACKLOG.md) | Tickets, status and discoveries |
+| [Roadmap](ROADMAP.md) | Roadmap and phase acceptance |
+| [Playable demo](DEMO.md) | Playable demo specification |
+| [Unified playground](UNIFIED-PLAYGROUND.md) | Complete arrangements and musical transport |
+| [Composition controls](COMPOSITION-CONTROLS.md) | Composition controls and sourced repertoire |
+| [Continuous playback](CONTINUOUS-PLAYBACK-LAB.md) | Continuous playback and public listening lab |
+| [Website languages](INTERNATIONALIZATION.md) | Website dictionaries, routing and metadata |
+| [Score model](SCORE.md) | Portable score and arrangement model |
+| [Conformance](CONFORMANCE.md) | Verification method, corpus and oracles |
+| [Audio evaluation](AUDIO-EVALUATION.md) | Listening protocol and audio measurements |
+| [SNES palette](SNES-PALETTE.md) | SNES instruments, envelopes and chords |
+| [Project audit](AUDIT-2026-09-05.md) | Project audit (French original) |
+| [Decisions](DECISIONS.md) | Decisions and their reasoning |
+| [Backlog](BACKLOG.md) | Tickets, status and discoveries |
 
 ## Developer guides
 

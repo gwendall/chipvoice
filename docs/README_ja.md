@@ -11,19 +11,19 @@
 
 | 文書 | 内容 |
 | --- | --- |
-| [ROADMAP.md](ROADMAP_ja.md) | ロードマップと各段階の受け入れ |
-| [DEMO.md](DEMO_ja.md) | 遊べるデモの仕様 |
-| [UNIFIED-PLAYGROUND.md](UNIFIED-PLAYGROUND_ja.md) | 完全アレンジと再生操作 |
-| [COMPOSITION-CONTROLS.md](COMPOSITION-CONTROLS_ja.md) | 作曲操作と出典付き曲 |
-| [CONTINUOUS-PLAYBACK-LAB.md](CONTINUOUS-PLAYBACK-LAB_ja.md) | 連続再生と公開試聴ラボ |
-| [INTERNATIONALIZATION.md](INTERNATIONALIZATION_ja.md) | Web辞書、ルーティング、メタデータ |
-| [SCORE.md](SCORE_ja.md) | 移植可能な楽譜と編曲モデル |
-| [CONFORMANCE.md](CONFORMANCE_ja.md) | 検証方法、コーパス、参照実装 |
-| [AUDIO-EVALUATION.md](AUDIO-EVALUATION_ja.md) | 試聴方法と音声測定 |
-| [SNES-PALETTE.md](SNES-PALETTE_ja.md) | SNESの楽器、エンベロープ、和音 |
-| [AUDIT-2026-09-05.md](AUDIT-2026-09-05_ja.md) | プロジェクト監査（フランス語原文） |
-| [DECISIONS.md](DECISIONS_ja.md) | 設計判断と理由 |
-| [BACKLOG.md](BACKLOG_ja.md) | チケット、状態、発見 |
+| [ロードマップ](ROADMAP_ja.md) | ロードマップと各段階の受け入れ |
+| [デモ仕様](DEMO_ja.md) | 遊べるデモの仕様 |
+| [統合プレイグラウンド](UNIFIED-PLAYGROUND_ja.md) | 完全アレンジと再生操作 |
+| [作曲操作](COMPOSITION-CONTROLS_ja.md) | 作曲操作と出典付き曲 |
+| [連続再生](CONTINUOUS-PLAYBACK-LAB_ja.md) | 連続再生と公開試聴ラボ |
+| [サイトの国際化](INTERNATIONALIZATION_ja.md) | Web辞書、ルーティング、メタデータ |
+| [楽譜モデル](SCORE_ja.md) | 移植可能な楽譜と編曲モデル |
+| [適合性検証](CONFORMANCE_ja.md) | 検証方法、コーパス、参照実装 |
+| [試聴評価](AUDIO-EVALUATION_ja.md) | 試聴方法と音声測定 |
+| [SNESパレット](SNES-PALETTE_ja.md) | SNESの楽器、エンベロープ、和音 |
+| [プロジェクト監査](AUDIT-2026-09-05_ja.md) | プロジェクト監査（フランス語原文） |
+| [設計判断](DECISIONS_ja.md) | 設計判断と理由 |
+| [バックログ](BACKLOG_ja.md) | チケット、状態、発見 |
 
 <a id="developer-guides"></a>
 ## 開発者ガイド
