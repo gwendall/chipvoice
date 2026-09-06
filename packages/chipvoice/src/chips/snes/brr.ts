@@ -15,6 +15,23 @@
 const int16 = (x: number) => (x << 16) >> 16;
 const clamp16 = (io: number) => (int16(io) !== io ? (io >> 31) ^ 0x7fff : io);
 
+/** Decode a sequence of BRR blocks for build-time encoding diagnostics.
+ * Directory/loop traversal is the caller's responsibility. */
+export function decodeBrr(bytes: Uint8Array): Int16Array {
+  if (bytes.length % 9) throw new Error("BRR data must contain whole blocks");
+  const pcm = new Int16Array(bytes.length / 9 * 16);
+  let p1 = 0, p2 = 0, sample = 0;
+  for (let block = 0; block < bytes.length; block += 9) {
+    const shift = bytes[block] >> 4, filter = (bytes[block] >> 2) & 3;
+    for (let i = 0; i < 16; i++) {
+      const packed = bytes[block + 1 + (i >> 1)];
+      const value = decodeNibble(i & 1 ? packed & 15 : packed >> 4, shift, filter, p1, p2 >> 1);
+      pcm[sample++] = value; p2 = p1; p1 = value;
+    }
+  }
+  return pcm;
+}
+
 /** One nibble through the DSP's decoder, given the two samples before it. */
 function decodeNibble(nibble: number, shift: number, filter: number, p1: number, p2half: number): number {
   let s = ((nibble << 28) >> 28);
@@ -54,10 +71,13 @@ function predict(filter: number, p1: number, p2half: number): number {
 
 /**
  * Encodes 16-bit samples as BRR. The length is padded to a multiple of
- * sixteen with silence unless it already is one. A looped sample loops back
- * to its start; the caller keeps the loop as a whole number of blocks.
+ * sixteen with silence unless it already is one. loopStart is a PCM sample
+ * offset aligned to a block; the sample directory must point at that BRR block.
  */
-export function encodeBrr(pcm: Int16Array, loop: boolean): Uint8Array {
+export function encodeBrr(pcm: Int16Array, loop: boolean, loopStart = 0): Uint8Array {
+  if (!Number.isInteger(loopStart) || loopStart < 0 || loopStart % 16 !== 0 || (loopStart > 0 && (!loop || loopStart >= pcm.length))) {
+    throw new Error("BRR loop start must be a 16-sample boundary inside a looped sample");
+  }
   const blocks = Math.max(1, Math.ceil(pcm.length / 16));
   const out = new Uint8Array(blocks * 9);
   // The decoder's state, carried block to block as the chip carries it: the
@@ -71,7 +91,7 @@ export function encodeBrr(pcm: Int16Array, loop: boolean): Uint8Array {
   for (let b = 0; b < blocks; b++) {
     let bestError = Infinity;
     let bestShift = 0, bestFilter = 0, best1 = 0, best2 = 0;
-    for (let filter = 0; filter < (b === 0 ? 1 : 4); filter++) {
+    for (let filter = 0; filter < (b === 0 || b * 16 === loopStart ? 1 : 4); filter++) {
       for (let shift = 0; shift <= 12; shift++) {
         let p1 = last1;
         let p2 = last2;
