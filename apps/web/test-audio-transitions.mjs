@@ -12,7 +12,31 @@ try{
   const line=Array(64).fill('.');line[0]='C4';
   localStorage.setItem('chipvoice.draft.v1',JSON.stringify({title:'Continuity probe',chip:'2a03',bpm:120,order:[0],patterns:[{lead:line.join(' '),chord:Array(64).fill('.').join(' '),bass:Array(64).fill('.').join(' '),perc:Array(64).fill('.').join(' '),chordShape:[[0,4,7]]}]}));
  });
- await page.goto(base);await page.getByRole('button',{name:'Play',exact:true}).click();
+ await page.goto(base);
+ const valueIs=async(locator,value,message)=>{
+  const id=await locator.getAttribute('id');
+  await page.waitForFunction(({id,value})=>document.getElementById(id)?.value===value,{id,value});
+  assert.equal(await locator.inputValue(),value,message);
+ };
+ const slider=page.getByRole('slider',{name:'Tempo slider',exact:true}),number=page.getByRole('spinbutton',{name:'Tempo',exact:true});
+ await page.waitForFunction(()=>document.getElementById('tempo-slider')?.disabled===false && document.getElementById('tempo')?.value==='120');
+ await slider.focus();await page.keyboard.press('Home');await valueIs(number,'40');
+ await page.keyboard.press('End');await valueIs(number,'300');
+ await page.keyboard.press('ArrowLeft');await valueIs(number,'299');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await valueIs(slider,'120','One Undo restores the whole slider gesture');
+ const bounds=await slider.boundingBox();
+ await page.mouse.move(bounds.x+bounds.width*.35,bounds.y+bounds.height/2);await page.mouse.down();
+ await page.mouse.move(bounds.x+bounds.width*.85,bounds.y+bounds.height/2,{steps:12});await page.mouse.up();
+ assert.ok(Number(await slider.inputValue())>200);
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await valueIs(slider,'120','One Undo restores the entire pointer drag');
+ await number.fill('183');await valueIs(slider,'183');await number.press('Enter');
+ await page.getByRole('button',{name:'Undo',exact:true}).click();await valueIs(number,'120');
+ await number.fill('14');await valueIs(number,'14','Partial numbers remain editable');await valueIs(slider,'120');
+ await number.press('Enter');await valueIs(number,'40');
+ await number.fill('999');await number.press('Enter');await valueIs(number,'300');
+ await number.fill('');await number.press('Enter');await valueIs(number,'300');
+ await number.fill('120');await number.press('Enter');
+ await page.getByRole('button',{name:'Play',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.position()?.step>0);
  await page.evaluate(async()=>{
   const ctx=window.audioBus.context;
@@ -24,7 +48,9 @@ try{
  });
  await page.waitForTimeout(150);
  await page.evaluate(()=>{window.audioBlocks=[];});
- for(const tempo of ['156','132','168']){await page.getByLabel('Tempo',{exact:true}).fill(tempo);await page.waitForTimeout(420);}
+ await slider.focus();await page.keyboard.press('PageUp');await page.waitForTimeout(420);
+ await number.fill('132');await number.press('Enter');await page.waitForTimeout(420);
+ await slider.focus();await page.keyboard.press('End');await page.waitForTimeout(420);
  await page.locator('.machines').getByRole('button',{name:'SNES',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.spec.id==='snes');
  await page.waitForTimeout(150);

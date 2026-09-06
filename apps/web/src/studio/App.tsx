@@ -15,6 +15,7 @@ import { Variations } from './Variations';
 import { publicationBody } from './publication';
 import { Account } from './Account';
 import { MidiInput } from './MidiInput';
+import {RangeControl} from '../ui/RangeControl';
 import {SiteHeader, SiteFooter, MachinePicker, PlayButton} from '../ui/components';
 
 export default function App({ initial, initialId }: { initial?: SongDocument; initialId?: string }) {
@@ -125,7 +126,7 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
         <div className="screen-bezel"><div className="screen-title"><div><span className="screen-kicker">{machine.chip}</span><h1>{doc.song.title || 'Untitled adventure'}</h1></div><OutputScope node={audio.output}/></div><Voices disabled={recordLocked} song={recording && backingSong.current ? backingSong.current : doc.song} position={audio.position} stolen={audio.stolen} muted={effectiveMuted} solo={solo} onMute={r => setMuted(previous => previous.includes(r) ? previous.filter(v => v !== r) : [...previous, r])} onSolo={r => setSolo(previous => previous === r ? null : r)} effect={audio.effect}/></div>
         <div className="transport-row">
           <PlayButton playing={audio.playing} loading={audio.loading} shortcut onClick={togglePlayback}/>
-          <div className="tempo-control"><label htmlFor="tempo">TEMPO</label><button aria-label="Slower" disabled={recordLocked} onClick={() => edit({ ...doc.song, bpm: Math.max(40, doc.song.bpm - 4) })}>−</button><input id="tempo" disabled={recordLocked} aria-label="Tempo" type="number" min={40} max={300} value={doc.song.bpm} onChange={e => { const value = Number(e.target.value); if (value >= 40 && value <= 300) edit({ ...doc.song, bpm: Math.round(value) }); }}/><button aria-label="Faster" disabled={recordLocked} onClick={() => edit({ ...doc.song, bpm: Math.min(300, doc.song.bpm + 4) })}>+</button></div>
+          <RangeControl id="tempo" label="Tempo" unit="BPM" min={40} max={300} value={doc.song.bpm} disabled={recordLocked || !doc.ready} onChange={(bpm, group) => { doc.edit(song => ({...song, bpm}), group); measure('edit'); }}/>
           <div className="history-controls"><button aria-label="Undo" disabled={!doc.canUndo} onClick={undo}>↶</button><button aria-label="Redo" disabled={!doc.canRedo} onClick={redo}>↷</button></div>
           <button className="edit-toggle" disabled={recordLocked} aria-expanded={editing} onClick={() => setEditing(!editing)}>{editing ? 'Close editor' : 'Edit loop'} <span aria-hidden="true">{editing ? '−' : '+'}</span></button>
         </div>
