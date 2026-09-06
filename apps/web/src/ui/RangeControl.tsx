@@ -9,8 +9,8 @@ export function RangeControl({id, label, unit, min, max, value, disabled = false
 }) {
  const t = useT();
   const identity = useId(), sequence = useRef(0), group = useRef<string | null>(null);
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
   const begin = () => { group.current ??= `${identity}:${++sequence.current}`; };
   const end = () => { group.current = null; };
   const change = (next: number) => {
@@ -20,7 +20,7 @@ export function RangeControl({id, label, unit, min, max, value, disabled = false
   const commit = () => {
     const parsed = draft.trim() === '' ? value : Number(draft);
     const next = Number.isFinite(parsed) ? Math.max(min, Math.min(max, Math.round(parsed))) : value;
-    setDraft(next); change(next); end();
+    setDraft(String(next)); change(next); end();
   };
   return <div className="range-control" aria-disabled={disabled || undefined}>
     <label htmlFor={`${id}-slider`}>{t(label)}</label>

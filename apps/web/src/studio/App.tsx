@@ -8,7 +8,7 @@ import type { Role } from 'chipvoice';
 import { useSongDocument } from './useSongDocument';
 import { useDemoAudio } from './useDemoAudio';
 import { MACHINES, ROLE_NAMES, ROLES, encodeDocument, type SongDocument } from './document';
-import { PRESETS, ORIGINAL_PRESETS, CLASSIC_PRESETS, DEFAULT_PRESET, type Preset } from './presets';
+import { PRESETS, ORIGINAL_PRESETS, CLASSIC_PRESETS, type Preset } from './presets';
 import { EFFECTS } from './effects';
 import { Voices, OutputScope } from './Voices';
 import { Editor, palette } from './Editor';
@@ -29,8 +29,6 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
  const errorText = useErrorText();
  const {locale} = useI18n();
   const doc = useSongDocument(initial, initialId);
-  const [builtinTitle,setBuiltinTitle] = useState<string|null>(!initial&&!initialId?DEFAULT_PRESET.song.title??null:null);
-  useEffect(()=>{if(doc.ready&&(doc.recovered||(!initial&&location.hash)))setBuiltinTitle(null);},[doc.ready,doc.recovered,initial]);
   const [muted, setMuted] = useState<Role[]>([]);
   const [solo, setSolo] = useState<Role | null>(null);
   const effectiveMuted = useMemo(() => solo ? ROLES.filter(r => r !== solo) : muted, [solo, muted]);
@@ -130,9 +128,8 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
   };
 
   const loadPreset = (preset: Preset) => {
-    setBuiltinTitle(preset.song.title??null);
     const next = { ...structuredClone(preset.song), chip: doc.song.chip };
-    edit(next); setMuted([]); setSolo(null);
+    doc.loadPreset(next); measure('edit'); setMuted([]); setSolo(null);
     setMusicalKey(preset.id === 'boss' ? 'E' : preset.id === 'midnight' ? 'A' : preset.id === 'zelda' ? 'Bb' : 'C');
     audio.startOnInteraction(next, []); measure('preset');
   };
@@ -151,7 +148,7 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
         <details className="original-tunes"><summary>{t("More to play · original loops")}</summary><div className="cartridge-list">{ORIGINAL_PRESETS.map(preset => <button key={preset.id} disabled={recordLocked || !doc.ready} className={`cartridge ${preset.id}`} aria-pressed={doc.song.title === preset.song.title} aria-label={t("Load {v0}",{v0:t(preset.title)})} onClick={() => loadPreset(preset)}><span className="cartridge-copy"><strong>{t(preset.title)}</strong><span>{t(preset.mood)}</span></span></button>)}</div></details>
         <div className="console-top"><span className="micro">{t("02 / CHANGE THE SOUND")}</span><span className="micro hardware-label">{t("FOUR CONSOLES / ONE MELODY")}</span></div>
         <MachinePicker value={doc.song.chip} disabled={recordLocked || !doc.ready} onChange={chip => { const next = {...doc.song, chip}; edit(next); audio.startOnInteraction(next); measure('switch'); }} />
-        <div className="screen-bezel"><div className="screen-title"><div><span className="screen-kicker">{t(machine.chip)}</span><h2>{doc.song.title ? (builtinTitle===doc.song.title?t(doc.song.title):doc.song.title) : t('Untitled adventure')}</h2></div><OutputScope node={audio.output}/></div><Voices disabled={recordLocked} song={recording && backingSong.current ? backingSong.current : doc.song} position={audio.position} stolen={audio.stolen} muted={effectiveMuted} solo={solo} onMute={r => { const next = muted.includes(r) ? muted.filter(v => v !== r) : [...muted, r]; setMuted(next); audio.startOnInteraction(doc.song, solo ? effectiveMuted : next); }} onSolo={r => { const next = solo === r ? null : r; setSolo(next); audio.startOnInteraction(doc.song, next ? ROLES.filter(v => v !== next) : muted); }} effect={audio.effect}/></div>
+        <div className="screen-bezel"><div className="screen-title"><div><span className="screen-kicker">{t(machine.chip)}</span><h2>{doc.song.title ? (doc.builtinTitle?t(doc.song.title):doc.song.title) : t('Untitled adventure')}</h2></div><OutputScope node={audio.output}/></div><Voices disabled={recordLocked} song={recording && backingSong.current ? backingSong.current : doc.song} position={audio.position} stolen={audio.stolen} muted={effectiveMuted} solo={solo} onMute={r => { const next = muted.includes(r) ? muted.filter(v => v !== r) : [...muted, r]; setMuted(next); audio.startOnInteraction(doc.song, solo ? effectiveMuted : next); }} onSolo={r => { const next = solo === r ? null : r; setSolo(next); audio.startOnInteraction(doc.song, next ? ROLES.filter(v => v !== next) : muted); }} effect={audio.effect}/></div>
         <div className="transport-row">
           <RangeControl id="tempo" label={t("Tempo")} unit={t("BPM")} min={40} max={300} value={doc.song.bpm} disabled={recordLocked || !doc.ready} onChange={(bpm, group) => { doc.edit(song => ({...song, bpm}), group); audio.startOnInteraction({...doc.song, bpm}); measure('edit'); }}/>
           <div className="history-controls"><button aria-label={t("Undo")} disabled={!doc.canUndo} onClick={undo}>↶</button><button aria-label={t("Redo")} disabled={!doc.canRedo} onClick={redo}>↷</button></div>
@@ -170,7 +167,7 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
       <Variations song={doc.song} disabled={recordLocked} onEdit={edit} onNotice={say}/>
       {editing && !recordLocked && <Editor undo={undo} redo={redo} canUndo={doc.canUndo} canRedo={doc.canRedo} song={doc.song} onEdit={edit} role={role} onRole={setRole} onPreview={(r, n) => void audio.preview(r, n)} chromatic={chromatic} musicalKey={musicalKey}/>}
       <div className="takeaway"><div><h2>{t("Keep the good bits.")}</h2><p>{(doc.recovered?t('Your last draft is back. Keep playing.'):t('Make a little music. Put it in something you love.'))}</p></div><div><button className="small-button" aria-expanded={code} onClick={() => setCode(!code)}>〈/〉 {(code?t('Hide code'):t('View code'))}</button><button className="small-button dark" aria-expanded={sharing} onClick={() => setSharing(!sharing)}>{t("Share your tune ↗")}</button></div></div>
-      {sharing && <section className="share-panel" aria-label={t("Share your tune")}><label>{t("Song title")}<input aria-label={t("Song title")} disabled={recordLocked} maxLength={80} value={doc.song.title ?? ''} onChange={e => {setBuiltinTitle(null);edit({ ...doc.song, title: e.target.value || undefined });}}/></label><div><button className="small-button dark" onClick={() => void copyDraft()}>{t("Copy draft link")}</button><button className="small-button" disabled={publishing || recordLocked} onClick={() => void publish()}>{(publishing?t('Publishing…'):(published?t('Publish a fork'):t('Publish publicly')))}</button></div><p>{t("A draft link carries the score. Publishing creates a public page and downloadable audio. Anonymous publications cannot be withdrawn with an account.")}</p><Account/>{published && <div className="published-links"><a href={localePath(`/s/${published.id}`,locale)}>{t("Published page ↗")}</a><a href={`/s/${published.id}.mp3`}>{t("Download published MP3 ↓")}</a></div>}</section>}
+      {sharing && <section className="share-panel" aria-label={t("Share your tune")}><label>{t("Song title")}<input aria-label={t("Song title")} disabled={recordLocked} maxLength={80} value={doc.song.title ?? ''} onChange={e => {edit({ ...doc.song, title: e.target.value || undefined });}}/></label><div><button className="small-button dark" onClick={() => void copyDraft()}>{t("Copy draft link")}</button><button className="small-button" disabled={publishing || recordLocked} onClick={() => void publish()}>{(publishing?t('Publishing…'):(published?t('Publish a fork'):t('Publish publicly')))}</button></div><p>{t("A draft link carries the score. Publishing creates a public page and downloadable audio. Anonymous publications cannot be withdrawn with an account.")}</p><Account/>{published && <div className="published-links"><a href={localePath(`/s/${published.id}`,locale)}>{t("Published page ↗")}</a><a href={`/s/${published.id}.mp3`}>{t("Download published MP3 ↓")}</a></div>}</section>}
       {code && <CodePanel song={doc.song} onNotice={say}/>}
       <div className={`notice ${audio.error ? 'error' : ''}`} role="status" aria-live="polite">{errorText(audio.error || notice)}</div>
     </main>

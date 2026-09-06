@@ -63,12 +63,15 @@ try{
  }
  await page.goto(base+'/ja/missing-i18n-page');await page.getByText('このページは見つかりませんでした。',{exact:false}).waitFor();
  await page.goto(base+'/ja/about#credits');assert.equal(await page.locator('.site-header a[href="/ja/lab"]').count(),1);
- await page.getByLabel('言語',{exact:true}).selectOption('en');assert.equal(new URL(page.url()).hash,'#credits');assert.equal(new URL(page.url()).pathname,'/about');
+ await page.getByLabel('言語',{exact:true}).selectOption('en');await page.getByLabel('Language',{exact:true}).waitFor();assert.equal(new URL(page.url()).hash,'#credits');assert.equal(new URL(page.url()).pathname,'/about');
  const sitemap=await (await fetch(base+'/sitemap.xml')).text();assert.match(sitemap,/https:\/\/chipvoice.dev\/ja\/about/);assert.match(sitemap,/hreflang="ja"/);
  // A real locally published Japanese song exercises SSR share tags and Satori.
  const song={title:'Midnight',chip:'dmg',bpm:144,order:[0],patterns:[{lead:'C4 . E4 .',chord:'C3 . . .',bass:'C2 . . .',perc:'K . H .',chordShape:[[0,4,7]]}]};
  const published=await fetch(base+'/api/songs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(song)});assert.equal(published.status,201);const {id}=await published.json();
  await page.goto(base+'/ja/s/'+id);await page.getByLabel('言語',{exact:true}).waitFor();await page.locator('.demo-page .screen-title h2').waitFor();assert.equal(await page.locator('.demo-page .screen-title h2').textContent(),'Midnight');assert.equal(await page.title(),song.title);assert.match(await page.locator('meta[name="description"]').getAttribute('content'),/ゲームボーイ/);assert.match(await page.locator('meta[property="og:image"]').getAttribute('content'),new RegExp(`/ja/s/${id}/card`));
+ await page.locator('.original-tunes summary').click();await page.getByRole('button',{name:'真夜中を読み込む',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.screen-title h2')?.textContent==='真夜中');
+ await page.getByRole('button',{name:'元に戻す',exact:true}).click();assert.equal(await page.locator('.screen-title h2').textContent(),'Midnight');
+ await page.getByRole('button',{name:'やり直す',exact:true}).click();assert.equal(await page.locator('.screen-title h2').textContent(),'真夜中');checks.push('User title and preset title provenance follow undo/redo');
  const card=await fetch(base+`/ja/s/${id}/card`);assert.equal(card.status,200);assert.match(card.headers.get('content-type'),/image\/png/);await writeFile(new URL('share-ja.png',out),Buffer.from(await card.arrayBuffer()));
  assert.match((await fetch(base+'/api/auth/redeem?locale=ja&token=invalid',{redirect:'manual'})).headers.get('location'),/^\/ja\?signin=expired$/);
  const failureContext=await browser.newContext();const failurePage=await failureContext.newPage();

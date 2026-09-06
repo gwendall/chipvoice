@@ -17,6 +17,8 @@ The public website is available in English and Japanese. English keeps the exist
 
 Translate site-owned prose and display labels, including evidence paragraphs from the published audio reports. Keep user-written song titles, MIDI filenames, track names, notes and recordings as content. Music tokens, instrument/program IDs, source hashes, URLs, API/JSON property names and runnable JavaScript identifiers remain canonical: translating these would change the music or break consumers. English/native language names, product/library names and units such as MIDI, BPM and LUFS remain recognizable. Repository documentation and `/skill.md` / `/llms.txt` are developer resources, not alternate human-language website pages.
 
+Built-in composer titles carry display provenance in undo/redo snapshots. Editing a title clears that provenance; imported, restored and shared titles are user content even when they happen to match a catalogue key. The flag is not part of the serialized music document.
+
 The Japanese share-card font is bundled server-side under `apps/web/assets/fonts`; no font provider is contacted at runtime and the website does not download it. See that directory for source, license and reproduction instructions.
 
 ## Validation
