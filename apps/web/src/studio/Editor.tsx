@@ -31,8 +31,10 @@ export function Editor({ song, onEdit, role, onRole, onPreview, chromatic, music
   // Keep every existing pitch editable, even outside the assisted scale.
   const notes = role === 'perc' ? base : [...new Set([...base, ...existing])].sort((a, b) => pitch(a) - pitch(b));
   const count = lengthOf(pattern);
-  const page = Math.min(bar, Math.ceil(count / 16) - 1);
-  const columns = Math.min(16, count - page * 16);
+  const stepsPerBeat = song.stepsPerBeat ?? 4;
+  const pageSteps = stepsPerBeat * 4;
+  const page = Math.min(bar, Math.ceil(count / pageSteps) - 1);
+  const columns = Math.min(pageSteps, count - page * pageSteps);
   useEffect(() => { const up = () => { drag.current = false; }; window.addEventListener('pointerup', up); return () => window.removeEventListener('pointerup', up); }, []);
   const changeCell = (index: number, note: string, toggle = true) => {
     const line = tokens(pattern[role]);
@@ -58,16 +60,16 @@ export function Editor({ song, onEdit, role, onRole, onPreview, chromatic, music
     {textMode ? <div className="text-editor"><label htmlFor="raw-notes">{ROLE_NAMES[role]} · one token per step, . holds, = cuts</label><textarea id="raw-notes" value={raw} onChange={e => setRaw(e.target.value)} spellCheck={false} rows={4} /><div><button className="small-button dark" onClick={apply}>Apply notes</button><span className="field-error" role="status">{issue}</span></div></div> : <>
       <div className="grid-scroll"><div className={`piano-grid ${role}`} role="group" aria-label={`${ROLE_NAMES[role]} note grid`} style={{ gridTemplateColumns: `44px repeat(${columns}, minmax(38px, 1fr))` }}>
         {[...notes].reverse().map(note => <div className="piano-row" key={note}><button className="pitch-label" onClick={() => onPreview(role, note)} aria-label={`Preview ${note}`}>{role === 'perc' ? ({ K: 'Kick', S: 'Snare', H: 'Hat', O: 'Open' }[note]) : note}</button>{Array.from({ length: columns }, (_, offset) => {
-          const index = page * 16 + offset; const active = tokens(pattern[role])[index] === note;
-          return <button key={index} className={`grid-cell ${active ? 'filled' : ''} ${offset % 4 === 0 ? 'beat-start' : ''}`} aria-label={`${ROLE_NAMES[role]} step ${index + 1} ${note}`} aria-pressed={active}
+          const index = page * pageSteps + offset; const active = tokens(pattern[role])[index] === note;
+          return <button key={index} className={`grid-cell ${active ? 'filled' : ''} ${offset % stepsPerBeat === 0 ? 'beat-start' : ''}`} aria-label={`${ROLE_NAMES[role]} step ${index + 1} ${note}`} aria-pressed={active}
             onPointerDown={e => { mouseClick.current = e.pointerType === 'mouse'; if (e.pointerType === 'mouse' && e.button === 0) { drag.current = true; changeCell(index, note); } }}
             onPointerEnter={e => { if (drag.current && e.pointerType === 'mouse' && e.buttons === 1) changeCell(index, note, false); }}
             onClick={e => { if (e.detail === 0 || !mouseClick.current) changeCell(index, note); mouseClick.current = false; }}
             onKeyDown={e => { const offsets: Record<string, number> = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: columns + 1, ArrowUp: -columns - 1 }; if (!(e.key in offsets)) return; e.preventDefault(); const buttons = Array.from(e.currentTarget.closest('.piano-grid')!.querySelectorAll('button')); const target = buttons[buttons.indexOf(e.currentTarget) + offsets[e.key]]; target?.focus(); }} />;
         })}</div>)}
-        <span />{Array.from({ length: columns }, (_, i) => <span key={i} className="step-number">{page * 16 + i + 1}</span>)}
+        <span />{Array.from({ length: columns }, (_, i) => <span key={i} className="step-number">{page * pageSteps + i + 1}</span>)}
       </div></div>
-      <div className="editor-bottom"><span>Tap to place. Tap again to remove. Drag with a mouse.</span><div><button className="small-button" disabled={page === 0} onClick={() => setBar(page - 1)} aria-label="Previous bar">←</button><span>Bar {page + 1} / {Math.ceil(count / 16)}</span><button className="small-button" disabled={(page + 1) * 16 >= count} onClick={() => setBar(page + 1)} aria-label="Next bar">→</button></div></div>
+      <div className="editor-bottom"><span>Tap to place. Tap again to remove. Drag with a mouse.</span><div><button className="small-button" disabled={page === 0} onClick={() => setBar(page - 1)} aria-label="Previous bar">←</button><span>Bar {page + 1} / {Math.ceil(count / pageSteps)}</span><button className="small-button" disabled={(page + 1) * pageSteps >= count} onClick={() => setBar(page + 1)} aria-label="Next bar">→</button></div></div>
     </>}
   </section>;
 }

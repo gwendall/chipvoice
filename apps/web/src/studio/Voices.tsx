@@ -47,7 +47,7 @@ export const Voices = memo(function Voices({ song, position, stolen, muted, solo
   }, [pattern]);
   const { count, lanes } = geometry;
   return <div className="voice-display" aria-label="Live musical roles">
-    <div className="display-ruler"><span>THE MUSIC INSIDE</span><span>{position ? `BAR ${orderIndex + 1} / ${song.order.length}` : 'READY WHEN YOU ARE'}</span></div>
+    <div className="display-ruler"><span>THE MUSIC INSIDE</span><span>{position ? `SECTION ${orderIndex + 1} / ${song.order.length}` : 'READY WHEN YOU ARE'}</span></div>
     {lanes.map(({ role, notes }) => {
       const taken = stolen.includes(roleVoice(song, role));
       return <div key={role} className={`voice-lane ${role} ${muted.includes(role) ? 'is-muted' : ''} ${taken ? 'is-stolen' : ''}`} data-role={role} data-stolen={taken}>

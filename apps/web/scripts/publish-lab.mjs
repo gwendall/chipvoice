@@ -6,6 +6,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 const root=resolve(import.meta.dirname,'../../..');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+const classicCatalogue=JSON.parse(await readFile(resolve(root,'apps/web/src/studio/classics.json'),'utf8'));
 const classicIds=JSON.parse(await readFile(resolve(root,'scores/classics.json'),'utf8')).map(recipe=>recipe.id);
 export function validateCollection(report){
  const chips=['2a03','dmg','md','snes','c64'],presets=['overworld','boss','midnight',...classicIds],roles=['mix','lead','chord','bass','perc'];
@@ -13,6 +14,10 @@ export function validateCollection(report){
  for(const preset of presets)for(const chip of chips){
   const rows=report.cases.filter(row=>row.preset===preset&&row.chip===chip),row=rows[0];
   if(rows.length!==1||!row.technicalPass||!row.completeLoop||!row.replay?.ok||row.signalWarnings?.length||roles.some(role=>!row.assets?.[role]))throw new Error(`Missing or failed full-loop/stem evidence: ${preset}/${chip}`);
+  if(classicIds.includes(preset)){
+   const expected=classicCatalogue.find(item=>item.id===preset);
+   if(!row.fidelity?.pass||row.fidelity.referenceSha256!==expected.fidelity.referenceSha256||row.scoreSha256!==hash(JSON.stringify({...expected.song,chip})))throw new Error(`Missing or stale source melody comparison: ${preset}`);
+  }
   if(chip==='snes'&&(!row.oracle?.ok||!row.assets.native||(!classicIds.includes(preset)&&roles.some(role=>!row.baseline?.[role]))))throw new Error(`Missing native or before/after SNES evidence: ${preset}`);
  }
 }

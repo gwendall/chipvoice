@@ -114,7 +114,7 @@ evidence, which is the class of fault you cannot hear for yourself.
 
 ## The format
 
-Four channels, one token per sixteenth note. That is the whole language.
+Four roles, one token per step. The default is four steps per quarter note; optional \`stepsPerBeat: 12\` preserves triplets and straight rhythms together.
 
 | Channel | On the 2A03 | On the Game Boy | On the Mega Drive | On the SNES | Takes |
 | --- | --- | --- | --- | --- | --- |
@@ -135,6 +135,7 @@ which is why the validator does.
 | Field | Required | What it does |
 | --- | --- | --- |
 | \`bpm\` | yes | 40 to 300 |
+| \`stepsPerBeat\` | no | 4 (default) or 12 for straight notes and triplets |
 | \`patterns\` | yes | One or more, each with four channels and a \`chordShape\` |
 | \`order\` | yes | Which patterns play, in which order. \`[0,0,1,0]\` is four bars from two |
 | \`title\` | no | Shown on the page and **drawn onto the share card** |
@@ -148,7 +149,7 @@ Telegram, X and Discord show when the link is pasted - so an unfiltered title is
 way to make an official-looking picture say anything.
 
 The rule is an allowlist rather than a blocklist: **letters, numbers, spaces and
-\`. , ' ! ? & ( ) - + : /\`**, up to 60 characters. No emoji, no arrows, no
+\`. · , ' ! ? & ( ) - + : /\`**, up to 60 characters. No emoji, no arrows, no
 invisible characters. \`author\` follows the same rule.
 
 A song with no title is fine - the page shows its id. But the share card is the
@@ -177,21 +178,23 @@ Game Boy version changes. That is not a bug; it is the machine.
 
 ## Writing something worth hearing
 
-The constraints are the instrument. What actually matters, in order:
+For a source transcription, fidelity comes before adding activity:
 
-1. **Loop length beats melody.** A four-bar loop is heard as a repeat within thirty
-   seconds. Write several patterns and put them in \`order\` - \`[0,0,1,0,2,2,1,0]\` is
-   eight bars of material rather than one. Under fourteen seconds the validator
-   warns, and it is right to.
-2. **Four voices and no more.** There is no room for a countermelody and a
-   pad. Chords are one held note arpeggiated at frame rate, which is what
-   \`chordShape\` is - \`[[0,3,7]]\` minor, \`[[0,4,7]]\` major.
-3. **The bass is the engine.** Steady eighths or sixteenths on the triangle is what
-   makes a piece move. Silence there reads as the music stopping.
-4. **Leave the lead room.** A melody in every sixteenth is noise. Notes with holes
-   around them are what a listener remembers.
-5. **Pick a scale and stay in it.** A minor is the safe one: A B C D E F G. Random
-   chromatic notes sound like a mistake, because usually they are.
+1. Preserve the identified melody, complete phrases, repeats and written rests.
+   Never repeat a short snippet just to claim a full piece.
+2. Transcribe only source voices you can identify. An absent bass, harmony or
+   drum part stays silent; do not add a stock accompaniment.
+3. Keep source accidentals, register and rhythm. Do not force a familiar melody
+   into a simpler scale or flatten triplets to sixteenths.
+4. Record source credits, excerpt boundaries and any deliberate transformation.
+   The repo's frozen MIDI ledgers and \`scores:compare\` check pitches, timing,
+   missing/extra notes and unwanted backing before audio evaluation.
+5. A technically valid render is not evidence that the composition is faithful.
+   Compare the source and listen to complete phrases and their endings.
+
+For original music, use the roles that serve the piece. Bass and drums are
+optional. Chip-specific voice limits and chord allocation remain the arranger's
+responsibility; heed its validation warnings.
 
 ## Writing for each chip
 

@@ -35,6 +35,7 @@ export const PatternSchema = z.object({
 export const SongDocumentSchema = z.object({
   title: z.string().trim().min(1).max(80).optional(),
   bpm: z.number().int().min(40).max(300),
+  stepsPerBeat: z.union([z.literal(4), z.literal(12)]).optional(),
   patterns: z.array(PatternSchema).min(1).max(16),
   order: z.array(z.number().int().min(0)).min(1).max(64),
   /** Which of the five shipped machines arranges this score. */

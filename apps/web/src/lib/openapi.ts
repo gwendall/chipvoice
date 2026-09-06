@@ -28,6 +28,7 @@ const SONG_BODY = {
     title: { type: "string", maxLength: 80 },
     author: { type: "string", maxLength: 60, description: "Who or what made it" },
     bpm: { type: "integer", minimum: 40, maximum: 300 },
+    stepsPerBeat: { type: "integer", enum: [4,12], default: 4, description: "Steps per quarter note. 12 preserves triplets alongside straight rhythms." },
     chip: {
       type: "string",
       enum: ["2a03", "dmg", "md", "snes", "c64"],
@@ -47,7 +48,7 @@ const SONG_BODY = {
         type: "object",
         required: ["bass", "lead", "chord", "perc", "chordShape"],
         properties: {
-          lead: { type: "string", maxLength:4096, description: "Melody. One token per sixteenth." },
+          lead: { type: "string", maxLength:4096, description: "Melody. One token per step (stepsPerBeat defaults to 4)." },
           chord: { type: "string", maxLength:4096, description: "Harmony, arpeggiated by chordShape." },
           bass: { type: "string", maxLength:4096, description: "Bass. Its token count sets the pattern length." },
           perc: { type: "string", maxLength:4096, description: "Drums. K kick, S snare, H hat, O open hat." },
@@ -70,7 +71,7 @@ const ISSUE = {
     track: { type: "string" },
     code: {type:"string",description:"For example pitch_range"},
     pattern: {type:"integer",description:"Pattern index, zero-based"},
-    step: { type: "integer", description: "Which sixteenth, zero-based" },
+    step: { type: "integer", description: "Which grid step, zero-based" },
     token: { type: "string" },
     message: { type: "string" },
     silent: {
@@ -278,8 +279,8 @@ export function openApiSpec() {
             title: { type: "string", nullable: true },
             bpm: { type: "integer" },
             url: { type: "string" },
-            mp3: { type: "string" },
-            wav: { type: "string" },
+            mp3: { type: "string", description: "Audio URL: two loops, or an explicit 30-second preview for longer scores." },
+            wav: { type: "string", description: "Audio URL: two loops, or an explicit 30-second preview for longer scores. Export complete long scores locally." },
             forks: { type: "integer" },
             depth: { type: "integer", description: "0 for an original, 1 for its fork" },
             rootId: { type: "string", description: "The first ancestor. Fetch the whole family with it" },

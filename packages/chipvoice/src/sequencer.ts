@@ -3,7 +3,7 @@ import { FRAME_RATE, type Channel, type Instrument, type NoteSink } from "./driv
 
 /**
  * A small tracker, written the way this music was authored on the hardware:
- * one token per sixteenth note, four channels, instruments as per-frame tables.
+ * one token per grid step (four per quarter note by default), four channels, instruments as per-frame tables.
  *
  * Tokens: a note name (`A4`, `F#3`), `.` to sustain, `=` to cut. Percussion uses
  * `K` kick, `S` snare, `H` hat, `O` open hat.
@@ -12,7 +12,7 @@ import { FRAME_RATE, type Channel, type Instrument, type NoteSink } from "./driv
 export interface PlaybackPosition {
   step: number;
   orderIndex: number;
-  /** Fraction of the current sixteenth already heard, from 0 to below 1. */
+  /** Fraction of the current grid step already heard, from 0 to below 1. */
   progress?: number;
 }
 
@@ -60,6 +60,8 @@ export interface Song {
    */
   id: string;
   bpm: number;
+  /** Tracker steps per quarter note. Default 4; 12 preserves straight and triplet rhythms. */
+  stepsPerBeat?: 4 | 12;
   patterns: Pattern[];
   order: number[];
   gain: number;
@@ -219,18 +221,18 @@ export class Sequencer {
       if (candidate.at > time) break;
       entry = candidate;
     }
-    const duration = 60 / this.song.bpm / 4;
+    const duration = 60 / this.song.bpm / (this.song.stepsPerBeat ?? 4);
     if (!entry || time >= entry.at + duration) return null;
     return { step: entry.step, orderIndex: entry.orderIndex, progress: Math.max(0, (time - entry.at) / duration) };
   }
 
-  /** Nearest sixteenth at the live audio clock; halfway rounds forward.
+  /** Nearest grid step at the live audio clock; halfway rounds forward.
    * Uses the audible step's timestamp, not the lookahead cursor or a UI frame.
    * Startup and gaps after timer suspension have no recordable position. */
   quantizedPosition(time: number): { step: number; orderIndex: number } | null {
     const entry = this.advanceTimeline(time);
     if (!entry || !this.song) return null;
-    const duration = 60 / this.song.bpm / 4;
+    const duration = 60 / this.song.bpm / (this.song.stepsPerBeat ?? 4);
     if (time >= entry.at + duration) return null;
     let step = entry.step, orderIndex = entry.orderIndex;
     if (time >= entry.at + duration / 2) {
@@ -280,13 +282,16 @@ export class Sequencer {
    */
   nextEighth(from: number): number | null {
     if (!this.running || !this.song) return null;
-    const step = 60 / this.song.bpm / 4;
-    const eighth = step * 2;
+    const step = 60 / this.song.bpm / (this.song.stepsPerBeat ?? 4);
+    const halfBeatSteps = (this.song.stepsPerBeat ?? 4) / 2;
+    const eighth = 60 / this.song.bpm / 2;
     // The scheduler runs up to 200ms ahead, so the grid anchor is usually in
     // the future. Walking forward from it only ever returns a later beat -
     // the first version could report one more than a whole eighth away, which
     // is worse than not quantising. Solve for the phase instead.
-    const anchor = this.nextTime - step * (this.step % 2);
+    let elapsedSteps = this.step;
+    for (let i = 0; i < this.orderIndex; i++) elapsedSteps += this.compiled[this.song.order[i]].steps;
+    const anchor = this.nextTime - step * (elapsedSteps % halfBeatSteps);
     const beats = Math.ceil((from - anchor) / eighth);
     return anchor + beats * eighth;
   }
@@ -365,7 +370,7 @@ export class Sequencer {
    */
   pump(until?: number) {
     if (!this.running || !this.song) return;
-    const stepTime = 60 / this.song.bpm / 4;
+    const stepTime = 60 / this.song.bpm / (this.song.stepsPerBeat ?? 4);
     const lookahead = 0.2;
     const now = this.currentTime();
 

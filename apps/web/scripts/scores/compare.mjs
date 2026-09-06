@@ -1,0 +1,10 @@
+import {readFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {scoreMelody,compareMelody,scheduledMelody,fidelityChips} from './fidelity.mjs';
+const [id,file]=process.argv.slice(2);
+if(!['mario','zelda','sonic'].includes(id)||!file)throw new Error('Usage: pnpm scores:compare mario|zelda|sonic path/to/score.json');
+const reference=JSON.parse(await readFile(resolve(import.meta.dirname,`../../../../scores/references/${id}.json`),'utf8'));
+const candidate=JSON.parse(await readFile(resolve(file),'utf8'));const score=candidate.song??candidate;
+const report={reference:id,score:compareMelody(reference,scoreMelody(score)),scheduled:Object.fromEntries(fidelityChips.map(chip=>[chip.spec.id,compareMelody(reference,scheduledMelody(score,chip))]))};
+console.log(JSON.stringify(report,null,2));
+if(!report.score.pass||Object.values(report.scheduled).some(row=>!row.pass))process.exitCode=1;

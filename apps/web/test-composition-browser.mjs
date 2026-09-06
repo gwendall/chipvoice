@@ -34,9 +34,9 @@ try{
   }
  }
  await page.getByText('About this arrangement · credits & source',{exact:true}).click();
- assert.ok(await page.getByRole('link',{name:'View the source partition ↗'}).getAttribute('href'));
+ assert.ok(await page.getByRole('link',{name:'View the source transcription ↗'}).getAttribute('href'));
  await number('Transpose').fill('3');await number('Transpose').press('Enter');
- await number('Drum activity').fill('50');await number('Drum activity').press('Enter');await page.waitForTimeout(350);
+ assert.ok(await number('Drum activity').isDisabled());await page.getByText('Edited version · source checks apply to the original cartridge.',{exact:true}).waitFor();await page.waitForTimeout(350);
  assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);
  const edited=await draft();await page.screenshot({path:new URL('desktop.png',out).pathname,fullPage:true});
  await page.reload();await page.waitForFunction(()=>!document.getElementById('tempo-slider')?.disabled);assert.deepEqual((await draft()).patterns,edited.patterns);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1);
@@ -45,6 +45,15 @@ try{
  await page.goto(base+'/lab');await page.getByLabel('Composition',{exact:true}).selectOption('sonic');
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForTimeout(1300);assert.ok(await outputRms(page)>.0001);
  for(const id of ['mario','zelda','sonic']){await page.getByLabel('Composition',{exact:true}).selectOption(id);await page.waitForTimeout(350);assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);}
+ await page.getByLabel('Composition',{exact:true}).selectOption('zelda');
+ await page.getByRole('heading',{name:'Zelda · Overworld',exact:true}).waitFor();
+ await page.getByText('About this arrangement · credits & source',{exact:true}).click();
+ await page.getByText('128 source notes checked · melody only · no added backing parts',{exact:true}).waitFor();
+ assert.equal(await page.locator('.lab-loop').textContent(),'38.92 SEC LOOP');
+ assert.deepEqual(await page.getByLabel('Part',{exact:true}).locator('option').evaluateAll(options=>options.map(option=>option.value)),['mix','lead']);
+ await page.screenshot({path:new URL('lab-zelda-mobile.png',out).pathname,fullPage:true});
+ await page.setViewportSize({width:1280,height:1000});
+ await page.screenshot({path:new URL('lab-zelda-desktop.png',out).pathname,fullPage:true});
  assert.deepEqual(errors,[]);await context.close();
  await writeFile(new URL('result.json',out),JSON.stringify({pass:true,results,errors},null,2));console.log('PASS composition controls, Undo/reset, persisted notes, 15 classic adaptations, public lab and responsive layouts');
 }finally{await browser.close();}

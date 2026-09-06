@@ -35,7 +35,7 @@ or playback rate of its reference audio would compromise those comparisons.
 
 Suggested first comparison set: Mario overworld (articulation and syncopation),
 Zelda main theme (held melody and harmonic support), Green Hill Zone (bass and
-rhythmic drive). These now ship as credited four-bar study arrangements; see [the source workflow](../scores/README.md).
+rhythmic drive). These now ship as longer source melodies (50/24/24 bars), without generated backing; see [the source workflow](../scores/README.md).
 
 Use a single reviewed canonical score with melody, bass, harmony and percussion,
 then the existing five-console orchestrators. Keep notes, tempo, excerpt length

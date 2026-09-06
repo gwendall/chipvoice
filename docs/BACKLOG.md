@@ -407,3 +407,22 @@ and deterministic drum activity are reversible live controls. The
 [score workflow](../scores/README.md) covers optional MIDI extraction, reviewed
 recipes, reproducible compilation, explicit rhythm reduction and publication.
 Swing and per-role gain remain future work.
+
+### Source-faithful melody workflow (follow-up to #28)
+
+Replaced four-bar arrangements and automatic root/fifth bass/drums with longer
+melody transcriptions: Mario 50 bars, Zelda 24 bars, Sonic 24-bar main cycle. Frozen
+MIDI references and mutation-tested note comparisons cover 415 notes on five
+sequencer role maps. Added 12-step quarter-note grids, fork/grid preservation,
+source-versus-edited labels and silent-drum controls. Fixed offline startup
+padding truncating the final note and aligned register captures with the WAV's
+sample-rounded end. See [method, coverage and limits](../scores/README.md).
+The recorder now also uses the cores' event queue so short-note rests cancel
+obsolete future releases, with a regression that failed on Game Boy beforehand.
+Full-theme publication/fork tests also cover the cartridge title separator and
+the advertised 30-second audio previews for long scores, including social metadata.
+
+Further musical fidelity requires checking the chosen transcription against
+original game audio and measuring acoustic pitch/articulation after the DSP.
+Full multivoice arrangements should use explicitly transcribed source voices;
+adding a generic accompaniment is no longer part of this pipeline.

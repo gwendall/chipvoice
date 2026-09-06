@@ -71,6 +71,7 @@ export async function POST(
   const merged = {
     title: parsed.data.title === null ? undefined : parsed.data.title ?? parent.song.title ?? undefined,
     bpm: parsed.data.bpm ?? parent.song.bpm,
+    stepsPerBeat: parsed.data.stepsPerBeat ?? parent.song.stepsPerBeat,
     patterns: parsed.data.patterns ?? parent.song.patterns,
     order: parsed.data.order ?? parent.song.order,
     chip: (parsed.data.chip ?? parent.song.chip) as "2a03" | "dmg" | "md" | "snes" | "c64",

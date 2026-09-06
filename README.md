@@ -97,7 +97,7 @@ Written by `conform` on 2026-09-04. The columns:
 
 **Mega Drive, Genesis** (YM2612 + SN76489, since 0.11.0). Digital: Nuked-OPN2 1.0.12 (Nuke.YKT), 7 logs, 1798.7M cycles; runs aligned on step times 100.0 % (36580 of 36580); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the reference on this corpus, not a direct silicon capture. The PSG is from the documents and has no oracle yet. Analog: unmeasured; Nuked's own DAC model is marked unverified, the mix and the Model 1 filter are placeholders. Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten. Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit's line-out.
 
-**Super Nintendo** (S-DSP, since 0.12.0). Digital: snes_spc 0.9.0 (blargg), 5 logs, 23.9M cycles; runs aligned on step times 100.0 % (183 of 183); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR. Analog: unmeasured; the DAC and the console's filter are a placeholder. A capture of the DSP's output would compare directly with the stream. Driver: a bank of synthesised samples in BRR, four voices of eight, the echo on the pitched ones. Remains: real triads across voices; a unit's line-out; SPC export.
+**Super Nintendo** (S-DSP, since 0.12.0). Digital: snes_spc 0.9.0 (blargg), 5 logs, 23.9M cycles; runs aligned on step times 100.0 % (183 of 183); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR. Analog: unmeasured; the DAC and the console's filter are a placeholder. A capture of the DSP's output would compare directly with the stream. Driver: a build-time BRR sample bank with hardware envelopes; lead, bass and percussion plus up to five simultaneous chord voices, with a shared chord volume budget. Remains: a unit's line-out; SPC export.
 
 **Commodore 64** (MOS 6581 SID, since 0.13.0). Digital: reSID-fp (libsidplayfp, drfiemost), as a 6581, 7 logs, 30.5M cycles; runs aligned on step times 100.0 % (1207 of 1207); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter. Analog: a profile from the documents, unmeasured: the 6581's non-linear DAC ladders, the filter on a measured cutoff curve, the output stage's corners. The 8580 is not modelled. Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did. Remains: the filter in the arranger; the 8580; a unit's line-out; VICE's SID test programs on a 6510.
 
@@ -179,25 +179,21 @@ and independent SNES DSP execution. Digital parity does not guarantee a good arr
 
 ### Familiar melodies and composition
 
-The [playground](https://chipvoice.dev) includes short **Mario Ground Theme**,
-**Zelda Overworld** and **Sonic Green Hill Zone** study arrangements alongside
-its original loops. Each uses the same notes on all five machines. These are
-four-bar adaptations with visible credits and source links, not full soundtracks
-or original game recordings. Zelda's triplets are explicitly adapted to the
-sixteenth-note grid. The [listening lab](https://chipvoice.dev/lab) provides the
-same repertoire with isolated parts and measured comparisons.
+The [playground](https://chipvoice.dev) and [listening lab](https://chipvoice.dev/lab)
+include Mario (50 bars), Zelda (24 bars with introduction), and a complete Sonic
+main-theme cycle (24 bars). These are credited melody transcriptions with **no
+invented bass, harmony or drums**. Sonic's separate intro is not included.
 
-Tempo, transposition and drum activity can be explored during playback. A slider
-also has a numeric input; one Undo reverses a gesture. Transposition and drum
-activity become ordinary score notes, so sharing and exports retain the result.
+A frozen source ledger checks all 415 pitches, onsets, releases and rests against
+both the compiled score and the sequencer on every console. Twelve steps per
+quarter note retain triplets. See [the source workflow](scores/README.md) for
+coverage, source hashes, measured timing tolerances, MIDI extraction and
+`pnpm scores:compare`.
 
-```ts
-import { shapeScore, arrange } from 'chipvoice';
-const variation = shapeScore(score, { transpose: 7, drums: 60 });
-const song = arrange(variation, 'snes');
-```
+Transpose and drum-activity sliders have numeric inputs, Undo and Reset. Drum
+activity is disabled on melody-only scores. Edited notes persist through sharing
+and exports; the UI distinguishes edited versions from checked source cartridges.
 
-The [partition-to-cartridge workflow](scores/README.md) documents source review,
-optional MIDI extraction, reproducible compilation (`pnpm scores:build`), explicit
-rhythm reductions and five-console evaluation. CI checks generated cartridges;
-no third-party score download or audio-corpus regeneration runs during builds.
+Offline audio now starts at musical time zero so full-loop exports retain their
+last note. This deliberately updates the audio golden snapshots; live startup
+lookahead is unchanged.

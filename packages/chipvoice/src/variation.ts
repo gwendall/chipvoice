@@ -50,10 +50,10 @@ export function varyScore<T extends Score>(score: T, options: VariationOptions):
       if (!line.length) return pattern;
       if (role === 'perc') {
         let groove = random(GROOVES.length);
-        let replacement = line.map((_, i) => GROOVES[groove][i % 16]).join(' ');
+        let replacement = line.map((_, i) => (i % ((score.stepsPerBeat ?? 4) / 4) === 0 ? GROOVES[groove][Math.floor(i / ((score.stepsPerBeat ?? 4) / 4)) % 16] : '.')).join(' ');
         if (replacement === line.join(' ')) {
           groove = (groove + 1) % GROOVES.length;
-          replacement = line.map((_, i) => GROOVES[groove][i % 16]).join(' ');
+          replacement = line.map((_, i) => (i % ((score.stepsPerBeat ?? 4) / 4) === 0 ? GROOVES[groove][Math.floor(i / ((score.stepsPerBeat ?? 4) / 4)) % 16] : '.')).join(' ');
         }
         return replacement === line.join(' ') ? pattern : { ...pattern, perc: replacement };
       }
@@ -68,7 +68,7 @@ export function varyScore<T extends Score>(score: T, options: VariationOptions):
       {
         // Prefer weak beats; retain the first note when the phrase has others.
         const candidates = hits.length > 1 ? hits.slice(1) : hits.slice();
-        candidates.sort((a, b) => Number(a.step % 4 === 0) - Number(b.step % 4 === 0));
+        candidates.sort((a, b) => Number(a.step % (score.stepsPerBeat ?? 4) === 0) - Number(b.step % (score.stepsPerBeat ?? 4) === 0));
         const count = Math.max(1, Math.ceil(candidates.length / 3));
         for (let i = 0; i < count; i++) {
           const hit = candidates[i], direction = random(2) ? 1 : -1;

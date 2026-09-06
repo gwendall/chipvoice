@@ -24,7 +24,8 @@ try {
     {sql:`insert into songs (id,bpm,patterns,song_order,created_at,key_id) values ('oldsong1',144,?, '[0]',?,'firstkey')`,args:[JSON.stringify([{lead:'C4 . . .',chord:'C3 . . .',bass:'C2 . . .',perc:'K . H .',chordShape:[[0,4,7]]}]),now]},
   ],'write');
   await api.migrate(legacy); await api.migrate(legacy);
-  assert.equal((await legacy.execute('select * from schema_migrations')).rows.length,2);
+  assert.equal((await legacy.execute('select * from schema_migrations')).rows.length,3);
+  assert.equal(Number((await legacy.execute('select steps_per_beat from songs limit 1')).rows[0].steps_per_beat),4,'legacy songs retain the straight grid');
   assert.equal((await legacy.execute('select * from users')).rows.length,1);
   assert.equal((await legacy.execute(`select count(distinct user_id) as n from keys`)).rows[0].n,1);
   const [db1,db2] = await Promise.all([api.db(),api.db()]); assert.equal(db1,db2);
@@ -65,7 +66,7 @@ try {
   await db1.execute({sql:'update sessions set expires_at=0 where hash=?',args:[await api.hashKey(expired)]});
   assert.equal((await api.identify(new Request('https://chipvoice.test/api/me',{headers:{cookie:`${api.SESSION_COOKIE}=${expired}`}}))).userId,null);
   const fresh = createClient({url:`file:${join(directory,'fresh.db')}`});
-  await api.migrate(fresh); assert.equal((await fresh.execute('select * from schema_migrations')).rows.length,2); fresh.close();
+  await api.migrate(fresh); assert.equal((await fresh.execute('select * from schema_migrations')).rows.length,3); fresh.close();
   const broken = createClient({url:`file:${join(directory,'broken.db')}`});
   await broken.execute('create table users (incompatible text)');
   await assert.rejects(api.migrate(broken),/already exists/);

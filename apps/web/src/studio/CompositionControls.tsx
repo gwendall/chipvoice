@@ -10,6 +10,7 @@ export function CompositionControls({song, disabled, onEdit}: {song: SongDocumen
   // without retaining old scores or putting preview metadata in publications.
   const previews = useRef(new WeakMap<SongDocument['patterns'], Preview>());
   const current = previews.current.get(song.patterns) ?? {base: song.patterns, transpose: 0, drums: 100};
+  const hasDrums = current.base.some(pattern => /[KSHO]/.test(pattern.perc));
   const bounds = transposeBounds({...song, patterns: current.base});
   const change = (patch: Partial<Preview>, group?: string) => {
     const settings = {...current, ...patch};
@@ -21,7 +22,7 @@ export function CompositionControls({song, disabled, onEdit}: {song: SongDocumen
     <div className="section-heading"><div><span className="micro">MAKE IT YOURS</span><h2>Find a different feel.</h2></div><button className="small-button" disabled={disabled || !altered} onClick={()=>change({transpose:0,drums:100})}>Reset feel</button></div>
     <div className="composition-sliders">
       <div><RangeControl id="transpose" label="Transpose" unit="st" min={Math.min(0,bounds.min)} max={Math.max(0,bounds.max)} value={current.transpose} disabled={disabled || bounds.min>0 || bounds.max<0} onChange={(transpose,group)=>change({transpose},group)}/><p>Lower or lift every pitched part. Drums keep their pitch.</p></div>
-      <div><RangeControl id="drum-activity" label="Drum activity" unit="%" min={0} max={100} value={current.drums} disabled={disabled} onChange={(drums,group)=>change({drums},group)}/><p>Give the groove more space. 100% brings every hit back.</p></div>
+      <div><RangeControl id="drum-activity" label="Drum activity" unit="%" min={0} max={100} value={hasDrums ? current.drums : 0} disabled={disabled || !hasDrums} onChange={(drums,group)=>change({drums},group)}/><p>{hasDrums ? 'Give the groove more space. 100% brings every hit back.' : 'No drums in this melody. Nothing is added automatically.'}</p></div>
     </div><p className="keyboard-hint">Keep playing as you explore. Undo reverses a gesture; Reset feel restores this version.</p>
   </section>;
 }

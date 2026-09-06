@@ -32,7 +32,7 @@ export interface Issue {
   pattern?: number;
   /** The channel it is on, when it belongs to one. */
   track?: string;
-  /** Which sixteenth, zero-based, when it belongs to one. */
+  /** Which grid step, zero-based, when it belongs to one. */
   step?: number;
   /** The token that caused it. */
   token?: string;
@@ -51,7 +51,7 @@ export interface Measured {
   onsetsPerSecond: number;
   /** Melodic range in semitones. */
   range: number;
-  /** Total sixteenths in the order. */
+  /** Total grid steps in the order. */
   steps: number;
 }
 
@@ -117,6 +117,9 @@ export function validateSong(song: unknown): ValidationResult {
 
   if (typeof s.bpm !== "number" || !Number.isFinite(s.bpm)) {
     return fail("bpm must be a number");
+  }
+  if (s.stepsPerBeat !== undefined && s.stepsPerBeat !== 4 && s.stepsPerBeat !== 12) {
+    return fail("stepsPerBeat must be 4 or 12");
   }
   if (s.bpm < 40 || s.bpm > 300) {
     issues.push({

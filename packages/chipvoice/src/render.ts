@@ -6,6 +6,7 @@ import { snesChip } from "./chips/snes/index.js";
 import { c64Chip } from "./chips/c64/index.js";
 import { Sequencer, type Song } from "./sequencer.js";
 import { OfflineDriver } from "./driver.js";
+import { EventQueue } from "./event-queue.js";
 
 /**
  * Renders a song to samples, without a browser.
@@ -46,7 +47,7 @@ export interface RenderResult {
  * bar in five possible - so this counts tokens rather than assuming sixteen.
  */
 export function loopSeconds(song: Song): number {
-  const stepTime = 60 / song.bpm / 4;
+  const stepTime = 60 / song.bpm / (song.stepsPerBeat ?? 4);
   const steps = song.order.reduce((sum, index) => {
     const pattern = song.patterns[index];
     return sum + (pattern ? pattern.bass.trim().split(/\s+/).length : 0);
@@ -86,7 +87,9 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
   let clock = 0;
   const driver = new OfflineDriver(core, chip, () => clock);
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
-  sequencer.play(song);
+  // Offline time zero is the first musical instant; live startup lookahead
+  // must not steal the end of a full-loop export.
+  sequencer.play(song, undefined, 0);
 
   const left = new Float32Array(total);
   const right = options.stereo ? new Float32Array(total) : null;
@@ -123,42 +126,55 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
  */
 export function recordSong(
   song: Song,
-  options: { seconds?: number; chip?: string } = {},
+  options: { seconds?: number; chip?: string; sampleRate?: number } = {},
 ): { events: RegisterEvent[]; cycles: number; memory: { address: number; bytes: Uint8Array }[] } {
   const chip = chipFor(options.chip ?? song.chip ?? "2a03");
-  const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
+  const sampleRate = options.sampleRate ?? 44100;
+  const requestedSeconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
+  const total = Math.max(1, Math.round(requestedSeconds * sampleRate));
+  // Match the WAV's actual duration, including its last rounded sample.
+  const seconds = total / sampleRate;
   const cycles = Math.round(seconds * chip.spec.clockHz);
   const events: RegisterEvent[] = [];
+  const pending = new EventQueue();
+  const captureUntil = (until: number) => {
+    while (pending.nextAt < until) events.push(pending.take());
+  };
   const memory: { address: number; bytes: Uint8Array }[] = [];
   const core: ChipCore = {
-    schedule: (batch) => {
-      for (const e of batch) events.push(e);
-    },
+    schedule: (batch) => pending.schedule(batch),
+    cancel: (owner, from) => pending.cancel(owner, from),
     load(address, bytes) {
       memory.push({ address, bytes: bytes.slice() });
     },
     render() {},
     setGain() {},
-    reset() {},
+    reset() { pending.clear(); },
   };
   let clock = 0;
   const driver = new OfflineDriver(core, chip, () => clock);
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
-  sequencer.play(song);
+  // Offline time zero is the first musical instant; live startup lookahead
+  // must not steal the end of a full-loop export.
+  sequencer.play(song, undefined, 0);
   // The renderer's block, so a song records the way it renders.
-  const block = 4096 / 44100;
-  for (let t = 0; t < seconds; t += block) {
-    clock = t;
-    sequencer.pump();
+  const block = 4096;
+  for (let offset = 0; offset < total; offset += block) {
+    clock = offset / sampleRate;
+    // Commit elapsed writes; cancellation only visits the bounded future
+    // queue, just as it does in a rendering core, never the captured history.
+    captureUntil(Math.round(clock * chip.spec.clockHz));
+    sequencer.pump(Math.max(clock + 0.2, Math.min(offset + block, total) / sampleRate));
     driver.flush();
   }
   // Stop at the requested boundary, not at the start of the final block.
   // Otherwise the capture inserts note-offs into audio the renderer still plays.
   clock = seconds;
+  captureUntil(cycles);
   sequencer.stop();
   driver.flush();
   return {
-    events: events.filter((e) => e.at < cycles).sort((a, b) => a.at - b.at),
+    events,
     cycles,
     memory,
   };
