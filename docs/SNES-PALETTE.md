@@ -99,3 +99,12 @@ an amplitude budget does not first quantize each chord tone to a 4-bit integer.
 Quiet triads and five-tone chords remain audible at gain 0.1 and increase at
 0.2/0.3. Legacy chip frame quantization is preserved. The default SNES golden
 is unchanged by these two review corrections.
+
+Final evidence on engine revision `377636b` is in
+`.artifacts/listening/snes-polyphony-reviewed`: all 15 complete demo loops replay
+exactly; all three SNES loops match native; every case has no signal warning.
+All 60 non-SNES mix/stem WAV hashes are identical to the pre-palette baseline.
+All 18 SNES mix/stem/native WAVs match the evaluated phase-2 defaults after the
+review corrections. The report fingerprints the built engine separately from
+subsequent documentation-only commits. `verification.json` records these checks.
+Desktop/mobile A/B screenshots and browser checks are stored under `browser/`.

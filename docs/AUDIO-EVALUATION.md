@@ -125,7 +125,7 @@ full scale, so checking only the exported WAV missed this distortion.
 
 \* 32-clock windows containing at least one overflowing voice addition, either
 channel. Both dry and echo-input addition counters are zero after the change.
-The driver now maps full voice level to `$20`, leaving room for the four arranged
+That initial fix mapped full voice level to `$20`, leaving room for the four arranged
 parts. DSP saturation behavior stays intact. This is not a universal promise of
 headroom with eight custom full-scale voices or different sample/echo settings.
 Native parity remains exact on all three corrected compositions and all five
@@ -139,9 +139,12 @@ at 0.280204 s in a 0.31 s SNES capture before the fix; exact full-duration repla
 now passes on all five consoles. This capture correction does not itself change
 live sound.
 
-**Still open:** the factory melodic bank is largely short sine/triangle/saw/square
-loops, with synthetic drums. The arranger uses four voices and arpeggiates chords
-on one voice. A varied, licensed or original BRR sample bank, authored envelopes,
-true polyphonic voicing and console-specific composition references are separate
-work. The analog output stage remains unmeasured against SNES line-out. Neither
-this investigation nor oracle parity settles those musical/hardware questions.
+**Subsequent iteration:** the original build-time BRR palette, per-family hardware
+envelopes and simultaneous chords are implemented in PRs #24/#25. The driver now
+uses `$1f` with a shared chord amplitude budget and moderate stereo placement.
+See [palette acceptance and measurements](SNES-PALETTE.md) for the resulting
+checks, listening iterations and review corrections.
+
+**Still open:** listening against chosen console-specific musical references and
+measuring the analog output stage against SNES line-out. Neither this investigation
+nor oracle parity settles those musical/hardware questions.
