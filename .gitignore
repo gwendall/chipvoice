@@ -16,3 +16,6 @@ packages/conform/build/
 # Local screenshots, recordings and audio evaluation artifacts.
 .artifacts/
 apps/web/generated/
+
+# Generated from original sample recipes; never synthesized at playback.
+packages/chipvoice/src/chips/snes/bank-inline.ts

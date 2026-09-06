@@ -54,10 +54,13 @@ function predict(filter: number, p1: number, p2half: number): number {
 
 /**
  * Encodes 16-bit samples as BRR. The length is padded to a multiple of
- * sixteen with silence unless it already is one. A looped sample loops back
- * to its start; the caller keeps the loop as a whole number of blocks.
+ * sixteen with silence unless it already is one. loopStart is a PCM sample
+ * offset aligned to a block; the sample directory must point at that BRR block.
  */
-export function encodeBrr(pcm: Int16Array, loop: boolean): Uint8Array {
+export function encodeBrr(pcm: Int16Array, loop: boolean, loopStart = 0): Uint8Array {
+  if (!Number.isInteger(loopStart) || loopStart < 0 || loopStart % 16 !== 0 || (loopStart > 0 && (!loop || loopStart >= pcm.length))) {
+    throw new Error("BRR loop start must be a 16-sample boundary inside a looped sample");
+  }
   const blocks = Math.max(1, Math.ceil(pcm.length / 16));
   const out = new Uint8Array(blocks * 9);
   // The decoder's state, carried block to block as the chip carries it: the
@@ -71,7 +74,7 @@ export function encodeBrr(pcm: Int16Array, loop: boolean): Uint8Array {
   for (let b = 0; b < blocks; b++) {
     let bestError = Infinity;
     let bestShift = 0, bestFilter = 0, best1 = 0, best2 = 0;
-    for (let filter = 0; filter < (b === 0 ? 1 : 4); filter++) {
+    for (let filter = 0; filter < (b === 0 || b * 16 === loopStart ? 1 : 4); filter++) {
       for (let shift = 0; shift <= 12; shift++) {
         let p1 = last1;
         let p2 = last2;

@@ -2,31 +2,26 @@ import type { Instrument } from "../../driver.js";
 import type { Instruments, Intent } from "../../score.js";
 import type { PercussionKit } from "../../sequencer.js";
 
-/**
- * The SNES's arranger: an intent to an instrument, in the machine's idiom,
- * which is that everything is a sample. The words pick waveforms from the
- * driver's bank - a triangle for a soft lead, a sawtooth for a bright one,
- * a sine for a round one - and the kit is four drums the driver synthesised.
- * This is a basic synthetic palette, not a representative sampled game bank.
- */
-const LEAD_VOLUME = [15, 15, 14, 13, 12, 12, 11, 11, 10, 10, 10, 9, 9, 9, 8];
-const LEAD_VIBRATO = { depth: 0.18, rate: 8, delay: 12 };
+/** Original BRR instrument families: transient attack, periodic sustain and
+ * the sample's hardware ADSR. Portable intents choose a family, not a game. */
+const LEAD_VOLUME = [15];
+const LEAD_VIBRATO = { depth: 0.10, rate: 12, delay: 16 };
 
 const LEADS: Record<Required<Intent>["lead"], Instrument> = {
-  soft: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "tri" },
-  bright: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "saw" },
-  round: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "sine" },
+  soft: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "flute" },
+  bright: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "brass" },
+  round: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "mallet" },
 };
 
 const CHORDS: Record<Required<Intent>["chord"], Instrument> = {
-  plucked: { volume: [9, 8, 7, 7, 6], sustain: true, sample: "square" },
-  held: { volume: [8, 8, 7, 7, 7, 6, 6, 6], sustain: true, sample: "tri" },
+  plucked: { volume: [10], sustain: true, sample: "harp" },
+  held: { volume: [9], sustain: true, sample: "strings" },
 };
 
 const BASSES: Record<Required<Intent>["bass"], Instrument> = {
-  round: { volume: [15], sustain: true, sample: "sine64" },
-  hollow: { volume: [13], sustain: true, sample: "square64" },
-  bright: { volume: [13], sustain: true, sample: "saw64" },
+  round: { volume: [15], sustain: true, sample: "picked-bass" },
+  hollow: { volume: [13], sustain: true, sample: "reed-bass" },
+  bright: { volume: [13], sustain: true, sample: "synth-bass" },
 };
 
 const KIT: PercussionKit = {
