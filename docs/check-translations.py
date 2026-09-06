@@ -75,7 +75,7 @@ def localized_block(kind, body, templates):
         return '\n'.join(lines) + '\n'
     lines = []
     for line in body.splitlines():
-        if not line.strip() or line.startswith('| ---'):
+        if not line.strip() or re.fullmatch(r'\|(?:\s*:?-+:?\s*\|)+', line):
             lines.append(line)
             continue
         if kind == 'parity':
@@ -93,7 +93,10 @@ def localized_block(kind, body, templates):
                 ' on times': ' 時刻一致', ' on values': ' 値一致', 'shift <=': 'シフト <=',
                 ' at ': ' シフト ',
             }
-            if not line.startswith('|'):
+            headers = {'| | |', '| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |'}
+            metric = re.fullmatch(r'\| (?:Oracle|Corpus|Identical cycles|Logs with a divergence) \| .+ \|', line)
+            data = re.fullmatch(r'\| [\w.-]+ \| \d+(?:\.\d+)? % \| .+ \| .+ \|', line)
+            if line not in headers and not metric and not data:
                 raise ValueError(f'Unknown parity line: {line}')
             for before, after in replacements.items():
                 line = line.replace(before, after)
@@ -103,7 +106,7 @@ def localized_block(kind, body, templates):
                 line = f'`conform`の{match[1]} fixtureで{match[2]}に実行：{match[3]} / {match[4]}成功。'
             elif line == '| ROM | Result | What it said |':
                 line = '| ROM | 結果 | 実際の出力（原文） |'
-            elif line.startswith('|'):
+            elif re.fullmatch(r'\| `[^`]+` \| (?:pass|fail) \| .* \|', line):
                 # The third cell is exact ROM stdout; never translate or rewrite it.
                 line = line.replace('| pass |', '| 成功 |').replace('| fail |', '| 失敗 |')
             else:
@@ -114,7 +117,7 @@ def localized_block(kind, body, templates):
                 line = f'`conform`が{match[1]}に生成。基準音に対する中央区間のレベル。低いほど相殺が良好です。'
             elif line == "| Test | This core | Blargg's NES, his recording |":
                 line = '| テスト | 本コア | blarggのNES録音 |'
-            elif not line.startswith('|'):
+            elif not re.fullmatch(r'\| `apu_mixer/[\w-]+` \| -?\d+(?:\.\d+)? dB \| -?\d+(?:\.\d+)? dB \|', line):
                 raise ValueError(f'Unknown mixer line: {line}')
         lines.append(line)
     return '\n'.join(lines) + '\n'
@@ -157,6 +160,9 @@ def check(sync=False):
             errors.append(f'{label}: replacement character or unexpanded template')
         if [h.count('#', 0, h.index(' ')) for h in headings(original)] != [h.count('#', 0, h.index(' ')) for h in headings(translated)]:
             errors.append(f'{label}: heading structure differs')
+        table_shape = lambda text: [len(re.split(r'(?<!\\)\|', line)) for line in text.splitlines() if line.startswith('|')]
+        if table_shape(original) != table_shape(translated):
+            errors.append(f'{label}: table structure differs')
         for anchor in heading_ids(original):
             if f'<a id="{anchor}"></a>' not in translated:
                 errors.append(f'{label}: missing source anchor {anchor}')
