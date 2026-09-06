@@ -7,6 +7,8 @@ import { measure } from './metrics';
 import { LivePlayback } from '../audio/LivePlayback';
 
 export function useDemoAudio(song: SongDocument, muted: Role[], recording = false) {
+  const interacted = useRef(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const current = useRef<Chip | null>(null);
   const playback = useRef<LivePlayback | null>(null);
   const latest = useRef({ song, muted, recording });
@@ -37,10 +39,22 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     const chip = await player.update(musicSong(latest.current.song, latest.current.muted));
     player.audition(); return chip;
   }, [session]);
-  const start = useCallback(async () => {
-    const chip = await session().start(musicSong(latest.current.song, latest.current.muted));
-    measure('play'); return chip;
+  const start = useCallback(async (nextSong = latest.current.song, nextMuted = latest.current.muted) => {
+    interacted.current = true; setHasInteracted(true);
+    try {
+      // AudioContext creation/resume stays in the trusted gesture. A selection
+      // supplies its new score explicitly, before React commits the document.
+      const chip = await session().start(musicSong(nextSong, nextMuted));
+      measure('play'); return chip;
+    } catch (error) {
+      playback.current?.stop();
+      if (mounted.current) setError(error instanceof Error ? error.message : 'Press Play to enable audio.');
+      return null;
+    }
   }, [session]);
+  const startOnInteraction = useCallback((nextSong?: SongDocument, nextMuted?: Role[]) => {
+    if (!interacted.current) void start(nextSong, nextMuted);
+  }, [start]);
   const toggle = useCallback(async () => {
     if (playback.current?.playing) playback.current.stop();
     else await start();
@@ -110,5 +124,5 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [output]);
-  return { playing, loading, error, position, stolen, output, effect, toggle, start, fire, preview, recordingPosition };
+  return { hasInteracted, startOnInteraction, playing, loading, error, position, stolen, output, effect, toggle, start, fire, preview, recordingPosition };
 }

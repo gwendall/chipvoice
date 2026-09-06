@@ -51,7 +51,7 @@ try{
  await slider.focus();await page.keyboard.press('PageUp');await page.waitForTimeout(420);
  await number.fill('132');await number.press('Enter');await page.waitForTimeout(420);
  await slider.focus();await page.keyboard.press('End');await page.waitForTimeout(420);
- await page.locator('.machines').getByRole('button',{name:'SNES',exact:true}).click();
+ await page.locator('.machines').getByRole('button',{name:'Super Famicom',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.spec.id==='snes');
  await page.waitForTimeout(150);
  const results=await page.evaluate(()=>({blocks:window.audioBlocks,transitions:window.phaseTransitions}));

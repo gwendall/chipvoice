@@ -16,14 +16,16 @@ change the music, share it, reveal how it works. No account is required to play
 or create a draft. The instrument occupies the first screen; documentation and
 account management are secondary.
 
-The characteristic interaction is hearing the same passage on five machines,
+The characteristic interaction is hearing the same passage on four public consoles,
 then seeing and hearing a sound effect borrow a voice from the music.
 
 ## First visit
 
-1. A short, composed preset is already loaded. An explicit Play button starts
-   it. Merely focusing a field or opening a menu does not start the song.
-2. NES, Game Boy, Mega Drive, SNES and C64 are visible selectors. Changing
+1. Mario is loaded on a fresh visit; drafts and shared scores take priority.
+   Play, or the first interaction with a melody or console, starts sound.
+   Passive load and Tab navigation stay silent.
+2. Famicom, Game Boy, Mega Drive and Super Famicom are visible logo selectors.
+   C64 stays supported for existing scores but is hidden from the picker. Changing
    machine keeps the musical position and the current edits.
 3. Four musical roles animate with the music: lead, chords, bass and drums.
 4. Jump, Coin, Laser and Explosion pads trigger sound and a small visual action.
@@ -34,14 +36,14 @@ then seeing and hearing a sound effect borrow a voice from the music.
 
 ## V1: the whole experience, kept small
 
-### Five machines and three cartridges
+### Four public consoles and familiar melodies
 
-Keep all five selectors visible and selected state unambiguous. A switch keeps
+Keep the four Japanese logo selectors visible and selected state unambiguous. A switch keeps
 the transport position; a stopped song stays stopped. Handle loading and rapid
 repeated switches without overlapping players or obsolete async completions.
 
-Ship three excellent short presets with contrasting moods. Working names such
-as Overworld, Boss Fight and Midnight are examples, not required final copy.
+Lead with source-checked Mario, Zelda and Sonic melodies. Keep the three original
+loops (Overworld, Boss Fight and Midnight) in a secondary disclosure.
 All play on every machine. Preserve recognizable musical material for useful
 comparison while allowing the arrangers to use each machine's idiom. Additional
 machine-specific compositions can follow.
@@ -135,7 +137,7 @@ the visible instrument immediately.
 
 ### B. Deliver the first playable screen
 
-Three presets, explicit Play, five machine switches, four reactive lanes and
+Familiar melodies, first-interaction Play, four public machine switches, four reactive lanes and
 four effect pads. Keep position during switches and make the actual voice
 interruption visible. Check browser audio lifecycle, first interaction and
 phone controls on the production build.
@@ -231,3 +233,28 @@ The next consolidated slice covers P8-23, P8-11, P8-12 and AUD-1/2/4/5/6:
 
 Physical MIDI/phone latency, representative CPU/GC numbers, distributed quotas,
 new chip implementations and P8-13's richer arrangements remain separate work.
+
+
+## Japanese console entry (September 2026)
+
+The homepage is a playable JavaScript sound-chip demo. Its first screen explains
+that purpose, offers Mario / Zelda / Sonic first, and keeps Play beside those tunes.
+Original loops are in the “More to play” disclosure; composition and export follow
+the console. The default is Mario only when neither a saved draft nor a share exists.
+
+The shared picker uses Japanese Famicom, Game Boy, Mega Drive and Super Famicom
+artwork as colour-preserving images, with no visible caption. Each button retains
+an accessible name, tooltip and pressed state. `DEMO_MACHINES` hides C64 only at the
+presentation layer; schemas, SDK, old drafts and the five-chip evidence remain intact.
+See `apps/web/public/machines/README.md` for sources and checksums.
+
+First interaction with the playground console starts music once. A first tune or
+machine selection passes its new score directly to the audio hook, so the old
+selection is never started by a stale React render. AudioContext creation and resume
+stay synchronous with the trusted gesture. Passive load and navigation links do
+not start sound; Stop consumes the same one-time intent and subsequent edits do
+not restart playback. Unsupported/blocked audio retains a visible error and Play
+fallback. Tab navigation alone stays silent. The listening lab retains explicit
+Play and lazy lossless downloads, with familiar tunes first and Mario/Super Famicom
+selected initially. About explains why that recorded comparison differs from live
+synthesis in the playground.

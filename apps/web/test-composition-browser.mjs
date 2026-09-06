@@ -11,6 +11,7 @@ try{
  const number=name=>page.getByRole('spinbutton',{name,exact:true});
  const valueIs=async(name,value)=>page.waitForFunction(({name,value})=>document.querySelector(`input[type=number][aria-label="${name}"]`)?.value===value,{name,value});
  const draft=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('chipvoice.draft.v1')));
+ await page.locator('.original-tunes summary').click();await page.getByRole('button',{name:'Load Overworld',exact:true}).click();
  const original=await draft();
  await number('Transpose').fill('7');await number('Transpose').press('Enter');await valueIs('Transpose','7');
  assert.equal((await draft()).patterns[0].lead.split(' ')[0],'B5');
@@ -18,7 +19,7 @@ try{
  assert.ok((await draft()).patterns.every(p=>p.perc.split(' ').every(t=>t==='.'||t==='=')));
  await page.getByRole('button',{name:'Undo',exact:true}).click();await valueIs('Drum activity','100');await valueIs('Transpose','7');
  await page.getByRole('button',{name:'Reset feel',exact:true}).click();await valueIs('Transpose','0');assert.deepEqual((await draft()).patterns,original.patterns);
- const results=[];const chips=[['NES','2a03'],['Game Boy','dmg'],['Mega Drive','md'],['SNES','snes'],['C64','c64']];
+ const results=[];const chips=[['Famicom','2a03'],['Game Boy','dmg'],['Mega Drive','md'],['Super Famicom','snes']];
  for(const title of ['Mario · Ground Theme','Zelda · Overworld','Sonic · Green Hill Zone']){
   const before=await page.evaluate(()=>window.chipvoice?.songId??null);
   await page.getByRole('button',{name:`Load ${title}`,exact:true}).click();
@@ -43,7 +44,7 @@ try{
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:new URL('mobile.png',out).pathname,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.goto(base+'/lab');await page.getByLabel('Composition',{exact:true}).selectOption('sonic');
- await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForTimeout(1300);assert.ok(await outputRms(page)>.0001);
+ await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByText('Playing continuously · levels matched for comparison.',{exact:true}).waitFor({timeout:60000});let labRms=0;for(let i=0;i<8&&labRms<.0001;i++){labRms=await outputRms(page);if(labRms<.0001)await page.waitForTimeout(150);}assert.ok(labRms>.0001);
  for(const id of ['mario','zelda','sonic']){await page.getByLabel('Composition',{exact:true}).selectOption(id);await page.waitForTimeout(350);assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);}
  await page.getByLabel('Composition',{exact:true}).selectOption('zelda');
  await page.getByRole('heading',{name:'Zelda · Overworld',exact:true}).waitFor();
@@ -55,5 +56,5 @@ try{
  await page.setViewportSize({width:1280,height:1000});
  await page.screenshot({path:new URL('lab-zelda-desktop.png',out).pathname,fullPage:true});
  assert.deepEqual(errors,[]);await context.close();
- await writeFile(new URL('result.json',out),JSON.stringify({pass:true,results,errors},null,2));console.log('PASS composition controls, Undo/reset, persisted notes, 15 classic adaptations, public lab and responsive layouts');
+ await writeFile(new URL('result.json',out),JSON.stringify({pass:true,results,errors},null,2));console.log('PASS composition controls, Undo/reset, persisted notes, 12 public classic adaptations, public lab and responsive layouts');
 }finally{await browser.close();}

@@ -27,3 +27,6 @@ export const ORIGINAL_PRESETS: Preset[] = [
 
 export const CLASSIC_PRESETS = classics as Preset[];
 export const PRESETS: Preset[] = [...ORIGINAL_PRESETS, ...CLASSIC_PRESETS];
+
+/** First visit only; restoring a draft or opening a share always takes priority. */
+export const DEFAULT_PRESET = CLASSIC_PRESETS[0];

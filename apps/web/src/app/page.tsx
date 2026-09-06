@@ -2,15 +2,12 @@ import type { Metadata } from "next";
 import Studio from "@/studio/App";
 
 export const metadata: Metadata = {
-  title: "chipvoice - write music on the sound chips of the old machines",
-  description:
-    "Four lines of text, four channels, the NES's 2A03, the Game Boy's APU, the Mega Drive's FM chip the SNES's S-DSP or the C64's SID emulated to the cycle. Sound effects steal channels from the music, the way the hardware did.",
+  title: "chipvoice · Old consoles. New JavaScript.",
+  description: "An open-source sound-chip emulator in JavaScript. Play Mario, Zelda and Sonic melodies on Famicom, Game Boy, Mega Drive and Super Famicom, then make your own music.",
   openGraph: {
-    title: "chipvoice",
-    description:
-      "Write music on a real NES, Game Boy, Mega Drive, SNES or C64 sound chip in a browser tab. Songs are text, and they fork like code.",
-    url: "https://chipvoice.dev",
-    type: "website",
+    title: "chipvoice · Old consoles. New JavaScript.",
+    description: "Hear familiar melodies through emulated sound chips. Every note generated in your browser. Switch consoles, play with the sound, take the code.",
+    url: "https://chipvoice.dev", type: "website",
   },
 };
 

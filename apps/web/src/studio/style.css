@@ -15,10 +15,10 @@ button:disabled { opacity: .35; }
 .intro-line { display: flex; align-items: center; justify-content: space-between; padding: 24px 0; }.intro-line p { font-size: 18px; letter-spacing: -.4px; margin: 0; font-weight: 600; }.intro-line p span { color: var(--muted); }.intro-line .micro { color: var(--muted); font-size: 9px; }
 .console { background: var(--case); border: 1px solid #d1cdc1; border-radius: 20px; padding: 24px 28px 0; box-shadow: 0 3px 0 #c5c1b5, 0 16px 32px -22px #3338, inset 0 1px 0 #fff; }
 .console-top { display: flex; justify-content: space-between; margin: 0 0 14px; color: #65665d; }.hardware-label { font-size: 9px; }
-.machines { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 22px; }
+.machines { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
 .machines button { display: flex; align-items: center; gap: 9px; height: 54px; padding: 0 15px; border: 1px solid #c5c3b9; border-radius: 7px; background: #f5f3ee; box-shadow: 0 3px 0 #c6c2b8, inset 0 1px 0 #fff; text-align: left; }
-.machines strong { font-size: 13px; white-space: nowrap; letter-spacing: -.2px; }.machines small { font: 9px var(--mono); color: #84847b; margin-left: auto; }.machine-led { height: 5px; width: 5px; border-radius: 50%; background: #c6c5bc; flex-shrink: 0; }
-.machines button[aria-pressed=true] { background: #33372f; color: #fffdf4; border-color: #33372f; box-shadow: 0 3px 0 #22251f, inset 0 1px 0 #555b4d; }.machines button[aria-pressed=true] small { color: #b9bdb1; }.machines button[aria-pressed=true] .machine-led { background: #edbd66; box-shadow: 0 0 8px #edbd6670; }
+.machines button[aria-pressed=true] { background: #fffaf0; border-color: #ad5c31; box-shadow: 0 3px 0 #ad5c31, inset 0 0 0 1px #ad5c31; }
+.machines button:hover { background: #fffcf5; }
 .screen-bezel { background: #202721; color: #e9eadc; border: 7px solid #3c4138; border-radius: 12px; box-shadow: inset 0 2px 8px #0008, 0 1px 0 #fff9; overflow: hidden; }
 .screen-title { display: flex; align-items: center; justify-content: space-between; padding: 21px 24px 18px; border-bottom: 1px solid #424b3e; }
 .screen-kicker { font: 9px var(--mono); letter-spacing: 1.5px; color: #a4ae96; text-transform: uppercase; }h1 { font-size: 30px; letter-spacing: -.8px; font-weight: 600; margin: 5px 0 0; }.output-scope { width: 120px; height: 32px; }
@@ -66,11 +66,11 @@ button:disabled { opacity: .35; }
   .screen-title { padding-block: 12px; }
 }
 
-/* Locally bundled vector marks; labels remain readable at small sizes. */
-.machines button { height: 76px; flex-direction: column; justify-content: center; gap: 9px; padding: 9px; }
-.machine-logo { display: block; width: 100%; max-width: 128px; height: 28px; background: currentColor; mask-size: contain; mask-repeat: no-repeat; mask-position: center; }
-.machines strong { display: flex; align-items: center; gap: 6px; font-size: 10px; }
-@media (max-width: 650px) { .machines button { height: 64px; padding: 6px 3px; gap: 6px; }.machine-logo { height: 23px; }.machines strong { font-size: 8px; gap: 3px; } }
+/* Original vector colours stay intact, including on the selected console. */
+.machines button { height: 82px; justify-content: center; padding: 14px; }
+.machine-logo { display: block; width: 100%; max-width: 175px; height: 48px; object-fit: contain; }
+.machine-logo-md, .machine-logo-snes { height: 56px; }
+@media (max-width: 650px) { .machines button { height: 64px; padding: 8px; }.machine-logo { height: 32px; }.machine-logo-md, .machine-logo-snes { height: 45px; } }
 .recording-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
 .record-button { min-height: 44px; padding: 10px 16px; border: 1px solid #b67a65; border-radius: 6px; background: #f4e5da; font-size: 12px; font-weight: 650; }
 .record-button > span { color: #a44930; margin-right: 5px; }
@@ -114,3 +114,60 @@ button:disabled { opacity: .35; }
 .cartridge-source summary { cursor:pointer; min-height:28px; }.cartridge-source p { color:var(--muted); max-width:780px; }
 .cartridge-source a { text-decoration:underline; text-underline-offset:4px; }
 @media(max-width:760px) { .cartridge-copy small { font-size:8px; margin-top:5px; }.cartridge-source { padding:14px; } }
+
+.playground-intro { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 48px; padding: 34px 0 30px; }
+.playground-intro .micro { color: var(--muted); font-size: 9px; }
+.playground-intro h1 { font-size: clamp(36px, 4.5vw, 58px); line-height: 1.02; letter-spacing: -2.3px; font-weight: 750; margin: 13px 0 0; }
+.playground-intro h1 span { color: #a54a24; }
+.intro-copy { max-width: 430px; padding-bottom: 2px; }
+.intro-copy p { font-size: 16px; line-height: 1.65; margin: 0 0 13px; color: #575c51; }
+.intro-copy a { font-size: 13px; font-weight: 650; text-decoration: underline; text-underline-offset: 4px; }
+.tune-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 12px; }
+.start-hint { font-size: 12px; color: #5e6357; }
+.familiar-tunes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.familiar-tune { display: flex; align-items: center; gap: 13px; min-height: 76px; padding: 12px; border-radius: 8px; border: 1px solid #c5c0b2; background: #f5f2e9; text-align: left; box-shadow: 0 3px 0 #c6c2b8; }
+.familiar-tune:hover { background: #fffaf0; }
+.familiar-tune[aria-pressed=true] { border-color: #656e55; box-shadow: 0 3px 0 #656e55, inset 0 0 0 1px #656e55; }
+.tune-icon { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 5px; background: var(--tune-color); color: #292c29; font: 800 26px var(--mono); box-shadow: inset 0 1px 0 #fff5; }
+.familiar-tune strong { display: block; font-size: 18px; letter-spacing: -.4px; }
+.familiar-tune small { display: block; font-size: 11px; margin-top: 5px; color: #5c6054; }
+.tune-play { margin-left: auto; font-size: 10px; color: #606a4b; }
+.original-tunes { margin: 12px 0 22px; }
+.original-tunes summary { cursor: pointer; width: fit-content; padding: 8px 0; color: #5e6357; font-size: 12px; }
+.original-tunes .cartridge-list { margin-top: 10px; }
+.screen-title h2 { font-size: 26px; margin: 5px 0 0; }
+.about-main { max-width: 760px; padding: 46px 0; }
+.about-main h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.07; margin: 14px 0 28px; letter-spacing: -1.8px; }
+.about-main section { border-top: 1px solid var(--edge); padding: 25px 0; }
+.about-main p, .about-main li { font-size: 16px; line-height: 1.8; color: #575c51; }
+.about-main a { text-underline-offset: 4px; }
+.about-main pre { padding: 22px; overflow-x: auto; background: #202721; color: #e9eadc; border-radius: 8px; font: 13px/1.8 var(--mono); }
+@media (max-width: 760px) {
+ .playground-intro { grid-template-columns: 1fr; gap: 17px; padding: 24px 3px; }
+ .playground-intro h1 { font-size: 40px; letter-spacing: -1.6px; }
+ .intro-copy p { font-size: 14px; line-height: 1.6; margin-bottom: 9px; }
+ .tune-heading { align-items: flex-start; flex-direction: column; gap: 7px; }
+ .tune-heading .micro { font-size: 8px; }
+ .start-hint { font-size: 11px; }
+ .familiar-tunes { gap: 7px; }
+ .familiar-tune { min-height: 88px; flex-direction: column; align-items: flex-start; gap: 7px; padding: 10px; position: relative; }
+ .tune-icon { width: 26px; height: 26px; font-size: 18px; }
+ .familiar-tune strong { font-size: 15px; }
+ .familiar-tune small { font-size: 9px; line-height: 1.35; margin-top: 3px; }
+ .tune-play { position: absolute; top: 14px; right: 10px; font-size: 8px; }
+ .screen-title h2 { font-size: 20px; }
+ .original-tunes { margin-bottom: 16px; }
+ .about-main { padding-top: 28px; }
+ .site-header nav a:last-child { display: inline; }
+}
+
+.tune-heading > div { display: grid; gap: 7px; }
+.tune-heading { margin-bottom: 18px; }
+.tune-heading .play-button { min-width: 130px; height: 46px; }
+@media (max-width:760px) {
+ .tune-heading { flex-direction: row; align-items: center; gap: 10px; }
+ .tune-heading .play-button { min-width: 82px; height: 44px; }
+ .start-hint { max-width: 195px; line-height: 1.45; }
+ .machines { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+ .machine-logo { max-width: 135px; }
+}

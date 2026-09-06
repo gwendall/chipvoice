@@ -1,5 +1,6 @@
 'use client';
 import type {CSSProperties} from 'react';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Role } from 'chipvoice';
 import { useSongDocument } from './useSongDocument';
@@ -120,16 +121,29 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
     finally { setPublishing(false); }
   };
 
+  const loadPreset = (preset: Preset) => {
+    const next = { ...structuredClone(preset.song), chip: doc.song.chip };
+    edit(next); setMuted([]); setSolo(null);
+    setMusicalKey(preset.id === 'boss' ? 'E' : preset.id === 'midnight' ? 'A' : preset.id === 'zelda' ? 'Bb' : 'C');
+    audio.startOnInteraction(next, []); measure('preset');
+  };
   return <div className="demo-page">
     <SiteHeader />
     <main className="demo-main">
-      <div className="intro-line"><p>Five machines. <span>Your soundtrack.</span></p><span className="micro">A PLAYABLE AUDIO LIBRARY</span></div>
-      <section className="console" aria-label="Chipvoice musical console">
-        <div className="console-top"><span className="micro">CHOOSE YOUR MACHINE</span><span className="micro hardware-label">CV–05 / POCKET SOUND SYSTEM</span></div>
-        <MachinePicker value={doc.song.chip} disabled={recordLocked} onChange={chip => { edit({...doc.song, chip}); measure('switch'); }} />
-        <div className="screen-bezel"><div className="screen-title"><div><span className="screen-kicker">{machine.chip}</span><h1>{doc.song.title || 'Untitled adventure'}</h1></div><OutputScope node={audio.output}/></div><Voices disabled={recordLocked} song={recording && backingSong.current ? backingSong.current : doc.song} position={audio.position} stolen={audio.stolen} muted={effectiveMuted} solo={solo} onMute={r => setMuted(previous => previous.includes(r) ? previous.filter(v => v !== r) : [...previous, r])} onSolo={r => setSolo(previous => previous === r ? null : r)} effect={audio.effect}/></div>
+      <section className="playground-intro" aria-labelledby="intro-title">
+        <div><span className="micro">OPEN-SOURCE SOUND-CHIP EMULATION</span><h1 id="intro-title">Old consoles.<br/><span>New JavaScript.</span></h1></div>
+        <div className="intro-copy"><p>We rebuilt their sound chips in JavaScript. Hear familiar melodies come alive on different consoles, with every note generated in your browser.</p><Link href="/about">How it works <span aria-hidden="true">↗</span></Link></div>
+      </section>
+      <section className="console" aria-label="Chipvoice musical console" onClick={event => {
+        if (doc.ready && !(event.target instanceof Element && event.target.closest('a, input[type="number"], textarea, select'))) audio.startOnInteraction();
+      }}>
+        <div className="tune-heading"><div><span className="micro">01 / PICK A MELODY</span><span className="start-hint">{audio.hasInteracted ? 'Switch sounds. Keep the melody going.' : 'Tap a melody or console to start the sound.'}</span></div><PlayButton playing={audio.playing} loading={audio.loading} shortcut onClick={togglePlayback}/></div>
+        <div className="familiar-tunes" aria-label="Familiar melodies">{CLASSIC_PRESETS.map(preset => <button key={preset.id} className={`familiar-tune ${preset.id}`} disabled={recordLocked || !doc.ready} style={{'--tune-color':preset.color} as CSSProperties} aria-label={`Load ${preset.title}`} aria-pressed={doc.song.title === preset.song.title} onClick={() => loadPreset(preset)}><span className="tune-icon" aria-hidden="true">{preset.id === 'mario' ? 'M' : preset.id === 'zelda' ? 'Z' : 'S'}</span><span><strong>{preset.id === 'mario' ? 'Mario' : preset.id === 'zelda' ? 'Zelda' : 'Sonic'}</strong><small>{preset.id === 'mario' ? 'Ground Theme' : preset.id === 'zelda' ? 'Overworld' : 'Green Hill Zone'}</small></span><span className="tune-play" aria-hidden="true">{doc.song.title === preset.song.title ? '●' : '▶'}</span></button>)}</div>
+        <details className="original-tunes"><summary>More to play · original loops</summary><div className="cartridge-list">{ORIGINAL_PRESETS.map(preset => <button key={preset.id} disabled={recordLocked || !doc.ready} className={`cartridge ${preset.id}`} aria-pressed={doc.song.title === preset.song.title} aria-label={`Load ${preset.title}`} onClick={() => loadPreset(preset)}><span className="cartridge-copy"><strong>{preset.title}</strong><span>{preset.mood}</span></span></button>)}</div></details>
+        <div className="console-top"><span className="micro">02 / CHANGE THE SOUND</span><span className="micro hardware-label">FOUR CONSOLES / ONE MELODY</span></div>
+        <MachinePicker value={doc.song.chip} disabled={recordLocked || !doc.ready} onChange={chip => { const next = {...doc.song, chip}; edit(next); audio.startOnInteraction(next); measure('switch'); }} />
+        <div className="screen-bezel"><div className="screen-title"><div><span className="screen-kicker">{machine.chip}</span><h2>{doc.song.title || 'Untitled adventure'}</h2></div><OutputScope node={audio.output}/></div><Voices disabled={recordLocked} song={recording && backingSong.current ? backingSong.current : doc.song} position={audio.position} stolen={audio.stolen} muted={effectiveMuted} solo={solo} onMute={r => setMuted(previous => previous.includes(r) ? previous.filter(v => v !== r) : [...previous, r])} onSolo={r => setSolo(previous => previous === r ? null : r)} effect={audio.effect}/></div>
         <div className="transport-row">
-          <PlayButton playing={audio.playing} loading={audio.loading} shortcut onClick={togglePlayback}/>
           <RangeControl id="tempo" label="Tempo" unit="BPM" min={40} max={300} value={doc.song.bpm} disabled={recordLocked || !doc.ready} onChange={(bpm, group) => { doc.edit(song => ({...song, bpm}), group); measure('edit'); }}/>
           <div className="history-controls"><button aria-label="Undo" disabled={!doc.canUndo} onClick={undo}>↶</button><button aria-label="Redo" disabled={!doc.canRedo} onClick={redo}>↷</button></div>
           <button className="edit-toggle" disabled={recordLocked} aria-expanded={editing} onClick={() => setEditing(!editing)}>{editing ? 'Close editor' : 'Edit loop'} <span aria-hidden="true">{editing ? '−' : '+'}</span></button>
@@ -138,9 +152,7 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
         <div className="arcade-pads">{EFFECTS.map(fx => <button key={fx.id} className={`arcade-pad ${fx.id}`} onClick={() => void audio.fire(fx.id)} aria-label={fx.name}><span className="pad-symbol" aria-hidden="true">{fx.symbol}</span><span className="pad-name">{fx.name}</span><kbd>{fx.key}</kbd></button>)}</div>
         <div className="console-bottom"><span>EMULATED CHIPS. REAL CONSTRAINTS.</span><span className="screw" aria-hidden="true">⊕</span><span>MADE TO BE PLAYED</span></div>
       </section>
-      <section className="cartridges" aria-label="Music cartridges"><div className="section-heading"><div><span className="micro">CHANGE THE SCENERY</span><h2>Pick a cartridge.</h2></div><p>One song. Five different personalities.</p></div>
-        {[{title:'Original loops',presets:ORIGINAL_PRESETS},{title:'Familiar melodies',presets:CLASSIC_PRESETS}].map(group=><div className="cartridge-group" key={group.title}><h3>{group.title}</h3><div className="cartridge-list">{group.presets.map((preset: Preset, index) => <button key={preset.id} disabled={recordLocked} className={`cartridge ${preset.id}`} style={{'--cartridge-color':preset.color} as CSSProperties} aria-pressed={doc.song.title===preset.song.title} onClick={() => { edit({ ...structuredClone(preset.song), chip: doc.song.chip }); setMuted([]); setSolo(null); setMusicalKey(preset.id === 'boss' ? 'E' : preset.id === 'midnight' ? 'A' : preset.id === 'zelda' ? 'Bb' : 'C'); measure('preset'); }} aria-label={`Load ${preset.title}`}><span className="cartridge-art" aria-hidden="true"><i/><i/><i/><i/><i/></span><span className="cartridge-copy"><strong>{preset.title}</strong><span>{preset.mood}</span>{preset.composer&&<small>{preset.composer} · {preset.coverage}</small>}</span><span className="cartridge-number">0{index + 1} ↗</span></button>)}</div></div>)}
-        <p className="keyboard-hint">Follow a complete musical phrase. These source melodies have no added backing parts. Switch machines to compare their sound.</p>
+      <section className="arrangement-details" aria-label="Arrangement sources">
         {sourcePreset?.source&&<details className="cartridge-source"><summary>About this arrangement · credits & source</summary><p>{sourcePreset.adaptation}</p>{sourcePreset.fidelity?.pass&&<p className="source-check">{matchesSource ? `${sourcePreset.fidelity.referenceNotes} source notes checked · pitches, rhythm and rests · all five machines` : 'Edited version · source checks apply to the original cartridge.'}</p>}<p>Music by {sourcePreset.composer}. Reference transcription: {sourcePreset.source.transcriber}. {sourcePreset.source.excerpt}.</p><a href={sourcePreset.source.url} target="_blank" rel="noreferrer">View the source transcription ↗</a></details>}
       </section>
       <CompositionControls song={doc.song} disabled={recordLocked || !doc.ready} onEdit={(song,group)=>{doc.edit(song,group);measure('edit');}}/>

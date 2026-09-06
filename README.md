@@ -6,11 +6,19 @@ write music for them and hear it the way the machine played it.
 
 **[chipvoice.dev](https://chipvoice.dev)** to play it. `npm i chipvoice` to use it.
 
-The demo is a little musical console: three composed cartridges, five machines,
-four arcade pads, a note editor, recoverable local drafts and score/code/audio
-export. Start with Play, compare the same passage on another chip, then hear an
-effect borrow a voice. No account is required. See the [demo spec](docs/DEMO.md)
-and [audit](docs/AUDIT-2026-09-05.md) for scope and tracked limitations.
+The [playground](https://chipvoice.dev) introduces the library through familiar Mario,
+Zelda and Sonic melodies. Pick a tune or a Japanese console logo to start the sound
+on your first interaction, then switch consoles or tempo while it keeps playing.
+Play also works directly; after Stop, edits stay silent until you play again. Mario
+is the first-visit default; saved drafts and shared scores take priority. The public
+selector features Famicom, Game Boy, Mega Drive and Super Famicom; C64 is temporarily
+hidden from the selector, with SDK and saved-score support retained. Original loops,
+composition controls, recording, effects and export remain available below.
+
+The [About page](https://chipvoice.dev/about) explains browser synthesis, hardware
+constraints, evaluation and credits. Console marks are self-hosted colour SVGs;
+see the [source manifest](apps/web/public/machines/README.md). No account is required.
+See the [demo spec](docs/DEMO.md) for the interaction design.
 
 ## Why
 

@@ -11,6 +11,8 @@ try{
  await page.addInitScript(installOutputProbe);
  await page.goto(base+'/lab');await page.getByRole('heading',{name:'Same notes. Different machines.'}).waitFor();await page.getByLabel('Composition',{exact:true}).waitFor();
  assert.equal(downloads.length,0,'Opening the lab must not download audio');
+ assert.equal(await page.getByLabel('Composition',{exact:true}).inputValue(),'mario');
+ await page.getByLabel('Composition',{exact:true}).selectOption('overworld');await page.getByLabel('Reference',{exact:true}).selectOption('baseline');
  await page.getByLabel('Listening volume',{exact:true}).focus();await page.keyboard.press('Home');
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByRole('button',{name:'Listen to B',exact:true}).waitFor();
  await page.waitForFunction(()=>!document.querySelector('[aria-label="Listen to B"]').disabled);
@@ -23,7 +25,7 @@ try{
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Download notes (1)',exact:true}).click();await(await download).saveAs(new URL('notes.json',out).pathname);
  await page.getByRole('button',{name:'Reveal identities',exact:true}).click();
  await page.screenshot({path:new URL('desktop.png',out).pathname,fullPage:true});
- for(const name of ['NES','Game Boy','Mega Drive','SNES','C64']){
+ for(const name of ['Famicom','Game Boy','Mega Drive','Super Famicom']){
   await page.locator('.machines').getByRole('button',{name,exact:true}).click();
   await page.waitForFunction(()=>!document.querySelector('[aria-label="Listen to A"]').disabled);
   assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1,`Play retained for ${name}`);
@@ -38,6 +40,6 @@ try{
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:new URL('mobile.png',out).pathname,fullPage:true});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);
- await writeFile(new URL('result.json',out),JSON.stringify({pass:true,errors,losslessRequests:downloads.length,checks:['lazy audio','all five consoles','play intent','A/B','blind/reveal','notes export','part/preset changes','stop during load','mobile overflow']},null,2));
+ await writeFile(new URL('result.json',out),JSON.stringify({pass:true,errors,losslessRequests:downloads.length,checks:['lazy audio','all four public consoles','play intent','A/B','blind/reveal','notes export','part/preset changes','stop during load','mobile overflow']},null,2));
  await context.close();console.log('PASS public lab lazy audio, continuous selection, A/B, notes, stop during load and responsive screenshots');
 }finally{await browser.close();}
