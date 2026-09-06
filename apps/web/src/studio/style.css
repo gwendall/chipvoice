@@ -216,3 +216,11 @@ button:disabled { opacity: .35; }
  .site-footer nav { gap: 12px 20px; }
  .console-bottom .screw { display: none; }
 }
+
+/* A language change is always reachable without adding a third header row. */
+@media (max-width:760px) {
+ .site-header { display:grid; grid-template-columns:1fr auto; gap:8px 12px; }
+ .site-header .wordmark { grid-column:1; grid-row:1; }
+ .site-header .language-selector { grid-column:2; grid-row:1; justify-self:end; }
+ .site-header nav { grid-column:1 / -1; grid-row:2; }
+}

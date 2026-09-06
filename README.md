@@ -30,6 +30,8 @@ The [listening lab](https://chipvoice.dev/lab) holds engine comparisons; the for
 `/lab/arrangements` URL redirects home. The [About page](https://chipvoice.dev/about)
 explains browser synthesis, constraints, evaluation and credits. Console marks are
 self-hosted colour SVGs; see the [source manifest](apps/web/public/machines/README.md).
+
+The website is available in [English](https://chipvoice.dev) and [Japanese](https://chipvoice.dev/ja), including the composer, listening lab, accessibility labels and sharing metadata. Change language without interrupting the instrument. See [internationalization](docs/INTERNATIONALIZATION.md) for the JSON catalogues, routing and coverage checks.
 No account is required. See the [current playground spec](docs/UNIFIED-PLAYGROUND.md).
 
 ## Why

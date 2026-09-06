@@ -1,10 +1,14 @@
 'use client';
+import {useI18n, useT} from '@/i18n/react';
+import {localePath} from '@/i18n/core';
 import { useEffect, useState } from 'react';
 type Library = {email:string;songs:{id:string;title:string|null}[]};
 type Key = {id:string;label:string|null;revoked_at:number|null};
 
 /** Account tools stay inside sharing; playing and saving drafts need no login. */
 export function Account() {
+ const t = useT();
+ const {locale} = useI18n();
   const [library,setLibrary] = useState<Library|null>(null);
   const [keys,setKeys] = useState<Key[]>([]);
   const [email,setEmail] = useState('');
@@ -28,7 +32,7 @@ export function Account() {
   const signin = async () => {
     setBusy(true); setMessage('');
     try {
-      const response = await fetch('/api/auth/signin', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email})});
+      const response = await fetch('/api/auth/signin', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,locale})});
       setMessage(response.ok ? 'Check your inbox. The sign-in link works once, for 30 minutes.' : 'Could not send the link. Please try again later.');
     } catch { setMessage('Could not reach the server.'); }
     finally { setBusy(false); }
@@ -43,11 +47,11 @@ export function Account() {
     } catch { setMessage('Could not save that change. Please try again.'); }
     finally { setBusy(false); }
   };
-  return <details className="account-panel"><summary>Your library &amp; account</summary>{library ? <>
-    <p>Signed in as {library.email}. Publications belong to this account.</p>
-    <button className="small-button" disabled={busy} onClick={()=>void remove('/api/auth/session')}>Sign out</button>
-    <ul>{library.songs.map(song=><li key={song.id}><a href={`/s/${song.id}`}>{song.title || 'Untitled tune'} ↗</a></li>)}</ul>
-    {!library.songs.length && <p>Your published tunes will appear here.</p>}
-    {keys.some(key=>!key.revoked_at) && <><p>API keys</p><ul>{keys.filter(key=>!key.revoked_at).map(key=><li key={key.id}>{key.label || key.id} <button className="small-button" disabled={busy} onClick={()=>void remove(`/api/keys/${key.id}`,key.id)}>Revoke {key.label || key.id}</button></li>)}</ul></>}
-  </> : <form onSubmit={event=>{event.preventDefault();void signin();}}><p>Sign in before publishing to find your tunes again and retain control of them.</p><label>Email<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={event=>setEmail(event.target.value)}/></label><button className="small-button" disabled={busy}>Send sign-in link</button></form>}<p role="status">{message}</p></details>;
+  return <details className="account-panel"><summary>{t("Your library & account")}</summary>{library ? <>
+    <p>{t("Signed in as ")}{library.email}{t(". Publications belong to this account.")}</p>
+    <button className="small-button" disabled={busy} onClick={()=>void remove('/api/auth/session')}>{t("Sign out")}</button>
+    <ul>{library.songs.map(song=><li key={song.id}><a href={localePath(`/s/${song.id}`,locale)}>{song.title || t('Untitled tune')} ↗</a></li>)}</ul>
+    {!library.songs.length && <p>{t("Your published tunes will appear here.")}</p>}
+    {keys.some(key=>!key.revoked_at) && <><p>{t("API keys")}</p><ul>{keys.filter(key=>!key.revoked_at).map(key=><li key={key.id}>{key.label || key.id} <button className="small-button" disabled={busy} onClick={()=>void remove(`/api/keys/${key.id}`,key.id)}>{t("Revoke ")}{key.label || key.id}</button></li>)}</ul></>}
+  </> : <form onSubmit={event=>{event.preventDefault();void signin();}}><p>{t("Sign in before publishing to find your tunes again and retain control of them.")}</p><label>{t("Email")}<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={event=>setEmail(event.target.value)}/></label><button className="small-button" disabled={busy}>{t("Send sign-in link")}</button></form>}<p role="status">{t(message)}</p></details>;
 }

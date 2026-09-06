@@ -1,3 +1,6 @@
+import {createTranslator, isLocale, localePath} from '@/i18n/core';
+import {getMessages} from '@/i18n/server';
+import {alternates} from '@/i18n/metadata';
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { find, present, SITE } from "@/lib/songs";
@@ -22,35 +25,39 @@ export const runtime = "nodejs";
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
+  const {id,locale:value}=await params;
+  const locale=isLocale(value)?value:'en',t=createTranslator(await getMessages(locale));
   if (!hasDatabase()) return { title: "chipvoice" };
   const found = await find(id);
-  if (!found) return { title: "Not found - chipvoice" };
+  if (!found) return { title: t("Page not found · chipvoice") };
 
   const song = present(found.song, found.forks);
   const title = song.title ?? `chipvoice ${song.id}`;
-  const description =
-    `${song.bpm} bpm, ${song.measured?.loopSeconds ?? "?"}s loop, on an emulated ${song.chip === "dmg" ? "Game Boy" : song.chip === "md" ? "Mega Drive" : song.chip === "snes" ? "SNES" : song.chip === "c64" ? "Commodore 64" : "NES"} sound chip. ` +
-    `Written as four lines of text.`;
+  const sourceDescription = `${song.bpm} bpm, ${song.measured?.loopSeconds ?? "?"}s loop, on an emulated ${song.chip === 'dmg' ? 'Game Boy' : song.chip === 'md' ? 'Mega Drive' : song.chip === 'snes' ? 'Super Famicom' : song.chip === 'c64' ? 'Commodore 64' : 'Famicom'} sound chip. Written as four lines of text.`;
+  const description = t(sourceDescription);
 
   return {
     title,
     description,
+    alternates: alternates(`/s/${id}`,locale),
+    other: {'chipvoice:shared-description':sourceDescription},
     openGraph: {
       title,
       description,
-      url: song.url,
+      url: SITE+localePath(`/s/${id}`,locale),
+      locale:locale==='ja'?'ja_JP':'en_US',
+      alternateLocale:locale==='ja'?'en_US':'ja_JP',
       type: "music.song",
       audio: [{ url: song.mp3, type: "audio/mpeg" }],
-      images: [{ url: `${SITE}/s/${song.id}/card`, width: 1200, height: 630 }],
+      images: [{ url: `${SITE}${localePath(`/s/${song.id}/card`,locale)}`, width: 1200, height: 630 }],
     },
     twitter: {
       card: "player",
       title,
       description,
-      images: [`${SITE}/s/${song.id}/card`],
+      images: [`${SITE}${localePath(`/s/${song.id}/card`,locale)}`],
     },
   };
 }
@@ -58,7 +65,7 @@ export async function generateMetadata({
 export default async function SongPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; locale: string }>;
 }) {
   const { id } = await params;
   if (!hasDatabase()) notFound();

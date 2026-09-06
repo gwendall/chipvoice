@@ -43,7 +43,7 @@ export function musicSong(song: SongDocument, muted: Role[] = []) {
     ...Object.fromEntries(muted.map(role => [role, tokens(pattern[role]).map(() => '.').join(' ')])),
   })) });
 }
-export function runnableCode(song: SongDocument) {
+export function runnableCode(song: SongDocument, copy = {play: 'Play / stop', unavailable: 'AudioWorklet unavailable'}) {
   // A standalone browser example: importing alone never starts audio.
-  return `import { Chip, arrange } from "chipvoice";\n\nconst score = ${JSON.stringify(song, null, 2)};\n\nconst button = document.createElement("button");\nbutton.textContent = "Play / stop";\ndocument.body.append(button);\nlet chip;\nbutton.onclick = async () => {\n  chip ??= await Chip.create({ chip: score.chip });\n  if (!chip) return; // AudioWorklet unavailable\n  await chip.resume();\n  if (chip.playing) chip.stop();\n  else chip.play(arrange(score));\n};\n`;
+  return `import { Chip, arrange } from "chipvoice";\n\nconst score = ${JSON.stringify(song, null, 2)};\n\nconst button = document.createElement("button");\nbutton.textContent = ${JSON.stringify(copy.play)};\ndocument.body.append(button);\nlet chip;\nbutton.onclick = async () => {\n  chip ??= await Chip.create({ chip: score.chip });\n  if (!chip) return; // ${copy.unavailable}\n  await chip.resume();\n  if (chip.playing) chip.stop();\n  else chip.play(arrange(score));\n};\n`;
 }

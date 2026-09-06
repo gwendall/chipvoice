@@ -1,4 +1,5 @@
 'use client';
+import {useErrorText, useT} from '@/i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import { INTENTS, arrange, validateSong, type Role } from 'chipvoice';
 import { pitch } from './Voices';
@@ -17,6 +18,8 @@ export function Editor({ song, onEdit, role, onRole, onPreview, chromatic, music
   song: SongDocument; onEdit: (song: SongDocument) => void; role: Role; onRole: (role: Role) => void;
   onPreview: (role: Role, token: string) => void; chromatic: boolean; musicalKey: string;
 }) {
+ const t = useT();
+ const errorText = useErrorText();
   const [patternIndex, setPatternIndex] = useState(0);
   const [bar, setBar] = useState(0);
   const [textMode, setTextMode] = useState(false);
@@ -49,19 +52,19 @@ export function Editor({ song, onEdit, role, onRole, onPreview, chromatic, music
     if (!validation.ok) { setIssue(validation.issues.find(i => i.level === 'error')?.message ?? 'Check the notes.'); return; }
     onEdit(next); setTextMode(false); setIssue('');
   };
-  return <section className="editor" aria-label="Loop editor">
-    <div className="section-heading"><div><span className="micro">MAKE IT YOURS</span><h2>A few notes can change everything.</h2></div><button className="small-button" onClick={editText}>{textMode ? 'Back to grid' : 'Edit as text'}</button></div>
-    <div className="editor-toolbar"><button className="small-button" aria-label="Undo edit" disabled={!canUndo} onClick={undo}>↶ Undo</button><button className="small-button" aria-label="Redo edit" disabled={!canRedo} onClick={redo}>↷ Redo</button>
-      <label>Pattern<select value={selected} onChange={e => { setPatternIndex(Number(e.target.value)); setBar(0); setTextMode(false); }}>{song.patterns.map((_, i) => <option key={i} value={i}>Pattern {i + 1}</option>)}</select></label>
-      <span className="order-readout">Sequence {song.order.map(i => i + 1).join(' → ')}</span>
-      <div className="role-tabs" aria-label="Edit musical role">{ROLES.map(r => <button key={r} className={r} aria-pressed={role === r} onClick={() => { onRole(r); setTextMode(false); }}>{ROLE_NAMES[r]}</button>)}</div>
-      <label>Timbre<select aria-label={`${ROLE_NAMES[role]} timbre`} value={song.intent?.[role] ?? ({ lead: 'soft', chord: 'plucked', bass: 'round', perc: 'tight' }[role])} onChange={e => onEdit({ ...song, intent: { ...song.intent, [role]: e.target.value } })}>{Object.keys(INTENTS[role]).map(word => <option key={word} value={word}>{word}</option>)}</select></label>
+  return <section className="editor" aria-label={t("Loop editor")}>
+    <div className="section-heading"><div><span className="micro">{t("MAKE IT YOURS")}</span><h2>{t("A few notes can change everything.")}</h2></div><button className="small-button" onClick={editText}>{t(textMode ? 'Back to grid' : 'Edit as text')}</button></div>
+    <div className="editor-toolbar"><button className="small-button" aria-label={t("Undo edit")} disabled={!canUndo} onClick={undo}>{t("↶ Undo")}</button><button className="small-button" aria-label={t("Redo edit")} disabled={!canRedo} onClick={redo}>{t("↷ Redo")}</button>
+      <label>{t("Pattern")}<select value={selected} onChange={e => { setPatternIndex(Number(e.target.value)); setBar(0); setTextMode(false); }}>{song.patterns.map((_, i) => <option key={i} value={i}>{t("Pattern ")}{i + 1}</option>)}</select></label>
+      <span className="order-readout">{t("Sequence ")}{t(song.order.map(i => i + 1).join(' → '))}</span>
+      <div className="role-tabs" aria-label={t("Edit musical role")}>{ROLES.map(r => <button key={r} className={r} aria-pressed={role === r} onClick={() => { onRole(r); setTextMode(false); }}>{t(ROLE_NAMES[r])}</button>)}</div>
+      <label>{t("Timbre")}<select aria-label={t(`${ROLE_NAMES[role]} timbre`)} value={song.intent?.[role] ?? ({ lead: 'soft', chord: 'plucked', bass: 'round', perc: 'tight' }[role])} onChange={e => onEdit({ ...song, intent: { ...song.intent, [role]: e.target.value } })}>{Object.keys(INTENTS[role]).map(word => <option key={word} value={word}>{t(word)}</option>)}</select></label>
     </div>
-    {textMode ? <div className="text-editor"><label htmlFor="raw-notes">{ROLE_NAMES[role]} · one token per step, . holds, = cuts</label><textarea id="raw-notes" value={raw} onChange={e => setRaw(e.target.value)} spellCheck={false} rows={4} /><div><button className="small-button dark" onClick={apply}>Apply notes</button><span className="field-error" role="status">{issue}</span></div></div> : <>
-      <div className="grid-scroll"><div className={`piano-grid ${role}`} role="group" aria-label={`${ROLE_NAMES[role]} note grid`} style={{ gridTemplateColumns: `44px repeat(${columns}, minmax(38px, 1fr))` }}>
-        {[...notes].reverse().map(note => <div className="piano-row" key={note}><button className="pitch-label" onClick={() => onPreview(role, note)} aria-label={`Preview ${note}`}>{role === 'perc' ? ({ K: 'Kick', S: 'Snare', H: 'Hat', O: 'Open' }[note]) : note}</button>{Array.from({ length: columns }, (_, offset) => {
+    {textMode ? <div className="text-editor"><label htmlFor="raw-notes">{t(ROLE_NAMES[role])}{t(" · one token per step, . holds, = cuts")}</label><textarea id="raw-notes" value={raw} onChange={e => setRaw(e.target.value)} spellCheck={false} rows={4} /><div><button className="small-button dark" onClick={apply}>{t("Apply notes")}</button><span className="field-error" role="status">{errorText(issue)}</span></div></div> : <>
+      <div className="grid-scroll"><div className={`piano-grid ${role}`} role="group" aria-label={t(`${ROLE_NAMES[role]} note grid`)} style={{ gridTemplateColumns: `44px repeat(${columns}, minmax(38px, 1fr))` }}>
+        {[...notes].reverse().map(note => <div className="piano-row" key={note}><button className="pitch-label" onClick={() => onPreview(role, note)} aria-label={t(`Preview ${note}`)}>{t(role === 'perc' ? ({ K: 'Kick', S: 'Snare', H: 'Hat', O: 'Open' }[note]) : note)}</button>{Array.from({ length: columns }, (_, offset) => {
           const index = page * pageSteps + offset; const active = tokens(pattern[role])[index] === note;
-          return <button key={index} className={`grid-cell ${active ? 'filled' : ''} ${offset % stepsPerBeat === 0 ? 'beat-start' : ''}`} aria-label={`${ROLE_NAMES[role]} step ${index + 1} ${note}`} aria-pressed={active}
+          return <button key={index} className={`grid-cell ${active ? 'filled' : ''} ${offset % stepsPerBeat === 0 ? 'beat-start' : ''}`} aria-label={t(`${ROLE_NAMES[role]} step ${index + 1} ${note}`)} aria-pressed={active}
             onPointerDown={e => { mouseClick.current = e.pointerType === 'mouse'; if (e.pointerType === 'mouse' && e.button === 0) { drag.current = true; changeCell(index, note); } }}
             onPointerEnter={e => { if (drag.current && e.pointerType === 'mouse' && e.buttons === 1) changeCell(index, note, false); }}
             onClick={e => { if (e.detail === 0 || !mouseClick.current) changeCell(index, note); mouseClick.current = false; }}
@@ -69,7 +72,7 @@ export function Editor({ song, onEdit, role, onRole, onPreview, chromatic, music
         })}</div>)}
         <span />{Array.from({ length: columns }, (_, i) => <span key={i} className="step-number">{page * pageSteps + i + 1}</span>)}
       </div></div>
-      <div className="editor-bottom"><span>Tap to place. Tap again to remove. Drag with a mouse.</span><div><button className="small-button" disabled={page === 0} onClick={() => setBar(page - 1)} aria-label="Previous bar">←</button><span>Bar {page + 1} / {Math.ceil(count / pageSteps)}</span><button className="small-button" disabled={(page + 1) * pageSteps >= count} onClick={() => setBar(page + 1)} aria-label="Next bar">→</button></div></div>
+      <div className="editor-bottom"><span>{t("Tap to place. Tap again to remove. Drag with a mouse.")}</span><div><button className="small-button" disabled={page === 0} onClick={() => setBar(page - 1)} aria-label={t("Previous bar")}>←</button><span>{t("Bar ")}{page + 1} / {Math.ceil(count / pageSteps)}</span><button className="small-button" disabled={(page + 1) * pageSteps >= count} onClick={() => setBar(page + 1)} aria-label={t("Next bar")}>→</button></div></div>
     </>}
   </section>;
 }

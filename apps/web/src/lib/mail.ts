@@ -1,3 +1,5 @@
+import {createTranslator,type Locale} from '@/i18n/core';
+import {getMessages} from '@/i18n/server';
 /**
  * Sending mail, through domani.
  *
@@ -41,8 +43,9 @@ export async function sendKeyEmail(
   return send(to, "Your chipvoice key", text);
 }
 
-export function sendSignInEmail(to: string, link: string): Promise<boolean> {
-  return send(to, 'Sign in to chipvoice', `Open this link to sign in. It works once, for 30 minutes.\n\n${link}\n\nYour API keys remain unchanged.\n\nchipvoice.dev`);
+export async function sendSignInEmail(to: string, link: string, locale: Locale = 'en'): Promise<boolean> {
+  const t=createTranslator(await getMessages(locale));
+  return send(to,t('Sign in to chipvoice'),[t('Open this link to sign in. It works once, for 30 minutes.'),link,t('Your API keys remain unchanged.'),'chipvoice.dev'].join('\n\n'));
 }
 
 async function send(to: string, subject: string, text: string): Promise<boolean> {

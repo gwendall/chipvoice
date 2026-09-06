@@ -20,3 +20,9 @@
 .range-control-number span { font: var(--text-label) var(--mono); color: var(--muted); }
 .range-control[aria-disabled=true] { opacity: .55; }
 .range-control input:disabled { cursor: not-allowed; }
+
+.language-selector { display: inline-flex; align-items: center; }
+.language-selector select { min-height: 44px; max-width: 120px; padding: 8px; border: 1px solid var(--edge); border-radius: 6px; background: var(--paper); color: var(--ink); font: var(--text-label) Arial, sans-serif; }
+html:lang(ja) { line-break: strict; }
+html:lang(ja) .micro, html:lang(ja) .screen-kicker, html:lang(ja) .ui-select { letter-spacing: .04em; }
+@media (max-width:760px) { .site-header { flex-wrap: wrap; gap: 8px; }.site-header nav { flex-wrap: wrap; }.language-selector select { max-width: 100px; } }
