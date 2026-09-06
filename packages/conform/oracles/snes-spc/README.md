@@ -1,5 +1,11 @@
 # Oracle: snes_spc
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 Shay Green's (blargg's) snes_spc 0.9.0, the S-DSP emulator written against the
 hardware's own output, in its "highly accurate" form, built natively and driven
 with a register log. Vendored from

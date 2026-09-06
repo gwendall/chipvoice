@@ -1,5 +1,11 @@
 # The playable library demo
 
+<p align="center">
+  <a href="DEMO.md">English</a> &bull;
+  <a href="DEMO_ja.md">日本語</a>
+</p>
+
+
 > The current complete-arrangement default and musical transport are specified in
 > [UNIFIED-PLAYGROUND.md](UNIFIED-PLAYGROUND.md). Melody-only presets below remain
 > available in the Make a loop composer.

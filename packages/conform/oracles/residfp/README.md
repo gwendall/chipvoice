@@ -1,5 +1,11 @@
 # reSID-fp, as the C64 oracle
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 `residfp/` is [reSID-fp](https://github.com/drfiemost/residfp), Leandro
 Nini's fork of Dag Lem's reSID as it lives in libsidplayfp, vendored as is:
 the SID's two generators as the VICE project and the reSID authors

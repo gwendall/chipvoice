@@ -1,5 +1,11 @@
 # Complete arrangements — 2026-09-06
 
+<p align="center">
+  <a href="COMPLETE-ARRANGEMENTS-2026-09-06.md">English</a> &bull;
+  <a href="COMPLETE-ARRANGEMENTS-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 The reusable path is `importMidi → Performance → planPerformance → renderPerformance`.
 It preserves independent source parts and exact ticks, then reports every omitted
 note and instrument/hardware concession. It never composes missing accompaniment.

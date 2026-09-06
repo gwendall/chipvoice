@@ -1,5 +1,11 @@
 # Loop recording evaluation — 2026-09-06
 
+<p align="center">
+  <a href="RECORDING-2026-09-06.md">English</a> &bull;
+  <a href="RECORDING-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 Follow-up to the playable demo merged in PR #20 (`340fe12`). Scope: P8-10,
 quantized note/drum overdubbing and one-take history. The product contract is
 in [DEMO.md](../DEMO.md); ownership and timing are in decision 25.

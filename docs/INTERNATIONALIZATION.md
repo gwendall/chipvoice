@@ -1,5 +1,11 @@
 # English and Japanese website
 
+<p align="center">
+  <a href="INTERNATIONALIZATION.md">English</a> &bull;
+  <a href="INTERNATIONALIZATION_ja.md">日本語</a>
+</p>
+
+
 ## Specification
 
 The public website is available in English and Japanese. English keeps the existing URLs; Japanese uses `/ja`. Cover all site-owned UI text, accessible labels, loading/error states, built-in music descriptions and evidence, page and share metadata. Language changes preserve the current page, query, hash, imported MIDI, composer draft and active audio. Keep the existing visual identity and readable mobile type. Use simple JSON catalogues, following the approach used by Domani.

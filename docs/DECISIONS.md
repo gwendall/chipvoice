@@ -1,5 +1,11 @@
 # Decisions
 
+<p align="center">
+  <a href="DECISIONS.md">English</a> &bull;
+  <a href="DECISIONS_ja.md">日本語</a>
+</p>
+
+
 Project-level decisions, with the reasoning, so they are not re-litigated by
 accident. Small, local ones live as comments in the code next to what they decide.
 
@@ -104,6 +110,11 @@ as the changes they describe.
 
 **Why.** A document elsewhere drifts; a document in another language than the
 code excludes the people the project wants as readers.
+
+**Amended 2026-09-07:** Keep the English originals and add Japanese `_ja.md`
+siblings following RTK, as requested by the user. Each document links both
+languages; update both with the implementation. The existing French audit keeps
+its original language. See [documentation maintenance](README.md#translations).
 
 ### 9. The DSP is TypeScript, and the worklet is a bundle (2026-09-04)
 

@@ -1,5 +1,11 @@
 # Oracle: Nuked-OPN2
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 Alexey Khokholov's (Nuke.YKT's) Nuked-OPN2 1.0.12, the YM3438 emulator written
 from a die shot of the chip and cycle-exact against it, built natively and driven
 with a register log. Vendored from <https://github.com/nukeykt/Nuked-OPN2> under

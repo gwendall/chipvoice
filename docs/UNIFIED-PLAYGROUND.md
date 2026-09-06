@@ -1,5 +1,11 @@
 # One playground, a complete musical transport
 
+<p align="center">
+  <a href="UNIFIED-PLAYGROUND.md">English</a> &bull;
+  <a href="UNIFIED-PLAYGROUND_ja.md">日本語</a>
+</p>
+
+
 User specification, 2026-09-06. Supersedes the melody-only first-visit default.
 
 - `/` opens with Mario's complete native Famicom arrangement; Zelda and Sonic

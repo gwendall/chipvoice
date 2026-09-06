@@ -1,5 +1,11 @@
 # Readable frontend type — 2026-09-06
 
+<p align="center">
+  <a href="READABLE-TYPE-2026-09-06.md">English</a> &bull;
+  <a href="READABLE-TYPE-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 The playground, listening lab, About and component catalogue now share four type
 roles: labels (14px), body (16px), section headings (24px), and responsive page
 headings (32–44px), expressed in rem. Mobile layouts no longer reduce labels to

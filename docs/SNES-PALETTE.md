@@ -1,5 +1,11 @@
 # SNES musical palette iteration
 
+<p align="center">
+  <a href="SNES-PALETTE.md">English</a> &bull;
+  <a href="SNES-PALETTE_ja.md">日本語</a>
+</p>
+
+
 Baseline: main `c0ad640`, listening evidence `.artifacts/listening/current`.
 This work improves the factory arrangement, preserving the native DSP and the
 portable score format. It does not claim to reproduce a named game's instruments

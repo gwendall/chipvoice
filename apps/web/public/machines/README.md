@@ -1,5 +1,11 @@
 # Console marks
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 The public demo uses Japanese console branding. Assets are self-hosted, unmodified SVG downloads from Wikimedia Commons (retrieved 2026-09-06). Their file pages document the vector authors, upload history and PD-textlogo designation. Trademark rights remain with Nintendo and Sega; these marks identify the emulated systems and imply no endorsement.
 
 | Local file | Source and choice | SHA-256 |

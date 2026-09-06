@@ -1,5 +1,11 @@
 # Continuous playback and a public listening lab
 
+<p align="center">
+  <a href="CONTINUOUS-PLAYBACK-LAB.md">English</a> &bull;
+  <a href="CONTINUOUS-PLAYBACK-LAB_ja.md">日本語</a>
+</p>
+
+
 The demo and listening lab share a persistent Play intent. Editing tempo,
 instruments, score or console must prepare the new sound while the old one
 continues, preserve musical phase, then use a short audio-clock crossfade. Stop

@@ -1,5 +1,11 @@
 # chipvoice
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 Five classic sound chips, emulated to the cycle and checked against reference
 cores and hardware test ROMs, in a browser and on a server, so that people and their agents can
 write music for them and hear it the way the machine played it.
