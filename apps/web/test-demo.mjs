@@ -163,7 +163,11 @@ try {
   assert.ok(wav.equals(expected), 'worker WAV equals current library render byte for byte'); check('Export matches arranged score byte for byte');
   const example = await page.locator('.code-panel pre').textContent();
   const bundled = await build({ stdin: { contents: example + '\nwindow.readExampleChip = () => chip;', resolveDir: resolve('../../packages/chipvoice') }, bundle: true, write: false, format: 'iife', platform: 'browser' });
-  const runnable = await context.newPage(); await runnable.goto(base); await runnable.evaluate(() => document.body.replaceChildren());
+  // Run the copied example in a standalone document on the same origin.
+  // Clearing the Next page's body races hydration, which can remove its button.
+  const runnable = await context.newPage();
+  await runnable.route(`${base}/__copied-example-test`, route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><head><meta charset="utf-8"></head><body></body></html>' }));
+  await runnable.goto(`${base}/__copied-example-test`);
   await runnable.addScriptTag({ content: bundled.outputFiles[0].text }); await runnable.getByRole('button', { name: 'Play / stop', exact: true }).click();
   await runnable.waitForFunction(() => { window.chipvoice = window.readExampleChip(); return window.chipvoice?.playing; });
   assert.ok((await amplitude(runnable)).rms > .001); await runnable.close(); check('Copied browser example builds and makes measured sound');

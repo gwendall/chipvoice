@@ -73,3 +73,9 @@ Final qualification: all twelve complete mixes remain byte-identical to 0.15.0
 in both WAV and FLAC form. Full PCM repeatability, finite/unclipped output, SNES
 internal headroom, source/transaction checks and publication identity passed.
 The generated long-MIDI E2E also passed locally before entering regular CI.
+
+The first PR CI run exposed an existing copied-example harness race: it cleared a
+live Next page's body and injected the snippet while React could still hydrate.
+The CI failure screenshot showed the playground restored in place of the example
+button. The harness now serves a standalone HTML document on the same origin;
+the snippet still builds and must produce measured browser audio.
