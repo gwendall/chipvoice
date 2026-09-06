@@ -9,7 +9,7 @@ await mkdir(out, {recursive:true});
 const browser = await ({chromium, webkit}[engine]).launch();
 const results = [], errors = [];
 try {
-  for (const gesture of ['tune', 'machine', 'play', 'keyboard', 'touch']) {
+  for (const gesture of ['tune', 'machine', 'play', 'keyboard', 'touch', 'tempo', 'mute']) {
     const context = await browser.newContext({viewport:{width:gesture === 'touch' ? 390 : 1280,height:gesture === 'touch' ? 844 : 1000},hasTouch:gesture === 'touch',recordVideo:{dir:new URL('videos/',out).pathname}});
     await context.addInitScript(installOutputProbe);
     const page = await context.newPage();page.on('pageerror',error => errors.push(error.message));
@@ -27,10 +27,14 @@ try {
     if (gesture === 'play') await page.getByRole('button',{name:'Play',exact:true}).click();
     if (gesture === 'keyboard') {await page.getByRole('button',{name:'Load Sonic · Green Hill Zone',exact:true}).focus();await page.keyboard.press('Enter');}
     if (gesture === 'touch') await page.getByRole('button',{name:'Game Boy',exact:true}).tap();
+    if (gesture === 'tempo') await page.getByRole('spinbutton',{name:'Tempo',exact:true}).fill('183');
+    if (gesture === 'mute') await page.getByRole('button',{name:'Mute Melody',exact:true}).click();
     const chip = gesture === 'machine' ? 'snes' : gesture === 'touch' ? 'dmg' : '2a03';
     await page.waitForFunction(id => window.chipvoice?.playing && window.chipvoice.spec.id === id && window.chipvoice.position(), chip);
     const selected = await page.evaluate(() => JSON.parse(localStorage.getItem('chipvoice.draft.v1')));
     assert.equal(selected.title,gesture === 'tune' ? 'Zelda · Overworld' : gesture === 'keyboard' ? 'Sonic · Green Hill Zone' : saved.title);
+    if(gesture === 'mute') {assert.ok(await outputRms(page)<.00001,'The first gesture honours mute before starting');await page.getByRole('button',{name:'Mute Melody',exact:true}).click();}
+    if(gesture === 'tempo') assert.equal(selected.bpm,183);
     let rms = 0;for(let i=0;i<8&&rms<.0001;i++){rms = await outputRms(page);if(rms<.0001)await page.waitForTimeout(150);}
     assert.ok(rms > .0001,`${gesture} must start audible output`);
     await page.getByRole('button',{name:'Stop',exact:true}).click();
@@ -54,5 +58,5 @@ try {
   assert.equal(await page.getByRole('link',{name:'Super Famicom',exact:true}).count(),1);
   await page.screenshot({path:new URL('about.png',out).pathname,fullPage:true});await context.close();
   assert.deepEqual(errors,[]);await writeFile(new URL('result.json',out),JSON.stringify({pass:true,results,c64Draft:true,errors},null,2));
-  console.log(`PASS ${engine}: familiar default, Japanese logos, five first-gesture paths, audible output, persistent Stop, C64 draft and About`);
+  console.log(`PASS ${engine}: familiar default, Japanese logos, seven first-gesture paths, audible output, persistent Stop, C64 draft and About`);
 } finally {await browser.close();}
