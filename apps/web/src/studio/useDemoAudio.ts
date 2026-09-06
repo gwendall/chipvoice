@@ -104,8 +104,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     let lastChip: Chip | null = null;
     const tick = () => {
       const chip = current.current;
-      const song = latest.current.song;
-      const pos = audible.read(chip,60/song.bpm/(song.stepsPerBeat??4),scratch);
+      const pos = audible.read(chip,playback.current?.stepSeconds??0,scratch);
       const step = pos?.step ?? -1, order = pos?.orderIndex ?? -1;
       if (step !== lastStep || order !== lastOrder) {
         lastStep = step; lastOrder = order;

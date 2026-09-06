@@ -22,6 +22,7 @@ export class LivePlayback {
     this.output = context.createGain();
     this.output.connect(context.destination);
   }
+  get stepSeconds() { const song=this.active?.song;return song?60/song.bpm/(song.stepsPerBeat??4):0; }
   update(song: Song) { this.song = song; return this.sync(); }
   async start(song: Song) {
     this.song = song; this.playing = true; this.error = ''; this.changed();

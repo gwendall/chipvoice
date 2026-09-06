@@ -61,6 +61,7 @@ jobs:
             .artifacts/japanese-playground
             .artifacts/arrangements/browser
             .artifacts/midi-import/e2e
+            .artifacts/unified-playground
           retention-days: 7
 
   conformance:

@@ -41,7 +41,7 @@ try {
   try {
     const context=await browser.newContext();
     await context.addCookies([{name:'chipvoice_session',value:cookie.slice(cookie.indexOf('=')+1),url:base,httpOnly:true,sameSite:'Lax'}]);
-    const page=await context.newPage();await page.goto(base);
+    const page=await context.newPage();await page.goto(base+'/?mode=compose');
     await page.getByRole('button',{name:'Share your tune',exact:false}).click();
     await page.locator('.account-panel summary').click();
     await page.getByText('Signed in as browser@example.test.',{exact:false}).waitFor();

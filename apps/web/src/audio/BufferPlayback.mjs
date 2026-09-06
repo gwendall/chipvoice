@@ -13,9 +13,16 @@ export class BufferPlayback {
     this.cache = new Map(); this.disposed = false;
     this.output = context.createGain(); this.output.connect(context.destination);
     this.transition = Promise.resolve();
+    this.presentation = null;
     this.loop = true; this.pendingPhase = null; this.timeline = [];
   }
-  async select(entries, levels, {restart = false} = {}) {
+  /**
+   * @param {Array<{file:string,loopStartSeconds?:number,loopFadeSeconds?:number}>} entries
+   * @param {number[]} levels
+   * @param {{restart?:boolean,side?:number,presentation?:unknown}} options
+   */
+  async select(entries, levels, options = {}) {
+    const {restart = false, side = this.side, presentation = null} = options;
     const ticket = ++this.generation;
     this.abort?.abort(); const abort = new AbortController(); this.abort = abort;
     this.loading = true; this.error = ''; this.changed();
@@ -44,7 +51,7 @@ export class BufferPlayback {
       while (this.retiring) await this.transition;
       if (ticket !== this.generation || this.disposed) return false;
       this.entries = entries; this.buffers = buffers; this.levels = levels;
-      this.side = Math.min(this.side, buffers.length - 1);
+      this.side = Math.min(side, buffers.length - 1);this.presentation=presentation;
       if (restart) this.offset = 0;
       if (this.playing) this.swap(restart ? 0 : undefined);
       this.loading = false; this.changed(); return true;
@@ -62,12 +69,18 @@ export class BufferPlayback {
   cancelSelection() {
     this.generation++;this.abort?.abort();this.loading=false;this.changed();
   }
-  phase(at = outputTime(this.context)) {
+  clockGroup(at) {
     let group = this.group;
-    if (!group) return this.offset;
+    if (!group) return null;
     if (at < group.at) {
       for (let i=this.timeline.length-1;i>=0;i--) if (this.timeline[i].at<=at) {group=this.timeline[i];break;}
     }
+    return group;
+  }
+  audibleSelection() { return this.clockGroup(outputTime(this.context))?.presentation ?? this.presentation; }
+  phase(at = outputTime(this.context)) {
+    const group=this.clockGroup(at);
+    if (!group) return this.offset;
     let position = group.offset + Math.max(0, at - group.at);
     if (position >= group.duration) position = group.loop ? group.loopStart + (position - group.loopStart) % (group.duration - group.loopStart) : group.duration;
     return position / group.duration;
@@ -83,12 +96,22 @@ export class BufferPlayback {
   setLoop(loop) {
     this.loop = loop;
     if (this.group) {
-      if (this.group.ended && loop) { this.swap(this.group.loopStart/this.group.duration); this.changed(); return; }
-      this.group.loop = loop;
-      if(this.timeline.length)this.timeline[this.timeline.length-1].loop=loop;
-      for (const part of this.group.parts) part.source.loop = loop;
+      const group=this.group;
+      if (group.ended && loop) { group.loop=true;this.swap(group.loopStart/group.duration);this.changed();return; }
+      // BufferSource finishes the current traversal when looping is disabled.
+      // Rebase our clock to that traversal too, preserving the audible history.
+      const at=Math.max(this.context.currentTime,group.at);
+      group.offset=this.phase(at)*group.duration;group.at=at;group.loop=loop;
+      this.remember(group);
+      for (const part of group.parts) part.source.loop = loop;
     }
     this.changed();
+  }
+  remember({at,offset,duration,loopStart,loop,presentation}) {
+    this.timeline.push({at,offset,duration,loopStart,loop,presentation});
+    const audible=outputTime(this.context);
+    while(this.timeline.length>1&&this.timeline[1].at<=audible)this.timeline.shift();
+    if(this.timeline.length>64)this.timeline.shift();
   }
   swap(requestedPhase) {
     if (!this.buffers.length || this.disposed) return;
@@ -106,12 +129,9 @@ export class BufferPlayback {
       source.connect(level.node); source.start(at, phase * duration);
       return {source, level};
     });
-    const group = {parts, fade, at, offset: phase * duration, duration, loopStart, loop: this.loop, ended:false};
+    const group = {parts, fade, at, offset: phase * duration, duration, loopStart, loop: this.loop, ended:false, presentation:this.presentation};
     this.group = group;
-    this.timeline.push({at,offset:phase*duration,duration,loopStart,loop:this.loop});
-    const audible=outputTime(this.context);
-    while(this.timeline.length>1&&this.timeline[1].at<=audible)this.timeline.shift();
-    if(this.timeline.length>64)this.timeline.shift();
+    this.remember(group);
     parts[0].source.onended = () => {
       group.ended = true;
       const finish = () => {
@@ -152,7 +172,8 @@ export class BufferPlayback {
     this.playing = false; this.offset = this.phase();
     this.pendingPhase = null; this.timeline.length=0; clearTimeout(this.endTimer);
     const group = this.group; this.group = null;
-    if (group) {
+    if (group?.ended) this.release(group);
+    else if (group) {
       group.fade.toValue(0, this.context.currentTime, .025);
       for (const part of group.parts) part.source.stop(this.context.currentTime + .03);
       if (!this.retiring) {
@@ -172,6 +193,7 @@ export class BufferPlayback {
     this.changed();
   }
   setSide(side) {
+    side=Math.max(0,Math.min(side,this.buffers.length-1));
     this.side = side;
     for (const [index, part] of (this.group?.parts ?? []).entries()) part.level.toValue(index === side ? this.levels[index] * this.volume : 0, this.context.currentTime, .015);
     this.changed();

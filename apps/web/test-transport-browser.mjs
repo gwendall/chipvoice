@@ -12,7 +12,7 @@ try{
  await context.addInitScript(installOutputProbe);
  await context.addInitScript(()=>{
   const create=AudioContext.prototype.createBufferSource;
-  AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source);source.start=(at=0,offset=0,...rest)=>{window.lastRecording={context:this,source,at,offset};return start(at,offset,...rest);};return source;};
+  AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source);source.start=(at=0,offset=0,...rest)=>{if(window.lastRecording&&window.lastRecording.at!==at)window.previousRecording=window.lastRecording;window.lastRecording={context:this,source,at,offset};return start(at,offset,...rest);};return source;};
  });
  const page=await context.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
  await page.goto(base);await page.getByRole('button',{name:'Mario 4 parts'}).waitFor();
@@ -34,8 +34,9 @@ try{
    if(expected>=duration)expected=source.loop?source.loopStart+(expected-source.loopStart)%(duration-source.loopStart):duration;
    const node=document.querySelector('.score-cursor'),width=node.getBoundingClientRect().width;
    const displayed=new DOMMatrixReadOnly(getComputedStyle(node).transform).m41/width*duration;
-   return {expected,displayed,errorMs:Math.abs(expected-displayed)*1000,reportedLatencyMs:(context.currentTime-audible)*1000};
-  });assert.ok(sample.errorMs<80,`${label}: ${JSON.stringify(sample)}`);checks.push({label,...sample});
+   const previous=window.previousRecording;let phaseError=0;if(previous){const duration=previous.source.buffer.duration;let time=previous.offset+Math.max(0,at-previous.at);if(time>=duration)time=previous.source.loopStart+(time-previous.source.loopStart)%(duration-previous.source.loopStart);phaseError=Math.abs(time/duration-offset/source.buffer.duration);}
+   return {expected,displayed,phaseError,errorMs:Math.abs(expected-displayed)*1000,reportedLatencyMs:(context.currentTime-audible)*1000};
+  });assert.ok(sample.errorMs<80,`${label}: ${JSON.stringify(sample)}`);if(label==='console change'||label==='tempo change')assert.ok(sample.phaseError<.0001,`Musical phase: ${JSON.stringify(sample)}`);checks.push({label,...sample});
  };
  await sync('native playback');
  const score=page.locator('.score-notes');const box=await score.boundingBox();await score.click({position:{x:box.width*.55,y:20}});await sync('score seek');
@@ -54,9 +55,11 @@ try{
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('replay after end');
  await page.getByRole('button',{name:'Loop off',exact:false}).click();await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.waitForTimeout(600);
  const loopPosition=Number(await page.getByRole('slider',{name:'Song position',exact:true}).inputValue());assert.ok(loopPosition>=25&&loopPosition<60,'native loop skips the introduction');
+ await page.getByRole('button',{name:'Independent original reference',exact:true}).click();const referenceDownload=await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href');
  await page.getByRole('button',{name:'Make a loop',exact:false}).click();await page.getByRole('button',{name:'Edit loop',exact:false}).waitFor();await page.waitForTimeout(350);assert.ok(await outputRms(page)<.0001,'composer handoff pauses arrangement');
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>window.chipvoice?.playing);await audible(page);
  await page.getByRole('button',{name:'Listen & explore',exact:true}).click();await page.waitForTimeout(350);assert.ok(await outputRms(page)<.0001,'return disposes composer audio');
+ assert.equal(await page.getByRole('button',{name:'Independent original reference',exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href'),referenceDownload);
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('return from composer');
  for(const width of [320,390,768]){await page.setViewportSize({width,height:844});await page.screenshot({path:new URL(`width-${width}.png`,out).pathname,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  assert.deepEqual(errors,[]);await writeFile(new URL('result.json',out),JSON.stringify({pass:true,checks,errors},null,2));await context.close();

@@ -35,9 +35,32 @@ try{
   transport.seek(.4);await wait(450);const lastSeek=transport.phase();
   for(let i=0;i<10;i++){transport.pause();void transport.toggle();}
   await wait(200);transport.pause();await wait(100);
-  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,frozen,stillFrozen,ended,replayed,lastSeek};
+  transport.restart();await transport.toggle();await wait(1350);
+  const beforeLoopOff=transport.phase(ctx.currentTime);transport.setLoop(false);
+  const afterLoopOff=transport.phase(ctx.currentTime);
+  const traversalPreserved=Math.abs(beforeLoopOff-afterLoopOff)<.02&&afterLoopOff<1;
+  transport.pause();await wait(100);
+  const timestamp=ctx.getOutputTimestamp.bind(ctx);
+  ctx.getOutputTimestamp=()=>({contextTime:Math.max(0,ctx.currentTime-.6),performanceTime:performance.now()});
+  transport.seek(.9);await transport.toggle();
+  for(let i=0;i<100&&!transport.group?.ended;i++)await wait(10);
+  const endedBeforeAudible=!!transport.group?.ended&&transport.phase()<1;
+  transport.pause();transport.setLoop(true);await transport.toggle();await wait(120);
+  const endPauseResumed=transport.playing&&!!transport.group&&!transport.retiring;
+  ctx.getOutputTimestamp=timestamp;
+  await transport.select(entry('first'),[.5,.5],{restart:true,presentation:'first score'});await wait(150);
+  let deviceTime=ctx.currentTime-.01;
+  ctx.getOutputTimestamp=()=>({contextTime:deviceTime,performanceTime:performance.now()});
+  await transport.select(entry('second'),[.5,.5],{restart:true,presentation:'second score'});
+  const oldScoreUntilAudible=transport.audibleSelection()==='first score';
+  transport.cancelSelection();await wait(60);deviceTime=ctx.currentTime;
+  const newScoreWhenAudible=transport.audibleSelection()==='second score';
+  ctx.getOutputTimestamp=timestamp;
+  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,frozen,stillFrozen,ended,replayed,lastSeek,traversalPreserved,endedBeforeAudible,endPauseResumed,oldScoreUntilAudible,newScoreWhenAudible};
  });
  assert.ok(result.initial>.05&&result.duringLoad>.05&&result.afterFailure>.05,JSON.stringify(result));
  assert.equal(result.failed,false);assert.equal(result.cancelled,false);assert.ok(result.cancellationKeptCurrent);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');console.log('PASS decoded player keeps audible output through delayed/failed loads, latest selection wins, stop wins, bounded overlap',result);
+ assert.ok(result.oldScoreUntilAudible&&result.newScoreWhenAudible);
+ assert.ok(result.traversalPreserved&&result.endedBeforeAudible&&result.endPauseResumed,JSON.stringify(result));
  assert.equal(result.pausedSeek,.6);assert.ok(result.resumed>.6&&result.resumed<.9);assert.equal(result.frozen,result.stillFrozen);assert.ok(result.ended&&result.replayed);assert.ok(result.lastSeek>=.4&&result.lastSeek<.7,JSON.stringify(result));
 }finally{await browser.close();}

@@ -13,6 +13,7 @@ type Asset={file:string;sha256?:string;metrics:{rmsDbFS:number;samplePeakDbFS:nu
 type Entry=Asset&{loopStartSeconds?:number;loopFadeSeconds?:number};
 type Case={omitted?:number;chip:ChipId;seconds:number;loopStartSeconds:number;mode:string;notes:number;losses:PerformanceLoss[];asset:Asset};
 type Piece={id:string;title:string;source:NonNullable<Performance['source']>;notices:string[];parts:{id:string;name:string;role:string;notes:number}[];cases:Case[];reference?:{title:string;asset:Asset}};
+type Loaded={title:string;chip:string;part:string;pieceId:string;overview:Overview;omitted?:number;seconds:number;losses:PerformanceLoss[];entries:Entry[]};
 export type Report={pieces:Piece[]};
 type Preparation={title:string;chip?:ChipId;phase:'importing'|'planning'|'rendering'|'encoding'|'decoding';startedAt:number;percent?:number;seconds?:number};
 const phaseLabels={importing:'Importing MIDI',planning:'Arranging instruments',rendering:'Rendering audio',encoding:'Encoding audio',decoding:'Preparing playback'};
@@ -23,7 +24,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
  const [report,setReport]=useState<Report|null>(catalogue??null),[pieceId,setPieceId]=useState('mario'),[chip,setChip]=useState<ChipId>('2a03');
  const [part,setPart]=useState('mix'),[tempo,setTempo]=useState(100),[transpose,setTranspose]=useState(0),[side,setSide]=useState(0);
  const [audio,setAudio]=useState({playing:false,loading:false,error:''}),[preparing,setPreparing]=useState(false),[error,setError]=useState(''),[session,setSession]=useState(0);
- const [imported,setImported]=useState<Performance|null>(null),[loaded,setLoaded]=useState<{title:string;chip:string;part:string;pieceId:string;overview:Overview;omitted?:number;seconds:number;losses:PerformanceLoss[];entries:Entry[]}|null>(null);
+ const [imported,setImported]=useState<Performance|null>(null),[loaded,setLoaded]=useState<Loaded|null>(null);
  const player=useRef<BufferPlayback|null>(null),worker=useRef<Worker|null>(null),generation=useRef(0),urls=useRef<string[]>([]),documents=useRef(new Map<string,Performance|PerformancePlan>());
  const interacted=useRef(false),alive=useRef(true);
  const [overview,setOverview]=useState<Overview|null>(initialOverview??null);
@@ -32,7 +33,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
  const importer=useRef<Worker|null>(null),importGeneration=useRef(0);
  const [importing,setImporting]=useState(false),[importError,setImportError]=useState('');
  const [preparation,setPreparation]=useState<Preparation|null>(null),[now,setNow]=useState(Date.now);
- const pending=preparing||audio.loading;
+ const pending=preparing||audio.loading||!!player.current?.presentation&&loaded!==player.current.presentation;
  useEffect(()=>{if(!pending)return;setNow(Date.now());const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[pending]);
 
  useEffect(()=>{
@@ -41,6 +42,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
   return()=>{alive.current=false;abort.abort();generation.current++;worker.current?.terminate();importer.current?.terminate();const p=player.current;p?.dispose();void p?.context.close();for(const url of urls.current)URL.revokeObjectURL(url);};
  },[]);
  useEffect(()=>{if(!active)player.current?.pause();},[active]);
+ useEffect(()=>{if(!active)return;let raf=0,last:Loaded|null=null;const tick=()=>{const next=player.current?.audibleSelection() as Loaded|null;if(next&&next!==last){last=next;setLoaded(next);setSide(player.current!.side);}raf=requestAnimationFrame(tick);};tick();return()=>cancelAnimationFrame(raf);},[active]);
  useEffect(()=>{if(views.current.has(`${pieceId}:${chip}`)){setOverview(views.current.get(`${pieceId}:${chip}`)!);return;}if(pieceId==='imported')return;const abort=new AbortController();fetch(`/arrangement-data/${pieceId}-${chip}-view.json`,{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Score view unavailable');return r.json();}).then(view=>{views.current.set(`${pieceId}:${chip}`,view);setOverview(view);}).catch(()=>{});return()=>abort.abort();},[pieceId,chip]);
  const piece=pieceId==='imported'&&imported?{id:'imported',title:imported.title,source:imported.source!,notices:imported.notices,parts:imported.parts.map(p=>({...p,notes:p.notes.length})),cases:[]} as Piece:report?.pieces.find(p=>p.id===pieceId);
  const current=piece?.cases.find(row=>row.chip===chip);
@@ -94,7 +96,8 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
    entries=entries.map(entry=>({...entry,loopFadeSeconds:.003}));
    setPreparation(previous=>({...previous!,phase:'decoding',percent:undefined}));
    const transport=player.current!;
-   if(await transport.select(entries,levels(entries),{restart:selectionId.current!==pieceId})&&ticket===generation.current){selectionId.current=pieceId;transport.setSide(0);setSide(0);setLoaded({title:piece.title,chip,part,pieceId,overview:view!,omitted:row!.omitted,seconds:row!.seconds,losses:row!.losses,entries});setOverview(view!);setPreparing(false);}
+   const presentation:Loaded={title:piece.title,chip,part,pieceId,overview:view!,omitted:row!.omitted,seconds:row!.seconds,losses:row!.losses,entries};
+   if(await transport.select(entries,levels(entries),{restart:selectionId.current!==pieceId,side:0,presentation})&&ticket===generation.current){selectionId.current=pieceId;setOverview(view!);setPreparing(false);}
    else if(ticket===generation.current)setPreparing(false);
   })().catch(e=>{if(ticket===generation.current&&!abort.signal.aborted){setError(e.message);setPreparing(false);}});},180);
   return()=>{clearTimeout(timer);abort.abort();generation.current++;worker.current?.terminate();player.current?.cancelSelection();};

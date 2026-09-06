@@ -67,7 +67,7 @@ export default function Lab() {
  };
  return <><SiteHeader active="lab"/><main className="demo-main lab-main">
   <div className="lab-intro"><div><span className="micro">THE LISTENING ROOM</span><h1>Same notes.<br/><span>Different machines.</span></h1><p>Compare familiar melodies on emulated sound chips. These lossless recordings let you isolate parts and hear precisely what changes.</p></div><div className="lab-intro-note"><span className="status-light active"/> FOUR CONSOLES / ONE SCORE<br/><span>Press play once. Keep exploring.</span></div></div>
-  <Link href="/lab/arrangements" className="full-arrangement-link"><span><strong>The whole arrangement, with every source part.</strong>Mario’s native reference, complete MIDI transcriptions and console portages.</span><span aria-hidden="true">↗</span></Link>
+  <Link href="/" className="full-arrangement-link"><span><strong>The whole arrangement, with every source part.</strong>Mario’s native reference, complete MIDI transcriptions and console portages.</span><span aria-hidden="true">↗</span></Link>
   {reportError&&<p className="ui-status ui-error" role="alert">{reportError}</p>}
   {!selection&&!reportError&&<p role="status">Loading the listening collection…</p>}
   {selection&&display&&<>
