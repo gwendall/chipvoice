@@ -7,7 +7,7 @@ import type { PercussionKit } from "../../sequencer.js";
  * which is that everything is a sample. The words pick waveforms from the
  * driver's bank - a triangle for a soft lead, a sawtooth for a bright one,
  * a sine for a round one - and the kit is four drums the driver synthesised.
- * The echo the driver turns on is the rest of the idiom.
+ * This is a basic synthetic palette, not a representative sampled game bank.
  */
 const LEAD_VOLUME = [15, 15, 14, 13, 12, 12, 11, 11, 10, 10, 10, 9, 9, 9, 8];
 const LEAD_VIBRATO = { depth: 0.18, rate: 8, delay: 12 };

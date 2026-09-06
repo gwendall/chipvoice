@@ -45,7 +45,7 @@ function regs(writes) {
   check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped', enable.length === 1 && enable[0][0] === 0x6c && enable[0][1] === 0x00, JSON.stringify(enable));
   const note = regs(writes.filter((w) => w.at >= CLOCK && w.at < CLOCK + CLOCK / 60));
   // A4 on the 32-sample triangle: pitch = 440 * 4096 / 1000 = 1802 = $70A.
-  check('a note sets the source, the envelope, the pitch, the volumes, then keys on', note.map((p) => p[0]).join(',') === '4,5,6,2,3,0,1,76' && note[3][1] === 0x0a && note[4][1] === 0x07 && note[5][1] === 127 && note[7][1] === 0x01, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
+  check('a note sets the source, the envelope, the pitch, the volumes, then keys on', note.map((p) => p[0]).join(',') === '4,5,6,2,3,0,1,76' && note[3][1] === 0x0a && note[4][1] === 0x07 && note[5][1] === 32 && note[7][1] === 0x01, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
 }
 
 {
@@ -53,7 +53,7 @@ function regs(writes) {
   driver.playNote('v1', { note: 'C5', instrument: { volume: [15, 8], sustain: true }, duration: 0.5, at: 0 });
   flush();
   const frame1 = regs(writes.filter((w) => w.at >= CLOCK / 60 && w.at < CLOCK / 30));
-  check('a volume change writes the voice\'s two volumes and nothing else', frame1.length === 2 && frame1[0][0] === 0x10 && frame1[1][0] === 0x11 && frame1[0][1] === Math.round((8 * 127) / 15), JSON.stringify(frame1));
+  check('a volume change writes the voice\'s two volumes and nothing else', frame1.length === 2 && frame1[0][0] === 0x10 && frame1[1][0] === 0x11 && frame1[0][1] === Math.round((8 * 32) / 15), JSON.stringify(frame1));
   // Up to the quarter second where power-on turns the echo writes on.
   const later = writes.filter((w) => w.at >= CLOCK / 30 && w.at < CLOCK / 5);
   check('and a held note costs nothing after that', later.length === 0, `${later.length}`);

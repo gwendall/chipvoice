@@ -28,7 +28,8 @@
     "check:c64": "node src/cli.mjs c64 --corpus corpus/c64 --oracle residfp --baseline corpus/c64/parity.json",
     "baseline:c64": "node src/cli.mjs c64 --corpus corpus/c64 --oracle residfp --baseline corpus/c64/parity.json --write-baseline --sheet ../../docs/chips/c64.md && node src/status.mjs",
     "corpus:c64": "node src/corpus/generate-c64.mjs",
-    "fit:c64": "node src/fit-c64.mjs"
+    "fit:c64": "node src/fit-c64.mjs",
+    "test:listening": "node src/listening/test.mjs && node src/listening/test-snes.mjs"
   },
   "dependencies": {
     "chipvoice": "workspace:*"

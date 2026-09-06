@@ -58,7 +58,8 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P4-5 | Idioms per chip in the skill | done | skill 0.5.1: the catalogue per word, and a section per chip on how to write for it. There is no MCP server; the skill is the file an agent reads |
 | P4-8 | Intent pickers in the studio, one per row | done | Role timbre choices shipped with P8-6 in PR #20 |
 | P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | done | `NesDriver.smoothHighByte`; golden hash moved; see the log |
-| P4-7 | "Agent-written music sounds good" as a named goal with its own measures | todo | |
+| P4-7 | "Agent-written music sounds good" as a named goal with its own measures | doing | `feat/console-listening-evals`: [listening protocol and initial findings](AUDIO-EVALUATION.md), actual preset matrix, stems, native SNES parity, level-matched version comparisons. Human reference listening remains open |
+| P4-9 | SNES musical palette: original/licensed BRR instruments, authored envelopes and polyphonic chords evaluated against explicit musical references | todo | Capture a listening baseline with P4-7 first; DSP parity alone does not establish musical likeness |
 
 ## Operations
 
@@ -379,3 +380,5 @@ noise channel is muted it does not clock the register exactly, so the LFSR's
 phase after any silence is approximate. The oracle is used for the pulses and
 the triangle, cycle for cycle. The noise is verified by the formula tests and by
 its envelope, which shares code with the pulses. The sheet says so.
+
+**2026-09-06, P4-7.** All three demo SNES loops match the native DSP, but their driver saturates the dry sum on 13–20% of 32-clock windows before master attenuation. Lowering per-voice levels removes measured dry/echo-input clipping while retaining exact native parity. `recordSong` also inserted early stop events in its final block; complete PCM replay now guards all five consoles. See [the evaluation protocol](AUDIO-EVALUATION.md).

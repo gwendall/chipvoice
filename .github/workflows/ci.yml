@@ -66,6 +66,7 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform roms:dmg
       - run: pnpm --filter chipvoice-conform check:md
+      - run: pnpm --filter chipvoice-conform test:listening
       - run: pnpm --filter chipvoice-conform check:snes
       - run: pnpm --filter chipvoice-conform check:c64
       - run: pnpm --filter chipvoice-conform mixer

@@ -225,3 +225,9 @@ A chip is **done** when all of the following hold:
 - **The driver is tested separately from the chip**, and the sheet says what the
   driver exercises.
 - **"Accurate" does not appear in a README without a link to the sheet.**
+
+## Composition listening
+
+For actual demo presets, isolated roles, level-matched revision comparisons and
+SNES internal headroom, use the [audio evaluation protocol](AUDIO-EVALUATION.md).
+Digital parity and musical likeness are separate verdicts.

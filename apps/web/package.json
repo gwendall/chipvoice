@@ -8,7 +8,8 @@
     "build": "node scripts/build-renderer.mjs && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node test-local.mjs"
+    "test": "node test-local.mjs",
+    "eval:audio": "node scripts/evaluate-audio.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

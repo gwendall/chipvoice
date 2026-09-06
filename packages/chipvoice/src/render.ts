@@ -152,6 +152,9 @@ export function recordSong(
     sequencer.pump();
     driver.flush();
   }
+  // Stop at the requested boundary, not at the start of the final block.
+  // Otherwise the capture inserts note-offs into audio the renderer still plays.
+  clock = seconds;
   sequencer.stop();
   driver.flush();
   return {
