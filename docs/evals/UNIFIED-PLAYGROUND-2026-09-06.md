@@ -101,3 +101,20 @@ Linux CI exposed a test assumption about output latency: after a fixed 450 ms
 wait, the same correct seek had advanced farther than on macOS. The regression
 now asserts the exact committed seek/resume offset instead of a platform-specific
 phase interval. The separate instrumented E2E still measures the audible cursor.
+
+A subsequent Linux CI run exposed a real exact-end edge case: a deferred audio
+replacement started at `offset === duration`, with looping disabled. The audio
+clock advanced and the score reached the end, but Chromium emitted no `ended`
+event, leaving the transport playing. Completion now follows the output-clock
+deadline directly; `ended` remains a resource signal, not the only way to finish.
+The timer sleeps until that deadline instead of polling throughout the song.
+A browser regression suppresses the event and proves completion; a second covers
+an immediate restart queued behind an exact-end seek with low output latency.
+A third proves Pause/resume before the audible deadline releases a known empty
+source without waiting for its missing event. All three failed before their fixes.
+
+The full transport E2E also passed in a local Linux Chromium container, including
+composer handoff, screenshots and video. Its observed output delay was about
+30–37 ms (different from the macOS device), with cursor error of 1.6–44.0 ms on
+this busy host. CI failure artifacts now retain the source offset, ended flag,
+context state, output timestamp, screenshot and finalized video.

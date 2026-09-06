@@ -104,6 +104,7 @@ export class BufferPlayback {
       group.offset=this.phase(at)*group.duration;group.at=at;group.loop=loop;
       this.remember(group);
       for (const part of group.parts) part.source.loop = loop;
+      this.finishAtEnd(group);
     }
     this.changed();
   }
@@ -134,13 +135,7 @@ export class BufferPlayback {
     this.remember(group);
     parts[0].source.onended = () => {
       group.ended = true;
-      const finish = () => {
-        if (this.disposed || this.group !== group || group.loop) return;
-        if (this.phase() < 1) { this.endTimer = setTimeout(finish, 20); return; }
-        this.offset = 1; this.playing = false; this.group = null;
-        this.release(group); this.changed();
-      };
-      finish();
+      this.finishAtEnd(group);
     };
     fade.toValue(1, at); previous?.fade.toValue(0, at);
     if (previous) {
@@ -159,6 +154,24 @@ export class BufferPlayback {
         this.timer = setTimeout(cleanup, 90);
       });
     }
+    this.finishAtEnd(group);
+  }
+  /** The output clock owns completion. Some browsers omit `ended` for a
+   * source starting at its exact end (e.g. a replacement finishing a seek).
+   * Wake at the audible deadline, not on every frame of a long song. */
+  finishAtEnd(group) {
+    if (this.disposed || this.group !== group) return;
+    clearTimeout(this.endTimer);
+    // A newer seek is waiting for the retiring pair. Its swap will arm a new
+    // deadline; completing here would discard that last playback request.
+    if (group.loop || this.pendingPhase !== null) return;
+    const remaining = group.at + group.duration - group.offset - outputTime(this.context);
+    if (remaining > 0) {
+      this.endTimer = setTimeout(() => this.finishAtEnd(group), Math.max(20, remaining * 1000));
+      return;
+    }
+    this.offset = 1; this.playing = false; this.group = null;
+    this.release(group); this.changed();
   }
   async toggle() {
     if (this.playing) { this.pause(); return; }
@@ -172,7 +185,9 @@ export class BufferPlayback {
     this.playing = false; this.offset = this.phase();
     this.pendingPhase = null; this.timeline.length=0; clearTimeout(this.endTimer);
     const group = this.group; this.group = null;
-    if (group?.ended) this.release(group);
+    // A non-looping source started at its end is empty even if the browser
+    // never dispatches `ended`; Pause must not wait for that missing event.
+    if (group && (group.ended || !group.loop && group.offset >= group.duration)) this.release(group);
     else if (group) {
       group.fade.toValue(0, this.context.currentTime, .025);
       for (const part of group.parts) part.source.stop(this.context.currentTime + .03);

@@ -56,10 +56,31 @@ try{
   transport.cancelSelection();await wait(60);deviceTime=ctx.currentTime;
   const newScoreWhenAudible=transport.audibleSelection()==='second score';
   ctx.getOutputTimestamp=timestamp;
-  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,resumeOffset,lastSeekOffset,frozen,stillFrozen,ended,replayed,lastSeek,traversalPreserved,endedBeforeAudible,endPauseResumed,oldScoreUntilAudible,newScoreWhenAudible};
+  // Chromium can omit `ended` when a replacement starts exactly at buffer end.
+  // The transport must finish on the output clock even without that event.
+  transport.pause();await wait(100);transport.setLoop(false);transport.seek(0);
+  await transport.toggle();await wait(120);transport.seek(1);
+  transport.group.parts[0].source.onended=null;
+  await wait(400);const exactEndWithoutEvent=!transport.playing&&transport.phase()===1;
+  // Pause must not wait for the missing event while the final audio is delayed.
+  ctx.getOutputTimestamp=()=>({contextTime:Math.max(0,ctx.currentTime-.6),performanceTime:performance.now()});
+  transport.seek(0);await transport.toggle();await wait(120);
+  transport.seek(1);transport.group.parts[0].source.onended=null;await wait(150);
+  transport.pause();await transport.toggle();await wait(120);
+  const emptyEndPauseResumed=transport.playing&&!!transport.group&&!transport.retiring;
+  transport.pause();await wait(100);
+  // Latest seek still wins if an exact-end group retires before its crossfade.
+  ctx.getOutputTimestamp=()=>({contextTime:ctx.currentTime,performanceTime:performance.now()});
+  transport.seek(0);await transport.toggle();await wait(120);
+  transport.seek(1);transport.seek(0);await wait(400);
+  const restartPastEndWins=transport.playing&&transport.group?.offset===0;
+  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,resumeOffset,lastSeekOffset,frozen,stillFrozen,ended,replayed,lastSeek,traversalPreserved,endedBeforeAudible,endPauseResumed,oldScoreUntilAudible,newScoreWhenAudible,exactEndWithoutEvent,restartPastEndWins,emptyEndPauseResumed};
  });
  assert.ok(result.initial>.05&&result.duringLoad>.05&&result.afterFailure>.05,JSON.stringify(result));
  assert.equal(result.failed,false);assert.equal(result.cancelled,false);assert.ok(result.cancellationKeptCurrent);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');
+ assert.ok(result.emptyEndPauseResumed,'Pause before the output deadline releases a source that started at its end');
+ assert.ok(result.restartPastEndWins,'Restart queued after an exact-end seek must keep playing');
+ assert.ok(result.exactEndWithoutEvent,'An exact-end seek finishes even when the source emits no ended event');
  assert.ok(result.oldScoreUntilAudible&&result.newScoreWhenAudible);
  assert.ok(result.traversalPreserved&&result.endedBeforeAudible&&result.endPauseResumed,JSON.stringify(result));
  assert.equal(result.pausedSeek,.6);assert.equal(result.resumeOffset,.6);assert.equal(result.frozen,result.stillFrozen);assert.ok(result.ended&&result.replayed);assert.equal(result.lastSeekOffset,.4,'The last requested seek wins, independently of output latency');
