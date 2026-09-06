@@ -24,3 +24,8 @@ registerChip({...nesChip,spec:{...nesChip.spec,id:'test-right-peak'},create:()=>
 const result=renderSong({...arrange(score),chip:'test-right-peak'},{seconds:.01,stereo:true});
 assert.equal(result.peak,Math.abs(result.right[0]));
 console.log('PASS target preservation, gain identity, voice/arpeggio range warnings, empty-pattern rejection and stereo peak');
+
+const fallbackSample = arrange({bpm:144,chip:'snes',order:[0],patterns:[{lead:'C8 . . .',bass:'C2 . . .',chord:'C3 . . .',perc:'K . H .',chordShape:[[0,4,7]]}]});
+for (const sample of ['unknown','toString','constructor']) assert.ok(validateSong({...fallbackSample,lead:{...fallbackSample.lead,sample}}).issues.some(issue=>issue.code==='pitch_range' && issue.track==='lead'));
+assert.equal(validateSong({...fallbackSample,intent:{lead:'toString'}}).ok,false);
+assert.equal(validateSong({...fallbackSample,intent:{toString:'anything'}}).ok,false);

@@ -28,6 +28,8 @@ for (const kind of ['melody','drums','timbres']) {
   }
   assert.equal(varyScore(score, { kind, locked: ['lead','chord','bass','perc'], seed: 1 }), score);
 }
+const silent = { ...score, patterns: [{ ...score.patterns[0], lead: '. . = . . . . .' }] };
+assert.equal(varyScore(silent, { kind:'melody', seed:1 }), silent, 'authored rests and cuts remain unchanged');
 assert.equal(JSON.stringify(score), original);
 assert.notEqual(arrange(varyScore(score, { kind:'melody', seed:1 })).id, arrange(score).id);
 console.log('PASS seeded variations preserve locked roles, full documents, rhythms, voicings and playback identity');

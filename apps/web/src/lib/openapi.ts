@@ -167,10 +167,10 @@ export function openApiSpec() {
           operationId: "forkSong",
           summary: "Copy a song with changes",
           description:
-            "Send only what differs - a fork changing one line does not restate the other three. The copy keeps a link back to its parent.",
+            "Send only what differs - a fork changing one line does not restate the other three. The copy keeps a link back to its parent. Null clears title, author or intent; unchanged inherited patterns retain compatibility with earlier publication limits.",
           tags: ["songs"],
           parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-          requestBody: { required: false, content: { "application/json": { schema: { ...SONG_BODY, required: [] } } } },
+          requestBody: { required: false, content: { "application/json": { schema: { ...SONG_BODY, required: [], properties:{...SONG_BODY.properties,title:{anyOf:[SONG_BODY.properties.title,{type:"null"}]},author:{anyOf:[SONG_BODY.properties.author,{type:"null"}]},intent:{anyOf:[INTENT_BODY,{type:"null"}]}} } } } },
           responses: {
             "201": { description: "The fork", content: { "application/json": { schema: { $ref: "#/components/schemas/Song" } } } },
             "404": { description: "No such parent" },

@@ -30,7 +30,7 @@ try {
   const [db1,db2] = await Promise.all([api.db(),api.db()]); assert.equal(db1,db2);
   const bearer = key=>new Request('https://chipvoice.test/api/me',{headers:{authorization:`Bearer ${key}`}});
   const first = await api.identify(bearer('cv_live_legacy'));
-  assert.ok(first.userId); assert.equal(first.email,'test@example.com');
+  assert.ok(first.userId); assert.ok(!['firstkey','nextkey'].includes(first.userId), 'account IDs differ from public legacy key IDs'); assert.equal(first.email,'test@example.com');
   const oldSong = (await api.find('oldsong1')).song;
   assert.equal(oldSong.userId,first.userId); assert.equal('userId' in api.present(oldSong),false);
   const redeemed = await Promise.all([api.redeemMagicLink('legacy-token'),api.redeemMagicLink('legacy-token')]);

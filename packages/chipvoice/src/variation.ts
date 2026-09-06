@@ -63,9 +63,9 @@ export function varyScore<T extends Score>(score: T, options: VariationOptions):
       });
       const classes = [...new Set(options.scale?.filter(n => Number.isInteger(n) && n >= 0 && n < 12)
         ?? hits.map(hit => hit.midi % 12))];
+      if (!hits.length) return pattern;
       if (!classes.length) classes.push(0, 2, 4, 5, 7, 9, 11);
-      if (!hits.length) line[0] = NAMES[classes[0]] + '4';
-      else {
+      {
         // Prefer weak beats; retain the first note when the phrase has others.
         const candidates = hits.length > 1 ? hits.slice(1) : hits.slice();
         candidates.sort((a, b) => Number(a.step % 4 === 0) - Number(b.step % 4 === 0));

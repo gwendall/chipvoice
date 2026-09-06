@@ -25,14 +25,14 @@ export const IntentSchema = z
  * read, diff, paste into a message and hand to a model.
  */
 export const PatternSchema = z.object({
-  bass: z.string().max(4096),
-  lead: z.string().max(4096),
-  chord: z.string().max(4096),
-  perc: z.string().max(4096),
-  chordShape: z.array(z.array(z.number().int()).min(1).max(32)).min(1).max(256),
+  bass: z.string(),
+  lead: z.string(),
+  chord: z.string(),
+  perc: z.string(),
+  chordShape: z.array(z.array(z.number().int()).min(1)).min(1),
 });
 
-export const SongInput = z.object({
+export const SongDocumentSchema = z.object({
   title: z.string().trim().min(1).max(80).optional(),
   bpm: z.number().int().min(40).max(300),
   patterns: z.array(PatternSchema).min(1).max(16),
@@ -45,6 +45,13 @@ export const SongInput = z.object({
   author: z.string().trim().max(60).optional(),
 });
 
+/** Admission caps apply to new publications, never to loading existing scores. */
+export const SongInput = SongDocumentSchema.extend({
+  patterns: z.array(PatternSchema.extend({
+    bass:z.string().max(4096),lead:z.string().max(4096),chord:z.string().max(4096),perc:z.string().max(4096),
+    chordShape:z.array(z.array(z.number().int()).min(1).max(32)).min(1).max(256),
+  })).min(1).max(16),
+});
 export type SongInput = z.infer<typeof SongInput>;
 
 export const RenderQuery = z.object({

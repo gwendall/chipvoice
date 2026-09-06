@@ -1,4 +1,5 @@
 import type { ChipSpec, VoiceSpec } from './chip.js';
+import { sampleBaseHz } from './chips/snes/driver.js';
 import type { Instrument } from './driver.js';
 
 /** Register limits used by the shipped drivers, before modulation. These are
@@ -18,7 +19,7 @@ export function pitchRange(chip: ChipSpec, voice: VoiceSpec, instrument?: Instru
   if (chip.id === 'c64') return [chip.clockHz / 2 ** 24, 65535 * chip.clockHz / 2 ** 24];
   if (chip.id === 'snes') {
     const name = instrument?.sample ?? 'tri';
-    const base = ['sine64', 'square64', 'saw64'].includes(name) ? 500 : ['sine', 'tri', 'saw', 'square'].includes(name) ? 1000 : null;
+    const base = sampleBaseHz(name);
     return base ? [base / 4096, base * 16383 / 4096] : null;
   }
   return null;

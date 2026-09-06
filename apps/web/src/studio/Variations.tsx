@@ -11,7 +11,7 @@ export function Variations({ song, disabled, onEdit, onNotice }: {
   const vary = (kind: VariationOptions['kind']) => {
     const seed = crypto.getRandomValues(new Uint32Array(1))[0];
     const next = varyScore(song, { kind, locked, seed });
-    if (next === song) { onNotice('Unlock a role to try a variation.'); return; }
+    if (next === song) { onNotice('No change for these parts. Add melody notes or unlock a role to vary.'); return; }
     onEdit(next); measure('variation'); onNotice('Variation ready. Undo brings back your previous loop.');
   };
   return <section className="variations" aria-label="Musical variations">

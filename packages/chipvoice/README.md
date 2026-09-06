@@ -323,7 +323,7 @@ const variation = varyScore(score, {
 ```
 
 Variations are local and reproducible. Melody reuses existing pitch classes and
-keeps rhythm (an empty melody gets a first note); drums choose authored grooves.
+keeps rhythm, including silent patterns; drums choose authored grooves.
 Locked roles retain notes and timbres. An edit drops an explicit playback ID so
 `arrange` derives a new one. The demo adds Undo, optional MIDI note input, aligned
 stems and five-machine ZIP exports with cancellation.

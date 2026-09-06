@@ -12,6 +12,7 @@ import { CodePanel } from './CodePanel';
 import { measure } from './metrics';
 import { recordStep } from './recording';
 import { Variations } from './Variations';
+import { publicationBody } from './publication';
 import { Account } from './Account';
 import { MidiInput } from './MidiInput';
 
@@ -104,7 +105,7 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
     if (published?.snapshot === JSON.stringify(doc.song)) { say('This version is already published.'); return; }
     setPublishing(true);
     try {
-      const response = await fetch(published ? `/api/songs/${published.id}/fork` : '/api/songs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc.song) });
+      const response = await fetch(published ? `/api/songs/${published.id}/fork` : '/api/songs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(publicationBody(doc.song, published ? JSON.parse(published.snapshot) : undefined)) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.issues?.[0]?.message ?? result.message ?? 'Could not publish. Your local draft is safe.');
       setPublished({ id: result.id, snapshot: JSON.stringify(doc.song) });

@@ -2,13 +2,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { runnableCode, type SongDocument } from './document';
 import type { ExportKind } from './exports';
+function dispose(worker: Worker | null) {
+  if (!worker) return;
+  worker.onmessage = null; worker.onerror = null; worker.terminate();
+}
 export function CodePanel({ song, onNotice }: { song: SongDocument; onNotice: (message: string) => void }) {
   const [view, setView] = useState<'code' | 'score'>('code');
   const [rendering, setRendering] = useState(false);
   const worker = useRef<Worker | null>(null);
   const [progress, setProgress] = useState('');
-  const cancel = () => { worker.current?.terminate(); worker.current = null; setRendering(false); setProgress(''); };
-  useEffect(() => () => worker.current?.terminate(), []);
+  const cancel = () => { dispose(worker.current); worker.current = null; setRendering(false); setProgress(''); };
+  useEffect(() => () => { dispose(worker.current); worker.current = null; }, []);
   const content = view === 'code' ? runnableCode(song) : JSON.stringify(song, null, 2);
   const copy = async () => { try { await navigator.clipboard.writeText(content); onNotice(`${view === 'code' ? 'Runnable code' : 'Score'} copied.`); } catch { onNotice('Select the text below to copy it.'); } };
   const download = (kind: ExportKind) => {
@@ -18,9 +22,10 @@ export function CodePanel({ song, onNotice }: { song: SongDocument; onNotice: (m
     try { renderer = new Worker(new URL('./render.worker.ts', import.meta.url)); }
     catch { setRendering(false); onNotice('Audio export could not start. Please try again.'); return; }
     worker.current = renderer;
-    const finish = () => { renderer.terminate(); worker.current = null; setRendering(false); };
-    renderer.onerror = () => { onNotice('Audio export failed. Please try again.'); finish(); };
+    const finish = () => { dispose(renderer); if (worker.current === renderer) { worker.current = null; setRendering(false); } };
+    renderer.onerror = event => { event.preventDefault(); if (worker.current !== renderer) return; onNotice('Audio export failed. Please try again.'); finish(); };
     renderer.onmessage = event => {
+      if (worker.current !== renderer) return;
       if (event.data.progress) { setProgress(event.data.progress); return; }
       if (event.data.error) onNotice(event.data.error);
       else {

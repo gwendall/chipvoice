@@ -2,8 +2,8 @@ import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.8.0";
-const UPDATED = "2026-09-04";
+const VERSION = "0.9.0";
+const UPDATED = "2026-09-06";
 
 /**
  * The file an agent reads first.
@@ -331,7 +331,7 @@ attempts is a tree rather than a pile.
 \`measured\` comes back on every successful call, and is the closest thing to feedback
 you have without ears:
 
-- **\`loopSeconds\`** - under 14 and it will be heard as a repeat
+- **\`loopSeconds\`** - under 14 triggers a repetition warning; this is a composing heuristic, not a musical rule
 - **\`onsetsPerSecond\`** - roughly 5 is a calm piece, 12 is a busy one, past 15 is
   usually a mess
 - **\`range\`** - semitones between the highest and lowest note. Under 7 is flat,

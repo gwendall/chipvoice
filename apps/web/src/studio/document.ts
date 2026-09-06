@@ -1,5 +1,5 @@
 import { arrange, validateSong, type Pattern, type Role } from 'chipvoice';
-import { SongInput, type SongInput as Input } from '@/lib/schema';
+import { SongDocumentSchema, type SongInput as Input } from '@/lib/schema';
 import { decode as decodeLegacy } from './share';
 
 export type ChipId = Input['chip'];
@@ -18,7 +18,7 @@ export const lengthOf = (pattern: Pattern) => tokens(pattern.bass).length;
 
 /** Runtime validation at every persistence boundary, including local drafts. */
 export function readDocument(raw: unknown): SongDocument | null {
-  const result = SongInput.safeParse(raw);
+  const result = SongDocumentSchema.safeParse(raw);
   if (!result.success) return null;
   return validateSong(arrange(result.data)).ok ? result.data : null;
 }

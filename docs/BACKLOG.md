@@ -142,9 +142,9 @@ PR; deployment and real-device checks are distinct from local completion.
 | P8-21 | Coherent audio downloads: render identity/cache contract, stereo where appropriate, correct machine tags. Stable song links survive asset versioning | implemented | C. Before claiming exported audio reproduces the demo |
 | P8-22 | Put critical production-build web journeys in CI with a temporary database; verify actual transport output, score preservation, input and sharing | implemented | A regressions, B/C journeys; no production writes from CI |
 | P8-10 | Quantized live recording and overdubbing from the note palette and drums, with undo | implemented | D. Audio-clock tap capture, stable backing loop, one Undo per take and draft recovery; [qualification](evals/RECORDING-2026-09-06.md). Physical-phone checks remain P8-9 |
-| P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | doing | D. After V1 |
-| P8-11 | Web MIDI input using the same tested transport and ownership model | doing | D. After V1 |
-| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | doing | D. After P8-21; basic audio download is in V1 |
+| P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | implemented | Seeded local melody/drum/timbre transforms, locked roles and Undo; silent patterns preserved; decision 26 |
+| P8-11 | Web MIDI input using the same tested transport and ownership model | implemented | Opt-in MIDI taps share audition/recording; channel-10 drums and cleanup tested with simulated ports. Physical MIDI latency remains unmeasured |
+| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM; independent ZIP reader and byte parity; decision 26 |
 | P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | todo | D. P7-9, P6-10, P5-10; no simulated generic substitute |
 
 ## Audit follow-ups
@@ -157,12 +157,12 @@ rewrite.
 
 | # | Ticket | Status | Priority / dependency |
 | --- | --- | --- | --- |
-| AUD-1 | Separate stable user identity, API keys and browser sessions; recover publications across logins, consume magic tokens atomically, and do not rotate an agent key on browser login | doing | Before relying on account recovery/sign-in; does not block anonymous play |
-| AUD-2 | Profile render CPU, bound/cache request variants and deduplicate concurrent renders; add worker/storage only as measurements justify | doing | Before expanding expensive export usage; alongside P8-21 |
+| AUD-1 | Separate stable user identity, API keys and browser sessions; recover publications across logins, consume magic tokens atomically, and do not rotate an agent key on browser login | implemented | Stable account ownership, independent keys/sessions, atomic login consumption, revocation and account UI; decision 28 |
+| AUD-2 | Profile render CPU, bound/cache request variants and deduplicate concurrent renders; add worker/storage only as measurements justify | partial | Worker, duration/concurrency/rate/cache bounds, versioned keys, deduplication and conditional GET implemented; representative CPU profiling and distributed capacity remain open; decision 27 |
 | AUD-3 | Make low-sample-rate offline scheduling correct, bound the timeline without a position reader and fix beatDelay's contract | partial | Scheduling fixes, host-driven offline expiry and direct shared bus queues included (decision 23); low-rate performance qualification remains separate |
-| AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | doing | Before claiming every syntactically valid score plays unchanged |
-| AUD-5 | Use versioned database migrations with precise error handling | doing | Alongside identity/schema work |
-| AUD-6 | Align root/npm README, package metadata, capabilities and licence statements; distinguish corpus parity from physical verification, remove misleading global completeness claims | partial | Root/npm introductions, metadata and licences aligned; full capability-copy audit remains follow-up |
+| AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | partial | Target identity preserved; base-pitch/arpeggio range warnings and malformed-pattern checks implemented. Full modulation/voice-budget diagnostics remain open |
+| AUD-5 | Use versioned database migrations with precise error handling | implemented | Versioned atomic migrations; legacy/fresh/idempotence/failure rollback covered; decision 28 |
+| AUD-6 | Align root/npm README, package metadata, capabilities and licence statements; distinguish corpus parity from physical verification, remove misleading global completeness claims | implemented | Root/npm README, score spec, OpenAPI, agent skill and status generator aligned on five machines, actual arrangements, licensing, versioned audio and corpus versus hardware evidence |
 | AUD-7 | Audit hot-path allocation/copy sites in five cores, drivers, encoding and demo animation; reuse scratch with explicit ownership | implemented | [Audit and qualification](evals/HOT-PATHS-2026-09-06.md); representative-device CPU/GC measurements remain alongside AUD-3 |
 
 ## Later phases

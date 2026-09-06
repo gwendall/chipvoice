@@ -9,6 +9,16 @@ async function module(path) {
   const result = await build({ entryPoints: [path], bundle: true, platform: 'node', format: 'esm', write: false, logLevel: 'silent' });
   return import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
 }
+const { readDocument } = await module('src/studio/document.ts');
+const { SongInput } = await module('src/lib/schema.ts');
+const longLine = 'C4 ' + '. '.repeat(2200);
+const legacy = {chip:'2a03',bpm:144,order:[0],patterns:[{bass:longLine,lead:longLine,chord:longLine,perc:'K '+'. '.repeat(2200),chordShape:Array.from({length:257},()=>[0,4,7])}]};
+assert.deepEqual(readDocument(legacy),legacy,'existing long publications and drafts remain loadable');
+assert.equal(SongInput.safeParse(legacy).success,false,'new publication admission remains bounded');
+const { publicationBody } = await module('src/studio/publication.ts');
+assert.deepEqual(publicationBody({...legacy,title:'New title'},legacy),{title:'New title'});
+assert.deepEqual(publicationBody(legacy,{...legacy,title:'Old title'}),{title:null});
+assert.deepEqual(publicationBody({...legacy,title:'New',author:'Artist'},{...legacy,title:'Old',author:'Artist'}),{title:'New',author:'Artist'});
 const { midiTap } = await module('src/studio/midi.ts');
 assert.deepEqual(midiTap([0x90,60,90],'lead'), {role:'lead',note:'C4'});
 assert.deepEqual(midiTap([0x93,61,1],'bass'), {role:'bass',note:'C#4'});

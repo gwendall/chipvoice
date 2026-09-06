@@ -123,7 +123,7 @@ pnpm build            # the package, then the site
 pnpm dev              # the editor and the API on http://localhost:3010
 pnpm test:unit        # the validator, the clocks against the formulas, the driver, VGM, the golden hash
 pnpm --filter chipvoice-conform check   # the corpus against the reference, no regression against the baseline
-pnpm test:e2e         # production, end to end, through the package, the API and a browser
+pnpm --filter chipvoice-web test # production build on a local server, temporary DB, measured browser audio
 ```
 
 The package's `pnpm test` adds the fresh-install test, which packs the tarball,

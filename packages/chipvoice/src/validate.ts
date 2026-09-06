@@ -107,9 +107,9 @@ export function validateSong(song: unknown): ValidationResult {
     if (!s.intent || typeof s.intent !== "object") return fail("intent must be an object of role to word");
     for (const [role, word] of Object.entries(s.intent as Record<string, unknown>)) {
       const words = (INTENTS as Record<string, Record<string, string>>)[role];
-      if (!words) {
+      if (!Object.hasOwn(INTENTS, role)) {
         issues.push({ level: "error", message: `intent.${role}: no such role. The roles are ${Object.keys(INTENTS).join(", ")}`, silent: true });
-      } else if (typeof word !== "string" || !(word in words)) {
+      } else if (typeof word !== "string" || !Object.hasOwn(words, word)) {
         issues.push({ level: "error", track: role, message: `intent.${role}: "${String(word)}" is not a ${role} intent. This build knows: ${Object.keys(words).join(", ")}`, silent: true });
       }
     }

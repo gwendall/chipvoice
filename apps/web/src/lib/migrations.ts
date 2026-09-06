@@ -1,5 +1,5 @@
 import type { Client, Transaction } from '@libsql/client';
-import { hashKey } from './crypto';
+import { hashKey, newId } from './crypto';
 
 async function addColumns(tx: Transaction, table: string, definitions: Record<string, string>) {
   const present = new Set((await tx.execute(`pragma table_info(${table})`)).rows.map(row => String(row.name)));
@@ -17,7 +17,8 @@ const migrations = [
   { name: 'stable-users-and-sessions', async up(tx: Transaction) {
     await tx.execute(`create table users (id text primary key, email text not null unique, created_at integer not null)`);
     await addColumns(tx, 'keys', { user_id:'text' }); await addColumns(tx, 'songs', { user_id:'text' });
-    await tx.execute(`insert into users (id,email,created_at) select min(id), lower(trim(email)), min(created_at) from keys group by lower(trim(email))`);
+    const accounts = await tx.execute(`select lower(trim(email)) as email, min(created_at) as created_at from keys group by lower(trim(email))`);
+    for (const row of accounts.rows) await tx.execute({sql:'insert into users (id,email,created_at) values (?,?,?)',args:[newId(),row.email,row.created_at]});
     await tx.execute(`update keys set user_id = (select id from users where users.email = lower(trim(keys.email)))`);
     await tx.execute(`update songs set user_id = (select user_id from keys where keys.id = songs.key_id)`);
     await tx.execute(`create table sessions (hash text primary key, user_id text not null, created_at integer not null, expires_at integer not null, revoked_at integer)`);
