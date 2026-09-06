@@ -251,8 +251,8 @@ export class Chip {
    * a spread to change one field, which is the obvious way to derive one -
    * fails an identity check and restarts the piece on every call.
    */
-  play(song: Song, position?: { step: number; orderIndex: number }) {
-    this.sequencer.play(song, position);
+  play(song: Song, position?: { step: number; orderIndex: number; progress?: number }, at?: number) {
+    this.sequencer.play(song, position, at);
   }
 
   stop() {
@@ -304,6 +304,12 @@ export class Chip {
    */
   position(into?: { step: number; orderIndex: number }): { step: number; orderIndex: number } | null {
     return this.sequencer.positionAt(this.ctx.currentTime, into);
+  }
+
+  /** Fractional musical position at a nearby scheduled audio time. Reading
+   * ahead does not advance the displayed playhead. */
+  phaseAt(at = this.ctx.currentTime) {
+    return this.sequencer.phaseAt(at);
   }
 
   /** Nearest sixteenth for live note capture, including pattern/loop wrap.
