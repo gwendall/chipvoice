@@ -15,6 +15,7 @@ import { Variations } from './Variations';
 import { publicationBody } from './publication';
 import { Account } from './Account';
 import { MidiInput } from './MidiInput';
+import {SiteHeader, SiteFooter, MachinePicker, PlayButton} from '../ui/components';
 
 export default function App({ initial, initialId }: { initial?: SongDocument; initialId?: string }) {
   const doc = useSongDocument(initial, initialId);
@@ -115,15 +116,15 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
   };
 
   return <div className="demo-page">
-    <header className="site-header"><a href="/" className="wordmark" aria-label="chipvoice home"><span className="brand-mark" aria-hidden="true"><i/><i/><i/><i/></span>chipvoice</a><span className="header-tag">OLD CHIPS. NEW TRICKS.</span><nav aria-label="Project"><a href="https://github.com/gwendall/chipvoice#readme">Docs ↗</a><a href="https://github.com/gwendall/chipvoice">GitHub ↗</a></nav></header>
+    <SiteHeader />
     <main className="demo-main">
       <div className="intro-line"><p>Five machines. <span>Your soundtrack.</span></p><span className="micro">A PLAYABLE AUDIO LIBRARY</span></div>
       <section className="console" aria-label="Chipvoice musical console">
         <div className="console-top"><span className="micro">CHOOSE YOUR MACHINE</span><span className="micro hardware-label">CV–05 / POCKET SOUND SYSTEM</span></div>
-        <div className="machines" aria-label="Sound machine">{MACHINES.map(m => <button key={m.id} disabled={recordLocked} aria-pressed={doc.song.chip === m.id} onClick={() => { edit({ ...doc.song, chip: m.id }); measure('switch'); }}><span className="machine-logo" style={{ maskImage: `url(${m.logo})`, WebkitMaskImage: `url(${m.logo})` }} aria-hidden="true"/><strong><span className="machine-led"/>{m.name}</strong></button>)}</div>
+        <MachinePicker value={doc.song.chip} disabled={recordLocked} onChange={chip => { edit({...doc.song, chip}); measure('switch'); }} />
         <div className="screen-bezel"><div className="screen-title"><div><span className="screen-kicker">{machine.chip}</span><h1>{doc.song.title || 'Untitled adventure'}</h1></div><OutputScope node={audio.output}/></div><Voices disabled={recordLocked} song={recording && backingSong.current ? backingSong.current : doc.song} position={audio.position} stolen={audio.stolen} muted={effectiveMuted} solo={solo} onMute={r => setMuted(previous => previous.includes(r) ? previous.filter(v => v !== r) : [...previous, r])} onSolo={r => setSolo(previous => previous === r ? null : r)} effect={audio.effect}/></div>
         <div className="transport-row">
-          <button className={`play-button ${audio.playing ? 'playing' : ''}`} aria-label={audio.playing ? 'Stop' : 'Play'} onClick={togglePlayback}><span aria-hidden="true">{audio.playing ? '■' : '▶'}</span>{audio.loading ? 'Loading' : audio.playing ? 'Stop' : 'Play'}<kbd>space</kbd></button>
+          <PlayButton playing={audio.playing} loading={audio.loading} shortcut onClick={togglePlayback}/>
           <div className="tempo-control"><label htmlFor="tempo">TEMPO</label><button aria-label="Slower" disabled={recordLocked} onClick={() => edit({ ...doc.song, bpm: Math.max(40, doc.song.bpm - 4) })}>−</button><input id="tempo" disabled={recordLocked} aria-label="Tempo" type="number" min={40} max={300} value={doc.song.bpm} onChange={e => { const value = Number(e.target.value); if (value >= 40 && value <= 300) edit({ ...doc.song, bpm: Math.round(value) }); }}/><button aria-label="Faster" disabled={recordLocked} onClick={() => edit({ ...doc.song, bpm: Math.min(300, doc.song.bpm + 4) })}>+</button></div>
           <div className="history-controls"><button aria-label="Undo" disabled={!doc.canUndo} onClick={undo}>↶</button><button aria-label="Redo" disabled={!doc.canRedo} onClick={redo}>↷</button></div>
           <button className="edit-toggle" disabled={recordLocked} aria-expanded={editing} onClick={() => setEditing(!editing)}>{editing ? 'Close editor' : 'Edit loop'} <span aria-hidden="true">{editing ? '−' : '+'}</span></button>
@@ -142,6 +143,6 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
       {code && <CodePanel song={doc.song} onNotice={say}/>}
       <div className={`notice ${audio.error ? 'error' : ''}`} role="status" aria-live="polite">{audio.error || notice}</div>
     </main>
-    <footer className="site-footer"><span>chipvoice · A love letter to little sound chips.</span><div><a href="https://github.com/HVR88/Monochrome-Gaming-Logos">Console logos ↗</a><a href="/skill.md">For agents ↗</a><a href="https://github.com/gwendall/chipvoice/tree/main/docs">Inside the chips ↗</a></div></footer>
+    <SiteFooter />
   </div>;
 }

@@ -1,0 +1,3 @@
+export type Asset = {file: string; sha256: string; sourceWavSha256?: string; metrics: {clippedSamples: number; envelope: number[]}; loudness: {integratedLUFS: number | null; truePeakDbTP: number | null} | null};
+export type Case = {id: string; title: string; chip: string; preset: string; seconds: number; completeLoop: boolean; technicalPass: boolean; signalWarnings: string[]; replay: {ok: boolean}; oracle?: {ok: boolean; mixer: {mainClampedAdditions: number; echoClampedAdditions: number}}; assets: Record<string, Asset>; baseline?: Record<string, Asset>};
+export type Report = {revision: string; createdAt: string; engineSha256: string; cases: Case[]; publication?: {sourceReportSha256: string}};

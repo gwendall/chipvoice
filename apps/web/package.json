@@ -9,7 +9,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node test-local.mjs",
-    "eval:audio": "node scripts/evaluate-audio.mjs"
+    "eval:audio": "node scripts/evaluate-audio.mjs",
+    "publish:lab": "node scripts/publish-lab.mjs"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",

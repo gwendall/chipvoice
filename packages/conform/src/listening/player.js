@@ -1,33 +1,28 @@
 import {listeningLevels} from './levels.mjs';
+import {BufferPlayback} from '../../../../apps/web/src/audio/BufferPlayback.mjs';
 const $ = id => document.getElementById(id);
 const report = window.REPORT;
 const names = {'2a03':'NES',dmg:'Game Boy',md:'Mega Drive',snes:'SNES',c64:'C64'};
 const roles = {mix:'Mix complet',lead:'Mélodie',chord:'Accords',bass:'Basse',perc:'Batterie'};
 const observations = [];
-let context, buffers = [], sources = [], gains = [], entries = [], mapping = [0,1];
+let context, player, entries = [], mapping = [0,1];
 let row, level, active = 0, playing = false, hidden = false, generation = 0;
-let startedAt = 0, offset = 0, duration = 0;
+
 const option = (value, title) => new Option(title, value);
 const number = value => Number.isFinite(value) ? value.toFixed(1) : '—';
 for (const item of report.cases) $('case').add(option(item.id, `${item.title} · ${names[item.chip]}`));
 $('case').value = report.cases.find(item => item.chip === 'snes')?.id ?? report.cases[0].id;
-function stop(reset = false) {
-  if (playing) offset = (offset + Math.max(0, context.currentTime - startedAt)) % duration;
-  for (const source of sources) { source.stop(); source.disconnect(); }
-  for (const gain of gains) gain.disconnect();
-  sources = []; gains = []; playing = false;
-  if (reset) offset = 0;
-  $('play').textContent = 'Écouter';
+function status() {
+  playing = player?.playing ?? false;
+  $('play').textContent = playing ? 'Pause' : 'Écouter';
+  $('status').textContent = player?.error || `${player?.loading ? (playing ? 'Chargement · la lecture continue' : 'Chargement…') : playing ? 'Lecture' : 'Prêt'} · ${active ? 'B' : 'A'} · niveaux ${level?.method ?? '—'}`;
 }
 function setSide(side) {
   active = side;
-  for (let i = 0; i < gains.length; i++) {
-    // A brief fade avoids a switching click; both sources keep the same clock.
-    gains[i].gain.setTargetAtTime(i === mapping[active] ? level.gains[i] * Number($('volume').value) : 0, context.currentTime, .005);
-  }
+  player?.setSide(mapping[active]);
   $('a').setAttribute('aria-pressed', String(active === 0));
   $('b').setAttribute('aria-pressed', String(active === 1));
-  $('status').textContent = `${playing ? 'Lecture' : 'Prêt'} · ${active ? 'B' : 'A'} · niveaux ${level?.method ?? '—'}`;
+  status();
 }
 function identity() {
   $('measurements').hidden = hidden;
@@ -36,8 +31,8 @@ function identity() {
 }
 async function load() {
   const ticket = ++generation;
-  stop(true); hidden = false; mapping = [0,1]; active = 0;
-  for (const id of ['play','a','b','blind']) $(id).disabled = true;
+  hidden = false; mapping = [0,1]; active = 0;
+  for (const id of ['a','b','blind','save']) $(id).disabled = true;
   $('status').textContent = 'Chargement…';
   const role = $('role').value;
   entries = [{...row.assets[role],title:'Rendu actuel'}];
@@ -59,13 +54,10 @@ async function load() {
   envelope.forEach((value,index) => draw.fillRect(index*10,60-value*58,7,Math.max(1,value*116)));
   try {
     context ??= new AudioContext();
-    const loaded = await Promise.all(entries.map(async entry => {
-      const response = await fetch(entry.file); if (!response.ok) throw new Error(`WAV indisponible : ${entry.file}`);
-      return context.decodeAudioData(await response.arrayBuffer());
-    }));
-    if (ticket !== generation) return;
-    buffers = loaded; duration = Math.min(...buffers.map(buffer => buffer.duration));
-    $('play').disabled = false; $('a').disabled = false;
+    player ??= new BufferPlayback(context, status);
+    const loaded = await player.select(entries, level.gains);
+    if (ticket !== generation || !loaded) return;
+    $('play').disabled = false; $('a').disabled = false; $('save').disabled = false;
     $('b').disabled = entries.length < 2; $('blind').disabled = entries.length < 2;
     setSide(0);
   } catch (error) { if (ticket === generation) $('status').textContent = error.message; }
@@ -92,22 +84,9 @@ function selectCase() {
   }
   selectReference();
 }
-$('play').onclick = async () => {
-  if (playing) { stop(); setSide(active); return; }
-  const ticket = generation;
-  await context.resume();
-  if (ticket !== generation || playing) return;
-  const when = context.currentTime + .025;
-  sources = buffers.map((buffer,index) => {
-    const source = context.createBufferSource(), gain = context.createGain();
-    source.buffer = buffer; source.loop = true; source.loopEnd = duration;
-    gain.gain.value = index === mapping[active] ? level.gains[index] * Number($('volume').value) : 0;
-    source.connect(gain).connect(context.destination); gains.push(gain); source.start(when,offset); return source;
-  });
-  startedAt = when; playing = true; $('play').textContent = 'Pause'; setSide(active);
-};
+$('play').onclick = async () => { await player?.toggle(); status(); };
 $('a').onclick = () => setSide(0); $('b').onclick = () => setSide(1);
-$('volume').oninput = () => setSide(active);
+$('volume').oninput = () => player?.setVolume(Number($('volume').value));
 $('blind').onclick = () => {
   const bit = crypto.getRandomValues(new Uint8Array(1))[0] & 1;
   mapping = bit ? [1,0] : [0,1]; hidden = true; identity(); setSide(0);
@@ -127,5 +106,5 @@ $('export').onclick = () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(observations,null,2)],{type:'application/json'}));
   const link = document.createElement('a'); link.href = url; link.download = 'listening-notes.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
 };
-window.addEventListener('pagehide', () => { stop(true); void context?.close(); });
+window.addEventListener('pagehide', () => { player?.dispose(); void context?.close(); });
 selectCase();

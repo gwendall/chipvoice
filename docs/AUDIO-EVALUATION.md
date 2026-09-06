@@ -148,3 +148,11 @@ checks, listening iterations and review corrections.
 **Still open:** listening against chosen console-specific musical references and
 measuring the analog output stage against SNES line-out. Neither this investigation
 nor oracle parity settles those musical/hardware questions.
+
+## Public listening room
+
+`/lab` publishes an explicitly versioned evaluation collection using the site's
+shared controls. Audio is lossless FLAC loaded only on demand. The standalone
+report and public lab share the same continuous A/B transport: selection changes
+retain Play, keep the old audio during loading and crossfade at the new loop
+phase. See [publication and playback design](CONTINUOUS-PLAYBACK-LAB.md).

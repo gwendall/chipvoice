@@ -142,6 +142,13 @@ stereo placement. Shapes exceeding five notes produce a validation warning and
 use a single-voice arpeggio that retains every interval. The other console
 arrangers use one held note arpeggiated at frame rate.
 
+For a seamless live replacement, prepare a second chip on the same AudioContext,
+read `oldChip.phaseAt(at)` within its scheduling lookahead, and call
+`newChip.play(nextSong, position, at)`. The optional position includes fractional
+`progress` within its sixteenth. Crossfade the two output nodes after note-on,
+then dispose the old chip. The demo's `LivePlayback` implements this bounded
+handoff; ordinary `play(song)` and offline rendering retain their original timing.
+
 ## Snapping effects to the beat
 
 Rez's cheapest trick: snap a player's own sounds to the grid and somebody with no

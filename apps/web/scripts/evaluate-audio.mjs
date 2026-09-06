@@ -92,6 +92,7 @@ for(const preset of presets)for(const id of ids){
 }
 await writeFile(resolve(out,'report.json'),JSON.stringify(report,null,2));
 await writeFile(resolve(out,'report.js'),'window.REPORT='+JSON.stringify(report).replace(/</g,'\\u003c')+';');
-for(const file of ['index.html','player.js','levels.mjs'])await copyFile(resolve(root,'packages/conform/src/listening',file),resolve(out,file));
+await build({entryPoints:[resolve(root,'packages/conform/src/listening/player.js')],bundle:true,format:'esm',outfile:resolve(out,'player.js'),logLevel:'silent'});
+for(const file of ['index.html','levels.mjs'])await copyFile(resolve(root,'packages/conform/src/listening',file),resolve(out,file));
 console.log(`Report: ${out}/index.html\nServe: python3 -m http.server 3040 --bind 127.0.0.1 --directory ${JSON.stringify(out)}`);
 if(failed)process.exitCode=1;

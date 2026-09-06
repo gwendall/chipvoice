@@ -107,7 +107,8 @@ try {
   assert.equal(await page.locator('.machines button').first().isDisabled(), true);
   await page.screenshot({ path: `${artifacts}/${engine}-recording.png`, fullPage: true });
   await page.getByRole('button', { name: 'Finish take', exact: true }).click();
-  await page.waitForFunction(() => window.takeRestarts === 1);
+  await page.waitForFunction(id => window.chipvoice.songId !== id, backingId);
+  assert.equal(await page.evaluate(() => window.takeRestarts), 0, 'Finishing a take crossfades without restarting the backing chip');
   assert.ok((await amplitude(page)).rms > .001);
   await page.getByRole('button', { name: 'Undo', exact: true }).click(); assert.deepEqual(await songFrom(page), beforeTake);
   await page.getByRole('button', { name: 'Redo', exact: true }).click(); assert.deepEqual(await songFrom(page), expectedTake);

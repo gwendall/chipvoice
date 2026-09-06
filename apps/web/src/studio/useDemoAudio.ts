@@ -4,15 +4,13 @@ import { Chip, instrumentsFor, type Role } from 'chipvoice';
 import { effectFor, type EffectId } from './effects';
 import { musicSong, type SongDocument } from './document';
 import { measure } from './metrics';
+import { LivePlayback } from '../audio/LivePlayback';
 
 export function useDemoAudio(song: SongDocument, muted: Role[], recording = false) {
   const current = useRef<Chip | null>(null);
-  const context = useRef<AudioContext | null>(null);
-  const creating = useRef<{ id: string; token: number; promise: Promise<Chip | null> } | null>(null);
-  const generation = useRef(0);
+  const playback = useRef<LivePlayback | null>(null);
   const latest = useRef({ song, muted });
   latest.current = { song, muted };
-  const wantPlay = useRef(false);
   const mounted = useRef(true);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,70 +19,37 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
   const [stolen, setStolen] = useState<string[]>([]);
   const [output, setOutput] = useState<AudioNode | null>(null);
   const [effect, setEffect] = useState<{ id: EffectId; at: number } | null>(null);
-
-  const ensure = useCallback(async (): Promise<Chip | null> => {
-    const id = latest.current.song.chip;
-    if (current.current?.spec.id === id) {
-      if (creating.current) { generation.current++; creating.current = null; setLoading(false); }
-      const active = current.current;
-      await active.resume();
-      return mounted.current && current.current === active ? active : null;
+  const session = useCallback(() => {
+    if (!playback.current) {
+      const player = new LivePlayback(new AudioContext(), () => {
+        if (!mounted.current) return;
+        current.current = player.current;
+        setPlaying(player.playing); setLoading(player.loading); setError(player.error);
+        (window as unknown as { chipvoice?: Chip }).chipvoice = player.current ?? undefined;
+      });
+      playback.current = player; setOutput(player.output);
     }
-    if (creating.current?.id === id) return creating.current.promise;
-    const token = ++generation.current;
-    setLoading(true); setError('');
-    const promise = (async () => {
-      try {
-        context.current ??= new AudioContext();
-        await context.current.resume();
-        const built = await Chip.create({ chip: id, context: context.current });
-        if (!built) throw new Error('This browser cannot start AudioWorklet. Try a current browser over HTTPS.');
-        if (!mounted.current || token !== generation.current || latest.current.song.chip !== id) { built.dispose(); return null; }
-        const previous = current.current;
-        const pos = previous?.position() ?? undefined;
-        previous?.dispose();
-        current.current = built;
-        setOutput(built.output);
-        (window as unknown as { chipvoice?: Chip }).chipvoice = built;
-        if (wantPlay.current) built.play(musicSong(latest.current.song, latest.current.muted), pos);
-        return built;
-      } catch (e) {
-        if (mounted.current && token === generation.current) { setError(e instanceof Error ? e.message : 'Audio could not start. Try Play again.'); wantPlay.current = false; }
-        return null;
-      } finally {
-        if (creating.current?.token === token) { creating.current = null; if (mounted.current) setLoading(false); }
-      }
-    })();
-    creating.current = { id, token, promise };
-    return promise;
+    return playback.current;
   }, []);
-
+  const ensure = useCallback(async () => {
+    const player = session(); await player.context.resume();
+    const chip = await player.update(musicSong(latest.current.song, latest.current.muted));
+    player.audition(); return chip;
+  }, [session]);
   const start = useCallback(async () => {
-    wantPlay.current = true;
-    const chip = await ensure();
-    if (!chip || !wantPlay.current) return null;
-    if (!chip.playing) chip.play(musicSong(latest.current.song, latest.current.muted));
-    setPlaying(true); measure('play');
-    return chip;
-  }, [ensure]);
+    const chip = await session().start(musicSong(latest.current.song, latest.current.muted));
+    measure('play'); return chip;
+  }, [session]);
   const toggle = useCallback(async () => {
-    if (wantPlay.current) { wantPlay.current = false; current.current?.stop(); setPlaying(false); }
+    if (playback.current?.playing) playback.current.stop();
     else await start();
   }, [start]);
-
   useEffect(() => {
-    if (recording) return; // Keep the backing loop stable while the take is overdubbed.
-    if (!current.current && !creating.current) return;
-    if (current.current?.spec.id !== song.chip) { void ensure(); return; }
-    const chip = current.current;
-    if (wantPlay.current && chip) {
-      const next = musicSong(song, muted);
-      if (next.id !== chip.songId) {
-        const pos = chip.position() ?? undefined;
-        chip.stop(); chip.play(next, pos);
-      }
-    }
-  }, [song, muted, ensure, recording]);
+    if (recording || !playback.current) return;
+    // Coalesce slider/keyboard bursts before preparing an incoming engine.
+    const timer = setTimeout(() => { void playback.current?.update(musicSong(song, muted)); }, 45);
+    return () => clearTimeout(timer);
+  }, [song, muted, recording]);
 
   const fire = useCallback(async (id: EffectId) => {
     const chip = await ensure();
@@ -108,9 +73,9 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
   useEffect(() => {
     mounted.current = true;
     return () => {
-      mounted.current = false; generation.current++; creating.current = null;
-      current.current?.dispose(); current.current = null;
-      void context.current?.close(); context.current = null;
+      mounted.current = false;
+      const player = playback.current; playback.current = null; current.current = null;
+      player?.dispose(); void player?.context.close();
     };
   }, []);
 
@@ -118,7 +83,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     if (!output) return; // Nothing to poll before the first explicit audio start.
     let raf = 0;
     const scratch = { step: 0, orderIndex: 0 };
-    let lastStep = -1, lastOrder = -1, lastBusy = 0, lastPlaying = false;
+    let lastStep = -1, lastOrder = -1, lastBusy = 0;
     let lastChip: Chip | null = null;
     const tick = () => {
       const chip = current.current;
@@ -139,8 +104,6 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
         if (chip) for (let i = 0; i < chip.spec.voices.length; i++) if (busy & (1 << i)) voices.push(chip.spec.voices[i].id);
         lastBusy = busy; lastChip = chip; setStolen(voices);
       }
-      const isPlaying = chip?.playing ?? false;
-      if (isPlaying !== lastPlaying) { lastPlaying = isPlaying; setPlaying(isPlaying); }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);

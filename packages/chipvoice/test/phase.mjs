@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {Sequencer} from '../dist/sequencer.js';
+import {arrange,c64Chip} from '../dist/index.js';
+const score={bpm:120,order:[0],patterns:[{lead:'C4 . . . E4 . . .',bass:'. . . . . . . .',chord:'. . . . . . . .',perc:'K . . . S . . .',chordShape:[[0,4,7]]}]};
+const notes=[];let now=.1;
+const seq=new Sequencer({playNote(channel,options){notes.push({channel,...options});},stop(){}},{canPlay:()=>true},()=>now,{live:false});
+seq.play(arrange(score),undefined,.2);seq.pump(.7);
+assert.equal(seq.phaseAt(.19),null);
+assert.deepEqual(seq.phaseAt(.45),{step:2,orderIndex:0,progress:0});
+assert.deepEqual(seq.positionAt(.2),{step:0,orderIndex:0},'Reading a future phase must not consume the present timeline');
+notes.length=0;
+seq.play(arrange({...score,bpm:150}),{step:1,orderIndex:0,progress:.5},1);seq.pump(1.16);
+assert.ok(notes.some(note=>note.note==='C4'&&note.at===1));
+assert.ok(!notes.some(note=>note.instrument.sample==='kick'));
+assert.deepEqual(seq.phaseAt(1.05),{step:2,orderIndex:0,progress:0});
+// On the SID, a future drum splits the chord at the shifted fractional boundary.
+notes.length=0;
+const sid=new Sequencer({playNote(channel,options){notes.push({channel,...options});},stop(){}},{canPlay:()=>true},()=>0,{live:false,roles:c64Chip.spec.roles});
+sid.play(arrange({...score,patterns:[{...score.patterns[0],chord:'C4 . . . . . . .'}]},'c64'),{step:3,orderIndex:0,progress:.5},1);sid.pump(1.2);
+assert.ok(notes.some(note=>note.at===1.0625),'The next percussion boundary retains the remaining half-step');
+console.log('PASS fractional phase reads are non-destructive; tempo handoffs preserve the remaining step and SID drum boundaries');

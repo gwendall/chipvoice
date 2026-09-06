@@ -9,6 +9,13 @@ import { FRAME_RATE, type Channel, type Instrument, type NoteSink } from "./driv
  * `K` kick, `S` snare, `H` hat, `O` open hat.
  */
 
+export interface PlaybackPosition {
+  step: number;
+  orderIndex: number;
+  /** Fraction of the current sixteenth already heard, from 0 to below 1. */
+  progress?: number;
+}
+
 export interface ChannelClaim {
   /** True when the music may write to this channel right now. */
   canPlay(channel: Channel, at: number): boolean;
@@ -148,6 +155,7 @@ export class Sequencer {
   private orderIndex = 0;
   private step = 0;
   private nextTime = 0;
+  private resumeProgress = 0;
   private timer: number | null = null;
   private running = false;
   private chordSlot = 0;
@@ -200,6 +208,20 @@ export class Sequencer {
     into.step = entry.step;
     into.orderIndex = entry.orderIndex;
     return into;
+  }
+
+  /** Read a nearby scheduled audio-clock position without consuming the live
+   * timeline. Used to align an incoming engine while the old one keeps playing. */
+  phaseAt(time: number): PlaybackPosition | null {
+    if (!this.running || !this.song) return null;
+    let entry: (typeof this.timeline)[number] | undefined;
+    for (const candidate of this.timeline) {
+      if (candidate.at > time) break;
+      entry = candidate;
+    }
+    const duration = 60 / this.song.bpm / 4;
+    if (!entry || time >= entry.at + duration) return null;
+    return { step: entry.step, orderIndex: entry.orderIndex, progress: Math.max(0, (time - entry.at) / duration) };
   }
 
   /** Nearest sixteenth at the live audio clock; halfway rounds forward.
@@ -286,7 +308,7 @@ export class Sequencer {
    * in. See Decisions.
    */
 
-  play(song: Song, position?: { step: number; orderIndex: number }) {
+  play(song: Song, position?: PlaybackPosition, at?: number) {
     if (!position && this.song?.id === song.id && this.running) return;
     this.stop();
     this.song = song;
@@ -307,8 +329,9 @@ export class Sequencer {
       if (!chords.has(this.step) && held && held.token !== "=" && this.chordSlot > 0) this.chordSlot--;
     }
     this.resumeStep = !!position;
+    this.resumeProgress = Math.max(0, Math.min(.999999, position?.progress ?? 0));
     this.running = true;
-    this.nextTime = this.currentTime() + 0.1;
+    this.nextTime = at ?? this.currentTime() + 0.1;
     // A host with no timers - Node, during an offline render - drives `pump`
     // itself. Starting a timer there would schedule against a clock that never
     // advances and fill the queue with everything at once.
@@ -354,11 +377,12 @@ export class Sequencer {
       this.scheduleStep(this.nextTime, stepTime);
       this.resumeStep = false;
       this.timeline.push({
-        at: this.nextTime,
+        at: this.nextTime - this.resumeProgress * stepTime,
         step: this.step,
         orderIndex: this.orderIndex,
       });
-      this.nextTime += stepTime;
+      this.nextTime += stepTime * (1 - this.resumeProgress);
+      this.resumeProgress = 0;
       this.step++;
       const pattern = this.compiled[this.song.order[this.orderIndex]];
       if (this.step >= pattern.steps) {
@@ -391,7 +415,7 @@ export class Sequencer {
       this.apu.playNote(bassVoice, {
         note: bass.token,
         instrument: song.bass,
-        duration: bass.length * stepTime * 0.94,
+        duration: (bass.length - this.resumeProgress) * stepTime * 0.94,
         at,
       });
     }
@@ -404,7 +428,7 @@ export class Sequencer {
         this.apu.playNote(leadVoice, {
           note: lead.token,
           instrument: song.lead,
-          duration: lead.length * stepTime * 0.96,
+          duration: (lead.length - this.resumeProgress) * stepTime * 0.96,
           at,
           gain: song.gain,
           });
@@ -427,7 +451,7 @@ export class Sequencer {
           const voice = this.chordVoices[tone];
           if (this.arbiter.canPlay(voice, at)) this.apu.playNote(voice, {
             note: chord.token, detune: shape[tone], instrument: this.chordInstrument!,
-            duration: chord.length * stepTime * 0.98, at, gain,
+            duration: (chord.length - this.resumeProgress) * stepTime * 0.98, at, gain,
           });
         }
       } else if (this.arbiter.canPlay(chordVoice, at)) {
@@ -437,7 +461,7 @@ export class Sequencer {
           this.apu.playNote(chordVoice, { note: chord.token, instrument, duration, at: start, gain: song.gain });
         };
         if (chordVoice !== percVoice) {
-          play(at, chord.length * stepTime * 0.98);
+          play(at, (chord.length - this.resumeProgress) * stepTime * 0.98);
         } else {
           // One voice for both, as on a SID: a drum cuts the chord, and the
           // chord comes back after it, until the next drum or its own end. A
@@ -450,14 +474,14 @@ export class Sequencer {
           };
           let s = 0;
           while (s < chord.length) {
-            let start = at + s * stepTime;
-            const hit = drumAt(this.step + s);
+            let start = at + Math.max(0, s - this.resumeProgress) * stepTime;
+            const hit = s === 0 && this.resumeProgress > 0 ? undefined : drumAt(this.step + s);
             if (hit) start += (Math.max(1, Math.round(hit.duration * FRAME_RATE)) + 1) / FRAME_RATE;
             let e = s + 1;
             while (e < chord.length && !drumAt(this.step + e)) e++;
             let duration: number;
-            if (e < chord.length) duration = (Math.floor((at + e * stepTime - start) * FRAME_RATE) - 1) / FRAME_RATE;
-            else duration = at + chord.length * stepTime * 0.98 - start;
+            if (e < chord.length) duration = (Math.floor((at + (e - this.resumeProgress) * stepTime - start) * FRAME_RATE) - 1) / FRAME_RATE;
+            else duration = at + (chord.length - this.resumeProgress) * stepTime * 0.98 - start;
             play(start, duration);
             s = e;
           }
@@ -466,7 +490,7 @@ export class Sequencer {
     }
 
     const perc = pattern.perc.get(this.step);
-    if (perc && this.arbiter.canPlay(percVoice, at)) {
+    if (perc && this.resumeProgress === 0 && this.arbiter.canPlay(percVoice, at)) {
       const kit = song.perc ?? DEFAULT_KIT;
       const voice = kit[perc.token as keyof PercussionKit];
       if (voice) {
