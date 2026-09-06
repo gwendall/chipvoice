@@ -1,5 +1,11 @@
 # SNES: S-DSP (`snes`)
 
+<p align="center">
+  <a href="snes.md">English</a> &bull;
+  <a href="snes_ja.md">日本語</a>
+</p>
+
+
 The Super Nintendo's sound: the S-DSP, eight sample voices with ADSR and gain
 envelopes, Gaussian interpolation, pitch modulation, a noise source and an echo
 with an eight-tap FIR, playing BRR samples out of the 64 KB it shares with the

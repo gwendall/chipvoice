@@ -1,5 +1,11 @@
 # Source melodies, without invented backing
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 For **complete multivoice arrangements**, use the additive
 [performance workflow](arrangements/README.md) and the public
 [/lab/arrangements](https://chipvoice.dev/lab/arrangements) deck. This document

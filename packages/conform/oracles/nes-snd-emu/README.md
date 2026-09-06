@@ -1,5 +1,11 @@
 # Oracle: Nes_Snd_Emu
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 Shay Green's (blargg's) Nes_Snd_Emu 0.1.7, the reference 2A03 APU emulator,
 built natively and driven with a register log. Vendored from
 <https://github.com/blarggs-audio-libraries/Nes_Snd_Emu> under the LGPL 2.1

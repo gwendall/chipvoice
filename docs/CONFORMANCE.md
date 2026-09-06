@@ -1,5 +1,11 @@
 # Conformance: how a chip is verified
 
+<p align="center">
+  <a href="CONFORMANCE.md">English</a> &bull;
+  <a href="CONFORMANCE_ja.md">日本語</a>
+</p>
+
+
 chipvoice says it sounds like the hardware. This is how that claim is tested in a
 way that produces a number rather than an adjective. The method is the same for
 every chip, so the sheet for the SNES reads like the sheet for the NES, and "done"

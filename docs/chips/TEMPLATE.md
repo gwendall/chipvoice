@@ -1,5 +1,11 @@
 # <Chip name> (`<id>`)
 
+<p align="center">
+  <a href="TEMPLATE.md">English</a> &bull;
+  <a href="TEMPLATE_ja.md">日本語</a>
+</p>
+
+
 Copy this file to `docs/chips/<id>.md` the day a chip is added, and fill in what is
 true that day. "Unverified" on every line is a valid sheet. The method behind every
 section is in [CONFORMANCE.md](../CONFORMANCE.md).

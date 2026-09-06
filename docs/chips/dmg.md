@@ -1,5 +1,11 @@
 # Game Boy APU (`dmg`)
 
+<p align="center">
+  <a href="dmg.md">English</a> &bull;
+  <a href="dmg_ja.md">日本語</a>
+</p>
+
+
 The Game Boy's sound, in the DMG's CPU: two pulses, the first with a frequency
 sweep, a wave channel playing thirty-two 4-bit samples out of RAM, and a noise
 generator, mixed to stereo through two volume controls. The method behind every

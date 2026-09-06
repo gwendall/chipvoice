@@ -1,5 +1,11 @@
 # Roadmap
 
+<p align="center">
+  <a href="ROADMAP.md">English</a> &bull;
+  <a href="ROADMAP_ja.md">日本語</a>
+</p>
+
+
 ## Where this is going
 
 One driver, one score, many chips. The music is written once, as text an agent or

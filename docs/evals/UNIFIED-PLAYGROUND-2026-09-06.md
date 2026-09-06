@@ -1,5 +1,11 @@
 # Unified playground evaluation — 2026-09-06
 
+<p align="center">
+  <a href="UNIFIED-PLAYGROUND-2026-09-06.md">English</a> &bull;
+  <a href="UNIFIED-PLAYGROUND-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 Specification: [one playground and musical transport](../UNIFIED-PLAYGROUND.md).
 Base: `606242c` (PR #33). SDK remains 0.15.1; no DSP or reference recording changed.
 

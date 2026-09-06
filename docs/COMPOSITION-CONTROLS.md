@@ -1,5 +1,11 @@
 # Composition controls and recognizable music
 
+<p align="center">
+  <a href="COMPOSITION-CONTROLS.md">English</a> &bull;
+  <a href="COMPOSITION-CONTROLS_ja.md">日本語</a>
+</p>
+
+
 ## Current request / implemented scope
 
 Replace tempo stepper buttons with a native 40–300 BPM slider, visible endpoints

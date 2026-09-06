@@ -1,5 +1,11 @@
 # MIDI import feedback — 2026-09-06
 
+<p align="center">
+  <a href="MIDI-IMPORT-PROGRESS-2026-09-06.md">English</a> &bull;
+  <a href="MIDI-IMPORT-PROGRESS-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 The reported import was successful but silently spent time rendering the entire
 82.5-second arrangement before playback could begin. The screen displayed the
 imported title and Stop intent during that wait. A separate text decoding error

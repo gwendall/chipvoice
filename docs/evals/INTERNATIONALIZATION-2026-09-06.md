@@ -1,5 +1,11 @@
 # English / Japanese website — 2026-09-06
 
+<p align="center">
+  <a href="INTERNATIONALIZATION-2026-09-06.md">English</a> &bull;
+  <a href="INTERNATIONALIZATION-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 ## Scope
 
 English retains its existing URLs. Japanese lives at `/ja`, including the player, composer, listening lab, About, component catalogue, shared songs and error pages. The header changes language in place. All site-owned text and accessible labels are catalogued in two JSON files; page metadata, social cards, sitemap alternates and sign-in messages follow the selected language. See [architecture and contribution rules](../INTERNATIONALIZATION.md).

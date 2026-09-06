@@ -1,5 +1,11 @@
 # Scheduling design and qualification — 2026-09-06
 
+<p align="center">
+  <a href="SCHEDULING-2026-09-06.md">English</a> &bull;
+  <a href="SCHEDULING-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 Follow-up on `feat/playable-demo`, in the same PR #20. The first CI run's
 conformance job failed in `TransportCore.schedule`: a captured ROM log expanded
 into too many `push` arguments. The user requested an architectural correction,

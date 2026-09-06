@@ -1,5 +1,11 @@
 # chipvoice
 
+<p align="center">
+  <a href="https://github.com/gwendall/chipvoice/blob/main/packages/chipvoice/README.md">English</a> &bull;
+  <a href="https://github.com/gwendall/chipvoice/blob/main/packages/chipvoice/README_ja.md">日本語</a>
+</p>
+
+
 Five classic sound chips in a browser or offline: **NES (2A03), Game Boy,
 Mega Drive, SNES and Commodore 64**. A score is four musical roles arranged for
 the chosen hardware. Sound effects borrow physical voices from the music and

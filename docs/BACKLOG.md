@@ -1,5 +1,11 @@
 # Backlog
 
+<p align="center">
+  <a href="BACKLOG.md">English</a> &bull;
+  <a href="BACKLOG_ja.md">日本語</a>
+</p>
+
+
 The [roadmap](ROADMAP.md) says where this is going. This is the list of what is
 being done about it, ticket by ticket, kept current at the start and the end of
 every pull request. A ticket moves to *doing* with its branch, and to *done* with
@@ -203,6 +209,15 @@ Slice D is optional later work and does not indefinitely extend that gate.
 After V1, additions are driven by demand; see the roadmap.
 
 ## Discoveries
+
+**2026-09-07, Japanese documentation.** `docs/japanese` translates the root/SDK
+READMEs and all first-party documents using RTK-style `_ja.md` siblings. Validate
+language links, source anchors and generated measurement parity. Third-party
+material, licence texts and agent instructions retain their originals.
+Done in PR #37: 43 bilingual documents, 32 unchanged executable examples,
+GitHub Markdown rendering and two-axis review qualified. Generated-table
+translation rejects unknown headers; a reviewed SNES description keeps the
+current simultaneous-chord capability.
 
 **2026-09-05, phase 8 and audit follow-ups.** The user clarified that the site
 is a playful library demo. DEMO.md captures the agreed V1 and later ideas.

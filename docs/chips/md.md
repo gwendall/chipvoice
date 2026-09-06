@@ -1,5 +1,11 @@
 # Mega Drive: YM2612 + SN76489 (`md`)
 
+<p align="center">
+  <a href="md.md">English</a> &bull;
+  <a href="md_ja.md">日本語</a>
+</p>
+
+
 The Mega Drive's sound: a Yamaha YM2612, six channels of four-operator FM with a
 DAC on the sixth, and a Texas Instruments SN76489, three square tones and a
 noise, inside the video chip. The method behind every section is in

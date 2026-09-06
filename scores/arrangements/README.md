@@ -1,5 +1,11 @@
 # Complete arrangements and repeatable console porting
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 The [arrangement lab](https://chipvoice.dev) is available from the
 playground and listening lab. It keeps the whole source arrangement, offers each
 part separately, and reports the cost of fitting it onto another console. The

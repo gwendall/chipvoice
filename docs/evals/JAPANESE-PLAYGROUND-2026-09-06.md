@@ -1,5 +1,11 @@
 # Japanese console playground evaluation
 
+<p align="center">
+  <a href="JAPANESE-PLAYGROUND-2026-09-06.md">English</a> &bull;
+  <a href="JAPANESE-PLAYGROUND-2026-09-06_ja.md">日本語</a>
+</p>
+
+
 ## Scope
 
 First-visit Mario default; familiar melodies before composition tools; Japanese

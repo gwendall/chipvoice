@@ -1,5 +1,11 @@
 # Oracle: Gb_Snd_Emu
 
+<p align="center">
+  <a href="README.md">English</a> &bull;
+  <a href="README_ja.md">日本語</a>
+</p>
+
+
 Shay Green's (blargg's) Gb_Snd_Emu 0.1.4, his Game Boy APU emulator from 2005,
 built natively and driven with a register log. Vendored from
 <https://github.com/blarggs-audio-libraries/Gb_Snd_Emu> under the LGPL 2.1 (see

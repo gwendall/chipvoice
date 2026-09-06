@@ -1,5 +1,11 @@
 # The portable score
 
+<p align="center">
+  <a href="SCORE.md">English</a> &bull;
+  <a href="SCORE_ja.md">日本語</a>
+</p>
+
+
 **Status: shipped across five machines.** The first portable score shipped in
 0.9.0. Decision 16 records its origin; the capabilities below describe the current
 arrangers, with future work identified explicitly.

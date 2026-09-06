@@ -1,5 +1,11 @@
 # Evaluating console compositions
 
+<p align="center">
+  <a href="AUDIO-EVALUATION.md">English</a> &bull;
+  <a href="AUDIO-EVALUATION_ja.md">日本語</a>
+</p>
+
+
 A passing emulator test does not mean a good arrangement. Keep three verdicts
 separate: **digital correctness**, **signal integrity**, and **musical likeness**.
 The listening lab renders the actual demo presets, not a second collection of
