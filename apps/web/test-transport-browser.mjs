@@ -12,9 +12,10 @@ try{
  await context.addInitScript(installOutputProbe);
  await context.addInitScript(()=>{
   const create=AudioContext.prototype.createBufferSource;
-  AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source);source.start=(at=0,offset=0,...rest)=>{if(window.lastRecording&&window.lastRecording.at!==at)window.previousRecording=window.lastRecording;window.lastRecording={context:this,source,at,offset};return start(at,offset,...rest);};return source;};
+  AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source);source.start=(at=0,offset=0,...rest)=>{if(window.lastRecording&&window.lastRecording.at!==at)window.previousRecording=window.lastRecording;const recording={context:this,source,at,offset,ended:false};source.addEventListener('ended',()=>{recording.ended=true;});window.lastRecording=recording;return start(at,offset,...rest);};return source;};
  });
  const page=await context.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
+ try {
  await page.goto(base);await page.getByRole('button',{name:'Mario 4 parts'}).waitFor();
  assert.equal(await page.locator('.score-part').count(),4,'four native parts on arrival');
  assert.equal(await page.locator('.arrangement-parts button').count(),5);
@@ -50,8 +51,8 @@ try{
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.getByLabel('Tempo',{exact:true}).fill('100');await page.getByLabel('Tempo',{exact:true}).press('Tab');await ready(page);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'pause wins over render');
  await page.getByRole('button',{name:'Famicom',exact:true}).click();await ready(page);
  await page.getByRole('button',{name:'Loop on',exact:false}).click();
- await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.keyboard.press('ArrowLeft');
- await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByRole('button',{name:'Play',exact:true}).waitFor({timeout:5000});assert.equal(await page.getByLabel('Elapsed time').textContent(),'1:28','non-looping song ends');
+ await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.keyboard.press('ArrowLeft');await page.waitForFunction(()=>document.querySelector('[aria-label="Song position"]').value==='999');
+ await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>{const r=window.lastRecording;return !r.source.loop&&Math.abs(r.offset/r.source.buffer.duration-.999)<1e-9;});await page.getByRole('button',{name:'Play',exact:true}).waitFor({timeout:5000});assert.equal(await page.getByLabel('Elapsed time').textContent(),'1:28','non-looping song ends');
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('replay after end');
  await page.getByRole('button',{name:'Loop off',exact:false}).click();await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.waitForTimeout(600);
  const loopPosition=Number(await page.getByRole('slider',{name:'Song position',exact:true}).inputValue());assert.ok(loopPosition>=25&&loopPosition<60,'native loop skips the introduction');
@@ -62,6 +63,7 @@ try{
  assert.equal(await page.getByRole('button',{name:'Independent original reference',exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href'),referenceDownload);
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('return from composer');
  for(const width of [320,390,768]){await page.setViewportSize({width,height:844});await page.screenshot({path:new URL(`width-${width}.png`,out).pathname,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
- assert.deepEqual(errors,[]);await writeFile(new URL('result.json',out),JSON.stringify({pass:true,checks,errors},null,2));await context.close();
+ assert.deepEqual(errors,[]);await writeFile(new URL('result.json',out),JSON.stringify({pass:true,checks,errors},null,2));
  console.log('PASS full-mix arrival, audible-clock visuals, seek/pause/restart/loop/end, continuous console/tempo, exclusive composer, mobile screenshots and video',checks);
+ }catch(error){await page.screenshot({path:new URL('failure.png',out).pathname,fullPage:true});await writeFile(new URL('failure.json',out),JSON.stringify(await page.evaluate(()=>({position:document.querySelector('[aria-label="Song position"]')?.value,time:document.querySelector('[aria-label="Elapsed time"]')?.textContent,play:document.querySelector('.play-button')?.textContent,loop:document.querySelector('.transport-actions [aria-pressed]')?.textContent,recording:window.lastRecording?{at:window.lastRecording.at,offset:window.lastRecording.offset,duration:window.lastRecording.source.buffer.duration,loop:window.lastRecording.source.loop,ended:window.lastRecording.ended,state:window.lastRecording.context.state,baseLatency:window.lastRecording.context.baseLatency,outputLatency:window.lastRecording.context.outputLatency,contextTime:window.lastRecording.context.currentTime,stamp:window.lastRecording.context.getOutputTimestamp()}:null})),null,2));throw error;}finally{await context.close();}
 }finally{await browser.close();}

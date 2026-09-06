@@ -10,6 +10,7 @@ The [playground](https://chipvoice.dev) opens with complete arrangements: Mario'
 four native Famicom voices, all four Zelda MIDI parts and all fourteen Sonic parts.
 Pick a song or Japanese console logo to start on your first interaction. Play/pause,
 restart, a full-song seek slider and a clickable score let you explore the music.
+Preset full mixes are lossless renders from these same JavaScript engines.
 The cursor follows the audio output clock; console, tempo and solo changes keep
 the musical position while the next sound is prepared. Turn Loop off to play once.
 

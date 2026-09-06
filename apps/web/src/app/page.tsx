@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   description: "An open-source sound-chip emulator in JavaScript. Play complete Mario, Zelda and Sonic arrangements on Famicom, Game Boy, Mega Drive and Super Famicom, then make your own music.",
   openGraph: {
     title: "chipvoice · Old consoles. New JavaScript.",
-    description: "Hear complete arrangements through emulated sound chips. Every note generated in your browser. Switch consoles, play with the sound, take the code.",
+    description: "Hear complete arrangements through emulated sound chips. Synthesized with our JavaScript engines. Switch consoles, play with the sound, take the code.",
     url: "https://chipvoice.dev", type: "website",
   },
 };
