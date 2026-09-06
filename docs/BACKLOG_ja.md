@@ -195,7 +195,7 @@
 <a id="discoveries"></a>
 ## 発見
 
-**2026-09-07、文書の日本語版。** `docs/japanese`でroot／SDK READMEと全first-party文書をRTK式`_ja.md`へ翻訳します。言語link、原文anchor、生成数値整合を検査します。第三者資料、license本文、agent命令は原文のままです。
+**2026-09-07、文書の日本語版。** `docs/japanese`でroot／SDK READMEと全first-party文書をRTK式`_ja.md`へ翻訳します。言語link、原文anchor、生成数値整合を検査します。第三者資料、license本文、agent命令は原文のままです。PR #37で完了：43文書、実行内容を保持した32例、GitHub Markdown描画、2軸レビューを確認。生成表の未知見出しは拒否し、レビューしたSNES説明は現在の同時和音機能を保持します。
 
 **2026-09-05、phase8と監査後続。** 利用者が遊べるlibrary demoと明確化。DEMO.mdにV1／後続を記録。title-only forkの全score損失とStop後／SFX上書きを先に修復します。任意clickを明示Playへ、多数presetを良い3曲へ。録音／MIDI／変奏／stemsはV1後。IDを保持し前提と不足結果を追加、仕様を書くだけで実装完了にしません。
 

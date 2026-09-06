@@ -214,6 +214,10 @@ After V1, additions are driven by demand; see the roadmap.
 READMEs and all first-party documents using RTK-style `_ja.md` siblings. Validate
 language links, source anchors and generated measurement parity. Third-party
 material, licence texts and agent instructions retain their originals.
+Done in PR #37: 43 bilingual documents, 32 unchanged executable examples,
+GitHub Markdown rendering and two-axis review qualified. Generated-table
+translation rejects unknown headers; a reviewed SNES description keeps the
+current simultaneous-chord capability.
 
 **2026-09-05, phase 8 and audit follow-ups.** The user clarified that the site
 is a playful library demo. DEMO.md captures the agreed V1 and later ideas.
