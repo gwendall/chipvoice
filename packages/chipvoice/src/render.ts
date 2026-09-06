@@ -6,6 +6,7 @@ import { snesChip } from "./chips/snes/index.js";
 import { c64Chip } from "./chips/c64/index.js";
 import { Sequencer, type Song } from "./sequencer.js";
 import { OfflineDriver } from "./driver.js";
+import { EventQueue } from "./event-queue.js";
 
 /**
  * Renders a song to samples, without a browser.
@@ -135,17 +136,20 @@ export function recordSong(
   const seconds = total / sampleRate;
   const cycles = Math.round(seconds * chip.spec.clockHz);
   const events: RegisterEvent[] = [];
+  const pending = new EventQueue();
+  const captureUntil = (until: number) => {
+    while (pending.nextAt < until) events.push(pending.take());
+  };
   const memory: { address: number; bytes: Uint8Array }[] = [];
   const core: ChipCore = {
-    schedule: (batch) => {
-      for (const e of batch) events.push(e);
-    },
+    schedule: (batch) => pending.schedule(batch),
+    cancel: (owner, from) => pending.cancel(owner, from),
     load(address, bytes) {
       memory.push({ address, bytes: bytes.slice() });
     },
     render() {},
     setGain() {},
-    reset() {},
+    reset() { pending.clear(); },
   };
   let clock = 0;
   const driver = new OfflineDriver(core, chip, () => clock);
@@ -157,16 +161,20 @@ export function recordSong(
   const block = 4096;
   for (let offset = 0; offset < total; offset += block) {
     clock = offset / sampleRate;
+    // Commit elapsed writes; cancellation only visits the bounded future
+    // queue, just as it does in a rendering core, never the captured history.
+    captureUntil(Math.round(clock * chip.spec.clockHz));
     sequencer.pump(Math.max(clock + 0.2, Math.min(offset + block, total) / sampleRate));
     driver.flush();
   }
   // Stop at the requested boundary, not at the start of the final block.
   // Otherwise the capture inserts note-offs into audio the renderer still plays.
   clock = seconds;
+  captureUntil(cycles);
   sequencer.stop();
   driver.flush();
   return {
-    events: events.filter((e) => e.at < cycles).sort((a, b) => a.at - b.at),
+    events,
     cycles,
     memory,
   };

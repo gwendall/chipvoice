@@ -417,6 +417,8 @@ sequencer role maps. Added 12-step quarter-note grids, fork/grid preservation,
 source-versus-edited labels and silent-drum controls. Fixed offline startup
 padding truncating the final note and aligned register captures with the WAV's
 sample-rounded end. See [method, coverage and limits](../scores/README.md).
+The recorder now also uses the cores' event queue so short-note rests cancel
+obsolete future releases, with a regression that failed on Game Boy beforehand.
 
 Further musical fidelity requires checking the chosen transcription against
 original game audio and measuring acoustic pitch/articulation after the DSP.

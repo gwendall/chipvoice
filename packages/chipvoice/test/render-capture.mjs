@@ -1,14 +1,19 @@
 import assert from 'node:assert/strict';
 import {arrange,recordSong,renderSong,nesChip,gbChip,mdChip,snesChip,c64Chip} from '../dist/index.js';
 const score={bpm:144,order:[0],patterns:[{lead:'C4 . . . . . . . . . . . . . . .',bass:'. . . . . . . . . . . . . . . .',chord:'. . . . . . . . . . . . . . . .',perc:'. . . . . . . . . . . . . . . .',chordShape:[[0,4,7]]}]};
+const shortLead=Array(24).fill('.'),silent=shortLead.join(' ');
+shortLead[7]='C4';shortLead[8]='=';shortLead[9]='D4';
+const shortScore={...score,stepsPerBeat:12,patterns:[{lead:shortLead.join(' '),bass:silent,chord:silent,perc:silent,chordShape:[[0]]}]};
 for(const chip of [snesChip,nesChip,gbChip,mdChip,c64Chip]) {
-  for(const {seconds,bpm=144,order=[0],sampleRate=44100} of [
+  for(const {seconds,bpm=144,order=[0],sampleRate=44100,source=score} of [
     {seconds:.31}, {seconds:1.2},
+    // The second pump cancels a queued frame-rounded release after the rest.
+    {seconds:.7,bpm:180,source:shortScore},
     // A new loop starts inside the final rounded sample at this tempo.
     {seconds:480/172,bpm:172,order:[0,0]},
     {seconds:480/172,bpm:172,order:[0,0],sampleRate:48000},
   ]) {
-    const song=arrange({...score,bpm,order},chip.spec.id);
+    const song=arrange({...source,bpm,order},chip.spec.id);
     const expected=renderSong(song,{seconds,sampleRate,stereo:true});
     const log=recordSong(song,{seconds,sampleRate});
     const core=chip.create(expected.sampleRate);core.setGain(.78);
