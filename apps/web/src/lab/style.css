@@ -1,25 +1,40 @@
 .lab-main { padding-bottom: 42px; }
 .lab-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:32px; padding:48px 0 36px; }
-.lab-intro h1 { font-size:clamp(38px,5.2vw,62px); line-height:1.03; letter-spacing:-2.5px; margin:16px 0; font-weight:750; }
+.lab-intro h1 { font-size: var(--text-display); line-height:1.03; letter-spacing:-2.5px; margin:16px 0; font-weight:750; }
 .lab-intro h1 span { color:#7b8070; }
-.lab-intro p { font-size:15px; line-height:1.7; max-width:430px; margin:0; color:var(--muted); }
-.lab-intro-note { font:10px/2 var(--mono); color:var(--muted); padding-bottom:4px; white-space:nowrap; }
-.lab-intro-note span:last-child { letter-spacing:0; font:12px Arial,sans-serif; }
+.lab-intro p { font-size: var(--text-body); line-height:1.7; max-width:430px; margin:0; color:var(--muted); }
+.lab-intro-note { font:var(--text-label)/2 var(--mono); color:var(--muted); padding-bottom:4px; white-space:nowrap; }
+.lab-intro-note span:last-child { letter-spacing:0; font:var(--text-label) Arial,sans-serif; }
 .lab-filters { display:grid; grid-template-columns:1fr 1fr 1.2fr; gap:16px; margin:24px 0; }
-.lab-display h2 { color:#e0e5cf; margin:8px 0 0; font-size:28px; letter-spacing:-.8px; }
-.lab-loop { color:#9aa88c; font:10px var(--mono); }
+.lab-display h2 { color:#e0e5cf; margin:8px 0 0; font-size:var(--text-heading); letter-spacing:-.8px; }
+.lab-loop { color:#9aa88c; font:var(--text-label) var(--mono); }
 .lab-wave { display:flex; align-items:center; justify-content:space-between; gap:3px; height:100px; padding:14px 24px; }
 .lab-wave i { flex:1; background:#b6c8a0; opacity:.8; min-width:1px; }
-.lab-identities { min-height:42px; border-top:1px solid #ffffff12; padding:14px 24px; color:#b5c0a6; font:10px/1.5 var(--mono); white-space:pre-wrap; }
-.lab-transport { flex-wrap:wrap; }.lab-sides { display:flex; gap:6px; }.lab-sides button { width:44px; min-height:44px; font-size:16px; }
-.lab-volume { display:grid; gap:7px; font:9px var(--mono); color:var(--muted); margin-inline:auto; }.lab-volume input { accent-color:#65715a; width:130px; }
+.lab-identities { min-height:42px; border-top:1px solid #ffffff12; padding:14px 24px; color:#b5c0a6; font:var(--text-label)/1.5 var(--mono); white-space:pre-wrap; }
+.lab-transport { flex-wrap:wrap; }.lab-sides { display:flex; gap:6px; }.lab-sides button { width:44px; min-height:44px; font-size:var(--text-body); }
+.lab-volume { display:grid; gap:7px; font:var(--text-label) var(--mono); color:var(--muted); margin-inline:auto; }.lab-volume input { accent-color:#65715a; width:130px; }
 .lab-console > .ui-status { margin-top:-7px; margin-bottom:19px; }.lab-console { padding-bottom:0; }
-.lab-below { display:grid; grid-template-columns:1fr 1fr; gap:48px; margin-top:44px; }.lab-below h2 { margin:12px 0; font-size:24px; letter-spacing:-.7px; }.lab-below p { font-size:13px; line-height:1.7; color:var(--muted); }
-.lab-notes textarea { width:100%; min-height:140px; resize:vertical; padding:16px; margin:12px 0; background:#faf8f1; border:1px solid var(--edge); border-radius:8px; font:13px/1.7 Arial,sans-serif; color:var(--ink); }
+.lab-below { display:grid; grid-template-columns:1fr 1fr; gap:48px; margin-top:44px; }.lab-below h2 { margin:12px 0; font-size:var(--text-heading); letter-spacing:-.7px; }.lab-below p { font-size: var(--text-body); line-height:1.7; color:var(--muted); }
+.lab-notes textarea { width:100%; min-height:140px; resize:vertical; padding:16px; margin:12px 0; background:#faf8f1; border:1px solid var(--edge); border-radius:8px; font:var(--text-body)/1.7 Arial,sans-serif; color:var(--ink); }
 .lab-note-actions { display:flex; align-items:flex-end; flex-wrap:wrap; gap:10px; }.lab-note-actions .small-button { min-height:44px; }
-.lab-checks { display:grid; gap:10px; padding:15px 0; border-block:1px solid var(--edge); font:11px var(--mono); }.lab-checks>span { display:flex; justify-content:space-between; gap:16px; }.lab-checks strong { color:#526545; font-weight:500; }
-.lab-table-wrap { overflow-x:auto; }.lab-evidence table { width:100%; border-collapse:collapse; margin-top:15px; font:11px/1.5 var(--mono); }.lab-evidence th { font-weight:500; text-align:left; }.lab-evidence td,.lab-evidence th { padding:10px 5px; border-bottom:1px solid var(--edge); }.lab-evidence a { text-underline-offset:3px; }.lab-evidence .lab-fine { font-size:11px; line-height:1.7; }
-.lab-provenance { display:flex; flex-wrap:wrap; gap:12px; font:10px var(--mono); }.lab-next { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-top:42px; padding-top:22px; border-top:1px solid var(--edge); font-size:12px; }.lab-next p { margin-right:auto; }.lab-next>a:last-child { font-size:10px; color:var(--muted); }
-@media(max-width:760px) { .lab-intro { padding:30px 0 24px; }.lab-intro h1 { letter-spacing:-1.5px; }.lab-intro-note { display:none; }.lab-intro p { font-size:13px; }.lab-filters { grid-template-columns:1fr 1fr; gap:12px; margin:17px 0; }.lab-filters>label:last-child { grid-column:1/-1; }.lab-below { grid-template-columns:1fr; gap:35px; margin-top:32px; }.lab-transport { gap:10px; }.lab-transport .play-button { min-width:88px; }.lab-volume { margin-left:auto; margin-right:0; }.lab-volume input { width:90px; }.lab-transport>button:last-child { width:100%; min-height:40px; }.lab-identities { padding:12px; font-size:9px; }.lab-wave { padding:10px 12px; height:84px; gap:2px; }.lab-loop { font-size:8px; }.lab-display h2 { font-size:23px; }.lab-console>.ui-status { font-size:10px; }.lab-note-actions { gap:8px; }.lab-intro .micro { font-size:9px; } }
+.lab-checks { display:grid; gap:10px; padding:15px 0; border-block:1px solid var(--edge); font:var(--text-label) var(--mono); }.lab-checks>span { display:flex; justify-content:space-between; gap:16px; }.lab-checks strong { color:#526545; font-weight:500; }
+.lab-table-wrap { overflow-x:auto; }.lab-evidence table { width:100%; border-collapse:collapse; margin-top:15px; font:var(--text-label)/1.5 var(--mono); }.lab-evidence th { font-weight:500; text-align:left; }.lab-evidence td,.lab-evidence th { padding:10px 5px; border-bottom:1px solid var(--edge); }.lab-evidence a { text-underline-offset:3px; }.lab-evidence .lab-fine { font-size:var(--text-label); line-height:1.7; }
+.lab-provenance { display:flex; flex-wrap:wrap; gap:12px; font:var(--text-label) var(--mono); }.lab-next { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-top:42px; padding-top:22px; border-top:1px solid var(--edge); font-size:var(--text-label); }.lab-next p { margin-right:auto; }.lab-next>a:last-child { font-size:var(--text-label); color:var(--muted); }
+@media(max-width:760px) { .lab-intro { padding:30px 0 24px; }.lab-intro h1 { letter-spacing:-1.5px; }.lab-intro-note { display:none; }.lab-intro p { font-size: var(--text-body); }.lab-filters { grid-template-columns:1fr 1fr; gap:12px; margin:17px 0; }.lab-filters>label:last-child { grid-column:1/-1; }.lab-below { grid-template-columns:1fr; gap:35px; margin-top:32px; }.lab-transport { gap:10px; }.lab-transport .play-button { min-width:88px; }.lab-volume { margin-left:auto; margin-right:0; }.lab-volume input { width:90px; }.lab-transport>button:last-child { width:100%; min-height:40px; }.lab-identities { padding:12px; font-size:var(--text-label); }.lab-wave { padding:10px 12px; height:84px; gap:2px; }.lab-loop { font-size:var(--text-label); }.lab-display h2 { font-size:var(--text-heading); }.lab-console>.ui-status { font-size:var(--text-label); }.lab-note-actions { gap:8px; }.lab-intro .micro { font-size:var(--text-label); } }
 
 .lab-console > .ui-status { margin-top: 0; padding-top: 3px; }.lab-transport { border-bottom: 0; }
+
+.lab-loop { flex-shrink: 0; }
+.lab-intro-note { white-space: normal; max-width: 300px; }
+.lab-checks > span { align-items: baseline; }
+.lab-checks strong { flex-shrink: 0; }
+.lab-provenance a { overflow-wrap: anywhere; }
+@media(max-width:760px) {
+ .lab-filters { grid-template-columns: minmax(0, 1fr); }
+ .lab-filters > label:last-child { grid-column: auto; }
+ .lab-filters select { min-width: 0; width: 100%; }
+ .lab-display .screen-title { flex-direction: column; }
+ .lab-transport { gap: 14px; }
+ .lab-volume { margin-inline: 0; flex: 1 1 100px; }
+ .lab-volume input { width: 100%; }
+}

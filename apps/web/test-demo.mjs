@@ -31,7 +31,10 @@ try {
   assert.equal(await page.locator('.machine-logo').count(), 4);
   for (const name of ['famicom', 'game-boy', 'mega-drive-jp', 'super-famicom']) assert.equal((await page.request.get(`${base}/machines/${name}.svg`)).status(), 200);
   await page.screenshot({ path: `${artifacts}/${engine}-desktop-initial.png`, fullPage: true });
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  // Exercise sustained backing and SFX ownership with the original loop.
+  // The melody-only Mario default has written rests; arrival/classic tests cover it.
+  await page.locator('.original-tunes summary').click();
+  await page.getByRole('button', { name: 'Load Overworld', exact: true }).click();
   await page.waitForFunction(() => window.chipvoice?.playing && window.chipvoice.position());
   for (const [name, id] of machines) {
     const before = await page.evaluate(() => window.chipvoice.position());
@@ -55,7 +58,6 @@ try {
   for (const name of ['Famicom', 'Game Boy', 'Famicom', 'Super Famicom', 'Famicom']) await page.locator('.machines').getByRole('button', { name, exact: true }).click();
   await page.waitForFunction(() => window.chipvoice?.spec.id === '2a03' && window.chipvoice.playing);
   assert.ok((await amplitude(page)).rms > .001); check('Repeated switches retain working audio');
-  await page.locator('.original-tunes summary').click();
   for (const title of ['Overworld', 'Boss Fight', 'Midnight']) {
     await page.getByRole('button', { name: `Load ${title}`, exact: true }).click();
     assert.ok((await amplitude(page)).rms > .001, `${title} is audible`);

@@ -1,1 +1,9 @@
 :root { --paper: #f2f0e9; --case: #e6e3d9; --ink: #292c29; --muted: #686a61; --edge: #cdcabe; --orange: #e7793d; --lead: #edbd66; --chord: #92b9b3; --bass: #b4a1c6; --perc: #dc907c; --mono: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+/* One type scale across the playground, lab and About; never shrink on mobile. */
+:root {
+  --text-label: .875rem; /* 14px at the default browser size */
+  --text-body: 1rem;
+  --text-heading: 1.5rem;
+  --text-display: clamp(2rem, 4vw, 2.75rem);
+}
