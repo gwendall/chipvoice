@@ -17,11 +17,11 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 ## Unified playground and transport — 2026-09-06
 
-- In qualification: [spec](UNIFIED-PLAYGROUND.md). Complete arrangements are the
+- Implemented and qualified: [spec](UNIFIED-PLAYGROUND.md). Complete arrangements are the
   default on `/`; the old arrangement URL redirects. Full-song pause/seek/restart,
   loop/end, an output-clock score cursor and progressive composer tools preserve
-  source truth, imports, drafts and sharing. Browser/audio evaluation and review
-  must pass before shipping.
+  source truth, imports, drafts and sharing. Browser/audio evaluation and two-axis
+  review passed; [evidence and screenshots](evals/UNIFIED-PLAYGROUND-2026-09-06.md).
 
 ## Complete arrangements — 2026-09-06
 

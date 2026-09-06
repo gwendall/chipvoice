@@ -9,7 +9,7 @@ try{
  await context.addInitScript(installOutputProbe);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/?mode=compose');await page.waitForFunction(()=>document.getElementById('tempo-slider')&&!document.getElementById('tempo-slider').disabled);
  const number=name=>page.getByRole('spinbutton',{name,exact:true});
- const valueIs=async(name,value)=>page.waitForFunction(({name,value})=>document.querySelector(`input[type=number][aria-label="${name}"]`)?.value===value,{name,value});
+ const valueIs=async(name,value)=>page.waitForFunction(({name,value})=>document.querySelector(`.demo-page input[type=number][aria-label="${name}"]`)?.value===value,{name,value});
  const draft=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('chipvoice.draft.v1')));
  await page.locator('.original-tunes summary').click();await page.getByRole('button',{name:'Load Overworld',exact:true}).click();
  const original=await draft();
@@ -26,7 +26,7 @@ try{
   if(!await page.getByRole('button',{name:'Stop',exact:true}).count())await page.getByRole('button',{name:'Play',exact:true}).click();
   await page.waitForFunction(id=>window.chipvoice?.playing&&window.chipvoice.songId!==id,before);
   for(const [label,id] of chips){
-   await page.locator('.machines').getByRole('button',{name:label,exact:true}).click();
+   await page.locator('.demo-page .machines').getByRole('button',{name:label,exact:true}).click();
    await page.waitForFunction(id=>window.chipvoice?.playing&&window.chipvoice.spec.id===id,id);
    // Some phrases open with a written rest; measure after their first phrase.
    await page.waitForTimeout(title.startsWith('Sonic')?1000:150);

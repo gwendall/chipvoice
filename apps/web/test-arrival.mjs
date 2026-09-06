@@ -17,9 +17,9 @@ try {
     assert.equal(await page.evaluate(() => !!window.audioBus || !!window.chipvoice), false, 'Passive arrival creates no audio');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('chipvoice.draft.v1')));
     assert.equal(saved.title, 'Mario · Ground Theme');
-    assert.deepEqual(await page.locator('.machines button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label'))), ['Famicom','Game Boy','Mega Drive','Super Famicom']);
-    assert.deepEqual(await page.locator('.machines button').allTextContents(), ['', '', '', ''], 'No captions beneath console logos');
-    assert.ok(await page.locator('.machine-logo').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0 && getComputedStyle(image).maskImage === 'none')));
+    assert.deepEqual(await page.locator('.demo-page .machines button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label'))), ['Famicom','Game Boy','Mega Drive','Super Famicom']);
+    assert.deepEqual(await page.locator('.demo-page .machines button').allTextContents(), ['', '', '', ''], 'No captions beneath console logos');
+    assert.ok(await page.locator('.demo-page .machine-logo').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0 && getComputedStyle(image).maskImage === 'none')));
     await page.keyboard.press('Tab');assert.equal(await page.evaluate(() => !!window.audioBus),false,'Tab navigation is silent');
     if (gesture === 'tune' || gesture === 'touch') await page.screenshot({path:new URL(`${gesture}-initial.png`,out).pathname,fullPage:true});
     if (gesture === 'tune') await page.getByRole('button',{name:'Load Zelda · Overworld',exact:true}).click();

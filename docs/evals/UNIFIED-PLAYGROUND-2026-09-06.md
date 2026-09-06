@@ -78,3 +78,21 @@ The presentation is now attached to the same bounded timing history as the audio
 new preparation/cancellation cannot lose a selection already being heard. A/B
 controls stay pending until that presentation reaches the device. The composer
 reads timing from its active engine, while the requested next score prepares.
+
+## Final local qualification
+
+Production build, TypeScript, SDK units and all web qualification scripts passed.
+After adapting the legacy composer tests, the runner resumed the remaining
+scripts against a fresh disposable API database; CI still runs the entire suite.
+`CHIPVOICE_TEST_FROM=<script>` permits this bounded local resumption without
+repeating already-passing API/audio work. The Playwright browser cache disappeared
+during the run and was reinstalled before continuing.
+
+The final instrumented transport run measured 4.0–17.0 ms cursor error. Musical
+phase error at the exact console and tempo transition starts was zero. The tests
+also passed the synthetic delayed-output/end/Pause window, old/new presentation
+handoff and A/B reference selection after returning from the composer.
+
+![Desktop: full arrangement, source score and transport](unified-playground-desktop.png)
+
+![Mobile: audible reference, seek and source parts](unified-playground-mobile.png)
