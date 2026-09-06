@@ -52,6 +52,7 @@ export class LivePlayback {
         if (this.playing && !active.chip.playing) {
           active.chip.play(song); active.fade.toValue(1);
         }
+        if (this.error) { this.error = ''; this.changed(); }
         return active.chip;
       }
       this.loading = true; this.changed();
@@ -78,7 +79,7 @@ export class LivePlayback {
         if (!this.playing) fade.toValue(0);
         this.active = next; this.incoming = null; this.current = chip;
         previous?.chip.dispose(); previous?.fade.disconnect();
-        this.loading = false; this.changed();
+        this.loading = false; this.error = ''; this.changed();
         if (!this.playing) return chip;
       } catch (error) {
         chip?.dispose(); this.incoming?.fade.disconnect(); this.incoming = null;

@@ -16,5 +16,10 @@ const stale=player.update({id:'obsolete',chip:'snes'}),latest=player.update({id:
 rejectStale(new Error('Stale worklet failed'));await Promise.all([stale,latest]);
 assert.deepEqual(calls,['2a03','snes','dmg']);assert.equal(player.current.spec.id,'dmg');assert.equal(player.current.songId,'latest');assert.equal(player.error,'');assert.ok(player.playing);assert.equal(alive,1);assert.ok(maxAlive<=2);
 player.stop();await player.start({id:'restart',chip:'dmg'});assert.equal(calls.length,3,'A stopped compatible engine is reused');
-player.dispose();assert.equal(alive,0);
+const failed=player.update({id:'failed',chip:'snes'});rejectStale(new Error('SNES load failed'));await failed;
+assert.equal(player.error,'SNES load failed');assert.equal(player.current.spec.id,'dmg');assert.ok(player.playing);
+await player.update({id:'recovered',chip:'md'});assert.equal(player.error,'','Successful replacement clears the previous load error');
+const failedAgain=player.update({id:'failed-again',chip:'snes'});rejectStale(new Error('SNES load failed again'));await failedAgain;
+await player.update({id:'recovered',chip:'md'});assert.equal(player.error,'','Returning to the already active song also clears the error');
+assert.ok(maxAlive<=2);player.dispose();assert.equal(alive,0);
 console.log('PASS stale failed chip creation preserves the latest request; overlap bounded to two engines; stopped engine reused and disposal complete');
