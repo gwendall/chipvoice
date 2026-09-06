@@ -259,7 +259,7 @@ function checkPattern(
         const hz = (pitch: number) => 440 * 2 ** ((pitch - 69) / 12);
         if (hz(low) < range[0] || hz(high) > range[1]) issues.push({
           level: 'warning', code: 'pitch_range', pattern: patternIndex, track, step, token,
-          message: `${where}${token}${shape?.length ? ' with its arpeggio' : ''} exceeds ${chip.id}/${voice!.id}'s base pitch range (${range[0].toFixed(1)}–${range[1].toFixed(1)} Hz). Transpose it or choose another machine; the driver can clamp or silence it. Pitch modulation is not included in this check.`,
+          message: `${where}${token}${shape?.length ? ' with its chord intervals' : ''} exceeds ${chip.id}/${voice!.id}'s base pitch range (${range[0].toFixed(1)}–${range[1].toFixed(1)} Hz). Transpose it or choose another machine; the driver can clamp or silence it. Pitch modulation is not included in this check.`,
           silent: false,
         });
       }
@@ -272,12 +272,16 @@ function checkPattern(
       level: "error",
       track: "chord",
       message:
-        `${where}chordShape is missing. It is the arpeggio each chord note is played as, ` +
+        `${where}chordShape is missing. It lists the intervals each chord root is played with, ` +
         `in semitones: [[0,3,7]] is minor, [[0,4,7]] is major`,
       silent: false,
     });
   } else if (pattern.chordShape.some(shape => !Array.isArray(shape) || !shape.length || shape.some(n => !Number.isInteger(n)))) {
     issues.push({ level: 'error', pattern: patternIndex, track: 'chord', message: `${where}each chord shape must contain integer semitone offsets`, silent: false });
+  }
+  if (chip.chordVoices && Array.isArray(pattern.chordShape) && pattern.chordShape.some(shape => Array.isArray(shape) && shape.length > chip.chordVoices!.length)) {
+    issues.push({ level: 'warning', code: 'chord_capacity', pattern: patternIndex, track: 'chord',
+      message: `${where}${chip.id} has ${chip.chordVoices.length} chord voices. Larger shapes use a single-voice arpeggio so every interval is retained.`, silent: false });
   }
 }
 

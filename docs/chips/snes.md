@@ -98,12 +98,14 @@ the trace.
 ## Driver coverage
 
 `SnesDriver` in `packages/chipvoice/src/chips/snes/driver.ts`, checked by
-`test/snes-driver.mjs`. The song's lead goes to voice 0, its chord to voice 1,
-its bass to voice 2, its percussion to voice 3.
+`test/snes-driver.mjs`. The song's lead goes to voice 0, its chord to voices 1/4/5 (up to 1/4/5/6/7 for extended shapes),
+its bass to voice 2, its percussion to voice 3. Chords exceeding five notes
+fall back to an arpeggio with a validation warning. The chord amplitude budget
+is divided across its notes; pitched chord voices have moderate stereo spread.
 
 | Voice | Exercised | Not exercised |
 | --- | --- | --- |
-| v0, v1, v2 | a looped single-cycle waveform from the bank, the pitch per frame, the voice's two volumes per frame, an ADSR that attacks at once and sustains, a key-on; note off as a fast GAIN decrease; the echo | ADSR's decay and release as an envelope, GAIN's other modes, pitch modulation, the noise, four of the eight voices |
+| v0, v1, v2, v4–v7 | original BRR attacks and separate sustain loops, per-family hardware ADSR, pitch and stereo volume per frame, key-on, note off as a fast GAIN decrease, echo; legacy periodic waveforms also available | GAIN's other modes, pitch modulation, hardware noise |
 | v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame | the noise source for hats |
 | the echo | on for the pitched voices: 48 ms, feedback `$38`, the low-pass FIR most games used, enabled once the power-on buffer has wrapped | other FIRs, other delays |
 
@@ -120,10 +122,17 @@ its bass to voice 2, its percussion to voice 3.
 `reset()` is snes_spc's: the registers a real SPC state was captured with -
 which keys some voices on, routes the noise to some, and sets an echo buffer
 of 28 KB - the noise register at `$4000`, the counters at zero. The driver's
-power-on does what the IPL ROM and a program did: disables echo writes, keys
+power-on does what the IPL ROM and a program did: disables echo writes and
+mutes echo output (reads can initially wrap into sample RAM), keys
 every voice off, sets the directory, the volumes, the echo and every voice's
-envelope, then releases KOFF, and enables echo writes a quarter of a second
-later, once the power-on buffer has wrapped.
+envelope, then releases KOFF, and enables echo writes and echo output a quarter
+of a second later, once the power-on buffer has wrapped.
+
+The factory bank occupies 21,472 bytes below the echo buffer at 57,344. Sample
+generation and BRR encoding happen at build time. Voice volume is capped at
+`$1f`; the factory arrangement reserves headroom before the saturating DSP sum.
+This is not a guarantee for arbitrary eight-voice effects or custom register writes.
+See [palette acceptance and measurements](../SNES-PALETTE.md).
 
 ## History
 

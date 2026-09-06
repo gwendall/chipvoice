@@ -27,6 +27,7 @@ export const SNES: ChipSpec = {
     { id: "v7", label: "Voice 7", kind: "sample", notes: "pitch" },
   ],
   roles: { lead: "v0", chord: "v1", bass: "v2", perc: "v3" },
+  chordVoices: ["v1", "v4", "v5", "v6", "v7"],
 };
 
 export const snesChip: ChipDefinition = {

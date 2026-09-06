@@ -85,7 +85,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
    */
   let clock = 0;
   const driver = new OfflineDriver(core, chip, () => clock);
-  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles });
+  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
   sequencer.play(song);
 
   const left = new Float32Array(total);
@@ -143,7 +143,7 @@ export function recordSong(
   };
   let clock = 0;
   const driver = new OfflineDriver(core, chip, () => clock);
-  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles });
+  const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
   sequencer.play(song);
   // The renderer's block, so a song records the way it renders.
   const block = 4096 / 44100;
