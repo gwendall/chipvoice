@@ -92,3 +92,10 @@ The remaining musical-reference work is explicit: choose the desired style or
 game-like instrument palette and collect level-matched human listening notes.
 Neither an exact native oracle nor these signal checks establishes that preference
 or reproduces an unmeasured physical console's analog output.
+
+Review corrections: timed chord cuts respect custom `ChannelClaim` ownership.
+SNES volume remains fractional until its hardware register conversion, so sharing
+an amplitude budget does not first quantize each chord tone to a 4-bit integer.
+Quiet triads and five-tone chords remain audible at gain 0.1 and increase at
+0.2/0.3. Legacy chip frame quantization is preserved. The default SNES golden
+is unchanged by these two review corrections.

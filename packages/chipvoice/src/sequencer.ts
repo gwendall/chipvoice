@@ -413,7 +413,7 @@ export class Sequencer {
 
     const chord = event(pattern.chord);
     if (chord?.token === "=" && this.chordVoices.length) {
-      for (const voice of this.chordVoices) this.apu.stop(voice, at);
+      for (const voice of this.chordVoices) if (this.arbiter.canPlay(voice, at)) this.apu.stop(voice, at);
     }
     if (chord && chord.token !== "=" && (this.chordVoices.length || this.arbiter.canPlay(chordVoice, at))) {
       const shape =

@@ -27,6 +27,7 @@ assert.equal(fallback.length,1);
 assert.equal(fallback[0].voice,'v1');
 assert.deepEqual(fallback[0].instrument.arp,[0,2,4,7,9,12]);
 const borrowed=sequence(undefined,score,voice=>voice!=='v4');
+assert.ok(!borrowed.stops.some(stop=>stop.voice==='v4'&&stop.at!==undefined),'A timed cut must respect a custom voice claim');
 assert.deepEqual(borrowed.notes.filter(note=>note.note==='D4').map(note=>note.detune),[0,7]);
 const extended=sequence(undefined,{...score,patterns:[{...score.patterns[0],chordShape:[[0,4,7,11,14]]}]}).notes.filter(note=>note.note==='C4');
 assert.deepEqual(extended.map(note=>note.voice),['v1','v4','v5','v6','v7']);
@@ -56,3 +57,13 @@ console.log('PASS SNES simultaneous triads, all-voice cuts/stops, seek reconstru
   for(const voice of [1,4,5,6,7])assert.equal(core.chip.dsp.voices[voice].env,0,`Stopped chord voice ${voice} remains active`);
 }
 console.log('PASS inner-voice SFX restoration and complete hardware-envelope stop');
+
+// Share gain without first rounding to a 4-bit volume table. SNES registers
+// can still represent quiet chord tones that a 0–15 frame integer would erase.
+for(const shape of [[0,4,7],[0,4,7,11,14]]){
+  const quiet={...score,patterns:[{...score.patterns[0],chord:'C4 . . . . . . .',chordShape:[shape]}]};
+  const peaks=[.1,.2,.3].map(gain=>renderSong(arrange({...quiet,gain},'snes'),{seconds:1,stereo:true}).peak);
+  assert.ok(peaks[0]>0,`Quiet ${shape.length}-tone chord disappeared`);
+  assert.ok(peaks[1]>peaks[0]&&peaks[2]>peaks[1],`Quiet chord gain collapsed: ${peaks}`);
+}
+console.log('PASS quiet triads and five-tone chords retain audible, increasing gain');

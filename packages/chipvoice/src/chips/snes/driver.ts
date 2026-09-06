@@ -176,7 +176,7 @@ export class SnesDriver implements ChipDriver {
     for (let f = 0; f < frames.length; f++) {
       const s = frames[f];
       t = s.at + offset;
-      const volume = Math.round((Math.max(0, Math.min(15, s.volume)) * VOICE_VOLUME) / 15);
+      const volume = (Math.max(0, Math.min(15, s.volume)) * VOICE_VOLUME) / 15;
       // A looped waveform plays its base pitch at $1000; a drum plays as recorded.
       const pitch = entry.loop && entry.baseHz > 0 ? Math.max(1, Math.min(0x3fff, Math.round((s.freq * 0x1000) / entry.baseHz))) : 0x1000;
       if (f === 0) {

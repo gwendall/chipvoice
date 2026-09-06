@@ -174,7 +174,7 @@ export type Waveform = "pulse" | "triangle" | "sawtooth" | "noise";
  * instruments' pitch tables are.
  */
 export interface FrameState {
-  /** 0 to 15. */
+  /** 0 to 15; may be fractional until hardware register quantization. */
   volume: number;
   /** Hertz, for a voice that takes a pitch; 0 otherwise. */
   freq: number;
