@@ -47,7 +47,7 @@ way for anyone, human or machine, to pick the instrument up and play it.
   browser or rendered offline to a file on a server. Five so far: the NES's
   Ricoh 2A03, the Game Boy's DMG APU, the Mega Drive's YM2612 with its
   SN76489, the SNES's S-DSP and the C64's SID 6581; the Mega Drive's and the
-  SNES's are ports of the reference cores and identical to them, the others
+  SNES's are ports of reference cores with parity on the checked corpus; the others
   are written from the documents and compared with the community's cores.
 - **A driver and a tracker on top**, so a tune is four lines of text - lead,
   chord, bass, percussion - and a word per line for what it should sound like.
@@ -55,12 +55,11 @@ way for anyone, human or machine, to pick the instrument up and play it.
   idiom: the [portable score](docs/SCORE.md). Underneath, instruments are the
   per-frame tables the hardware's own drivers used.
 - **The one thing the hardware forced on every game**: sound effects take
-  channels away from the music, and the music dips. Every other library gives
-  the effects their own tracks, and losing that is most of why they sound
-  wrong.
+  channels away from the music, and the music dips. Effects and music share
+  the emulated voice budget.
 - **Bytes out, not only sound**: a song is also the register writes it makes,
-  as a VGM file any chiptune player and any real machine with a VGM player
-  accepts.
+  as VGM for NES, Game Boy and Mega Drive, playable in compatible players.
+  SNES and C64 file exports remain open.
 - **An API and a skill**, so an agent can write a song, validate it, get a link
   and an MP3, and fork someone else's. [chipvoice.dev](https://chipvoice.dev)
   is the editor and that API.
@@ -86,7 +85,7 @@ Written by `conform` on 2026-09-04. The columns:
 
 - **Machine**: the console or computer, and **Chip**: its sound chip, as the package names it.
 - **Done**: the mean of the four measures that follow, as a rough single number. The sheet, not this, is the contract.
-- **Digital**: how much of the chip's digital output matches the reference emulator it is compared with, as the share of runs of edges that line up on step times, a measure that survives an oracle's own conventions. A chip ported from a die-derived core reads 100 %.
+- **Digital**: how much of the chip's digital output matches the reference emulator it is compared with, as the share of runs of edges that line up on step times, a measure that survives an oracle's own conventions. 100 % describes this corpus and oracle, not exhaustive hardware accuracy.
 - **ROMs**: the community's test ROMs for the chip passing on a CPU the harness carries; a dash when none exist.
 - **Analog**: how much of the stage after the chip's DACs - mixing, filters, the console's output - is measured against a real unit.
 - **Driver**: the voices the driver plays, of the chip's; the rest exist and are verified but no song reaches them.
@@ -96,7 +95,7 @@ Written by `conform` on 2026-09-04. The columns:
 
 **Game Boy** (DMG APU, since 0.8.0). Digital: Gb_Snd_Emu 0.1.4 (blargg), 7 logs, 145.1M cycles; runs aligned on step times 97.5 % (12645 of 12969); identical cycles 57.4 %, the rest the oracle's own conventions, read on the sheet. ROMs: blargg's `dmg_sound`, 12 of 12 pass. Analog: unmeasured; the output stage is a placeholder built to be replaced by a measurement. Driver: all four voices, the bass on the wave channel, drums as the hardware envelope. Remains: a stronger oracle than Gb_Snd_Emu (SameBoy); a unit's line-out; the sweep and the length counters, which no instrument reaches.
 
-**Mega Drive, Genesis** (YM2612 + SN76489, since 0.11.0). Digital: Nuked-OPN2 1.0.12 (Nuke.YKT), 7 logs, 1798.7M cycles; runs aligned on step times 100.0 % (36580 of 36580); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the die. The PSG is from the documents and has no oracle yet. Analog: unmeasured; Nuked's own DAC model is marked unverified, the mix and the Model 1 filter are placeholders. Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten. Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit's line-out.
+**Mega Drive, Genesis** (YM2612 + SN76489, since 0.11.0). Digital: Nuked-OPN2 1.0.12 (Nuke.YKT), 7 logs, 1798.7M cycles; runs aligned on step times 100.0 % (36580 of 36580); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the reference on this corpus, not a direct silicon capture. The PSG is from the documents and has no oracle yet. Analog: unmeasured; Nuked's own DAC model is marked unverified, the mix and the Model 1 filter are placeholders. Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten. Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit's line-out.
 
 **Super Nintendo** (S-DSP, since 0.12.0). Digital: snes_spc 0.9.0 (blargg), 5 logs, 23.9M cycles; runs aligned on step times 100.0 % (183 of 183); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR. Analog: unmeasured; the DAC and the console's filter are a placeholder. A capture of the DSP's output would compare directly with the stream. Driver: a bank of synthesised samples in BRR, four voices of eight, the echo on the pitched ones. Remains: real triads across voices; a unit's line-out; SPC export.
 
@@ -162,8 +161,8 @@ is a [portable score](docs/SCORE.md) that an agent or a person writes once and
 that plays on a NES, a Game Boy, a Mega Drive, a SNES or a C64 in that
 machine's own idiom. All five play today, and the demo puts their sounds one
 gesture apart. The demo also records quantized note and drum taps into a loop,
-with one Undo per take. The next slices explore controlled variations and MIDI;
-physical-phone usability checks remain open. A sixth chip is not the current priority.
+with one Undo per take, optional MIDI input, controlled variations and producer
+exports. Physical-phone usability checks remain open. A sixth chip is not the current priority.
 
 ## Releasing
 

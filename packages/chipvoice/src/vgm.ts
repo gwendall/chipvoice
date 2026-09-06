@@ -75,7 +75,7 @@ function megaDriveCommands(writes: { at: number; addr: number; value: number }[]
  * @param events register writes, stamped in the chip's cycles
  * @param cycles how long the file plays, in cycles: writes at or past it are dropped
  */
-export function toVgm(events: RegisterEvent[], cycles: number, options: VgmOptions = {}): Uint8Array {
+export function toVgm(events: RegisterEvent[], cycles: number, options: VgmOptions = {}): Uint8Array<ArrayBuffer> {
   const chip = CHIPS[options.chip ?? "2a03"];
   if (!chip) throw new Error(`no VGM format for chip: ${options.chip}`);
   const samples = (cycle: number) => Math.round((cycle * SAMPLE_RATE) / chip.clock);
@@ -163,7 +163,7 @@ export function toVgm(events: RegisterEvent[], cycles: number, options: VgmOptio
  * The GD3 tag: eleven UTF-16 strings, most of them a title in two languages.
  * Players show the first one; a car stereo shows nothing without it.
  */
-function tag(options: VgmOptions, system: string): Uint8Array {
+function tag(options: VgmOptions, system: string): Uint8Array<ArrayBuffer> {
   const strings = [
     options.title ?? "",
     "",

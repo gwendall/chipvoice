@@ -1,27 +1,16 @@
-import { redeemMagicLink } from "@/lib/auth";
-import { hasDatabase } from "@/lib/db";
-import { SITE } from "@/lib/songs";
+import { NextResponse } from 'next/server';
+import { redeemMagicLink, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/auth';
+import { hasDatabase } from '@/lib/db';
+export const runtime = 'nodejs';
 
-export const runtime = "nodejs";
-
-/**
- * Turns a link from an inbox into a key in a browser.
- *
- * The key is handed to the page in the URL fragment, which browsers do not send
- * to servers and proxies do not log. The editor reads it, stores it, and strips
- * it - so it exists in the address bar for one paint and nowhere else.
- *
- * Single use, thirty minutes. A link that has been followed cannot be followed
- * again, so a forwarded email is worth nothing.
- */
+/** Single-use email links establish a session without exposing an API key. */
 export async function GET(request: Request) {
-  if (!hasDatabase()) return new Response("no database", { status: 503 });
-
-  const token = new URL(request.url).searchParams.get("token");
-  if (!token) return Response.redirect(`${SITE}/?signin=missing`, 302);
-
-  const key = await redeemMagicLink(token);
-  if (!key) return Response.redirect(`${SITE}/?signin=expired`, 302);
-
-  return Response.redirect(`${SITE}/#key=${encodeURIComponent(key)}`, 302);
+  if (!hasDatabase()) return new Response('no database', { status:503 });
+  const url = new URL(request.url), token = url.searchParams.get('token');
+  const session = token ? await redeemMagicLink(token) : null;
+  const response = new NextResponse(null, {status:302,headers:{Location:session ? '/' : `/?signin=${token ? 'expired' : 'missing'}`}});
+  response.headers.set('Cache-Control', 'no-store');
+  response.headers.set('Referrer-Policy', 'no-referrer');
+  if (session) response.cookies.set(SESSION_COOKIE, session, {httpOnly:true, sameSite:'lax', secure:url.protocol === 'https:', path:'/', maxAge:SESSION_TTL_MS/1000});
+  return response;
 }

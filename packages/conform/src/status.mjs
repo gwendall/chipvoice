@@ -66,7 +66,7 @@ const CHIPS = [
     analog: { done: 0, label: 'none' },
     driver: { reached: 4, voices: 10 },
     notes: [
-      'The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the die. The PSG is from the documents and has no oracle yet.',
+      'The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the reference on this corpus, not a direct silicon capture. The PSG is from the documents and has no oracle yet.',
       'Analog: unmeasured; Nuked\'s own DAC model is marked unverified, the mix and the Model 1 filter are placeholders.',
       'Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten.',
       'Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit\'s line-out.',
@@ -182,7 +182,7 @@ const block = [
   '',
   '- **Machine**: the console or computer, and **Chip**: its sound chip, as the package names it.',
   '- **Done**: the mean of the four measures that follow, as a rough single number. The sheet, not this, is the contract.',
-  '- **Digital**: how much of the chip\'s digital output matches the reference emulator it is compared with, as the share of runs of edges that line up on step times, a measure that survives an oracle\'s own conventions. A chip ported from a die-derived core reads 100 %.',
+  '- **Digital**: how much of the chip\'s digital output matches the reference emulator it is compared with, as the share of runs of edges that line up on step times, a measure that survives an oracle\'s own conventions. 100 % describes this corpus and oracle, not exhaustive hardware accuracy.',
   '- **ROMs**: the community\'s test ROMs for the chip passing on a CPU the harness carries; a dash when none exist.',
   '- **Analog**: how much of the stage after the chip\'s DACs - mixing, filters, the console\'s output - is measured against a real unit.',
   '- **Driver**: the voices the driver plays, of the chip\'s; the rest exist and are verified but no song reaches them.',

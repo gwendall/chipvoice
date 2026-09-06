@@ -18,7 +18,7 @@ export function encodeMp3(
   sampleRate: number,
   tags?: Tags,
   right?: Float32Array | null,
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   const encoder = new Mp3Encoder(right ? 2 : 1, sampleRate, right ? 192 : BITRATE);
   // The published types say Uint8Array; the current runtime returns Int8Array.
   const chunks: (Int8Array | Uint8Array)[] = [];

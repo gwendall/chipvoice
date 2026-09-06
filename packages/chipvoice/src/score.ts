@@ -116,7 +116,7 @@ export function arrange(score: Score, chipId = score.chip ?? "2a03"): Song {
 
 /** A short hash of the content, so the same score arranged twice plays as one song. */
 function fingerprint(score: Score): string {
-  const text = JSON.stringify([score.bpm, score.order, score.patterns, score.intent ?? null]);
+  const text = JSON.stringify([score.bpm, score.order, score.patterns, score.intent ?? null, score.gain ?? 1]);
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);

@@ -30,7 +30,7 @@ export async function POST(
   }
 
   const caller = await identify(request);
-  const gate = allow(clientKey(request), caller.keyId ? "key" : "anonymous");
+  const gate = allow(caller.userId ? `user:${caller.userId}` : clientKey(request), caller.userId ? "key" : "anonymous");
   if (!gate.ok) {
     return NextResponse.json(
       { error: "rate_limited", retryAfter: gate.retryAfter },
@@ -83,7 +83,7 @@ export async function POST(
   const song = await insert(
     { ...merged, title: result.title || undefined, author: result.author || undefined },
     parent.song,
-    caller.keyId,
+    caller,
   );
   return NextResponse.json({ ...present(song), issues: result.issues }, { status: 201 });
 }

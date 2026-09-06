@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { identify } from "@/lib/auth";
-import { listByKey, present } from "@/lib/songs";
+import { listByUser, present } from "@/lib/songs";
 import { hasDatabase } from "@/lib/db";
 
 export const runtime = "nodejs";
 
 /**
- * What this key has published.
+ * What this account has published.
  *
  * The one thing an identity buys that nothing else can: without it a lost id is
  * a lost song, permanently, because nothing anywhere records that you made it.
@@ -16,10 +16,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "no_database" }, { status: 503 });
   }
   const caller = await identify(request);
-  if (!caller.keyId) {
+  if (!caller.userId) {
     return NextResponse.json(
       {
-        error: "no_key",
+        error: "not_signed_in",
         message:
           "send Authorization: Bearer cv_live_... . Get one with POST /api/keys and an email address",
       },
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const songs = await listByKey(caller.keyId);
+  const songs = await listByUser(caller.userId);
   return NextResponse.json(
     {
       email: caller.email,

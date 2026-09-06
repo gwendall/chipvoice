@@ -1,5 +1,6 @@
 import { arrange, validateSong, type Intent, type Measured, type Issue } from "chipvoice";
 import { db, newId } from "./db";
+import type { Caller } from "./auth";
 import type { SongInput } from "./schema";
 
 /**
@@ -26,6 +27,8 @@ export interface StoredSong {
   author: string | null;
   /** Which key published it, when one did. */
   keyId: string | null;
+  /** Stable owner; never exposed in public responses. */
+  userId: string | null;
   createdAt: number;
 }
 
@@ -45,7 +48,7 @@ export interface Lineage {
   familySize: number;
 }
 
-export interface SongResponse extends StoredSong {
+export interface SongResponse extends Omit<StoredSong, "userId"> {
   url: string;
   mp3: string;
   wav: string;
@@ -88,14 +91,15 @@ export function present(
   lineage?: Lineage,
 ): SongResponse {
   const validation = validateSong(toLibrarySong(song));
+  const { userId, ...publicSong } = song;
   return {
-    ...song,
+    ...publicSong,
     url: `${SITE}/s/${song.id}`,
     mp3: `${SITE}/s/${song.id}.mp3`,
     wav: `${SITE}/s/${song.id}.wav`,
     measured: validation.measured,
     forks,
-    authorVerified: song.keyId !== null,
+    authorVerified: userId !== null,
     ...(lineage ? { lineage } : {}),
   };
 }
@@ -116,6 +120,7 @@ export function check(input: SongInput): { ok: boolean; issues: Issue[]; measure
       intent: input.intent ?? null,
       author: null,
       keyId: null,
+      userId: null,
       createdAt: 0,
     }),
   );
@@ -125,7 +130,7 @@ export function check(input: SongInput): { ok: boolean; issues: Issue[]; measure
 export async function insert(
   input: SongInput,
   parent: StoredSong | null,
-  keyId: string | null,
+  caller: Caller,
 ): Promise<StoredSong> {
   const client = await db();
   const id = newId();
@@ -146,13 +151,14 @@ export async function insert(
     order: input.order,
     intent: input.intent && Object.keys(input.intent).length > 0 ? input.intent : null,
     author: input.author ?? null,
-    keyId,
+    keyId: caller.keyId,
+    userId: caller.userId,
     createdAt: Date.now(),
   };
   await client.execute({
     sql: `insert into songs
-            (id, parent_id, root_id, depth, title, bpm, chip, patterns, song_order, intent, author, key_id, created_at)
-          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, parent_id, root_id, depth, title, bpm, chip, patterns, song_order, intent, author, key_id, user_id, created_at)
+          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       song.id,
       song.parentId,
@@ -166,6 +172,7 @@ export async function insert(
       song.intent ? JSON.stringify(song.intent) : null,
       song.author,
       song.keyId,
+      song.userId,
       song.createdAt,
     ],
   });
@@ -188,6 +195,7 @@ function rowToSong(row: Record<string, unknown>): StoredSong {
     intent: row.intent === null || row.intent === undefined ? null : (JSON.parse(String(row.intent)) as Intent),
     author: row.author === null ? null : String(row.author),
     keyId: row.key_id === null || row.key_id === undefined ? null : String(row.key_id),
+    userId: row.user_id == null ? null : String(row.user_id),
     createdAt: Number(row.created_at),
   };
 }
@@ -237,13 +245,13 @@ export async function lineageOf(song: StoredSong): Promise<Lineage> {
   };
 }
 
-/** Songs published with one key, newest first. */
-export async function listByKey(keyId: string, limit = 50): Promise<StoredSong[]> {
+/** Songs published by one account, newest first. */
+export async function listByUser(userId: string, limit = 50): Promise<StoredSong[]> {
   const client = await db();
   const rows = await client.execute({
-    sql: `select * from songs where key_id = ? and deleted_at is null
+    sql: `select * from songs where user_id = ? and deleted_at is null
           order by created_at desc limit ?`,
-    args: [keyId, limit],
+    args: [userId, limit],
   });
   return rows.rows.map((r) => rowToSong(r as Record<string, unknown>));
 }

@@ -21,9 +21,6 @@ export async function sendKeyEmail(
   key: string,
   link: string,
 ): Promise<boolean> {
-  const token = process.env.DOMANI_API_KEY;
-  if (!token) return false;
-
   const text = [
     "Here is your chipvoice key.",
     "",
@@ -32,7 +29,7 @@ export async function sendKeyEmail(
     "Use it on writes:",
     `  curl -H 'Authorization: Bearer ${key}' ...`,
     "",
-    "Or open this link once to put it into your browser, and never see it again:",
+    "Or open this link once to sign into your browser (valid for 30 minutes):",
     `  ${link}`,
     "",
     "It is the only copy - only its fingerprint is stored, so it cannot be looked",
@@ -41,14 +38,25 @@ export async function sendKeyEmail(
     "chipvoice.dev",
   ].join("\n");
 
+  return send(to, "Your chipvoice key", text);
+}
+
+export function sendSignInEmail(to: string, link: string): Promise<boolean> {
+  return send(to, 'Sign in to chipvoice', `Open this link to sign in. It works once, for 30 minutes.\n\n${link}\n\nYour API keys remain unchanged.\n\nchipvoice.dev`);
+}
+
+async function send(to: string, subject: string, text: string): Promise<boolean> {
+  const token = process.env.DOMANI_API_KEY;
+  if (!token) return false;
   try {
     const response = await fetch(sendUrl(FROM), {
       method: "POST",
+      signal: AbortSignal.timeout(10_000),
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ to, subject: "Your chipvoice key", text }),
+      body: JSON.stringify({ to, subject, text }),
     });
     return response.ok;
   } catch {

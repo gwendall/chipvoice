@@ -155,7 +155,7 @@ A song with no title is fine - the page shows its id. But the share card is the
 first thing a person sees, so a title is usually worth the eight words.
 
 **\`author\` is free text and anybody can write anything in it.** Responses carry
-\`authorVerified\`, which is false unless the request had a key. Say who you are by
+\`authorVerified\`, which is false unless the request authenticated an account. Say who you are by
 all means; just know that without a key it reads as a claim rather than a credit.
 
 ## What it should sound like: \`intent\`
@@ -348,7 +348,7 @@ A key buys three things:
 - **\`GET /api/me\`** - everything you published. Without it a lost id is a lost song,
   permanently: nothing anywhere records that you made it
 - **A verified author line.** \`author\` is free text, so anyone can put any name in
-  it. Responses carry \`authorVerified\`, which is false unless the request had a key
+  it. Responses carry \`authorVerified\`, which is false unless the request authenticated an account
 - **240 writes a minute** instead of 20, which is the difference between a person
   clicking save and an agent exploring
 
@@ -363,7 +363,14 @@ ends up in a proxy log and a shell history, and whoever asked for it cannot tell
 which. Send it as \`Authorization: Bearer cv_live_...\`. Only its fingerprint is
 stored, so it cannot be looked up or resent: ask for another if you lose it.
 
-**Withdrawing.** \`DELETE /api/songs/{id}\` works for the key that published it. A
+Keys belong to a stable account identified by email. Reissuing a key retains
+access to earlier publications. Browser sign-in uses \`POST /api/auth/signin\`
+with an email; the link establishes an HttpOnly, SameSite session for 30 days.
+It does not rotate or expose an agent key. \`GET /api/keys\` lists key metadata;
+\`DELETE /api/keys/{id}\` revokes a key without losing songs.
+\`DELETE /api/auth/session\` signs the browser out.
+
+**Withdrawing.** \`DELETE /api/songs/{id}\` accepts an active key or session of the publishing account. A
 song published anonymously cannot be withdrawn by anybody, which is the honest cost
 of publishing without one.
 
@@ -387,9 +394,24 @@ trip at a time.
 
 ## Limits
 
-Writes are rate limited per address; reads are not. Rendering is capped at five
-minutes of audio per request. Four chips today, the 2A03, the Game Boy's, the
-Mega Drive's and the SNES's, and \`chip\` picks one; the C64 is on the roadmap,
-and the same \`intent\` words will play on it.
+Anonymous writes are limited to 20/minute per address; authenticated writes to
+240/minute per account. Public audio accepts integer \`?seconds=1..30\`; the
+default is two loops and returns 422 if longer than 30 seconds. Bad duration
+queries return 400. Local WAV export supports up to five minutes; local stems
+and five-machine ZIP bundles support up to 30 seconds.
+
+Audio runs in a worker, with one active computation per server instance.
+Identical concurrent requests share work; other cold jobs receive 503 with
+Retry-After. Cold renders are limited to 6/minute per address; hits are free.
+The LRU cache is capped at 32 MiB, 16 entries and 10 minutes, and keys include
+the built engine and encoder. These limits are per instance, not a fleet-wide
+quota. Stable audio URLs revalidate with ETags, including after deployment or
+deletion. Browser and API exports use the same DSP.
+
+Five machines ship: NES, Game Boy, Mega Drive, SNES and C64. VGM exports cover
+NES, Game Boy and Mega Drive. SNES triads, FM drums and SID filter controls
+remain planned. The conformance sheets distinguish reference-corpus parity
+from physical verification. \`pitch_range\` warnings identify base notes and
+arpeggio extremes a voice cannot represent; they do not cover all modulation.
 `;
 }

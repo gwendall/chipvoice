@@ -511,3 +511,65 @@ existing convention. It does not record held-key duration or arcade SFX, and
 does not need a PCM stream, MIDI layer, metronome or schema migration. Those
 can be evaluated as separate interactions. See the
 [recording evaluation](evals/RECORDING-2026-09-06.md) for evidence and limits.
+
+## 26. Creative tools reuse the score and tap transport (2026-09-06)
+
+P8-23, P8-11 and P8-12 extend the playable demo after quantized recording.
+`varyScore` is a pure seeded transform: melody edits reuse pitch classes, drums
+use authored grooves, timbres choose catalog alternatives. Locked roles retain
+notes and instruments; the document owns Undo. This does not add an AI service
+or another musical state model.
+
+Web MIDI is opt-in without SysEx. Note-on events use the existing tap audition
+and quantized recording path; releases and velocity-zero note-ons do not write
+steps. Channel 10 maps common GM drums. Port handlers close on selection,
+disconnection and unmount. Held-note duration and physical MIDI latency are not
+claimed; device/browser support is optional.
+
+Local workers export WAV, isolated role stems, one arrangement on all five
+machines and VGM on NES/GB/MD. ZIP uses stored entries, CRC32 and no new runtime
+dependency. Bundles include the score and aligned files, capped at two loops
+and 30 seconds; WAV retains the library's five-minute cap. Cancellation
+terminates the worker. Stems are isolated renders and need not sum to a full
+mix where voices or nonlinear output stages interact.
+
+## 27. Bound server rendering independently of playback (2026-09-06)
+
+The request thread should not execute cycle-level DSP. A bundled Node worker
+runs one cold render at a time per instance, with a 45-second deadline and a
+128 MiB V8 old-generation limit (not a total process-memory guarantee).
+Identical in-flight jobs share work. Different cold jobs receive 503 with
+Retry-After. Completed audio uses an LRU bounded by 32 MiB, 16 entries and ten
+minutes, keyed by the actual built worker hash plus score, options and tags.
+
+Public durations accept integers 1–30; the default remains two loops, refused
+with 422 if longer. Invalid query values return 400. Cold work is limited to
+six requests/minute/address, cached requests are free. Stable URLs use byte
+ETags and revalidation; publication existence is checked before and after work.
+These limits/cache are per instance. Distributed quotas or persistent storage
+require production demand and measurements; this is not a fleet-wide queue.
+Loaded-host timings are recorded only as diagnostics, not product benchmarks.
+
+## 28. Accounts own songs; keys and sessions authenticate accounts (2026-09-06)
+
+An email-normalized stable user owns publications. API keys remain independent
+credentials, stored hashed. Browser links create hashed, 30-day sessions in
+HttpOnly, SameSite=Lax cookies, Secure over HTTPS; logging in never rotates an
+agent key. A conditional token claim and session insert commit in one batch so
+concurrent redemption has one winner. Links expire after 30 minutes.
+
+Existing keys with the same normalized email merge into one account; existing
+owned songs follow that account. Anonymous publications remain anonymous.
+Account tools sit within sharing, with no login requirement for play/drafts.
+`GET /api/me` lists the latest 50 account publications. Key listing/revocation
+is account-scoped; deleting a key preserves ownership. Cookie writes check
+request origin; explicit invalid bearer credentials do not fall back to cookies.
+
+Versioned migrations replace opportunistic ALTER/catch startup. Schema, data
+backfill and version markers commit in one write transaction; failures roll
+back and remain visible. Initialization shares its promise within the module.
+Legacy magic links migrate hashed; consumed legacy links are marked consumed in
+the old table too. The additive old tables remain, but rolling back to a writer
+that does not set user_id is not a supported steady state: use a backup/forward
+repair before relying on identity again. No production DB or email was used
+for qualification; migrations are tested against disposable legacy/fresh files.
