@@ -17,8 +17,8 @@ export function Transport({playControl,player,overview,seconds,part,pending,acti
  const activity=useMemo(()=>rows.map(row=>{let end=0;return row.notes.map(n=>{end=Math.max(end,n[1]);return [n[0],end];});}),[rows]);
  useEffect(()=>{
   const node=canvas.current;if(!node)return;
-  const draw=()=>{const width=node.clientWidth,height=Math.max(104,rows.length*34),ratio=window.devicePixelRatio||1;node.width=width*ratio;node.height=height*ratio;const ctx=node.getContext('2d')!;ctx.scale(ratio,ratio);
-   for(let i=0;i<rows.length;i++){const top=i*34;ctx.fillStyle=i%2?'#263d32':'#22372d';ctx.fillRect(0,top,width,34);ctx.fillStyle=colors[i%colors.length];for(const n of rows[i].notes)ctx.fillRect(n[0]*width,top+26-(n[2]%24)*.8,Math.max(1,(n[1]-n[0])*width),3);}
+  const draw=()=>{const width=node.clientWidth,rowHeight=parseFloat(getComputedStyle(node).getPropertyValue('--score-row-height'))||34,height=Math.max(104,rows.length*rowHeight),ratio=window.devicePixelRatio||1;node.width=width*ratio;node.height=height*ratio;const ctx=node.getContext('2d')!;ctx.scale(ratio,ratio);
+   for(let i=0;i<rows.length;i++){const top=i*rowHeight;ctx.fillStyle=i%2?'#263d32':'#22372d';ctx.fillRect(0,top,width,rowHeight);ctx.fillStyle=colors[i%colors.length];for(const n of rows[i].notes)ctx.fillRect(n[0]*width,top+rowHeight-8-(n[2]%24)*.8,Math.max(1,(n[1]-n[0])*width),3);}
    ctx.strokeStyle='#b5c2a133';ctx.lineWidth=1;for(let i=1;i<8;i++){ctx.beginPath();ctx.moveTo(width*i/8,0);ctx.lineTo(width*i/8,height);ctx.stroke();}
   };
   draw();const observer=new ResizeObserver(draw);observer.observe(node);return()=>observer.disconnect();
@@ -39,13 +39,14 @@ export function Transport({playControl,player,overview,seconds,part,pending,acti
   <div className="song-time"><output ref={elapsed} aria-label="Elapsed time">0:00</output><span>{time(seconds)}</span></div>
   <input ref={range} className="song-seek" type="range" aria-label="Song position" min={0} max={1000} defaultValue={0} disabled={!player?.buffers.length} onPointerDown={()=>{dragging.current=true;}} onPointerUp={()=>{dragging.current=false;}} onPointerCancel={()=>{dragging.current=false;}} onBlur={()=>{dragging.current=false;}} onChange={e=>seek(Number(e.target.value)/1000)}/>
   <div className="transport-actions">{playControl}<Button className="transport-restart" aria-label="Restart" title="Restart from beginning" disabled={!player?.buffers.length} onClick={()=>player?.restart()}><span aria-hidden="true">↤</span><span className="transport-restart-label"> Restart</span></Button><Button aria-pressed={loop} onClick={()=>{const next=!loop;setLoop(next);onLoop(next);}}>↻ Loop {loop?'on':'off'}</Button><span>{pending?'Preparing your next sound…':'Click the score to jump. Solo a part below.'}</span></div>
-  <div className="score-overview" aria-label="Source score" style={{minHeight:Math.max(104,rows.length*34)}}>
-   <div className="score-labels">{rows.map((row,i)=><div key={row.id} className="score-part" style={{borderColor:colors[i%colors.length]}} title={row.name}>{row.name}</div>)}</div>
-   <div className="score-notes" onPointerDown={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
-    <canvas ref={canvas} style={{height:Math.max(104,rows.length*34)}} aria-hidden="true"/>
+  <div className="score-overview" role="region" tabIndex={0} aria-label="Source score">
+   <div className="score-labels">{rows.map((row,i)=><div key={row.id} className="score-part" style={{borderColor:colors[i%colors.length]}} title={row.name}><span className="score-part-name">{row.name}</span></div>)}</div>
+   <div className="score-notes" onClick={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
+    <canvas ref={canvas} style={{height:`max(104px, calc(var(--score-row-height) * ${rows.length}))`}} aria-hidden="true"/>
     <div ref={cursor} className="score-cursor" aria-hidden="true"><i/></div>
    </div>
   </div>
+  {rows.length>6&&<p className="score-scroll-hint">Scroll the score to see all {rows.length} parts.</p>}
   <p className="score-caption">Allocated source notes · cursor follows audio output{overview&&overview.loopStart>0?' · loop preserves the introduction':''}</p>
  </div>;
 }

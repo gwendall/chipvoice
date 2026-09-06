@@ -8,7 +8,7 @@ const browser=await chromium.launch(),checks=[];
 const ready=page=>page.waitForFunction(()=>!!document.querySelector('.arrangement-versions a')&&!document.querySelector('.arrangement-versions button')?.disabled,{},{timeout:120000});
 async function audible(page){let peak=0;for(let i=0;i<20;i++){peak=Math.max(peak,await outputRms(page));if(peak>.001)break;}assert.ok(peak>.001);return peak;}
 try{
- const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('video/',out).pathname}});
+ const context=await browser.newContext({viewport:{width:1280,height:1000},hasTouch:true,recordVideo:{dir:new URL('video/',out).pathname}});
  await context.addInitScript(installOutputProbe);
  await context.addInitScript(()=>{
   const create=AudioContext.prototype.createBufferSource;
@@ -63,6 +63,27 @@ try{
  assert.equal(await page.getByRole('button',{name:'Independent original reference',exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href'),referenceDownload);
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('return from composer');
  for(const width of [320,390,768]){await page.setViewportSize({width,height:844});await page.screenshot({path:new URL(`width-${width}.png`,out).pathname,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ // A native vertical gesture must browse parts without seeking the music.
+ await page.getByRole('button',{name:'Sonic 14 parts',exact:true}).click();await ready(page);
+ await page.waitForFunction(()=>document.querySelector('.screen-title h2')?.textContent.startsWith('Sonic')&&document.querySelectorAll('.score-part').length===14);
+ await page.getByRole('button',{name:'Pause',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);
+ const region=page.getByRole('region',{name:'Source score'});await region.scrollIntoViewIfNeeded();
+ const bounds=await region.boundingBox(),beforeScroll=await page.getByRole('slider',{name:'Song position',exact:true}).inputValue(),cdp=await context.newCDPSession(page);
+ const touchX=bounds.x+bounds.width*.5,touchY=bounds.y+bounds.height-35;
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:touchX,y:touchY}]});
+ for(let step=1;step<=6;step++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:touchX,y:touchY-step*35}]});await page.waitForTimeout(20);}
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await page.waitForTimeout(250);await cdp.detach();
+ assert.ok(await region.evaluate(n=>n.scrollTop)>0,'Touch scroll reaches more parts');
+ assert.equal(await page.getByRole('slider',{name:'Song position',exact:true}).inputValue(),beforeScroll,'Scrolling source parts never seeks');
+ await region.evaluate(n=>{n.scrollTop=n.scrollHeight;});await page.waitForTimeout(50);
+ const last=await page.locator('.score-part').last().boundingBox(),scrolledBounds=await region.boundingBox();assert.ok(last.y>=scrolledBounds.y&&last.y+last.height<=scrolledBounds.y+scrolledBounds.height+1,'Last part remains reachable');
+ const heights=await page.locator('.score-notes').evaluate(n=>({cursor:n.querySelector('.score-cursor').getBoundingClientRect().height,canvas:n.querySelector('canvas').getBoundingClientRect().height}));assert.ok(Math.abs(heights.cursor-heights.canvas)<1,'Cursor spans the complete scrolling score');
+ await page.locator('.screen-bezel').screenshot({path:new URL('mobile-scrolled-score.png',out).pathname});
+ await region.focus();await page.keyboard.press('Home');await page.waitForFunction(()=>document.querySelector('.score-overview').scrollTop===0,{},{timeout:3000});
+ const top=await region.boundingBox();await page.touchscreen.tap(top.x+top.width*.25,top.y+35);
+ await page.waitForFunction(()=>Math.abs(Number(document.querySelector('[aria-label="Song position"]').value)-250)<10);
+ for(const width of [320,390,768]){await page.setViewportSize({width,height:844});assert.ok(await page.locator('.score-part-name').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth)),'Source names stay readable');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ checks.push({label:'mobile parts',touchScrollKeepsPosition:true,lastPartReachable:true,tapStillSeeks:true});
  assert.deepEqual(errors,[]);await writeFile(new URL('result.json',out),JSON.stringify({pass:true,checks,errors},null,2));
  console.log('PASS full-mix arrival, audible-clock visuals, seek/pause/restart/loop/end, continuous console/tempo, exclusive composer, mobile screenshots and video',checks);
  }catch(error){await page.screenshot({path:new URL('failure.png',out).pathname,fullPage:true});await writeFile(new URL('failure.json',out),JSON.stringify(await page.evaluate(()=>({position:document.querySelector('[aria-label="Song position"]')?.value,time:document.querySelector('[aria-label="Elapsed time"]')?.textContent,play:document.querySelector('.play-button')?.textContent,loop:document.querySelector('.transport-actions [aria-pressed]')?.textContent,recording:window.lastRecording?{at:window.lastRecording.at,offset:window.lastRecording.offset,duration:window.lastRecording.source.buffer.duration,loop:window.lastRecording.source.loop,ended:window.lastRecording.ended,state:window.lastRecording.context.state,baseLatency:window.lastRecording.context.baseLatency,outputLatency:window.lastRecording.context.outputLatency,contextTime:window.lastRecording.context.currentTime,stamp:window.lastRecording.context.getOutputTimestamp()}:null})),null,2));throw error;}finally{await context.close();}
