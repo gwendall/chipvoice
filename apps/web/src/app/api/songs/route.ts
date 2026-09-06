@@ -32,7 +32,7 @@ export async function POST(request: Request) {
    * person ever will.
    */
   const caller = await identify(request);
-  const gate = allow(clientKey(request), caller.keyId ? "key" : "anonymous");
+  const gate = allow(caller.userId ? `user:${caller.userId}` : clientKey(request), caller.userId ? "key" : "anonymous");
   if (!gate.ok) {
     return NextResponse.json(
       {
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
   const song = await insert(
     { ...parsed.data, title: result.title || undefined, author: result.author || undefined },
     null,
-    caller.keyId,
+    caller,
   );
   // Warnings survive a successful write: a short loop is playable and worth
   // saying something about, and swallowing it would make the write look

@@ -15,7 +15,10 @@ export const runtime = "nodejs";
  * cheap to write - an agent changing one line does not have to restate the
  * other three, and cannot mangle them by accident while doing so.
  */
-const ForkInput = SongInput.partial();
+const ForkInput = SongInput.partial().extend({
+  chip:SongInput.shape.chip.removeDefault().optional(),
+  title:SongInput.shape.title.nullable(), author:SongInput.shape.author.nullable(), intent:SongInput.shape.intent.nullable(),
+});
 
 export async function POST(
   request: Request,
@@ -30,7 +33,7 @@ export async function POST(
   }
 
   const caller = await identify(request);
-  const gate = allow(clientKey(request), caller.keyId ? "key" : "anonymous");
+  const gate = allow(caller.userId ? `user:${caller.userId}` : clientKey(request), caller.userId ? "key" : "anonymous");
   if (!gate.ok) {
     return NextResponse.json(
       { error: "rate_limited", retryAfter: gate.retryAfter },
@@ -66,12 +69,12 @@ export async function POST(
   }
 
   const merged = {
-    title: parsed.data.title ?? parent.song.title ?? undefined,
+    title: parsed.data.title === null ? undefined : parsed.data.title ?? parent.song.title ?? undefined,
     bpm: parsed.data.bpm ?? parent.song.bpm,
     patterns: parsed.data.patterns ?? parent.song.patterns,
     order: parsed.data.order ?? parent.song.order,
     chip: (parsed.data.chip ?? parent.song.chip) as "2a03" | "dmg" | "md" | "snes" | "c64",
-    intent: parsed.data.intent ?? parent.song.intent ?? undefined,
+    intent: parsed.data.intent === null ? undefined : parsed.data.intent ?? parent.song.intent ?? undefined,
     author: parsed.data.author ?? undefined,
   };
 
@@ -83,7 +86,7 @@ export async function POST(
   const song = await insert(
     { ...merged, title: result.title || undefined, author: result.author || undefined },
     parent.song,
-    caller.keyId,
+    caller,
   );
   return NextResponse.json({ ...present(song), issues: result.issues }, { status: 201 });
 }

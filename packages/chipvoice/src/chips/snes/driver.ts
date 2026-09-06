@@ -67,6 +67,15 @@ interface BankEntry {
 
 const RATE = 32000;
 
+/** Tuning shared by bank construction and arrangement diagnostics. Unknown
+ * pitched sources use tri, matching the driver's source fallback. */
+const SAMPLE_BASE_HZ: Readonly<Record<string, number>> = {
+  sine:RATE/32, tri:RATE/32, saw:RATE/32, square:RATE/32,
+  sine64:RATE/64, square64:RATE/64, saw64:RATE/64,
+  kick:0, snare:0, hat:0, ohat:0, noise:0,
+};
+export function sampleBaseHz(name: string): number { return Object.hasOwn(SAMPLE_BASE_HZ, name) ? SAMPLE_BASE_HZ[name] : SAMPLE_BASE_HZ.tri; }
+
 /** A single-cycle waveform of `length` samples: one period, looped. */
 function cycle(length: number, shape: (phase: number) => number): Int16Array {
   const out = new Int16Array(length);
@@ -129,20 +138,20 @@ function hat(seconds: number, seed: number): Int16Array {
 function makeBank(): BankEntry[] {
   const rnd = noise(3);
   return [
-    { name: "sine", loop: true, baseHz: RATE / 32, pcm: cycle(32, (p) => Math.sin(2 * Math.PI * p)) },
-    { name: "tri", loop: true, baseHz: RATE / 32, pcm: cycle(32, (p) => (p < 0.5 ? 4 * p - 1 : 3 - 4 * p)) },
-    { name: "saw", loop: true, baseHz: RATE / 32, pcm: cycle(32, (p) => 2 * p - 1) },
-    { name: "square", loop: true, baseHz: RATE / 32, pcm: cycle(32, (p) => (p < 0.5 ? 0.8 : -0.8)) },
-    { name: "sine64", loop: true, baseHz: RATE / 64, pcm: cycle(64, (p) => Math.sin(2 * Math.PI * p)) },
-    { name: "square64", loop: true, baseHz: RATE / 64, pcm: cycle(64, (p) => (p < 0.5 ? 0.7 : -0.7)) },
-    { name: "saw64", loop: true, baseHz: RATE / 64, pcm: cycle(64, (p) => 2 * p - 1) },
-    { name: "kick", loop: false, baseHz: 0, pcm: kick() },
-    { name: "snare", loop: false, baseHz: 0, pcm: snare() },
-    { name: "hat", loop: false, baseHz: 0, pcm: hat(0.06, 11) },
-    { name: "ohat", loop: false, baseHz: 0, pcm: hat(0.2, 13) },
+    { name: "sine", loop: true, pcm: cycle(32, (p) => Math.sin(2 * Math.PI * p)) },
+    { name: "tri", loop: true, pcm: cycle(32, (p) => (p < 0.5 ? 4 * p - 1 : 3 - 4 * p)) },
+    { name: "saw", loop: true, pcm: cycle(32, (p) => 2 * p - 1) },
+    { name: "square", loop: true, pcm: cycle(32, (p) => (p < 0.5 ? 0.8 : -0.8)) },
+    { name: "sine64", loop: true, pcm: cycle(64, (p) => Math.sin(2 * Math.PI * p)) },
+    { name: "square64", loop: true, pcm: cycle(64, (p) => (p < 0.5 ? 0.7 : -0.7)) },
+    { name: "saw64", loop: true, pcm: cycle(64, (p) => 2 * p - 1) },
+    { name: "kick", loop: false, pcm: kick() },
+    { name: "snare", loop: false, pcm: snare() },
+    { name: "hat", loop: false, pcm: hat(0.06, 11) },
+    { name: "ohat", loop: false, pcm: hat(0.2, 13) },
     // A noise sample for a percussion voice that names none of the drums.
-    { name: "noise", loop: true, baseHz: 0, pcm: (() => { const o = new Int16Array(256); for (let i = 0; i < 256; i++) o[i] = Math.round(rnd() * 20000); return o; })() },
-  ];
+    { name: "noise", loop: true, pcm: (() => { const o = new Int16Array(256); for (let i = 0; i < 256; i++) o[i] = Math.round(rnd() * 20000); return o; })() },
+  ].map(entry => ({ ...entry, baseHz:sampleBaseHz(entry.name) }));
 }
 
 const VOICES = ["v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7"];

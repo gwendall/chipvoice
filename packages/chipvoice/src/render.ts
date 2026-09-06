@@ -12,9 +12,8 @@ import { OfflineDriver } from "./driver.js";
  *
  * This is the same chip and the same driver the live path uses, with a counter
  * where the audio clock was. That single substitution is what makes rendering a
- * pure function: the same song and sample rate always produce the same bytes,
- * byte for byte, which is what lets a server compute an MP3 on demand and cache
- * it forever rather than storing one.
+ * pure function for a fixed engine version, score and render options. Cache keys
+ * must include engine/encoder changes; stable publication URLs revalidate.
  *
  * It is also how the engine gets tested at all without a browser in the loop.
  */
@@ -109,7 +108,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
   sequencer.stop();
 
   let peak = 0;
-  for (let i = 0; i < left.length; i++) peak = Math.max(peak, Math.abs(left[i]));
+  for (let i = 0; i < left.length; i++) peak = Math.max(peak, Math.abs(left[i]), right ? Math.abs(right[i]) : 0);
 
   return { sampleRate, left, right, seconds: total / sampleRate, peak };
 }
@@ -168,7 +167,7 @@ export function recordSong(
  * Written here rather than pulled in as a dependency: the header is 44 bytes
  * and a dependency for 44 bytes is a dependency to keep up to date forever.
  */
-export function toWav(result: RenderResult): Uint8Array {
+export function toWav(result: RenderResult): Uint8Array<ArrayBuffer> {
   const channels = result.right ? 2 : 1;
   const frames = result.left.length;
   const bytes = frames * channels * 2;

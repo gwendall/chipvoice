@@ -1,21 +1,9 @@
 /**
  * What a sound chip is, from the outside.
  *
- * There is one implementation today - the Ricoh 2A03 - and this exists so the
- * second one does not require rewriting everything above it. It is deliberately
- * thin: the parts that genuinely differ between chips are named here, and
- * nothing is invented for machines that have not been built yet.
- *
- * What the survey of other chips says will actually differ, and is therefore
- * described rather than assumed:
- *
- *  - **the voices**, in number and in kind. Four here; a YM2612 has six FM
- *    channels, three PSG and a DAC; an SPC700 has eight sample voices
- *  - **what an instrument is**. Here it is per-frame tables, which is what a
- *    driver wrote every NMI. An FM patch is four operators with an envelope
- *    each, an algorithm and a feedback level, and does not fit that shape
- *  - **the note space**. Pulse and triangle take pitches; noise takes one of
- *    sixteen periods; a sample voice takes a sample and a rate
+ * Five machines implement these contracts. ChipSpec describes voice kinds,
+ * role allocation and clocks; instruments can use tables, FM or samples.
+ * The portable score retains four roles even when physical voices are shared.
  *
  * What does not differ, and is why this abstraction is worth having at all:
  * every chip is a thing that takes timestamped register writes and fills a

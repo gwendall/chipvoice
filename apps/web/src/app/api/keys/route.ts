@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createKey, createMagicLink } from "@/lib/auth";
+import { createKey, createMagicLink, identify, listKeys } from "@/lib/auth";
 import { allow, clientKey } from "@/lib/limit";
 import { hasDatabase } from "@/lib/db";
 import { sendKeyEmail } from "@/lib/mail";
@@ -9,7 +9,7 @@ import { SITE } from "@/lib/songs";
 export const runtime = "nodejs";
 
 const Input = z.object({
-  email: z.email(),
+  email: z.email().max(254),
   label: z.string().trim().max(60).optional(),
 });
 
@@ -70,4 +70,11 @@ export async function POST(request: Request) {
     },
     { status: 202 },
   );
+}
+
+export async function GET(request: Request) {
+  if (!hasDatabase()) return NextResponse.json({error:'no_database'}, {status:503});
+  const caller = await identify(request);
+  if (!caller.userId) return NextResponse.json({error:'not_signed_in'}, {status:401});
+  return NextResponse.json({keys:await listKeys(caller.userId)}, {headers:{'Cache-Control':'no-store'}});
 }

@@ -34,7 +34,7 @@ export async function GET(
    * the CDN. Production found it; local never could, because there is no edge
    * cache in front of a dev server.
    *
-   * The audio is where caching actually pays, and that stays immutable.
+   * The audio is where caching actually pays, with conditional revalidation.
    */
   const lineage = await lineageOf(found.song);
   return NextResponse.json(present(found.song, found.forks, lineage), {
@@ -49,7 +49,7 @@ export async function GET(
  * lineage with a hole in it is worse than one with a tombstone. The audio and
  * the page stop being served; the tree stays walkable.
  *
- * Only the key that published it may do this. A song published anonymously
+ * Only the account that published it may do this. A song published anonymously
  * cannot be withdrawn by anyone, which is the honest consequence of publishing
  * without identity and is said as much in the skill.
  */
@@ -71,12 +71,12 @@ export async function DELETE(
     process.env.CHIPVOICE_ADMIN_KEY &&
     request.headers.get("authorization") === `Bearer ${process.env.CHIPVOICE_ADMIN_KEY}`;
 
-  if (!admin && (!caller.keyId || caller.keyId !== found.song.keyId)) {
+  if (!admin && (!caller.userId || caller.userId !== found.song.userId)) {
     return NextResponse.json(
       {
         error: "not_yours",
-        message: found.song.keyId
-          ? "this song was published with a different key"
+        message: found.song.userId
+          ? "this song was published with a different account"
           : "this song was published anonymously, so nobody can withdraw it. Publish with a key to keep that option",
       },
       { status: 403 },

@@ -1,4 +1,4 @@
-import { chips, getChip, type VoiceSpec } from "./chip.js";
+import { chips, getChip, type VoiceSpec, type ChipSpec } from "./chip.js";
 import { nesChip } from "./chips/nes/index.js";
 import { gbChip } from "./chips/gb/index.js";
 import { mdChip } from "./chips/md/index.js";
@@ -8,6 +8,7 @@ import { INTENTS } from "./score.js";
 import { noteToFreq } from "./driver.js";
 import type { Pattern, Song } from "./sequencer.js";
 import { loopSeconds } from "./render.js";
+import { pitchRange } from './pitch-range.js';
 
 /**
  * Checks a song and says what is wrong in words somebody can act on.
@@ -26,6 +27,9 @@ export type IssueLevel = "error" | "warning";
 
 export interface Issue {
   level: IssueLevel;
+  /** Stable diagnostic name when one is available. */
+  code?: string;
+  pattern?: number;
   /** The channel it is on, when it belongs to one. */
   track?: string;
   /** Which sixteenth, zero-based, when it belongs to one. */
@@ -103,9 +107,9 @@ export function validateSong(song: unknown): ValidationResult {
     if (!s.intent || typeof s.intent !== "object") return fail("intent must be an object of role to word");
     for (const [role, word] of Object.entries(s.intent as Record<string, unknown>)) {
       const words = (INTENTS as Record<string, Record<string, string>>)[role];
-      if (!words) {
+      if (!Object.hasOwn(INTENTS, role)) {
         issues.push({ level: "error", message: `intent.${role}: no such role. The roles are ${Object.keys(INTENTS).join(", ")}`, silent: true });
-      } else if (typeof word !== "string" || !(word in words)) {
+      } else if (typeof word !== "string" || !Object.hasOwn(words, word)) {
         issues.push({ level: "error", track: role, message: `intent.${role}: "${String(word)}" is not a ${role} intent. This build knows: ${Object.keys(words).join(", ")}`, silent: true });
       }
     }
@@ -134,7 +138,7 @@ export function validateSong(song: unknown): ValidationResult {
   }
 
   s.patterns.forEach((pattern, patternIndex) => {
-    checkPattern(pattern, patternIndex, issues, voices, chip.spec.roles, s.patterns!.length > 1);
+    checkPattern(pattern, patternIndex, issues, voices, chip.spec, s as Song, s.patterns!.length > 1);
   });
 
   const errors = issues.filter((i) => i.level === "error");
@@ -160,10 +164,12 @@ function checkPattern(
   issues: Issue[],
   voices: Map<string, VoiceSpec>,
   /** Which voice each track lands on: the chip's map of the song's roles. */
-  roles: Record<TrackName, string>,
+  chip: ChipSpec,
+  song: Song,
   numbered: boolean,
 ) {
   const where = numbered ? `pattern ${patternIndex}, ` : "";
+  const roles = chip.roles;
 
   if (!pattern || typeof pattern !== "object") {
     issues.push({ level: "error", message: `${where}not an object`, silent: false });
@@ -185,6 +191,7 @@ function checkPattern(
   const lengths = Object.fromEntries(
     TRACKS.map((track) => [track, tokens(pattern[track]).length]),
   ) as Record<TrackName, number>;
+  if (lengths.bass === 0) issues.push({ level: 'error', pattern: patternIndex, track: 'bass', message: `${where}a pattern needs at least one step; use dots for silence`, silent: false });
 
   /*
    * Pattern length comes from the bass line, which is what makes a bar in five
@@ -210,6 +217,9 @@ function checkPattern(
 
   for (const track of TRACKS) {
     const voice = voices.get(roles[track]);
+    const instrument = track === 'perc' ? undefined : song[track];
+    const range = voice && track !== 'perc' ? pitchRange(chip, voice, instrument) : null;
+    let chordSlot = 0;
     tokens(pattern[track]).forEach((token, step) => {
       if (token === "." || token === "=") return;
 
@@ -227,7 +237,8 @@ function checkPattern(
         return;
       }
 
-      if (midiOf(token) === null) {
+      const midi = midiOf(token);
+      if (midi === null) {
         issues.push({
           level: "error",
           track,
@@ -240,10 +251,20 @@ function checkPattern(
           // scheduled as nothing at all, so the only evidence is a hole.
           silent: true,
         });
+      } else if (range) {
+        const shape = track === 'chord' && Array.isArray(pattern.chordShape) && pattern.chordShape.length
+          ? pattern.chordShape[chordSlot++ % pattern.chordShape.length] : instrument?.arp;
+        let low = midi, high = midi;
+        if (Array.isArray(shape)) for (const shift of shape) if (Number.isFinite(shift)) { low = Math.min(low, midi + shift); high = Math.max(high, midi + shift); }
+        const hz = (pitch: number) => 440 * 2 ** ((pitch - 69) / 12);
+        if (hz(low) < range[0] || hz(high) > range[1]) issues.push({
+          level: 'warning', code: 'pitch_range', pattern: patternIndex, track, step, token,
+          message: `${where}${token}${shape?.length ? ' with its arpeggio' : ''} exceeds ${chip.id}/${voice!.id}'s base pitch range (${range[0].toFixed(1)}–${range[1].toFixed(1)} Hz). Transpose it or choose another machine; the driver can clamp or silence it. Pitch modulation is not included in this check.`,
+          silent: false,
+        });
       }
     });
 
-    void voice;
   }
 
   if (!Array.isArray(pattern.chordShape) || pattern.chordShape.length === 0) {
@@ -255,13 +276,15 @@ function checkPattern(
         `in semitones: [[0,3,7]] is minor, [[0,4,7]] is major`,
       silent: false,
     });
+  } else if (pattern.chordShape.some(shape => !Array.isArray(shape) || !shape.length || shape.some(n => !Number.isInteger(n)))) {
+    issues.push({ level: 'error', pattern: patternIndex, track: 'chord', message: `${where}each chord shape must contain integer semitone offsets`, silent: false });
   }
 }
 
 function measure(song: Song): Measured {
   let onsets = 0;
   let steps = 0;
-  const pitches: number[] = [];
+  let low = Infinity, high = -Infinity;
 
   for (const index of song.order) {
     const pattern = song.patterns[index];
@@ -272,7 +295,7 @@ function measure(song: Song): Measured {
         onsets++;
         if (track !== "perc") {
           const midi = midiOf(token);
-          if (midi !== null) pitches.push(midi);
+          if (midi !== null) { low = Math.min(low, midi); high = Math.max(high, midi); }
         }
       }
     }
@@ -282,7 +305,7 @@ function measure(song: Song): Measured {
   return {
     loopSeconds: Math.round(seconds * 10) / 10,
     onsetsPerSecond: Math.round((onsets / seconds) * 10) / 10,
-    range: pitches.length > 0 ? Math.max(...pitches) - Math.min(...pitches) : 0,
+    range: Number.isFinite(low) ? high - low : 0,
     steps,
   };
 }

@@ -29,15 +29,15 @@ export const PatternSchema = z.object({
   lead: z.string(),
   chord: z.string(),
   perc: z.string(),
-  chordShape: z.array(z.array(z.number().int())).min(1),
+  chordShape: z.array(z.array(z.number().int()).min(1)).min(1),
 });
 
-export const SongInput = z.object({
+export const SongDocumentSchema = z.object({
   title: z.string().trim().min(1).max(80).optional(),
   bpm: z.number().int().min(40).max(300),
   patterns: z.array(PatternSchema).min(1).max(16),
   order: z.array(z.number().int().min(0)).min(1).max(64),
-  /** Which chip: the NES's 2A03, or the Game Boy's. */
+  /** Which of the five shipped machines arranges this score. */
   chip: z.enum(["2a03", "dmg", "md", "snes", "c64"]).default("2a03"),
   /** What each role should sound like. Absent roles take the default word. */
   intent: IntentSchema.optional(),
@@ -45,14 +45,18 @@ export const SongInput = z.object({
   author: z.string().trim().max(60).optional(),
 });
 
+/** Admission caps apply to new publications, never to loading existing scores. */
+export const SongInput = SongDocumentSchema.extend({
+  patterns: z.array(PatternSchema.extend({
+    bass:z.string().max(4096),lead:z.string().max(4096),chord:z.string().max(4096),perc:z.string().max(4096),
+    chordShape:z.array(z.array(z.number().int()).min(1).max(32)).min(1).max(256),
+  })).min(1).max(16),
+});
 export type SongInput = z.infer<typeof SongInput>;
 
 export const RenderQuery = z.object({
-  /**
-   * Capped at five minutes. This is compute somebody else pays for, and a song
-   * is a loop - past a few times round there is nothing new to hear.
-   */
-  seconds: z.coerce.number().min(1).max(300).optional(),
+  /** Integer durations bound public render variants. Longer exports run locally. */
+  seconds: z.coerce.number().int().min(1).max(30).optional(),
 });
 
 /** The short id: base62, eight characters. */

@@ -156,14 +156,14 @@ afford.
 
 ## Rendering without a browser
 
-The chip is a pure function of the song and the sample rate. Same input, same bytes,
-every time - which is what lets a server compute a file on demand and cache it
-forever instead of storing one.
+Rendering is deterministic for a fixed engine version, score and render options.
+Cache keys must include the engine and encoder versions. The hosted API revalidates
+stable song URLs, limits public renders to 30 seconds and checks deletion on every request.
 
 ```ts
 import { renderSong, toWav } from "chipvoice";
 
-const audio = renderSong(THEME, { seconds: 30 });   // ~1.4s for 30s of sound
+const audio = renderSong(THEME, { seconds: 30 });
 writeFileSync("theme.wav", toWav(audio));
 ```
 
@@ -296,28 +296,37 @@ is under fourteen seconds, which is where a piece starts being heard as a repeat
 
 ## Other chips
 
-There is one implementation, and the shape is ready for the second without
-pretending to have it.
+Five machines ship: NES, Game Boy, Mega Drive, SNES and C64. `ChipSpec` names
+voices and role allocation; `ChipCore` consumes timestamped register writes and
+fills buffers. Instruments support frame tables, FM patches and samples.
 
-`ChipSpec` describes what actually differs between machines: the voices, in number
-and in kind; whether an instrument is per-frame tables, an FM patch or a sample; and
-whether a voice takes a pitch, a noise period, or a sample. `ChipCore` is what does
-not differ - something that takes timestamped register writes and fills a buffer.
+The portable score keeps four musical roles. Arrangers map them onto each machine:
+FM lead/bass and PSG chord/drums on Mega Drive, four sample voices on SNES, and
+shared chord/percussion on the C64's third voice. SNES triads, FM percussion and
+SID filter controls remain backlog items. VGM export supports NES, Game Boy and
+Mega Drive; SNES and C64 register logs do not yet have a shipped file exporter.
 
-What is still 2A03 in disguise, named rather than hidden:
+`validateSong` reports machine-specific base-pitch and arpeggio range warnings.
+It preserves the score; it does not guarantee every modulation stays representable.
+See the [portable score](../../docs/SCORE.md) and each chip's conformance sheet for
+capabilities and the distinction between corpus parity and physical measurements.
 
-- `Channel` is the literal union `"p1" | "p2" | "tri" | "noi"`
-- `Instrument` is volume, duty, arpeggio, slide, vibrato - the model for simple
-  waveform chips. An FM patch is four operators with an envelope each, an algorithm
-  and a feedback level, and should not be forced into this shape
-- `Pattern` names four voices. Eight do not fit four named fields
-- percussion assumes a noise channel; the SNES has none, its drums are samples, and the C64's noise is pitched, so its kit names pitches
+## Controlled variations
 
-**Each chip is a project, not a file.** The 2A03 is the simplest and best-documented
-one; the SNES is a small sampler with a 64 KiB budget and BRR compression.
-Generalising against a single case produces a bad abstraction, so the shape above is
-deliberately concrete and will be rewritten against the second chip rather than
-guessed at now.
+```ts
+import { varyScore } from "chipvoice";
+const variation = varyScore(score, {
+  kind: "melody", // or "drums", "timbres"
+  locked: ["bass", "chord"],
+  seed: 42,
+});
+```
+
+Variations are local and reproducible. Melody reuses existing pitch classes and
+keeps rhythm, including silent patterns; drums choose authored grooves.
+Locked roles retain notes and timbres. An edit drops an explicit playback ID so
+`arrange` derives a new one. The demo adds Undo, optional MIDI note input, aligned
+stems and five-machine ZIP exports with cancellation.
 
 ## API
 

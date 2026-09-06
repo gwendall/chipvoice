@@ -1,9 +1,10 @@
-import { createHash } from "node:crypto";
-import { renderSong, toWav } from "chipvoice";
+import { loopSeconds } from "chipvoice";
 import { RenderQuery, SongId } from "@/lib/schema";
 import { find, SITE, toLibrarySong } from "@/lib/songs";
 import { hasDatabase } from "@/lib/db";
-import { encodeMp3 } from "@/lib/mp3";
+import { renderAudio } from "@/lib/audio-renderer";
+import { RenderBusy } from "@/lib/render-cache";
+import { allow, clientKey } from "@/lib/limit";
 import { contentDisposition } from "@/lib/id3";
 
 export const runtime = "nodejs";
@@ -34,7 +35,7 @@ export async function GET(
   );
   if (!query.success) {
     return json(
-      { error: "bad_query", message: "seconds must be a number between 1 and 300" },
+      { error: "bad_query", message: "seconds must be an integer between 1 and 30" },
       400,
     );
   }
@@ -42,44 +43,38 @@ export async function GET(
   const found = await find(id);
   if (!found) return json({ error: "not_found" }, 404);
 
-  const started = Date.now();
-  const audio = renderSong(toLibrarySong(found.song), {
-    seconds: query.data.seconds,
-    sampleRate: 44100,
-    chip: found.song.chip,
-    stereo: true,
-  });
-
-  /*
-   * The tag matters more than the filename.
-   *
-   * Telegram, iTunes and every car stereo show what is inside the file, not
-   * what it is called - so an untagged song arrives as "unknown" however
-   * carefully it was named on the way out.
-   */
   const song = found.song;
-  const body =
-    format === "wav"
-      ? toWav(audio)
-      : encodeMp3(audio.left, audio.sampleRate, {
-          title: song.title ?? `chipvoice ${song.id}`,
-          artist: song.author ?? "chipvoice",
-          album: "chipvoice",
-          year: new Date(song.createdAt).getUTCFullYear().toString(),
-          comment: `Written on an emulated ${song.chip} sound chip. ${SITE}/s/${song.id}`,
-          url: `${SITE}/s/${song.id}`,
-        }, audio.right);
+  const seconds = query.data.seconds ?? Math.min(300, loopSeconds(toLibrarySong(song)) * 2);
+  if (seconds > 30) return json({ error: "render_too_long", message: "Public exports support up to 30 seconds. Set ?seconds=30 or export the full score in the demo." }, 422);
+  try {
+    const asset = await renderAudio({
+      score: { bpm: song.bpm, chip: song.chip, patterns: song.patterns, order: song.order, intent: song.intent ?? undefined },
+      seconds, format,
+      tags: {
+        title: song.title ?? `chipvoice ${song.id}`, artist: song.author ?? "chipvoice", album: "chipvoice",
+        year: new Date(song.createdAt).getUTCFullYear().toString(),
+        comment: `Written on an emulated ${song.chip} sound chip. ${SITE}/s/${song.id}`, url: `${SITE}/s/${song.id}`,
+      },
+    }, () => {
+      const gate = allow(`audio:${clientKey(request)}`, "render");
+      if (!gate.ok) throw Object.assign(new Error("render_rate_limited"), { retryAfter: gate.retryAfter });
+    });
+    // A deletion during a render must not resurrect the publication from cache.
+    if (!await find(id)) return json({ error: "not_found" }, 404);
+    const headers = {
+      "Content-Type": format === "wav" ? "audio/wav" : "audio/mpeg", "Cache-Control": "public, no-cache",
+      ETag: asset.etag, "Content-Disposition": contentDisposition(song.title, id, format), "X-Render-Ms": String(asset.milliseconds),
+    };
+    const tags = request.headers.get("if-none-match")?.split(",").map(tag => tag.trim().replace(/^W\//, ""));
+    if (tags?.some(tag => tag === "*" || tag === asset.etag)) return new Response(null, { status: 304, headers });
+    return new Response(asset.bytes, { headers: { ...headers, "Content-Length": String(asset.bytes.length) } });
+  } catch (error) {
+    if (error instanceof Error && "retryAfter" in error) {
+      return new Response(JSON.stringify({ error: "rate_limited", retryAfter: error.retryAfter }), { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(error.retryAfter) } });
+    }
+    return new Response(JSON.stringify({ error: error instanceof RenderBusy ? "render_busy" : "render_unavailable", message: "Audio rendering is busy or unavailable. Try again shortly, or export in the demo." }), { status: 503, headers: { "Content-Type": "application/json", "Retry-After": "5" } });
+  }
 
-  return new Response(new Uint8Array(body), {
-    headers: {
-      "Content-Type": format === "wav" ? "audio/wav" : "audio/mpeg",
-      "Content-Length": String(body.length),
-      "Cache-Control": "public, no-cache",
-      ETag: `"${createHash("sha256").update(body).digest("hex")}"`,
-      "Content-Disposition": contentDisposition(found.song.title, id, format),
-      "X-Render-Ms": String(Date.now() - started),
-    },
-  });
 }
 
 function json(body: unknown, status: number) {

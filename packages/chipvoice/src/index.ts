@@ -64,6 +64,8 @@ export { arrange, instrumentsFor, resolveIntent, INTENTS, DEFAULT_INTENT } from 
 export type { Score, Intent, Instruments, LeadIntent, ChordIntent, BassIntent, PercIntent } from "./score.js";
 export { WAVEFORMS } from "./chips/gb/arranger.js";
 export { noteToFreq } from "./driver.js";
+export { varyScore } from './variation.js';
+export type { VariationOptions } from './variation.js';
 
 /**
  * Which channel is busy, and until when.

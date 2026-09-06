@@ -210,3 +210,24 @@ underlying audio defect has been fixed merely because its animation works.
 
 The V1 demonstration should make a non-musician want to press another button
 and a developer want to copy the code.
+
+## Creative and API follow-up acceptance
+
+The next consolidated slice covers P8-23, P8-11, P8-12 and AUD-1/2/4/5/6:
+
+- Seeded local variations preserve locked roles and allow a single Undo.
+- Optional MIDI requests access only on Connect; accepted taps share recording,
+  ignore note releases, map channel-10 drums, and stop after disconnect.
+- Cancellable worker exports provide WAV, aligned isolated stems, all five
+  machine renders and supported VGM, with a score included in ZIP bundles.
+- Public audio has finite duration/concurrency/cache/rate bounds and conditional
+  GET, and cached bytes cannot revive a deleted publication.
+- Account ownership survives browser login, key replacement and key revocation;
+  concurrent magic-link redemption has only one winner.
+- Legacy/fresh database migration and rollback-on-error are tested; public JSON
+  does not expose account IDs or credential secrets.
+- Arrangement diagnostics name unrepresentable base pitches/arpeggio extremes;
+  documents distinguish shipped arrangements, future work and physical evidence.
+
+Physical MIDI/phone latency, representative CPU/GC numbers, distributed quotas,
+new chip implementations and P8-13's richer arrangements remain separate work.
