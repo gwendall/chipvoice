@@ -68,3 +68,8 @@ on the final build.
 
 ![Desktop MIDI render progress](midi-import-loading-desktop.png)
 ![Mobile MIDI render progress](midi-import-loading-mobile.png)
+
+Final qualification: all twelve complete mixes remain byte-identical to 0.15.0
+in both WAV and FLAC form. Full PCM repeatability, finite/unclipped output, SNES
+internal headroom, source/transaction checks and publication identity passed.
+The generated long-MIDI E2E also passed locally before entering regular CI.
