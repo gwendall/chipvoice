@@ -55,7 +55,10 @@ const ECHO_PAGE = 0xe0;
 const ECHO_DELAY = 3;
 
 /** Driver headroom, before the DSP's saturating voice sum. */
-const VOICE_VOLUME = 0x20;
+// $1f leaves room for rounding a chord budget across up to five voices.
+const VOICE_VOLUME = 0x1f;
+const PAN_LEFT = [1, 1, 1, 1, .68, .88, 1, .72];
+const PAN_RIGHT = [1, .68, 1, 1, 1, .88, .72, 1];
 type BankEntry = (typeof FACTORY_SAMPLES)[number];
 const SAMPLE_BY_NAME = new Map(FACTORY_SAMPLES.map(entry => [entry.name,entry]));
 /** One tuning source for both arrangement diagnostics and playback. */
@@ -131,7 +134,7 @@ export class SnesDriver implements ChipDriver {
     reg(R_EFB, 0x38);
     reg(R_ESA, ECHO_PAGE);
     reg(R_EDL, ECHO_DELAY);
-    reg(R_EON, 0x07); // the three pitched voices, not the kit
+    reg(R_EON, 0xf7); // all pitched voices, excluding the kit
     // Factory low-pass FIR; signed coefficients sum to 128 (unity gain).
     [0x0c, 0x21, 0x2b, 0x2b, 0x13, 0xfe, 0xf3, 0xf9].forEach((c, i) => reg(R_FIR + i * 0x10, c));
     for (let v = 0; v < 8; v++) {
@@ -173,7 +176,7 @@ export class SnesDriver implements ChipDriver {
     for (let f = 0; f < frames.length; f++) {
       const s = frames[f];
       t = s.at + offset;
-      const volume = Math.round((Math.max(0, Math.min(15, s.volume)) * VOICE_VOLUME) / 15);
+      const volume = (Math.max(0, Math.min(15, s.volume)) * VOICE_VOLUME) / 15;
       // A looped waveform plays its base pitch at $1000; a drum plays as recorded.
       const pitch = entry.loop && entry.baseHz > 0 ? Math.max(1, Math.min(0x3fff, Math.round((s.freq * 0x1000) / entry.baseHz))) : 0x1000;
       if (f === 0) {
@@ -182,8 +185,8 @@ export class SnesDriver implements ChipDriver {
         reg(base + 0x06, entry.adsr2);
         reg(base + 0x02, pitch & 0xff);
         reg(base + 0x03, pitch >> 8);
-        reg(base + 0x00, volume);
-        reg(base + 0x01, volume);
+        reg(base + 0x00, Math.round(volume * PAN_LEFT[v]));
+        reg(base + 0x01, Math.round(volume * PAN_RIGHT[v]));
         reg(R_KON, 1 << v);
       } else {
         if (pitch !== lastPitch) {
@@ -191,8 +194,8 @@ export class SnesDriver implements ChipDriver {
           reg(base + 0x03, pitch >> 8);
         }
         if (volume !== lastVolume) {
-          reg(base + 0x00, volume);
-          reg(base + 0x01, volume);
+          reg(base + 0x00, Math.round(volume * PAN_LEFT[v]));
+          reg(base + 0x01, Math.round(volume * PAN_RIGHT[v]));
         }
       }
       lastVolume = volume;

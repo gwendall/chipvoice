@@ -14,8 +14,8 @@ const LEADS: Record<Required<Intent>["lead"], Instrument> = {
 };
 
 const CHORDS: Record<Required<Intent>["chord"], Instrument> = {
-  plucked: { volume: [10], sustain: true, sample: "harp" },
-  held: { volume: [9], sustain: true, sample: "strings" },
+  plucked: { volume: [15], sustain: true, sample: "harp" },
+  held: { volume: [15], sustain: true, sample: "strings" },
 };
 
 const BASSES: Record<Required<Intent>["bass"], Instrument> = {

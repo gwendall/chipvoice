@@ -136,9 +136,11 @@ const LEAD = {
 };
 ```
 
-Chords are **one held note arpeggiated at frame rate**, not three notes. That is what
-the hardware did when it ran out of channels, and it is the most recognisable
-chiptune texture there is.
+SNES chords use simultaneous voices: three for a triad, up to five for an
+extended chord. The chord volume budget is divided across its notes, with moderate
+stereo placement. Shapes exceeding five notes produce a validation warning and
+use a single-voice arpeggio that retains every interval. The other console
+arrangers use one held note arpeggiated at frame rate.
 
 ## Snapping effects to the beat
 
@@ -234,8 +236,11 @@ is MIT.
 The fourth is the SNES's, `snesChip`: an S-DSP at `src/chips/snes/sdsp.ts` that
 is snes_spc's ported line for line, the second LGPL file, and identical to it
 sample for sample on the DSP's output stream. Everything on it is a sample:
-`Chip.create({ chip: "snes" })` plays waveforms and drums the driver synthesises
-and encodes to BRR (`encodeBrr` is exported), with the machine's echo on.
+`Chip.create({ chip: "snes" })` plays an original BRR bank authored and encoded
+at build time, with the machine's echo on. Lead intents choose flute, brass or
+mallet; chords choose harp or strings; bass intents choose picked, reed or synth
+bass. Each has its own attack, sustain loop and hardware envelope. Legacy
+waveforms and drums remain available; `encodeBrr` is also exported.
 `Instrument.sample` names a sample in the driver's bank. Its sheet is
 [`docs/chips/snes.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md).
 

@@ -59,7 +59,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P4-8 | Intent pickers in the studio, one per row | done | Role timbre choices shipped with P8-6 in PR #20 |
 | P4-6 | Smooth vibrato through the sweep unit, the FamiStudio trick, so a vibrato across a period high-byte boundary does not reset the phase | done | `NesDriver.smoothHighByte`; golden hash moved; see the log |
 | P4-7 | "Agent-written music sounds good" as a named goal with its own measures | doing | `feat/console-listening-evals`: [listening protocol and initial findings](AUDIO-EVALUATION.md), actual preset matrix, stems, native SNES parity, level-matched version comparisons. Human reference listening remains open |
-| P4-9 | SNES musical palette: original/licensed BRR instruments, authored envelopes and polyphonic chords evaluated against explicit musical references | todo | Capture a listening baseline with P4-7 first; DSP parity alone does not establish musical likeness |
+| P4-9 | SNES musical palette: original/licensed BRR instruments, authored envelopes and polyphonic chords evaluated against explicit musical references | doing | Original build-time BRR palette, hardware envelopes and simultaneous chords implemented; [measurements and acceptance](SNES-PALETTE.md). Listening against a chosen musical reference remains open; DSP parity does not establish musical likeness |
 
 ## Operations
 

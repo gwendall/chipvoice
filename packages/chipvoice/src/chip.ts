@@ -50,6 +50,10 @@ export interface ChipSpec {
   voices: VoiceSpec[];
   /** Which voice each of a song's roles lands on. */
   roles: Record<Role, string>;
+  /** Simultaneous chord allocation, including roles.chord first. Without it,
+   * chord shapes use that single voice's frame-rate arpeggio. Shapes larger
+   * than this bank also use the arpeggio, preserving every requested tone. */
+  chordVoices?: readonly string[];
   /**
    * The shape an instrument takes for this chip. `table` is the FamiTracker
    * model: per-frame arrays for volume, duty, arpeggio and pitch.
@@ -170,7 +174,7 @@ export type Waveform = "pulse" | "triangle" | "sawtooth" | "noise";
  * instruments' pitch tables are.
  */
 export interface FrameState {
-  /** 0 to 15. */
+  /** 0 to 15; may be fractional until hardware register quantization. */
   volume: number;
   /** Hertz, for a voice that takes a pitch; 0 otherwise. */
   freq: number;

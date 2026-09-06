@@ -292,6 +292,9 @@ export class APU implements NoteSink {
 
     const frames = Math.max(1, Math.round(opts.duration * FRAME_RATE));
     const gain = opts.gain ?? 1;
+    // SNES has finer hardware volume steps; preserve shared chord gain until
+    // its register encoder. Keep legacy frame quantization on other chips.
+    const fractionalVolume = this.chip.spec.id === "snes";
     const detune = opts.detune ?? 0;
     const wave = inst.wave ?? null;
     const waveforms = inst.waveform === undefined ? null : Array.isArray(inst.waveform) ? inst.waveform : [inst.waveform];
@@ -308,7 +311,8 @@ export class APU implements NoteSink {
       if (f < inst.volume.length) vol = inst.volume[f];
       else if (inst.sustain) vol = inst.volume[inst.volume.length - 1];
       else vol = 0;
-      vol = Math.max(0, Math.min(15, Math.round(vol * gain)));
+      vol *= gain;
+      vol = Math.max(0, Math.min(15, fractionalVolume ? vol : Math.round(vol)));
 
       // Arpeggio, slide and vibrato all act on the note, not the period, so
       // they stay musical across octaves.

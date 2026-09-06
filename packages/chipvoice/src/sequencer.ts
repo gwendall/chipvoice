@@ -17,7 +17,7 @@ export interface ChannelClaim {
 export interface Pattern {
   bass: string;
   lead: string;
-  /** One note per chord; the instrument arpeggiates it at frame rate. */
+  /** One root per chord; the chip allocates simultaneous voices or an arpeggio. */
   chord: string;
   chordShape: number[][];
   perc: string;
@@ -157,18 +157,21 @@ export class Sequencer {
   private live: boolean;
   /** Which voice each of the song's four lines plays on: the chip's map. */
   private readonly roles: Record<Role, string>;
+  private readonly chordVoices: readonly string[];
+  private chordInstrument: Instrument | null = null;
 
   constructor(
     apu: NoteSink,
     arbiter: ChannelClaim,
     currentTime: () => number,
-    options: { live?: boolean; roles?: Record<Role, string> } = {},
+    options: { live?: boolean; roles?: Record<Role, string>; chordVoices?: readonly string[] } = {},
   ) {
     this.apu = apu;
     this.arbiter = arbiter;
     this.currentTime = currentTime;
     this.live = options.live ?? true;
     this.roles = options.roles ?? NES_ROLES;
+    this.chordVoices = options.chordVoices ? [...options.chordVoices] : [];
   }
 
   get isPlaying() {
@@ -287,6 +290,7 @@ export class Sequencer {
     if (!position && this.song?.id === song.id && this.running) return;
     this.stop();
     this.song = song;
+    this.chordInstrument = this.chordVoices.length ? { ...song.chord, arp: undefined } : null;
     this.compiled = song.patterns.map(compile);
     this.timeline.length = 0;
     this.orderIndex = 0;
@@ -322,9 +326,11 @@ export class Sequencer {
     }
     this.apu.stop(this.roles.lead);
     this.apu.stop(this.roles.chord);
+    for (const voice of this.chordVoices) if (voice !== this.roles.chord) this.apu.stop(voice);
     this.apu.stop(this.roles.bass);
     if (wasRunning) this.apu.stop(this.roles.perc);
     this.song = null;
+    this.chordInstrument = null;
   }
 
   /**
@@ -406,39 +412,55 @@ export class Sequencer {
     }
 
     const chord = event(pattern.chord);
-    if (chord && chord.token !== "=" && this.arbiter.canPlay(chordVoice, at)) {
+    if (chord?.token === "=" && this.chordVoices.length) {
+      for (const voice of this.chordVoices) if (this.arbiter.canPlay(voice, at)) this.apu.stop(voice, at);
+    }
+    if (chord && chord.token !== "=" && (this.chordVoices.length || this.arbiter.canPlay(chordVoice, at))) {
       const shape =
         pattern.chordShape[this.chordSlot % pattern.chordShape.length];
       this.chordSlot++;
-      const instrument = { ...song.chord, arp: shape, arpLoop: true };
-      const play = (start: number, duration: number) => {
-        if (duration < 1 / FRAME_RATE) return;
-        this.apu.playNote(chordVoice, { note: chord.token, instrument, duration, at: start, gain: song.gain });
-      };
-      if (chordVoice !== percVoice) {
-        play(at, chord.length * stepTime * 0.98);
-      } else {
-        // One voice for both, as on a SID: a drum cuts the chord, and the
-        // chord comes back after it, until the next drum or its own end. A
-        // segment ends a frame before the drum so its note off cannot land
-        // on the drum's gate.
-        const kit = song.perc ?? DEFAULT_KIT;
-        const drumAt = (step: number) => {
-          const hit = pattern.perc.get(step);
-          return hit ? kit[hit.token as keyof PercussionKit] : undefined;
+      if (this.chordVoices.length && shape.length <= this.chordVoices.length) {
+        // Divide the chord's amplitude budget, not its pitch, across voices.
+        // A borrowed voice never shifts the shape assigned to the next chord.
+        const gain = song.gain / shape.length;
+        for (let tone = 0; tone < shape.length; tone++) {
+          const voice = this.chordVoices[tone];
+          if (this.arbiter.canPlay(voice, at)) this.apu.playNote(voice, {
+            note: chord.token, detune: shape[tone], instrument: this.chordInstrument!,
+            duration: chord.length * stepTime * 0.98, at, gain,
+          });
+        }
+      } else if (this.arbiter.canPlay(chordVoice, at)) {
+        const instrument = { ...song.chord, arp: shape, arpLoop: true };
+        const play = (start: number, duration: number) => {
+          if (duration < 1 / FRAME_RATE) return;
+          this.apu.playNote(chordVoice, { note: chord.token, instrument, duration, at: start, gain: song.gain });
         };
-        let s = 0;
-        while (s < chord.length) {
-          let start = at + s * stepTime;
-          const hit = drumAt(this.step + s);
-          if (hit) start += (Math.max(1, Math.round(hit.duration * FRAME_RATE)) + 1) / FRAME_RATE;
-          let e = s + 1;
-          while (e < chord.length && !drumAt(this.step + e)) e++;
-          let duration: number;
-          if (e < chord.length) duration = (Math.floor((at + e * stepTime - start) * FRAME_RATE) - 1) / FRAME_RATE;
-          else duration = at + chord.length * stepTime * 0.98 - start;
-          play(start, duration);
-          s = e;
+        if (chordVoice !== percVoice) {
+          play(at, chord.length * stepTime * 0.98);
+        } else {
+          // One voice for both, as on a SID: a drum cuts the chord, and the
+          // chord comes back after it, until the next drum or its own end. A
+          // segment ends a frame before the drum so its note off cannot land
+          // on the drum's gate.
+          const kit = song.perc ?? DEFAULT_KIT;
+          const drumAt = (step: number) => {
+            const hit = pattern.perc.get(step);
+            return hit ? kit[hit.token as keyof PercussionKit] : undefined;
+          };
+          let s = 0;
+          while (s < chord.length) {
+            let start = at + s * stepTime;
+            const hit = drumAt(this.step + s);
+            if (hit) start += (Math.max(1, Math.round(hit.duration * FRAME_RATE)) + 1) / FRAME_RATE;
+            let e = s + 1;
+            while (e < chord.length && !drumAt(this.step + e)) e++;
+            let duration: number;
+            if (e < chord.length) duration = (Math.floor((at + e * stepTime - start) * FRAME_RATE) - 1) / FRAME_RATE;
+            else duration = at + chord.length * stepTime * 0.98 - start;
+            play(start, duration);
+            s = e;
+          }
         }
       }
     }

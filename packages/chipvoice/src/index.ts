@@ -172,7 +172,7 @@ export class Chip {
     this.master = master;
     this.ownsContext = owns;
     this.level = gain;
-    this.sequencer = new Sequencer(apu, { canPlay: () => true }, () => ctx.currentTime, { roles: apu.chip.spec.roles });
+    this.sequencer = new Sequencer(apu, { canPlay: () => true }, () => ctx.currentTime, { roles: apu.chip.spec.roles, chordVoices: apu.chip.spec.chordVoices });
   }
 
   /**
