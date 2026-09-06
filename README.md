@@ -176,3 +176,28 @@ headers and bundled licence notices. Console marks retain their owners’ rights
 For composition quality checks, use the [audio listening lab](docs/AUDIO-EVALUATION.md):
 actual presets on all five consoles, isolated parts, level-matched comparisons,
 and independent SNES DSP execution. Digital parity does not guarantee a good arrangement.
+
+### Familiar melodies and composition
+
+The [playground](https://chipvoice.dev) includes short **Mario Ground Theme**,
+**Zelda Overworld** and **Sonic Green Hill Zone** study arrangements alongside
+its original loops. Each uses the same notes on all five machines. These are
+four-bar adaptations with visible credits and source links, not full soundtracks
+or original game recordings. Zelda's triplets are explicitly adapted to the
+sixteenth-note grid. The [listening lab](https://chipvoice.dev/lab) provides the
+same repertoire with isolated parts and measured comparisons.
+
+Tempo, transposition and drum activity can be explored during playback. A slider
+also has a numeric input; one Undo reverses a gesture. Transposition and drum
+activity become ordinary score notes, so sharing and exports retain the result.
+
+```ts
+import { shapeScore, arrange } from 'chipvoice';
+const variation = shapeScore(score, { transpose: 7, drums: 60 });
+const song = arrange(variation, 'snes');
+```
+
+The [partition-to-cartridge workflow](scores/README.md) documents source review,
+optional MIDI extraction, reproducible compilation (`pnpm scores:build`), explicit
+rhythm reductions and five-console evaluation. CI checks generated cartridges;
+no third-party score download or audio-corpus regeneration runs during builds.

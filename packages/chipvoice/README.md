@@ -427,3 +427,14 @@ honors unless explicitly overridden. Always dispose replaced instances.
 Server audio links use the currently deployed renderer and revalidate their
 bytes. For reproductions across releases, retain the score and pin the package
 version. See [the demo specification](https://github.com/gwendall/chipvoice/blob/main/docs/DEMO.md).
+
+### Shape a composition
+
+`shapeScore(source, { transpose: 7, drums: 60 })` moves pitched parts by seven
+semitones and retains 60% of the source drum hits, with deterministic preference
+for kick/snare and strong beats. Chord intervals, rests and timing are preserved.
+The result is an ordinary score, usable by `arrange`, playback, recording and
+export. Apply each preview to the same source; `{transpose: 0, drums: 100}` returns
+that source exactly. `transposeBounds(source)` gives the allowed shift within one
+octave; out-of-range shifts throw rather than clip notes. See the repository's
+[score workflow](https://github.com/gwendall/chipvoice/blob/main/scores/README.md).

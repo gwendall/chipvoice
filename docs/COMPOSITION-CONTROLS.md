@@ -9,16 +9,15 @@ Undo group. Partial input remains editable; blur/Enter clamps to the supported
 range, and an empty value restores the last valid tempo. Both controls lock
 during recording. Expose the reusable primitive in `/lab/components`.
 
-## Next composition controls, in priority order
+## Composition controls after the cartridge update
 
-- Transposition: −12 to +12 semitones, with a zero detent and explicit reset.
+- Implemented: transposition, −12 to +12 semitones, with a zero detent and explicit reset.
   Apply to pitched roles, retain chords and leave percussion unchanged. Preserve
   the original score so repeated movement cannot compound rounding or clipping.
 - Swing: 50–75%, with 50% labelled straight. This requires an SDK timing field
   shared by real-time playback, recording, export and register capture. Do not
   add a cosmetic slider that affects only the browser or changes beat duration.
-- Drum density: sparse to busy, deterministic seed, reversible preview and locked
-  parts. Build on the existing variation model; do not randomize every drag event.
+- Implemented: drum activity, 0–100% of the current groove, deterministic and reversible. Strong kick/snare beats are retained first. Timbre/role locks continue to govern the separate variation buttons.
 - Per-role level: useful for composing a balance, but it must be serialized in
   the score and share export behavior. Keep global listening volume separate.
 
@@ -36,7 +35,7 @@ or playback rate of its reference audio would compromise those comparisons.
 
 Suggested first comparison set: Mario overworld (articulation and syncopation),
 Zelda main theme (held melody and harmonic support), Green Hill Zone (bass and
-rhythmic drive). These are proposed repertoire, not shipped cartridges.
+rhythmic drive). These now ship as credited four-bar study arrangements; see [the source workflow](../scores/README.md).
 
 Use a single reviewed canonical score with melody, bass, harmony and percussion,
 then the existing five-console orchestrators. Keep notes, tempo, excerpt length
@@ -52,7 +51,7 @@ Evaluate the canonical notes independently, then compare full loops and isolated
 roles on all five engines with the existing replay/native checks and listening
 protocol. Familiarity helps listening judgments; it does not replace DSP tests.
 
-No third-party scores or audio have been embedded in this change. Availability
+Source PDFs and MIDI files are local research inputs. The shipped cartridge recipes contain short adapted phrases and newly arranged supporting parts. Availability
 of sheet music is evidence of a usable reference, not evidence of permission to
 redistribute an adaptation in the public demo. Track publication permission as
 part of each cartridge's provenance rather than assuming the sheet-music or

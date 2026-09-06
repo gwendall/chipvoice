@@ -1,8 +1,10 @@
+import classics from './classics.json';
 import type { Pattern } from 'chipvoice';
 import type { SongDocument } from './document';
 
 const pattern = (lead: string, chord: string, bass: string, perc: string, chordShape: number[][]): Pattern => ({ lead, chord, bass, perc, chordShape });
-export const PRESETS: { id: string; title: string; mood: string; color: string; song: SongDocument }[] = [
+export type Preset = {id: string; title: string; mood: string; color: string; song: SongDocument; composer?: string; adaptation?: string; source?: {url: string; transcriber: string; excerpt: string}};
+export const ORIGINAL_PRESETS: Preset[] = [
   { id: 'overworld', title: 'Overworld', mood: 'A new adventure', color: '#e5af46', song: {
     title: 'Overworld', chip: '2a03', bpm: 144, intent: { lead: 'bright', chord: 'plucked', bass: 'round', perc: 'soft' }, order: [0, 1], patterns: [
       pattern('E5 . G5 . A5 . G5 E5 D5 . E5 . G5 . . =', 'C4 . . . . . . . G3 . . . . . . .', 'C2 . C3 . C2 . G2 . G2 . G3 . G2 . D3 .', 'K . H . S . H . K . H H S . H .', [[0,4,7], [0,4,7]]),
@@ -22,3 +24,6 @@ export const PRESETS: { id: string; title: string; mood: string; color: string; 
     ],
   } },
 ];
+
+export const CLASSIC_PRESETS = classics as Preset[];
+export const PRESETS: Preset[] = [...ORIGINAL_PRESETS, ...CLASSIC_PRESETS];

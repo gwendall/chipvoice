@@ -6,13 +6,14 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 const root=resolve(import.meta.dirname,'../../..');
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+const classicIds=JSON.parse(await readFile(resolve(root,'scores/classics.json'),'utf8')).map(recipe=>recipe.id);
 export function validateCollection(report){
- const chips=['2a03','dmg','md','snes','c64'],presets=['overworld','boss','midnight'],roles=['mix','lead','chord','bass','perc'];
- if(report.version!==1||report.cases?.length!==chips.length*presets.length)throw new Error('Publication requires all three presets on all five consoles');
+ const chips=['2a03','dmg','md','snes','c64'],presets=['overworld','boss','midnight',...classicIds],roles=['mix','lead','chord','bass','perc'];
+ if(report.version!==1||report.cases?.length!==chips.length*presets.length)throw new Error('Publication requires every cartridge on all five consoles');
  for(const preset of presets)for(const chip of chips){
   const rows=report.cases.filter(row=>row.preset===preset&&row.chip===chip),row=rows[0];
   if(rows.length!==1||!row.technicalPass||!row.completeLoop||!row.replay?.ok||row.signalWarnings?.length||roles.some(role=>!row.assets?.[role]))throw new Error(`Missing or failed full-loop/stem evidence: ${preset}/${chip}`);
-  if(chip==='snes'&&(!row.oracle?.ok||!row.assets.native||roles.some(role=>!row.baseline?.[role])))throw new Error(`Missing native or before/after SNES evidence: ${preset}`);
+  if(chip==='snes'&&(!row.oracle?.ok||!row.assets.native||(!classicIds.includes(preset)&&roles.some(role=>!row.baseline?.[role]))))throw new Error(`Missing native or before/after SNES evidence: ${preset}`);
  }
 }
 export async function ensureFlac(source,target){
@@ -33,16 +34,24 @@ export async function publish(input){
  const report=JSON.parse(await readFile(input,'utf8'));validateCollection(report);
  const version=report.engineSha256.slice(0,12),relative=`/lab-data/${version}`;
  const out=resolve(root,'apps/web/public'+relative);await mkdir(out,{recursive:true});
+ const available=new Map();
+ try{
+  const previous=JSON.parse(await readFile(resolve(root,'apps/web/public/lab-data/report.json'),'utf8'));
+  for(const row of previous.cases)for(const collection of [row.assets,row.baseline??{}])for(const entry of Object.values(collection)){
+   if(entry.sourceWavSha256&&new RegExp('^/lab-data/[a-f0-9]+/'+entry.sourceWavSha256+'\\.flac$').test(entry.file))available.set(entry.sourceWavSha256,entry.file);
+  }
+ }catch(error){if(error.code!=='ENOENT')throw error;}
  const verified=new Map();
  for(const row of report.cases)for(const collection of [row.assets,row.baseline??{}])for(const entry of Object.values(collection)){
   const source=resolve(dirname(input),entry.file),wav=await readFile(source);
   if(hash(wav)!==entry.sha256)throw new Error(`Source checksum mismatch: ${entry.file}`);
   const sourceHash=entry.sha256;
   if(!verified.has(sourceHash)){
-   const compressed=await ensureFlac(source,resolve(out,sourceHash+'.flac'));
-   verified.set(sourceHash,{hash:hash(compressed),bytes:compressed.length});
+   const file=available.get(sourceHash)??`${relative}/${sourceHash}.flac`;
+   const compressed=await ensureFlac(source,resolve(root,'apps/web/public'+file));
+   verified.set(sourceHash,{hash:hash(compressed),bytes:compressed.length,file});
   }
-  entry.sourceWavSha256=sourceHash;entry.sha256=verified.get(sourceHash).hash;entry.file=`${relative}/${sourceHash}.flac`;
+  entry.sourceWavSha256=sourceHash;entry.sha256=verified.get(sourceHash).hash;entry.file=verified.get(sourceHash).file;
  }
  report.publication={format:'FLAC',losslessFrom:'16-bit evaluation WAV',sourceReportSha256:hash(await readFile(input)),revision:report.revision};
  const manifest=resolve(root,'apps/web/public/lab-data/report.json');

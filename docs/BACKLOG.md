@@ -398,3 +398,12 @@ with a synchronized manual input and grouped Undo. Further controls and sourced
 Mario/Zelda/Sonic repertoire proposals are recorded in
 [composition controls](COMPOSITION-CONTROLS.md); these proposals are not yet
 implemented or included in the public evaluation corpus.
+
+
+**2026-09-06, familiar cartridges.** Mario Ground Theme, Zelda Overworld and
+Sonic Green Hill Zone now have credited four-bar study arrangements on all five
+consoles, with source/adaptation notes in the playground and lab. Transposition
+and deterministic drum activity are reversible live controls. The
+[score workflow](../scores/README.md) covers optional MIDI extraction, reviewed
+recipes, reproducible compilation, explicit rhythm reduction and publication.
+Swing and per-role gain remain future work.

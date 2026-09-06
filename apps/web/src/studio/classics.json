@@ -1,0 +1,315 @@
+[
+  {
+    "id": "mario",
+    "title": "Mario · Ground Theme",
+    "mood": "World 1–1 · opening study",
+    "color": "#d46d52",
+    "source": {
+      "url": "https://ichigos.com/sheets/293",
+      "transcriber": "AltoNicoRuso / Alejandro",
+      "fileId": 2073,
+      "excerpt": "Opening four bars; melody raised one octave from the viola transcription",
+      "pdfSha256": "315ad3407a97bc8705b2c0e1bfb02bba3511bcbe41eba92f20de9e9bce68a064"
+    },
+    "composer": "Koji Kondo",
+    "adaptation": "Four-bar opening study. Melody and written rests retained; new bass, harmony and drums. A short loop, not the complete game soundtrack.",
+    "quantization": [],
+    "song": {
+      "title": "Mario · Ground Theme",
+      "author": "Koji Kondo",
+      "chip": "2a03",
+      "bpm": 200,
+      "intent": {
+        "lead": "bright",
+        "chord": "plucked",
+        "bass": "round",
+        "perc": "soft"
+      },
+      "patterns": [
+        {
+          "lead": "E5 . E5 . = . E5 . = . C5 . E5 . = .",
+          "chord": "C4 . . . . . . . . . . . . . . .",
+          "bass": "C2 . . = G2 . . = C2 . . = G2 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7
+            ]
+          ]
+        },
+        {
+          "lead": "G5 . = . . . . . G4 . = . . . . .",
+          "chord": "G3 . . . . . . . . . . . . . . .",
+          "bass": "G2 . . = D3 . . = G2 . . = D3 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7
+            ]
+          ]
+        },
+        {
+          "lead": "C5 . = . . . G4 . = . . . E4 . = .",
+          "chord": "C4 . . . . . . . . . . . . . . .",
+          "bass": "C2 . . = G2 . . = C2 . . = G2 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7
+            ]
+          ]
+        },
+        {
+          "lead": "= . A4 . = . B4 . = . Bb4 . A4 . = .",
+          "chord": "F3 . . . . . . . . . . . . . . .",
+          "bass": "F2 . . = C3 . . = F2 . . = C3 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7
+            ]
+          ]
+        }
+      ],
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "recipeSha256": "48248a7910226020463767dc3ddd2ca2045e0f545d765212e38910509beabcee"
+  },
+  {
+    "id": "zelda",
+    "title": "Zelda · Overworld",
+    "mood": "An open world · heroic phrase",
+    "color": "#799776",
+    "source": {
+      "url": "https://ichigos.com/sheets/z",
+      "transcriber": "R2XC",
+      "fileId": 2377,
+      "excerpt": "Main-theme phrase, bars 7–10; concert pitch, recast in B-flat",
+      "pdfSha256": "80f8b11e286b3850f4c0bf563b46c196f03b4188c277ad4504737b4e8b7eb088"
+    },
+    "composer": "Koji Kondo",
+    "adaptation": "Four-bar main-theme study in B-flat. Triplet runs are explicitly fitted to the sixteenth grid; new supporting parts. A short arrangement, not an original audio capture.",
+    "quantization": [
+      {
+        "bar": 2,
+        "beat": 3.3333333333333335,
+        "renderedBeat": 3.25
+      },
+      {
+        "bar": 2,
+        "beat": 3.3333333333333335,
+        "renderedBeat": 3.25
+      },
+      {
+        "bar": 2,
+        "beat": 3.666666666666667,
+        "renderedBeat": 3.75
+      },
+      {
+        "bar": 2,
+        "beat": 3.666666666666667,
+        "renderedBeat": 3.75
+      },
+      {
+        "bar": 3,
+        "beat": 3.3333333333333335,
+        "renderedBeat": 3.25
+      },
+      {
+        "bar": 3,
+        "beat": 3.3333333333333335,
+        "renderedBeat": 3.25
+      },
+      {
+        "bar": 3,
+        "beat": 3.666666666666667,
+        "renderedBeat": 3.75
+      },
+      {
+        "bar": 3,
+        "beat": 3.666666666666667,
+        "renderedBeat": 3.75
+      }
+    ],
+    "song": {
+      "title": "Zelda · Overworld",
+      "author": "Koji Kondo",
+      "chip": "snes",
+      "bpm": 150,
+      "intent": {
+        "lead": "round",
+        "chord": "held",
+        "bass": "round",
+        "perc": "soft"
+      },
+      "patterns": [
+        {
+          "lead": "Bb4 . . . F4 . . . . . Bb4 . Bb4 C5 D5 Eb5",
+          "chord": "Bb3 . . . . . . . . . . . . . . .",
+          "bass": "Bb1 . . = F2 . . = Bb1 . . = F2 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7
+            ]
+          ]
+        },
+        {
+          "lead": "F5 . . . . . . . = . F5 . F5 G5 . A5",
+          "chord": "Ab3 . . . . . . . . . . . . . . .",
+          "bass": "Ab1 . . = Eb2 . . = Ab1 . . = Eb2 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7
+            ]
+          ]
+        },
+        {
+          "lead": "Bb5 . . . . . . . Bb5 . Bb5 . A5 G5 . F5",
+          "chord": "Gb3 . . . . . . . . . . . . . . .",
+          "bass": "Gb2 . . = Db3 . . = Gb2 . . = Db3 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7
+            ]
+          ]
+        },
+        {
+          "lead": "G5 . . F5 Eb5 . . . . . . . F5 . . .",
+          "chord": "F3 . . . . . . . . . . . . . . .",
+          "bass": "F2 . . = C3 . . = F2 . . = C3 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7,
+              10
+            ]
+          ]
+        }
+      ],
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "recipeSha256": "27b8c3aad2c2e8616d00026b01a1e4da44017a508845b242cca507d0cc8ecd7e"
+  },
+  {
+    "id": "sonic",
+    "title": "Sonic · Green Hill Zone",
+    "mood": "Green hills · syncopated sunshine",
+    "color": "#628faf",
+    "source": {
+      "url": "https://ichigos.com/sheets/712",
+      "transcriber": "NPonline",
+      "fileId": 3093,
+      "excerpt": "Opening four bars of the seventh-chord piano exercise; melody lowered one octave",
+      "pdfSha256": "2fd70e0959e7d1b1a640f8c0f760029837e0906f1450e825403fe4aeca917397"
+    },
+    "composer": "Masato Nakamura",
+    "adaptation": "Four-bar piano-study adaptation. Melody, rests and seventh-chord progression retained; lower bass and a new drum groove. Same score on every console.",
+    "quantization": [],
+    "song": {
+      "title": "Sonic · Green Hill Zone",
+      "author": "Masato Nakamura",
+      "chip": "md",
+      "bpm": 150,
+      "intent": {
+        "lead": "round",
+        "chord": "plucked",
+        "bass": "bright",
+        "perc": "soft"
+      },
+      "patterns": [
+        {
+          "lead": "= . . . . . . . C5 . A4 . . . C5 .",
+          "chord": "F3 . . . . . . . . . . . . . . .",
+          "bass": "F2 . . = C3 . . = F2 . . = C3 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7,
+              11
+            ]
+          ]
+        },
+        {
+          "lead": "B4 . . . C5 . B4 . . . G4 . . . . .",
+          "chord": "E3 . . . . . . . . . . . . . . .",
+          "bass": "E2 . . = B2 . . = E2 . . = B2 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              3,
+              7,
+              10
+            ]
+          ]
+        },
+        {
+          "lead": "= . . . . . A4 . E5 . D5 . . . C5 .",
+          "chord": "F3 . . . . . . . . . . . . . . .",
+          "bass": "F2 . . = C3 . . = F2 . . = C3 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              4,
+              7,
+              11
+            ]
+          ]
+        },
+        {
+          "lead": "B4 . . . C5 . B4 . . . G4 . . . . .",
+          "chord": "E3 . . . . . . . . . . . . . . .",
+          "bass": "E2 . . = B2 . . = E2 . . = B2 . . =",
+          "perc": "K . H . S . H . K . H . S . H .",
+          "chordShape": [
+            [
+              0,
+              3,
+              7,
+              10
+            ]
+          ]
+        }
+      ],
+      "order": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "recipeSha256": "86676a46d6b2cae249f1501e7ee85faa1cb82fd6d6cd4a2d5d452d761b79fea6"
+  }
+]
