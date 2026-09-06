@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useReducer, useState } from 'react';
 import { decodeDocument, readDocument, type SongDocument } from './document';
-import { PRESETS } from './presets';
+import { DEFAULT_PRESET } from './presets';
 const STORAGE = 'chipvoice.draft.v1';
 type Update = SongDocument | ((song: SongDocument) => SongDocument);
 type State = { past: SongDocument[]; song: SongDocument; future: SongDocument[]; group?: string };
@@ -20,7 +20,7 @@ function reducer(state: State, action: Action): State {
 }
 export function useSongDocument(initial?: SongDocument, sourceId?: string) {
   const storageKey = sourceId ? `${STORAGE}:${sourceId}` : STORAGE;
-  const [state, dispatch] = useReducer(reducer, { past: [], song: initial ?? PRESETS[0].song, future: [] });
+  const [state, dispatch] = useReducer(reducer, { past: [], song: initial ?? DEFAULT_PRESET.song, future: [] });
   const [ready, setReady] = useState(false);
   const [recovered, setRecovered] = useState(false);
   useEffect(() => {

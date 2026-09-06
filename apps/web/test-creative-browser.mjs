@@ -19,6 +19,7 @@ await page.addInitScript(()=>{
 });
 try {
   await page.goto(process.env.SITE);
+  await page.locator('.original-tunes summary').click();await page.getByRole('button',{name:'Load Overworld',exact:true}).click();
   await page.getByRole('button',{name:'View code',exact:false}).click();
   await page.getByRole('button',{name:'Score JSON',exact:true}).click();
   const score=()=>page.locator('.code-panel pre').textContent().then(JSON.parse);

@@ -36,7 +36,8 @@ try{
  await number.fill('999');await number.press('Enter');await valueIs(number,'300');
  await number.fill('');await number.press('Enter');await valueIs(number,'300');
  await number.fill('120');await number.press('Enter');
- await page.getByRole('button',{name:'Play',exact:true}).click();
+ // Earlier console gestures may already have enabled the one-time autoplay.
+ if(!await page.getByRole('button',{name:'Stop',exact:true}).count())await page.getByRole('button',{name:'Play',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.position()?.step>0);
  await page.evaluate(async()=>{
   const ctx=window.audioBus.context;
@@ -51,7 +52,7 @@ try{
  await slider.focus();await page.keyboard.press('PageUp');await page.waitForTimeout(420);
  await number.fill('132');await number.press('Enter');await page.waitForTimeout(420);
  await slider.focus();await page.keyboard.press('End');await page.waitForTimeout(420);
- await page.locator('.machines').getByRole('button',{name:'SNES',exact:true}).click();
+ await page.locator('.machines').getByRole('button',{name:'Super Famicom',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.spec.id==='snes');
  await page.waitForTimeout(150);
  const results=await page.evaluate(()=>({blocks:window.audioBlocks,transitions:window.phaseTransitions}));

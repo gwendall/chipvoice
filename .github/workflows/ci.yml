@@ -57,6 +57,7 @@ jobs:
             .artifacts/lab
             .artifacts/continuity
             .artifacts/composition
+            .artifacts/japanese-playground
           retention-days: 7
 
   conformance:

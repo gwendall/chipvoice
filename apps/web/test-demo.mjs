@@ -10,7 +10,7 @@ const artifacts = resolve('../../.artifacts/demo');
 await mkdir(artifacts, { recursive: true });
 const engine = process.env.BROWSER || 'chromium';
 const browser = await ({ chromium, firefox, webkit }[engine]).launch();
-const machines = [['NES', '2a03'], ['Game Boy', 'dmg'], ['Mega Drive', 'md'], ['SNES', 'snes'], ['C64', 'c64']];
+const machines = [['Famicom', '2a03'], ['Game Boy', 'dmg'], ['Mega Drive', 'md'], ['Super Famicom', 'snes']];
 const errors = []; const report = [];
 const check = (name, evidence) => { report.push({ name, evidence }); console.log('PASS', name, evidence ?? ''); };
 const songFrom = page => page.evaluate(() => JSON.parse(document.querySelector('.code-panel pre').textContent));
@@ -28,8 +28,8 @@ try {
   const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.goto(base); await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
   assert.equal(await page.evaluate(() => !!window.chipvoice), false); check('Opening the demo does not start audio');
-  assert.equal(await page.locator('.machine-logo').count(), 5);
-  for (const name of ['nes', 'gb', 'md', 'snes', 'c64']) assert.equal((await page.request.get(`${base}/machines/${name}.svg`)).status(), 200);
+  assert.equal(await page.locator('.machine-logo').count(), 4);
+  for (const name of ['famicom', 'game-boy', 'mega-drive-jp', 'super-famicom']) assert.equal((await page.request.get(`${base}/machines/${name}.svg`)).status(), 200);
   await page.screenshot({ path: `${artifacts}/${engine}-desktop-initial.png`, fullPage: true });
   await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.waitForFunction(() => window.chipvoice?.playing && window.chipvoice.position());
@@ -52,9 +52,10 @@ try {
     await page.waitForFunction(() => window.observedOwnership);
     await page.screenshot({ path: `${artifacts}/${engine}-${id}-effect.png`, fullPage: false });
   }
-  for (const name of ['NES', 'Game Boy', 'NES', 'SNES', 'C64', 'NES']) await page.locator('.machines').getByRole('button', { name, exact: true }).click();
+  for (const name of ['Famicom', 'Game Boy', 'Famicom', 'Super Famicom', 'Famicom']) await page.locator('.machines').getByRole('button', { name, exact: true }).click();
   await page.waitForFunction(() => window.chipvoice?.spec.id === '2a03' && window.chipvoice.playing);
   assert.ok((await amplitude(page)).rms > .001); check('Repeated switches retain working audio');
+  await page.locator('.original-tunes summary').click();
   for (const title of ['Overworld', 'Boss Fight', 'Midnight']) {
     await page.getByRole('button', { name: `Load ${title}`, exact: true }).click();
     assert.ok((await amplitude(page)).rms > .001, `${title} is audible`);
