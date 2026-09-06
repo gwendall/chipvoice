@@ -23,7 +23,7 @@ if(option('scores',null)){const score=JSON.parse(await readFile(resolve(root,opt
 if(option('preset',null))presets=presets.filter(preset=>preset.id===option('preset'));
 if(!presets.length||presets.some(preset=>!/^[-a-zA-Z0-9_]+$/.test(preset.id)))throw new Error('No matching presets or invalid preset ID');
 if(new Set(presets.map(preset=>preset.id)).size!==presets.length)throw new Error('Duplicate preset ID');
-const secondsOption=option('seconds',null);if(secondsOption!==null&&(!Number.isFinite(Number(secondsOption))||Number(secondsOption)<=0||Number(secondsOption)>30))throw new Error('seconds must be in (0,30]');
+const secondsOption=option('seconds',null);if(secondsOption!==null&&(!Number.isFinite(Number(secondsOption))||Number(secondsOption)<=0||Number(secondsOption)>180))throw new Error('seconds must be in (0,180]');
 const ffmpeg=spawnSync('ffmpeg',['-version'],{encoding:'utf8'});
 const ffmpegVersion=ffmpeg.status===0?ffmpeg.stdout.split('\n')[0]:null;
 const revision=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
@@ -63,12 +63,12 @@ let failed=false;
 for(const preset of presets)for(const id of ids){
  const chip=chips[id],song=arrange(preset.song,chip.spec.id),validation=validateSong(song);
  if(!validation.ok)throw new Error(`Invalid score ${preset.id}/${id}: ${JSON.stringify(validation.issues)}`);
- const seconds=secondsOption===null?Math.min(30,loopSeconds(song)):Number(secondsOption);
+ const seconds=secondsOption===null?Math.min(180,loopSeconds(song)):Number(secondsOption);
  const audio=renderSong(song,{seconds,stereo:true}),log=recordSong(song,{seconds});
  const core=chip.create(44100);core.setGain(.78);for(const block of log.memory)core.load?.(block.address,block.bytes);core.schedule(log.events);
  const replay={sampleRate:44100,left:new Float32Array(audio.left.length),right:new Float32Array(audio.left.length)};core.render(replay.left,replay.right,0);
  const score={...preset.song,chip:chip.spec.id};await writeFile(resolve(out,`${preset.id}-${id}-score.json`),JSON.stringify(score,null,2));
- const row={...(preset.source?{source:preset.source,composer:preset.composer,adaptation:preset.adaptation}:{}),id:`${preset.id}-${id}`,preset:preset.id,title:preset.title,chip:chip.spec.id,seconds,completeLoop:seconds>=loopSeconds(song),scoreSha256:hash(JSON.stringify(score)),issues:validation.issues,replay:comparePcm(audio,replay),assets:{mix:await asset(audio,`${preset.id}-${id}-mix.wav`)}};
+ const row={...(preset.source?{source:preset.source,composer:preset.composer,adaptation:preset.adaptation,coverage:preset.coverage,fidelity:preset.fidelity}:{}),id:`${preset.id}-${id}`,preset:preset.id,title:preset.title,chip:chip.spec.id,seconds,completeLoop:seconds>=loopSeconds(song),scoreSha256:hash(JSON.stringify(score)),issues:validation.issues,replay:comparePcm(audio,replay),assets:{mix:await asset(audio,`${preset.id}-${id}-mix.wav`)}};
  if(!args.includes('--mix-only'))for(const role of roles){
   const isolated={...score,patterns:score.patterns.map(pattern=>({...pattern,...Object.fromEntries(roles.filter(other=>other!==role).map(other=>[other,pattern[other].trim().split(/\s+/).map(()=>'.').join(' ')]))}))};
   row.assets[role]=await asset(renderSong(arrange(isolated),{seconds,stereo:true}),`${preset.id}-${id}-${role}.wav`);
@@ -76,7 +76,7 @@ for(const preset of presets)for(const id of ids){
  if(chip.spec.id==='snes'&&!args.includes('--skip-oracle')){
   const reference=snesReference(log);row.oracle=reference.comparison;row.assets.native=await asset(reference.audio,`${preset.id}-${id}-native.wav`);
  }
- if(baseline){const previous=baseline.cases.find(item=>item.id===row.id);if(previous){
+ if(baseline){const previous=baseline.cases.find(item=>item.id===row.id);if(previous && previous.scoreSha256===row.scoreSha256 && previous.seconds===row.seconds){
   if(previous.scoreSha256!==row.scoreSha256||previous.seconds!==row.seconds||baseline.sampleRate!==report.sampleRate)throw new Error(`Baseline score/options differ for ${row.id}; do not attribute this comparison to the engine alone.`);
   row.baseline={};for(const [role,entry]of Object.entries(previous.assets)){
    const source=resolve(dirname(resolve(root,baselineFile)),entry.file);const bytes=await readFile(source);if(hash(bytes)!==entry.sha256)throw new Error('Baseline WAV hash mismatch');

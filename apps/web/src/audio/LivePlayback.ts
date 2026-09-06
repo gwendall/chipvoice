@@ -1,7 +1,7 @@
 import {Chip, type Song} from 'chipvoice';
 import {Fade} from './fade.mjs';
 
-type Engine = {chip: Chip; fade: Fade};
+type Engine = {chip: Chip; fade: Fade; song: Song};
 /** Keeps ownership, async creation and overlap behind one playback interface.
  * Only the current engine and one incoming engine can exist. Edits during a
  * transition replace the pending score, never accumulate additional engines. */
@@ -50,7 +50,7 @@ export class LivePlayback {
       const active = this.active;
       if (active && active.chip.spec.id === song.chip && (!this.playing || !active.chip.playing || active.chip.songId === song.id)) {
         if (this.playing && !active.chip.playing) {
-          active.chip.play(song); active.fade.toValue(1);
+          active.chip.play(song); active.song = song; active.fade.toValue(1);
         }
         if (this.error) { this.error = ''; this.changed(); }
         return active.chip;
@@ -63,11 +63,20 @@ export class LivePlayback {
         if (this.disposed || this.song?.chip !== song.chip) { chip.dispose(); continue; }
         const fade = new Fade(this.context, this.output);
         chip.output.disconnect(); chip.output.connect(fade.node);
-        const next = {chip, fade}; this.incoming = next;
+        const next = {chip, fade, song: this.song!}; this.incoming = next;
         const previous = this.active;
         if (this.playing) {
           const at = this.context.currentTime + .1;
-          const phase = previous?.chip.phaseAt(at) ?? previous?.chip.phaseAt() ?? undefined;
+          let phase = previous?.chip.phaseAt(at) ?? previous?.chip.phaseAt() ?? undefined;
+          if (phase && previous) {
+            const old = previous.song, fresh = this.song!;
+            const grid = old.stepsPerBeat ?? 4, nextGrid = fresh.stepsPerBeat ?? 4;
+            const compatible = old.order.length === fresh.order.length && old.order.every((p, i) => old.patterns[p].bass.trim().split(/\s+/).length / grid === fresh.patterns[fresh.order[i]].bass.trim().split(/\s+/).length / nextGrid);
+            // A new form starts at its beginning through the same crossfade.
+            // Console/tempo/notation edits with the same form retain the beat.
+            if (!compatible) phase = undefined;
+            else { const step = (phase.step + (phase.progress ?? 0)) * nextGrid / grid; phase = {...phase, step: Math.floor(step), progress: step % 1}; }
+          }
           chip.play(this.song!, phase, at);
           // Allow the new chip's note-on to reach its DSP before releasing the
           // old signal. Both remain on the same AudioContext clock.

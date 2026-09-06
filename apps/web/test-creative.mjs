@@ -16,6 +16,9 @@ const legacy = {chip:'2a03',bpm:144,order:[0],patterns:[{bass:longLine,lead:long
 assert.deepEqual(readDocument(legacy),legacy,'existing long publications and drafts remain loadable');
 assert.equal(SongInput.safeParse(legacy).success,false,'new publication admission remains bounded');
 const { publicationBody } = await module('src/studio/publication.ts');
+assert.deepEqual(publicationBody({...legacy,stepsPerBeat:12},legacy),{stepsPerBeat:12});
+assert.deepEqual(publicationBody(legacy,{...legacy,stepsPerBeat:12}),{stepsPerBeat:4});
+assert.equal(readDocument({...legacy,stepsPerBeat:12}).stepsPerBeat,12);
 assert.deepEqual(publicationBody({...legacy,title:'New title'},legacy),{title:'New title'});
 assert.deepEqual(publicationBody(legacy,{...legacy,title:'Old title'}),{title:null});
 assert.deepEqual(publicationBody({...legacy,title:'New',author:'Artist'},{...legacy,title:'Old',author:'Artist'}),{title:'New',author:'Artist'});

@@ -312,7 +312,7 @@ export class Chip {
     return this.sequencer.phaseAt(at);
   }
 
-  /** Nearest sixteenth for live note capture, including pattern/loop wrap.
+  /** Nearest grid step for live note capture, including pattern/loop wrap.
    * Call at input time; the clock is AudioContext time, not performance.now().
    * Returns null before audible playback, while stopped or in a scheduling gap. */
   quantizedPosition(at = this.ctx.currentTime): { step: number; orderIndex: number } | null {

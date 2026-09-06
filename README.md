@@ -179,25 +179,21 @@ and independent SNES DSP execution. Digital parity does not guarantee a good arr
 
 ### Familiar melodies and composition
 
-The [playground](https://chipvoice.dev) includes short **Mario Ground Theme**,
-**Zelda Overworld** and **Sonic Green Hill Zone** study arrangements alongside
-its original loops. Each uses the same notes on all five machines. These are
-four-bar adaptations with visible credits and source links, not full soundtracks
-or original game recordings. Zelda's triplets are explicitly adapted to the
-sixteenth-note grid. The [listening lab](https://chipvoice.dev/lab) provides the
-same repertoire with isolated parts and measured comparisons.
+The [playground](https://chipvoice.dev) and [listening lab](https://chipvoice.dev/lab)
+include Mario (50 bars), Zelda (24 bars with introduction), and a complete Sonic
+main-theme cycle (24 bars). These are credited melody transcriptions with **no
+invented bass, harmony or drums**. Sonic's separate intro is not included.
 
-Tempo, transposition and drum activity can be explored during playback. A slider
-also has a numeric input; one Undo reverses a gesture. Transposition and drum
-activity become ordinary score notes, so sharing and exports retain the result.
+A frozen source ledger checks all 415 pitches, onsets, releases and rests against
+both the compiled score and the sequencer on every console. Twelve steps per
+quarter note retain triplets. See [the source workflow](scores/README.md) for
+coverage, source hashes, measured timing tolerances, MIDI extraction and
+`pnpm scores:compare`.
 
-```ts
-import { shapeScore, arrange } from 'chipvoice';
-const variation = shapeScore(score, { transpose: 7, drums: 60 });
-const song = arrange(variation, 'snes');
-```
+Transpose and drum-activity sliders have numeric inputs, Undo and Reset. Drum
+activity is disabled on melody-only scores. Edited notes persist through sharing
+and exports; the UI distinguishes edited versions from checked source cartridges.
 
-The [partition-to-cartridge workflow](scores/README.md) documents source review,
-optional MIDI extraction, reproducible compilation (`pnpm scores:build`), explicit
-rhythm reductions and five-console evaluation. CI checks generated cartridges;
-no third-party score download or audio-corpus regeneration runs during builds.
+Offline audio now starts at musical time zero so full-loop exports retain their
+last note. This deliberately updates the audio golden snapshots; live startup
+lookahead is unchanged.

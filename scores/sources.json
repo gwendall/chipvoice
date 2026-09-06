@@ -1,0 +1,65 @@
+{
+  "mario": {
+    "file": "mario-2073.mid",
+    "beats": 200,
+    "bpm": 150,
+    "url": "https://ichigos.com/sheets/293",
+    "transcriber": "AltoNicoRuso / Alejandro",
+    "description": "Complete 50-bar viola MIDI transcription, raised one octave. Written repeats follow the source export. Expressive MIDI tempo changes are replaced by a constant 150 BPM.",
+    "selections": [
+      {
+        "track": 1,
+        "from": 0,
+        "to": 200,
+        "offset": 0,
+        "transpose": 12,
+        "voice": "monophonic"
+      }
+    ]
+  },
+  "zelda": {
+    "file": "zelda-colletti.mid",
+    "beats": 96,
+    "bpm": 148,
+    "url": "https://www.vgmusic.com/file/025afd4ada334a01a042cf6eae931024.html",
+    "transcriber": "Jeffrey M Colletti",
+    "description": "Complete 24-bar MIDI melody track, including the four-bar introduction and both main-theme sections. Source pitch and triplets retained. Separate harmony, bass and percussion tracks are omitted.",
+    "selections": [
+      {
+        "track": 1,
+        "from": 0,
+        "to": 96,
+        "offset": 0,
+        "transpose": 0,
+        "voice": "monophonic"
+      }
+    ]
+  },
+  "sonic": {
+    "file": "sonic-vgmusic.mid",
+    "beats": 96,
+    "bpm": 150,
+    "url": "https://www.vgmusic.com/file/02328f72f692b92c7cabfec2d6f661ed.html",
+    "transcriber": "Turret 3471",
+    "description": "One complete 24-bar main-theme cycle, source beats 36\u2013132: lead track 2 followed by the returning synth phrase on track 8 at beat 127. The separate introductory section and repeated second cycle are omitted; source pitch is retained.",
+    "selections": [
+      {
+        "track": 2,
+        "from": 36,
+        "to": 127,
+        "offset": 0,
+        "transpose": 0,
+        "voice": "monophonic"
+      },
+      {
+        "track": 8,
+        "from": 127,
+        "to": 132,
+        "offset": 91,
+        "transpose": 0,
+        "voice": "monophonic"
+      }
+    ],
+    "maxOverlapBeats": 0.010416666666666666
+  }
+}

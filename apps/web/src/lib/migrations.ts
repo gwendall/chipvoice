@@ -29,6 +29,9 @@ const migrations = [
     await tx.execute(`create index songs_user on songs (user_id,created_at)`); await tx.execute(`create index keys_user on keys (user_id)`);
     await tx.execute(`create index sessions_expiry on sessions (expires_at)`); await tx.execute(`create index login_tokens_created on login_tokens (created_at)`);
   } },
+  { name: 'song-grid-resolution', async up(tx: Transaction) {
+    await addColumns(tx, 'songs', { steps_per_beat: 'integer not null default 4 check (steps_per_beat in (4,12))' });
+  } },
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

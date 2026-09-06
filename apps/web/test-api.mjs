@@ -207,5 +207,11 @@ check('carrying og:audio for chat clients', /og:audio/.test(html));
 check('and the editor itself', /transport|__next/.test(html));
 check('and a card image', (await fetch(`${BASE}/s/${song.id}/card`)).status === 200);
 
+const tripletParent = await (await post('/api/songs', {...SONG, stepsPerBeat:12})).json();
+const tripletFork = await (await post(`/api/songs/${tripletParent.id}/fork`, {title:'Triplet fork'})).json();
+check('fork inherits its source grid',tripletFork.stepsPerBeat===12,JSON.stringify(tripletFork.stepsPerBeat));
+const straightFork = await (await post(`/api/songs/${tripletFork.id}/fork`, {stepsPerBeat:4})).json();
+check('fork can explicitly return to the straight grid',straightFork.stepsPerBeat===4,JSON.stringify(straightFork.stepsPerBeat));
+
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

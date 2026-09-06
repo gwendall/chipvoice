@@ -46,7 +46,7 @@ export interface RenderResult {
  * bar in five possible - so this counts tokens rather than assuming sixteen.
  */
 export function loopSeconds(song: Song): number {
-  const stepTime = 60 / song.bpm / 4;
+  const stepTime = 60 / song.bpm / (song.stepsPerBeat ?? 4);
   const steps = song.order.reduce((sum, index) => {
     const pattern = song.patterns[index];
     return sum + (pattern ? pattern.bass.trim().split(/\s+/).length : 0);
@@ -86,7 +86,9 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
   let clock = 0;
   const driver = new OfflineDriver(core, chip, () => clock);
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
-  sequencer.play(song);
+  // Offline time zero is the first musical instant; live startup lookahead
+  // must not steal the end of a full-loop export.
+  sequencer.play(song, undefined, 0);
 
   const left = new Float32Array(total);
   const right = options.stereo ? new Float32Array(total) : null;
@@ -144,7 +146,9 @@ export function recordSong(
   let clock = 0;
   const driver = new OfflineDriver(core, chip, () => clock);
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
-  sequencer.play(song);
+  // Offline time zero is the first musical instant; live startup lookahead
+  // must not steal the end of a full-loop export.
+  sequencer.play(song, undefined, 0);
   // The renderer's block, so a song records the way it renders.
   const block = 4096 / 44100;
   for (let t = 0; t < seconds; t += block) {

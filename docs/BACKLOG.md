@@ -407,3 +407,17 @@ and deterministic drum activity are reversible live controls. The
 [score workflow](../scores/README.md) covers optional MIDI extraction, reviewed
 recipes, reproducible compilation, explicit rhythm reduction and publication.
 Swing and per-role gain remain future work.
+
+### Source-faithful melody workflow (follow-up to #28)
+
+Replaced four-bar arrangements and automatic root/fifth bass/drums with longer
+melody transcriptions: Mario50bars, Zelda24bars, Sonic24bar main cycle. Frozen
+MIDI references and mutation-tested note comparisons cover415notes on five
+sequencer role maps. Added12-step quarter-note grids, fork/grid preservation,
+source-versus-edited labels and silent-drum controls. Fixed offline startup
+padding truncating the final note. See [method, coverage and limits](../scores/README.md).
+
+Further musical fidelity requires checking the chosen transcription against
+original game audio and measuring acoustic pitch/articulation after the DSP.
+Full multivoice arrangements should use explicitly transcribed source voices;
+adding a generic accompaniment is no longer part of this pipeline.

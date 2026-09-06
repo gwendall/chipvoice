@@ -71,6 +71,8 @@ export interface Score {
   /** Stable name; `arrange` makes one from the content when absent. */
   id?: string;
   bpm: number;
+  /** Tracker steps per quarter note. Default 4; 12 preserves straight and triplet rhythms. */
+  stepsPerBeat?: 4 | 12;
   patterns: Song["patterns"];
   order: number[];
   /** 0 to 1. Default 1. */
@@ -104,6 +106,7 @@ export function arrange(score: Score, chipId = score.chip ?? "2a03"): Song {
     id: score.id ?? `score:${chipId}:${fingerprint(score)}`,
     chip: chipId,
     bpm: score.bpm,
+    ...(score.stepsPerBeat === undefined ? {} : {stepsPerBeat: score.stepsPerBeat}),
     patterns: score.patterns,
     order: score.order,
     gain: score.gain ?? 1,
@@ -116,7 +119,7 @@ export function arrange(score: Score, chipId = score.chip ?? "2a03"): Song {
 
 /** A short hash of the content, so the same score arranged twice plays as one song. */
 function fingerprint(score: Score): string {
-  const text = JSON.stringify([score.bpm, score.order, score.patterns, score.intent ?? null, score.gain ?? 1]);
+  const text = JSON.stringify([score.bpm, score.order, score.patterns, score.intent ?? null, score.gain ?? 1, ...(score.stepsPerBeat === undefined ? [] : [score.stepsPerBeat])]);
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);

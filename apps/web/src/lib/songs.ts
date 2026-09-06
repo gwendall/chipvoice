@@ -19,6 +19,7 @@ export interface StoredSong {
   depth: number;
   title: string | null;
   bpm: number;
+  stepsPerBeat?: 4 | 12;
   chip: string;
   patterns: SongInput["patterns"];
   order: number[];
@@ -78,7 +79,7 @@ export const SITE =
 export function toLibrarySong(song: StoredSong) {
   return {
     ...arrange(
-      { id: song.id, bpm: song.bpm, patterns: song.patterns, order: song.order, gain: 1, intent: song.intent ?? undefined },
+      { id: song.id, bpm: song.bpm, stepsPerBeat: song.stepsPerBeat, patterns: song.patterns, order: song.order, gain: 1, intent: song.intent ?? undefined },
       song.chip,
     ),
     intent: song.intent ?? undefined,
@@ -114,6 +115,7 @@ export function check(input: SongInput): { ok: boolean; issues: Issue[]; measure
       depth: 0,
       title: null,
       bpm: input.bpm,
+    stepsPerBeat: input.stepsPerBeat ?? 4,
       chip: input.chip,
       patterns: input.patterns,
       order: input.order,
@@ -146,6 +148,7 @@ export async function insert(
     depth: parent ? parent.depth + 1 : 0,
     title: input.title ?? null,
     bpm: input.bpm,
+    stepsPerBeat: input.stepsPerBeat ?? 4,
     chip: input.chip,
     patterns: input.patterns,
     order: input.order,
@@ -157,8 +160,8 @@ export async function insert(
   };
   await client.execute({
     sql: `insert into songs
-            (id, parent_id, root_id, depth, title, bpm, chip, patterns, song_order, intent, author, key_id, user_id, created_at)
-          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, parent_id, root_id, depth, title, bpm, steps_per_beat, chip, patterns, song_order, intent, author, key_id, user_id, created_at)
+          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       song.id,
       song.parentId,
@@ -166,6 +169,7 @@ export async function insert(
       song.depth,
       song.title,
       song.bpm,
+      song.stepsPerBeat ?? 4,
       song.chip,
       JSON.stringify(song.patterns),
       JSON.stringify(song.order),
@@ -189,6 +193,7 @@ function rowToSong(row: Record<string, unknown>): StoredSong {
     depth: Number(row.depth ?? 0),
     title: row.title === null ? null : String(row.title),
     bpm: Number(row.bpm),
+    stepsPerBeat: Number(row.steps_per_beat ?? 4) as 4 | 12,
     chip: String(row.chip),
     patterns: JSON.parse(String(row.patterns)),
     order: JSON.parse(String(row.song_order)),

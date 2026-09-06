@@ -34,9 +34,9 @@ try{
   }
  }
  await page.getByText('About this arrangement · credits & source',{exact:true}).click();
- assert.ok(await page.getByRole('link',{name:'View the source partition ↗'}).getAttribute('href'));
+ assert.ok(await page.getByRole('link',{name:'View the source transcription ↗'}).getAttribute('href'));
  await number('Transpose').fill('3');await number('Transpose').press('Enter');
- await number('Drum activity').fill('50');await number('Drum activity').press('Enter');await page.waitForTimeout(350);
+ assert.ok(await number('Drum activity').isDisabled());await page.getByText('Edited version · source checks apply to the original cartridge.',{exact:true}).waitFor();await page.waitForTimeout(350);
  assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);
  const edited=await draft();await page.screenshot({path:new URL('desktop.png',out).pathname,fullPage:true});
  await page.reload();await page.waitForFunction(()=>!document.getElementById('tempo-slider')?.disabled);assert.deepEqual((await draft()).patterns,edited.patterns);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1);

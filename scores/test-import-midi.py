@@ -50,5 +50,34 @@ class ImportTests(unittest.TestCase):
             with self.subTest(events=events):
                 self.assertNotEqual(self.run_file(events).returncode, 0)
 
+
+class ReferenceTests(unittest.TestCase):
+    def extract(self, events, **options):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('reference', Path(__file__).with_name('extract-reference.py'))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'source.mid'
+            midi = mido.MidiFile(ticks_per_beat=480)
+            midi.tracks.append(mido.MidiTrack(events))
+            midi.save(path)
+            return module.extract(path, {'beats':4, 'selections':[{'track':0,'from':0,'to':4,'offset':0,'transpose':0,'voice':'monophonic'}], **options})
+
+    def test_reference_preserves_source_timing(self):
+        result = self.extract([mido.Message('note_on',note=60,velocity=90,time=5),mido.Message('note_off',note=60,time=155)])
+        self.assertEqual(result['notes'], [[5/480,1/3,60]])
+        self.assertEqual(len(result['sourceSha256']),64)
+
+    def test_reference_rejects_ambiguous_voice(self):
+        with self.assertRaisesRegex(ValueError,'polyphonic'):
+            self.extract([mido.Message('note_on',note=60,velocity=90),mido.Message('note_on',note=64,velocity=90),mido.Message('note_off',note=60,time=480),mido.Message('note_off',note=64)])
+        with self.assertRaisesRegex(ValueError,'cuts a held'):
+            self.extract([mido.Message('note_on',note=60,velocity=90),mido.Message('note_off',note=60,time=2000)])
+
+    def test_expression_is_reported(self):
+        result = self.extract([mido.Message('pitchwheel',pitch=1024),mido.Message('note_on',note=60,velocity=90),mido.Message('note_off',note=60,time=480)])
+        self.assertIn('pitchwheel',result['expressionEvents'][0]['event'])
+
 if __name__ == '__main__':
     unittest.main()

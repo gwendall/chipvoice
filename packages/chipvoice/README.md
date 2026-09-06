@@ -438,3 +438,18 @@ export. Apply each preview to the same source; `{transpose: 0, drums: 100}` retu
 that source exactly. `transposeBounds(source)` gives the allowed shift within one
 octave; out-of-range shifts throw rather than clip notes. See the repository's
 [score workflow](https://github.com/gwendall/chipvoice/blob/main/scores/README.md).
+
+### Straight notes and triplets (0.14.0)
+
+`Score.stepsPerBeat` / `Song.stepsPerBeat` accept `4` (default) or `12`. A token is
+one grid step: twelve steps per quarter note can represent both sixteenths and
+triplets without changing BPM. `loopSeconds`, live capture, rendering, pad
+quantization and score transformations use this grid. Leave an unused role silent
+with `=` followed by `.` tokens; an arranger never needs an invented bass line.
+
+Offline `renderSong` and `recordSong` start at musical time zero. A full-loop
+duration therefore includes the final note; live playback retains its preparation
+lookahead. The audio golden snapshots changed intentionally with this correction.
+
+See [the source comparison workflow](../../scores/README.md) for deterministic
+melody checks, their tolerances and the distinction from acoustic/DSP fidelity.

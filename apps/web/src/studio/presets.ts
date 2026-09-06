@@ -3,7 +3,7 @@ import type { Pattern } from 'chipvoice';
 import type { SongDocument } from './document';
 
 const pattern = (lead: string, chord: string, bass: string, perc: string, chordShape: number[][]): Pattern => ({ lead, chord, bass, perc, chordShape });
-export type Preset = {id: string; title: string; mood: string; color: string; song: SongDocument; composer?: string; adaptation?: string; source?: {url: string; transcriber: string; excerpt: string}};
+export type Preset = {id: string; title: string; mood: string; color: string; song: SongDocument; composer?: string; coverage?: string; fidelity?: {referenceNotes: number; pass: boolean}; adaptation?: string; source?: {url: string; transcriber: string; excerpt: string}};
 export const ORIGINAL_PRESETS: Preset[] = [
   { id: 'overworld', title: 'Overworld', mood: 'A new adventure', color: '#e5af46', song: {
     title: 'Overworld', chip: '2a03', bpm: 144, intent: { lead: 'bright', chord: 'plucked', bass: 'round', perc: 'soft' }, order: [0, 1], patterns: [

@@ -48,7 +48,7 @@ export async function GET(
   if (seconds > 30) return json({ error: "render_too_long", message: "Public exports support up to 30 seconds. Set ?seconds=30 or export the full score in the demo." }, 422);
   try {
     const asset = await renderAudio({
-      score: { bpm: song.bpm, chip: song.chip, patterns: song.patterns, order: song.order, intent: song.intent ?? undefined },
+      score: { bpm: song.bpm, stepsPerBeat: song.stepsPerBeat, chip: song.chip, patterns: song.patterns, order: song.order, intent: song.intent ?? undefined },
       seconds, format,
       tags: {
         title: song.title ?? `chipvoice ${song.id}`, artist: song.author ?? "chipvoice", album: "chipvoice",

@@ -31,7 +31,7 @@ export function shapeScore<T extends Score>(source: T, {transpose = 0, drums = 1
     }).join(' ');
     if (drums < 100) {
       const line = split(pattern.perc);
-      const hits = line.flatMap((token, step) => /^[KSHO]$/.test(token) ? [{step, priority: (token === 'K' || token === 'S' ? 0 : 2) + (step % 4 === 0 ? 0 : 1)}] : []);
+      const hits = line.flatMap((token, step) => /^[KSHO]$/.test(token) ? [{step, priority: (token === 'K' || token === 'S' ? 0 : 2) + (step % (source.stepsPerBeat ?? 4) === 0 ? 0 : 1)}] : []);
       hits.sort((a,b) => a.priority - b.priority || a.step - b.step);
       const keep = new Set(hits.slice(0, Math.round(hits.length * drums / 100)).map(hit => hit.step));
       next.perc = line.map((token, step) => /^[KSHO]$/.test(token) && !keep.has(step) ? '.' : token).join(' ');
