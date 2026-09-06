@@ -26,9 +26,9 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, recordVideo: { dir: `${artifacts}/videos`, size: { width: 1280, height: 1000 } } });
   await context.addInitScript(installOutputProbe);
   const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
-  await page.goto(base); await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
+  await page.goto(base+'/?mode=compose'); await page.getByRole('button',{name:'Edit loop',exact:false}).waitFor(); await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
   assert.equal(await page.evaluate(() => !!window.chipvoice), false); check('Opening the demo does not start audio');
-  assert.equal(await page.locator('.machine-logo').count(), 4);
+  assert.equal(await page.locator('.demo-page .machine-logo').count(), 4);
   for (const name of ['famicom', 'game-boy', 'mega-drive-jp', 'super-famicom']) assert.equal((await page.request.get(`${base}/machines/${name}.svg`)).status(), 200);
   await page.screenshot({ path: `${artifacts}/${engine}-desktop-initial.png`, fullPage: true });
   // Exercise sustained backing and SFX ownership with the original loop.
@@ -38,7 +38,7 @@ try {
   await page.waitForFunction(() => window.chipvoice?.playing && window.chipvoice.position());
   for (const [name, id] of machines) {
     const before = await page.evaluate(() => window.chipvoice.position());
-    await page.locator('.machines').getByRole('button', { name, exact: true }).click();
+    await page.locator('.demo-page .machines').getByRole('button', { name, exact: true }).click();
     await page.waitForFunction(id => window.chipvoice?.spec.id === id && window.chipvoice.playing, id);
     const level = await amplitude(page); assert.ok(level.rms > .001 && Number.isFinite(level.peak), `${name} must be audible: ${JSON.stringify(level)}`);
     check(`${name} produces measured audio`, { ...level, before, after: await page.evaluate(() => window.chipvoice.position()) });
@@ -55,7 +55,7 @@ try {
     await page.waitForFunction(() => window.observedOwnership);
     await page.screenshot({ path: `${artifacts}/${engine}-${id}-effect.png`, fullPage: false });
   }
-  for (const name of ['Famicom', 'Game Boy', 'Famicom', 'Super Famicom', 'Famicom']) await page.locator('.machines').getByRole('button', { name, exact: true }).click();
+  for (const name of ['Famicom', 'Game Boy', 'Famicom', 'Super Famicom', 'Famicom']) await page.locator('.demo-page .machines').getByRole('button', { name, exact: true }).click();
   await page.waitForFunction(() => window.chipvoice?.spec.id === '2a03' && window.chipvoice.playing);
   assert.ok((await amplitude(page)).rms > .001); check('Repeated switches retain working audio');
   for (const title of ['Overworld', 'Boss Fight', 'Midnight']) {
@@ -69,7 +69,7 @@ try {
   check('Three cartridges play and effect shortcuts work with a focused control');
   await page.getByRole('button', { name: 'Stop', exact: true }).click();
   await page.waitForTimeout(400); const silent = await amplitude(page); assert.ok(silent.peak < .001, JSON.stringify(silent)); check('Stop stays silent after queued notes', silent);
-  await page.locator('.machines').getByRole('button', { name: 'Game Boy', exact: true }).click();
+  await page.locator('.demo-page .machines').getByRole('button', { name: 'Game Boy', exact: true }).click();
   await page.waitForFunction(() => window.chipvoice?.spec.id === 'dmg'); assert.equal(await page.evaluate(() => window.chipvoice.playing), false);
   await page.getByRole('button', { name: 'Edit loop', exact: false }).click();
   assert.ok(await page.locator('.grid-cell.filled').count() > 0); check('Existing high notes appear in editor');
@@ -111,7 +111,7 @@ try {
   assert.equal(await page.evaluate(() => window.chipvoice.songId), backingId);
   assert.equal(await page.evaluate(() => window.takeRestarts), 0, 'taps do not restart the backing transport');
   assert.equal(await page.locator('#tempo').isDisabled(), true);
-  assert.equal(await page.locator('.machines button').first().isDisabled(), true);
+  assert.equal(await page.locator('.demo-page .machines button').first().isDisabled(), true);
   await page.screenshot({ path: `${artifacts}/${engine}-recording.png`, fullPage: true });
   await page.getByRole('button', { name: 'Finish take', exact: true }).click();
   await page.waitForFunction(id => window.chipvoice.songId !== id, backingId);
@@ -175,7 +175,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   const desktopVideo = page.video(); await context.close(); await desktopVideo.saveAs(`${artifacts}/${engine}-desktop.webm`);
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(engine === 'firefox' ? {} : { isMobile: true }), reducedMotion: 'reduce', recordVideo: { dir: `${artifacts}/videos`, size: { width: 390, height: 844 } } });
-  const phone = await mobile.newPage(); phone.on('pageerror', e => errors.push(e.message)); await phone.goto(base);
+  const phone = await mobile.newPage(); phone.on('pageerror', e => errors.push(e.message)); await phone.goto(base+'/?mode=compose'); await phone.getByRole('button',{name:'Edit loop',exact:false}).waitFor();
   await phone.getByRole('button', { name: 'Play', exact: true }).tap(); await phone.waitForFunction(() => window.chipvoice?.playing && window.chipvoice.position()); assert.ok((await amplitude(phone)).rms > .001);
   await phone.screenshot({ path: `${artifacts}/${engine}-mobile-playing.png`, fullPage: true });
   await phone.getByRole('button', { name: 'Edit loop', exact: false }).tap(); const touchCell = phone.getByRole('button', { name: 'Melody step 1 C4', exact: true }); await touchCell.tap(); assert.equal(await touchCell.getAttribute('aria-pressed'), 'true');

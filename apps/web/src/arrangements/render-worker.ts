@@ -1,4 +1,5 @@
-import {importMidi,planPerformance,renderPerformance,toWav,nesChip,gbChip,mdChip,snesChip,type Performance,type PerformancePlan} from 'chipvoice';
+import {scoreOverview} from './score-overview.mjs';
+import {performanceClock,importMidi,planPerformance,renderPerformance,toWav,nesChip,gbChip,mdChip,snesChip,type Performance,type PerformancePlan} from 'chipvoice';
 const chips={'2a03':nesChip,dmg:gbChip,md:mdChip,snes:snesChip};
 onmessage=async ({data}:{data:{id:number;importOnly?:boolean;score?:Performance;midi?:ArrayBuffer;title?:string;native?:PerformancePlan;chip:keyof typeof chips;tempo:number;transpose:number;part:string}})=>{
  try{
@@ -19,6 +20,6 @@ onmessage=async ({data}:{data:{id:number;importOnly?:boolean;score?:Performance;
   const audio=renderPerformance(plan,chips[data.chip],{onProgress:fraction=>{const percent=Math.floor(fraction*100);if(percent!==reported){reported=percent;postMessage({id:data.id,type:'progress',phase:'rendering',percent,seconds:plan.seconds});}}});
   postMessage({id:data.id,type:'progress',phase:'encoding',seconds:plan.seconds});
   const wav=toWav(audio);
-  postMessage({id:data.id,score:data.midi?score:undefined,wav:wav.buffer,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,losses:plan.losses,notes:plan.notes.length,peak:audio.peak}, {transfer:[wav.buffer]});
+  postMessage({id:data.id,overview:scoreOverview(score,performanceClock(score),plan.losses),score:data.midi?score:undefined,wav:wav.buffer,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,losses:plan.losses,notes:plan.notes.length,peak:audio.peak}, {transfer:[wav.buffer]});
  }catch(error){postMessage({id:data.id,error:error instanceof Error?error.message:String(error)});}
 };

@@ -29,3 +29,5 @@ apps/web/public/arrangement-data/mario-native.json
 
 # Local Python score tooling
 __pycache__/
+
+apps/web/public/arrangement-data/*-view.json

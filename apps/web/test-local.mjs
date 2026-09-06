@@ -21,7 +21,12 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   if (!ready) throw new Error(`Server did not start: ${log}`);
-  for (const script of ['../../scores/arrangements/verify-publication.mjs', 'test-foundations.mjs', 'test-score-compiler.mjs', 'test-live-playback.mjs', 'test-lab-publication.mjs', 'test-recording.mjs', 'test-creative.mjs', 'test-render-cache.mjs', 'test-api.mjs', 'test-auth-http.mjs', 'test-arrival.mjs', 'test-demo.mjs', 'test-creative-browser.mjs', 'test-audio-transitions.mjs', 'test-buffer-playback.mjs', 'test-lab.mjs', 'test-arrangements.mjs', 'test-midi-import.mjs', 'test-composition-browser.mjs']) {
+  const scripts=['../../scores/arrangements/verify-publication.mjs', 'test-foundations.mjs', 'test-score-compiler.mjs', 'test-live-playback.mjs', 'test-lab-publication.mjs', 'test-recording.mjs', 'test-creative.mjs', 'test-render-cache.mjs', 'test-api.mjs', 'test-auth-http.mjs', 'test-arrival.mjs', 'test-demo.mjs', 'test-creative-browser.mjs', 'test-audio-transitions.mjs', 'test-output-clock.mjs', 'test-buffer-playback.mjs', 'test-transport-browser.mjs', 'test-lab.mjs', 'test-arrangements.mjs', 'test-midi-import.mjs', 'test-composition-browser.mjs'];
+  const from=process.env.CHIPVOICE_TEST_FROM;
+  if(from&&!scripts.includes(from))throw new Error(`Unknown qualification start: ${from}`);
+  // Partial local qualification still initializes the disposable API schema.
+  if(from){const response=await fetch(`${base}/api/songs/00000000`);if(response.status!==404)throw new Error(`Test database initialization failed: ${response.status}`);}
+  for (const script of scripts.slice(from?scripts.indexOf(from):0)) {
     const child = spawn(process.execPath, [script], { env, stdio: 'inherit' });
     const code = await new Promise(resolve => child.on('exit', resolve));
     if (code !== 0) throw new Error(`${script} exited ${code}`);

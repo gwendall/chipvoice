@@ -12,7 +12,7 @@ try{
   const line=Array(64).fill('.');line[0]='C4';
   localStorage.setItem('chipvoice.draft.v1',JSON.stringify({title:'Continuity probe',chip:'2a03',bpm:120,order:[0],patterns:[{lead:line.join(' '),chord:Array(64).fill('.').join(' '),bass:Array(64).fill('.').join(' '),perc:Array(64).fill('.').join(' '),chordShape:[[0,4,7]]}]}));
  });
- await page.goto(base);
+ await page.goto(base+'/?mode=compose'); await page.getByRole('button',{name:'Edit loop',exact:false}).waitFor();
  const valueIs=async(locator,value,message)=>{
   const id=await locator.getAttribute('id');
   await page.waitForFunction(({id,value})=>document.getElementById(id)?.value===value,{id,value});
@@ -52,7 +52,7 @@ try{
  await slider.focus();await page.keyboard.press('PageUp');await page.waitForTimeout(420);
  await number.fill('132');await number.press('Enter');await page.waitForTimeout(420);
  await slider.focus();await page.keyboard.press('End');await page.waitForTimeout(420);
- await page.locator('.machines').getByRole('button',{name:'Super Famicom',exact:true}).click();
+ await page.locator('.demo-page .machines').getByRole('button',{name:'Super Famicom',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.spec.id==='snes');
  await page.waitForTimeout(150);
  const results=await page.evaluate(()=>({blocks:window.audioBlocks,transitions:window.phaseTransitions}));
@@ -63,7 +63,7 @@ try{
  assert.equal(gapMs,0,`Continuous held note has ${gapMs.toFixed(1)} ms of transition silence`);
  assert.ok(results.transitions.length>=4);
  for(const transition of results.transitions){assert.ok(transition.expected);assert.deepEqual(transition.position,transition.expected,'Incoming engine must preserve fractional musical phase');}
- await page.locator('.machines').getByRole('button',{name:'Game Boy',exact:true}).click();
+ await page.locator('.demo-page .machines').getByRole('button',{name:'Game Boy',exact:true}).click();
  await page.getByRole('button',{name:'Stop',exact:true}).click();
  await page.waitForTimeout(550);
  assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'Stop wins over pending engine creation');

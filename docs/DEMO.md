@@ -1,5 +1,9 @@
 # The playable library demo
 
+> The current complete-arrangement default and musical transport are specified in
+> [UNIFIED-PLAYGROUND.md](UNIFIED-PLAYGROUND.md). Melody-only presets below remain
+> available in the Make a loop composer.
+
 Product specification, 2026-09-05. Agreed direction from the project audit and
 the following product discussion. Decision 20 updates decision 19. The
 [backlog](BACKLOG.md#phase-8-the-site-as-an-instrument) tracks delivery; the

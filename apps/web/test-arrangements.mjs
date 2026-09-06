@@ -12,7 +12,7 @@ const browser=await chromium.launch();
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('video/',out).pathname}}),page=await context.newPage(),errors=[],requests=[];
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));await page.addInitScript(installOutputProbe);
- await page.goto(base+'/lab/arrangements');await page.getByRole('heading',{name:'Every part. Every little chip.'}).waitFor();await page.getByRole('button',{name:'Mario 4 parts'}).waitFor();
+ await page.goto(base+'/lab/arrangements');await page.getByRole('heading',{name:'Old consoles. New JavaScript.'}).waitFor();await page.getByRole('button',{name:'Mario 4 parts'}).waitFor();
  assert.equal(requests.filter(u=>u.endsWith('.flac')).length,0,'lazy audio');
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByRole('link',{name:'Download audio',exact:false}).waitFor({timeout:60000});
  assert.ok(await audible(page)>.001,'complete native arrangement is audible');
@@ -29,7 +29,7 @@ try{
  for(const name of ['Game Boy','Mega Drive','Super Famicom','Famicom']){
   await page.locator('.machines').getByRole('button',{name,exact:true}).click();
   await page.waitForFunction(()=>!document.querySelector('.arrangement-versions button').disabled,{},{timeout:60000});
-  assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);
+  assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);
  }
  await page.getByRole('button',{name:'Sonic 14 parts'}).click();await page.waitForFunction(()=>!document.querySelector('.arrangement-versions button').disabled,{},{timeout:60000});
  assert.equal(await page.locator('.arrangement-parts button').count(),15,'all fourteen source parts are selectable');
@@ -45,9 +45,9 @@ try{
  await page.getByLabel('Tempo',{exact:true}).fill('130');await page.getByLabel('Tempo',{exact:true}).press('Tab');
  await page.getByLabel('Transpose',{exact:true}).fill('7');await page.getByLabel('Transpose',{exact:true}).press('Tab');
  await page.waitForFunction(()=>!document.querySelector('.arrangement-versions button').disabled,{},{timeout:60000});
- assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1,'edits retain Play');
+ assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1,'edits retain Play');
  assert.ok(await audible(page)>.001,'edits remain audible');
- await page.getByLabel('Tempo',{exact:true}).fill('90');await page.getByLabel('Tempo',{exact:true}).press('Tab');await page.getByRole('button',{name:'Stop',exact:true}).click();
+ await page.getByLabel('Tempo',{exact:true}).fill('90');await page.getByLabel('Tempo',{exact:true}).press('Tab');await page.getByRole('button',{name:'Pause',exact:true}).click();
  await page.waitForFunction(()=>!document.querySelector('.arrangement-versions button').disabled,{},{timeout:60000});assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'Stop wins over pending worker');
  await page.getByRole('button',{name:'Mario 4 parts'}).click();await page.getByRole('heading',{name:'Mario · Ground Theme',exact:true}).waitFor({timeout:60000});
  for(const width of [320,390,768]){await page.setViewportSize({width,height:844});await page.screenshot({path:new URL(`width-${width}.png`,out).pathname,fullPage:true});const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,tiny:[...document.querySelectorAll('p,button,a,label,span,strong')].filter(e=>e.getBoundingClientRect().height&&getComputedStyle(e).display!=='none'&&parseFloat(getComputedStyle(e).fontSize)<14).map(e=>e.textContent)}));assert.equal(layout.overflow,false,JSON.stringify({width,layout}));assert.deepEqual(layout.tiny,[]);}

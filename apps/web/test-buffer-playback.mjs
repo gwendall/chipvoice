@@ -15,7 +15,7 @@ try{
   const analyser=ctx.createAnalyser();transport.output.connect(analyser);const samples=new Float32Array(analyser.fftSize);
   const level=()=>{analyser.getFloatTimeDomainData(samples);return Math.sqrt(samples.reduce((s,x)=>s+x*x,0)/samples.length);};
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));const entry=name=>[{file:'/probe-'+name+'.wav'},{file:'/probe-'+name+'-b.wav'}];
-  await transport.select(entry('first'),[.5,.5]);await transport.toggle();await wait(120);
+  await transport.select(entry('first'),[.5,.5]);await transport.toggle();await wait(300);
   const initial=level(),pending=transport.select(entry('slow'),[.5,.5]);await wait(120);const duringLoad=level();await pending;await wait(130);
   const failed=await transport.select(entry('fail'),[.5,.5]);const afterFailure=level(),keptPlaying=transport.playing;
   await Promise.all(['first','slow','first'].map(name=>transport.select(entry(name),[.5,.5])));await wait(130);
@@ -25,8 +25,64 @@ try{
   const cancellationKeptCurrent=transport.entries[0].file==='/probe-first.wav'&&level()>.05&&transport.playing;
   const pendingStop=transport.select(entry('slow-new'),[.5,.5]);transport.pause();await pendingStop;await wait(100);const silent=level();
   const stopped=!transport.playing;
-  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent};
+  transport.seek(.6);const pausedSeek=transport.phase();await transport.toggle();await wait(300);
+  const resumed=transport.phase(),resumeOffset=transport.group.offset/transport.group.duration;transport.pause();const frozen=transport.phase();await wait(100);const stillFrozen=transport.phase();
+  transport.setLoop(false);transport.seek(.94);await transport.toggle();await wait(300);
+  const ended=!transport.playing&&transport.phase()===1;
+  await transport.toggle();await wait(300);const replayed=transport.playing&&transport.group.offset===0;
+  transport.setLoop(true);
+  for(let i=0;i<30;i++)transport.seek(i/40);
+  transport.seek(.4);await wait(450);const lastSeek=transport.phase(),lastSeekOffset=transport.group.offset/transport.group.duration;
+  for(let i=0;i<10;i++){transport.pause();void transport.toggle();}
+  await wait(200);transport.pause();await wait(100);
+  transport.restart();await transport.toggle();await wait(1350);
+  const beforeLoopOff=transport.phase(ctx.currentTime);transport.setLoop(false);
+  const afterLoopOff=transport.phase(ctx.currentTime);
+  const traversalPreserved=Math.abs(beforeLoopOff-afterLoopOff)<.02&&afterLoopOff<1;
+  transport.pause();await wait(100);
+  const timestamp=ctx.getOutputTimestamp.bind(ctx);
+  ctx.getOutputTimestamp=()=>({contextTime:Math.max(0,ctx.currentTime-.6),performanceTime:performance.now()});
+  transport.seek(.9);await transport.toggle();
+  for(let i=0;i<100&&!transport.group?.ended;i++)await wait(10);
+  const endedBeforeAudible=!!transport.group?.ended&&transport.phase()<1;
+  transport.pause();transport.setLoop(true);await transport.toggle();await wait(120);
+  const endPauseResumed=transport.playing&&!!transport.group&&!transport.retiring;
+  ctx.getOutputTimestamp=timestamp;
+  await transport.select(entry('first'),[.5,.5],{restart:true,presentation:'first score'});await wait(150);
+  let deviceTime=ctx.currentTime-.01;
+  ctx.getOutputTimestamp=()=>({contextTime:deviceTime,performanceTime:performance.now()});
+  await transport.select(entry('second'),[.5,.5],{restart:true,presentation:'second score'});
+  const oldScoreUntilAudible=transport.audibleSelection()==='first score';
+  transport.cancelSelection();await wait(60);deviceTime=ctx.currentTime;
+  const newScoreWhenAudible=transport.audibleSelection()==='second score';
+  ctx.getOutputTimestamp=timestamp;
+  // Chromium can omit `ended` when a replacement starts exactly at buffer end.
+  // The transport must finish on the output clock even without that event.
+  transport.pause();await wait(100);transport.setLoop(false);transport.seek(0);
+  await transport.toggle();await wait(120);transport.seek(1);
+  transport.group.parts[0].source.onended=null;
+  await wait(400);const exactEndWithoutEvent=!transport.playing&&transport.phase()===1;
+  // Pause must not wait for the missing event while the final audio is delayed.
+  ctx.getOutputTimestamp=()=>({contextTime:Math.max(0,ctx.currentTime-.6),performanceTime:performance.now()});
+  transport.seek(0);await transport.toggle();await wait(120);
+  transport.seek(1);transport.group.parts[0].source.onended=null;await wait(150);
+  transport.pause();await transport.toggle();await wait(120);
+  const emptyEndPauseResumed=transport.playing&&!!transport.group&&!transport.retiring;
+  transport.pause();await wait(100);
+  // Latest seek still wins if an exact-end group retires before its crossfade.
+  ctx.getOutputTimestamp=()=>({contextTime:ctx.currentTime,performanceTime:performance.now()});
+  transport.seek(0);await transport.toggle();await wait(120);
+  transport.seek(1);transport.seek(0);await wait(400);
+  const restartPastEndWins=transport.playing&&transport.group?.offset===0;
+  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,resumeOffset,lastSeekOffset,frozen,stillFrozen,ended,replayed,lastSeek,traversalPreserved,endedBeforeAudible,endPauseResumed,oldScoreUntilAudible,newScoreWhenAudible,exactEndWithoutEvent,restartPastEndWins,emptyEndPauseResumed};
  });
  assert.ok(result.initial>.05&&result.duringLoad>.05&&result.afterFailure>.05,JSON.stringify(result));
- assert.equal(result.failed,false);assert.equal(result.cancelled,false);assert.ok(result.cancellationKeptCurrent);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');console.log('PASS decoded player keeps audible output through delayed/failed loads, latest selection wins, stop wins, bounded overlap',result);
+ assert.equal(result.failed,false);assert.equal(result.cancelled,false);assert.ok(result.cancellationKeptCurrent);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');
+ assert.ok(result.emptyEndPauseResumed,'Pause before the output deadline releases a source that started at its end');
+ assert.ok(result.restartPastEndWins,'Restart queued after an exact-end seek must keep playing');
+ assert.ok(result.exactEndWithoutEvent,'An exact-end seek finishes even when the source emits no ended event');
+ assert.ok(result.oldScoreUntilAudible&&result.newScoreWhenAudible);
+ assert.ok(result.traversalPreserved&&result.endedBeforeAudible&&result.endPauseResumed,JSON.stringify(result));
+ assert.equal(result.pausedSeek,.6);assert.equal(result.resumeOffset,.6);assert.equal(result.frozen,result.stillFrozen);assert.ok(result.ended&&result.replayed);assert.equal(result.lastSeekOffset,.4,'The last requested seek wins, independently of output latency');
+ console.log('PASS decoded player keeps audible output through delayed/failed loads, latest selection wins, stop wins, bounded overlap',result);
 }finally{await browser.close();}

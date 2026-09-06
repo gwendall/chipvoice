@@ -6,28 +6,31 @@ write music for them and hear it the way the machine played it.
 
 **[chipvoice.dev](https://chipvoice.dev)** to play it. `npm i chipvoice` to use it.
 
-The [playground](https://chipvoice.dev) introduces the library through familiar Mario,
-Zelda and Sonic melodies. Pick a tune or a Japanese console logo to start the sound
-on your first interaction, then switch consoles or tempo while it keeps playing.
-Play also works directly; after Stop, edits stay silent until you play again. Mario
-is the first-visit default; saved drafts and shared scores take priority. The public
-selector features Famicom, Game Boy, Mega Drive and Super Famicom; C64 is temporarily
-hidden from the selector, with SDK and saved-score support retained. Original loops,
-composition controls, recording, effects and export remain available below.
+The [playground](https://chipvoice.dev) opens with complete arrangements: Mario's
+four native Famicom voices, all four Zelda MIDI parts and all fourteen Sonic parts.
+Pick a song or Japanese console logo to start on your first interaction. Play/pause,
+restart, a full-song seek slider and a clickable score let you explore the music.
+Preset full mixes are lossless renders from these same JavaScript engines.
+The cursor follows the audio output clock; console, tempo and solo changes keep
+the musical position while the next sound is prepared. Turn Loop off to play once.
 
-The [About page](https://chipvoice.dev/about) explains browser synthesis, hardware
-constraints, evaluation and credits. Console marks are self-hosted colour SVGs;
-see the [source manifest](apps/web/public/machines/README.md). No account is required.
-See the [demo spec](docs/DEMO.md) for the interaction design.
-
-The [complete-arrangement lab](https://chipvoice.dev/lab/arrangements) adds the
-whole band: Mario's native Famicom commands, all four Zelda MIDI parts and all
-fourteen Sonic parts. Isolate instruments, compare Mario against an independent
-NSF renderer, switch consoles without stopping, or import a MIDI locally. Every
-port reports its voice omissions and instrument substitutions. The reusable SDK
-interface is `importMidi → planPerformance → renderPerformance`;
+Import a MIDI locally, isolate its instruments, or compare native Mario with an
+independent NSF renderer. Every port reports voice omissions and substitutions;
+no extra accompaniment is invented. Imports show preparation and rendering progress.
+The reusable SDK pipeline is `importMidi → planPerformance → renderPerformance`;
 [the method and its limits](scores/arrangements/README.md) distinguish original
-game verification from complete MIDI transcription and cross-console adaptation.
+game verification from MIDI transcription and cross-console adaptation.
+
+**Make a loop** opens the editor, keyboard, pads, recording, undo, code, export and
+sharing in the same page. Your saved draft is restored there; shared links still
+open their score. Switching modes pauses the previous instrument. C64 is hidden
+from the public selector, with SDK and saved-score support retained.
+
+The [listening lab](https://chipvoice.dev/lab) holds engine comparisons; the former
+`/lab/arrangements` URL redirects home. The [About page](https://chipvoice.dev/about)
+explains browser synthesis, constraints, evaluation and credits. Console marks are
+self-hosted colour SVGs; see the [source manifest](apps/web/public/machines/README.md).
+No account is required. See the [current playground spec](docs/UNIFIED-PLAYGROUND.md).
 
 ## Why
 
@@ -194,7 +197,7 @@ For composition quality checks, use the [audio listening lab](docs/AUDIO-EVALUAT
 actual presets on all five consoles, isolated parts, level-matched comparisons,
 and independent SNES DSP execution. Digital parity does not guarantee a good arrangement.
 
-### Familiar melodies and composition
+### Melody studies in the composer
 
 The [playground](https://chipvoice.dev) and [listening lab](https://chipvoice.dev/lab)
 include Mario (50 bars), Zelda (24 bars with introduction), and a complete Sonic

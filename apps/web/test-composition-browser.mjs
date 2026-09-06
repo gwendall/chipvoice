@@ -7,9 +7,9 @@ await mkdir(out,{recursive:true});const browser=await chromium.launch();
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('videos/',out).pathname}});
  await context.addInitScript(installOutputProbe);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(base);await page.waitForFunction(()=>!document.getElementById('tempo-slider')?.disabled);
+ await page.goto(base+'/?mode=compose');await page.waitForFunction(()=>document.getElementById('tempo-slider')&&!document.getElementById('tempo-slider').disabled);
  const number=name=>page.getByRole('spinbutton',{name,exact:true});
- const valueIs=async(name,value)=>page.waitForFunction(({name,value})=>document.querySelector(`input[type=number][aria-label="${name}"]`)?.value===value,{name,value});
+ const valueIs=async(name,value)=>page.waitForFunction(({name,value})=>document.querySelector(`.demo-page input[type=number][aria-label="${name}"]`)?.value===value,{name,value});
  const draft=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('chipvoice.draft.v1')));
  await page.locator('.original-tunes summary').click();await page.getByRole('button',{name:'Load Overworld',exact:true}).click();
  const original=await draft();
@@ -26,7 +26,7 @@ try{
   if(!await page.getByRole('button',{name:'Stop',exact:true}).count())await page.getByRole('button',{name:'Play',exact:true}).click();
   await page.waitForFunction(id=>window.chipvoice?.playing&&window.chipvoice.songId!==id,before);
   for(const [label,id] of chips){
-   await page.locator('.machines').getByRole('button',{name:label,exact:true}).click();
+   await page.locator('.demo-page .machines').getByRole('button',{name:label,exact:true}).click();
    await page.waitForFunction(id=>window.chipvoice?.playing&&window.chipvoice.spec.id===id,id);
    // Some phrases open with a written rest; measure after their first phrase.
    await page.waitForTimeout(title.startsWith('Sonic')?1000:150);
@@ -40,7 +40,7 @@ try{
  assert.ok(await number('Drum activity').isDisabled());await page.getByText('Edited version · source checks apply to the original cartridge.',{exact:true}).waitFor();await page.waitForTimeout(350);
  assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);
  const edited=await draft();await page.screenshot({path:new URL('desktop.png',out).pathname,fullPage:true});
- await page.reload();await page.waitForFunction(()=>!document.getElementById('tempo-slider')?.disabled);assert.deepEqual((await draft()).patterns,edited.patterns);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1);
+ await page.reload();await page.waitForFunction(()=>document.getElementById('tempo-slider')&&!document.getElementById('tempo-slider').disabled);assert.deepEqual((await draft()).patterns,edited.patterns);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1);
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:new URL('mobile.png',out).pathname,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.goto(base+'/lab');await page.getByLabel('Composition',{exact:true}).selectOption('sonic');

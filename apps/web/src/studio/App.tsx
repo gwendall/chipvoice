@@ -22,7 +22,7 @@ import {RangeControl} from '../ui/RangeControl';
 import {SiteHeader, SiteFooter, MachinePicker, PlayButton} from '../ui/components';
 import '../arrangements/style.css';
 
-export default function App({ initial, initialId }: { initial?: SongDocument; initialId?: string }) {
+export default function App({ initial, initialId, embedded=false }: { initial?: SongDocument; initialId?: string; embedded?:boolean }) {
   const doc = useSongDocument(initial, initialId);
   const [muted, setMuted] = useState<Role[]>([]);
   const [solo, setSolo] = useState<Role | null>(null);
@@ -129,13 +129,12 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
     audio.startOnInteraction(next, []); measure('preset');
   };
   return <div className="demo-page">
-    <SiteHeader />
+    {!embedded&&<SiteHeader />}
     <main className="demo-main">
       <section className="playground-intro" aria-labelledby="intro-title">
         <div><span className="micro">OPEN-SOURCE SOUND-CHIP EMULATION</span><h1 id="intro-title">Old consoles.<br/><span>New JavaScript.</span></h1></div>
         <div className="intro-copy"><p>We rebuilt their sound chips in JavaScript. Hear familiar melodies come alive on different consoles, with every note generated in your browser.</p><Link href="/about">How it works <span aria-hidden="true">↗</span></Link></div>
       </section>
-      <Link href="/lab/arrangements" className="full-arrangement-link"><span><strong>Hear the whole band.</strong>Complete Mario, Zelda & Sonic arrangements. Every part, four consoles, your own MIDI.</span><span aria-hidden="true">↗</span></Link>
       <section className="console" aria-label="Chipvoice musical console" onClick={event => {
         if (doc.ready && !(event.target instanceof Element && event.target.closest('a, input[type="number"], textarea, select'))) audio.startOnInteraction();
       }}>
@@ -167,6 +166,6 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
       {code && <CodePanel song={doc.song} onNotice={say}/>}
       <div className={`notice ${audio.error ? 'error' : ''}`} role="status" aria-live="polite">{audio.error || notice}</div>
     </main>
-    <SiteFooter />
+    {!embedded&&<SiteFooter />}
   </div>;
 }

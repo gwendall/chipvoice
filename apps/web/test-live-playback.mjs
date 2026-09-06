@@ -14,7 +14,7 @@ const factory=async({chip})=>{
 const form={bpm:120,patterns:[{lead:'C4 . . .',bass:'. . . .',chord:'. . . .',perc:'. . . .',chordShape:[[0]]}],order:[0]};
 const player=new LivePlayback(context,()=>{},factory);
 await player.start({...form,id:'original',chip:'2a03'});
-const stale=player.update({...form,id:'obsolete',chip:'snes'}),latest=player.update({...form,id:'latest',chip:'dmg'});
+const stale=player.update({...form,bpm:240,id:'obsolete',chip:'snes'});assert.equal(player.stepSeconds,.125,'Display timing belongs to the audible engine during a pending tempo change');const latest=player.update({...form,id:'latest',chip:'dmg'});
 rejectStale(new Error('Stale worklet failed'));await Promise.all([stale,latest]);
 assert.deepEqual(calls,['2a03','snes','dmg']);assert.equal(player.current.spec.id,'dmg');assert.equal(player.current.songId,'latest');assert.equal(player.error,'');assert.ok(player.playing);assert.equal(alive,1);assert.ok(maxAlive<=2);
 assert.deepEqual(positions.at(-1),phase,'An unchanged grid preserves fractional phase exactly');

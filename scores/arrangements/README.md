@@ -1,6 +1,6 @@
 # Complete arrangements and repeatable console porting
 
-The [arrangement lab](https://chipvoice.dev/lab/arrangements) is available from the
+The [arrangement lab](https://chipvoice.dev) is available from the
 playground and listening lab. It keeps the whole source arrangement, offers each
 part separately, and reports the cost of fitting it onto another console. The
 older melody editor remains available for compact tracker compositions.
@@ -204,3 +204,12 @@ The test waits for visible progress and actual rendering/decode completion, then
 measures browser output. It also checks Stop while preparing, legacy track labels,
 mobile loading layout and browser errors. Screenshots/video/results are written to
 `.artifacts/midi-import/e2e/` and uploaded by CI.
+
+## Unified playground transport
+
+The full arrangement deck is now the homepage. `/lab/arrangements` redirects to
+`/`; technical engine comparisons stay at `/lab`. Playback supports pause/resume,
+restart, full-song seeking (slider or score), and optional looping. Native Mario
+repeats after its introduction. Console/tempo/solo changes preserve source-time
+phase. **Make a loop** opens the existing creative tracker with its saved draft.
+See [the interaction and timing specification](../../docs/UNIFIED-PLAYGROUND.md).

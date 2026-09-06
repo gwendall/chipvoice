@@ -18,7 +18,7 @@ await page.addInitScript(()=>{
   Object.defineProperty(navigator,'requestMIDIAccess',{value:async options=>{if(options.sysex!==false)throw new Error('SysEx must stay disabled');window.midiRequests++;return access;}});
 });
 try {
-  await page.goto(process.env.SITE);
+  await page.goto(process.env.SITE+'/?mode=compose');
   await page.locator('.original-tunes summary').click();await page.getByRole('button',{name:'Load Overworld',exact:true}).click();
   await page.getByRole('button',{name:'View code',exact:false}).click();
   await page.getByRole('button',{name:'Score JSON',exact:true}).click();

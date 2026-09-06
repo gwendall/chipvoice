@@ -13,13 +13,13 @@ try {
     const context = await browser.newContext({viewport:{width:gesture === 'touch' ? 390 : 1280,height:gesture === 'touch' ? 844 : 1000},hasTouch:gesture === 'touch',recordVideo:{dir:new URL('videos/',out).pathname}});
     await context.addInitScript(installOutputProbe);
     const page = await context.newPage();page.on('pageerror',error => errors.push(error.message));
-    await page.goto(base);await page.waitForFunction(() => !document.getElementById('tempo-slider')?.disabled);
+    await page.goto(base+'/?mode=compose');await page.waitForFunction(() => document.getElementById('tempo-slider')&&!document.getElementById('tempo-slider').disabled);
     assert.equal(await page.evaluate(() => !!window.audioBus || !!window.chipvoice), false, 'Passive arrival creates no audio');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('chipvoice.draft.v1')));
     assert.equal(saved.title, 'Mario · Ground Theme');
-    assert.deepEqual(await page.locator('.machines button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label'))), ['Famicom','Game Boy','Mega Drive','Super Famicom']);
-    assert.deepEqual(await page.locator('.machines button').allTextContents(), ['', '', '', ''], 'No captions beneath console logos');
-    assert.ok(await page.locator('.machine-logo').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0 && getComputedStyle(image).maskImage === 'none')));
+    assert.deepEqual(await page.locator('.demo-page .machines button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label'))), ['Famicom','Game Boy','Mega Drive','Super Famicom']);
+    assert.deepEqual(await page.locator('.demo-page .machines button').allTextContents(), ['', '', '', ''], 'No captions beneath console logos');
+    assert.ok(await page.locator('.demo-page .machine-logo').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0 && getComputedStyle(image).maskImage === 'none')));
     await page.keyboard.press('Tab');assert.equal(await page.evaluate(() => !!window.audioBus),false,'Tab navigation is silent');
     if (gesture === 'tune' || gesture === 'touch') await page.screenshot({path:new URL(`${gesture}-initial.png`,out).pathname,fullPage:true});
     if (gesture === 'tune') await page.getByRole('button',{name:'Load Zelda · Overworld',exact:true}).click();
@@ -50,7 +50,7 @@ try {
   }
   // Old C64 drafts are valid documents, even while the public picker hides SID.
   const context = await browser.newContext();const page = await context.newPage();
-  await page.goto(base);await page.waitForFunction(() => !!localStorage.getItem('chipvoice.draft.v1'));
+  await page.goto(base+'/?mode=compose');await page.waitForFunction(() => !!localStorage.getItem('chipvoice.draft.v1'));
   await page.evaluate(() => {const song=JSON.parse(localStorage.getItem('chipvoice.draft.v1'));song.chip='c64';song.title='My SID draft';localStorage.setItem('chipvoice.draft.v1',JSON.stringify(song));});
   await page.reload();await page.getByRole('heading',{name:'My SID draft',exact:true}).waitFor();
   await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(() => window.chipvoice?.spec.id==='c64'&&window.chipvoice.playing);

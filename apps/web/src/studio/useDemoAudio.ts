@@ -5,6 +5,7 @@ import { effectFor, type EffectId } from './effects';
 import { musicSong, type SongDocument } from './document';
 import { measure } from './metrics';
 import { LivePlayback } from '../audio/LivePlayback';
+import {AudibleSteps} from '../audio/AudibleSteps';
 
 export function useDemoAudio(song: SongDocument, muted: Role[], recording = false) {
   const interacted = useRef(false);
@@ -98,11 +99,12 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     if (!output) return; // Nothing to poll before the first explicit audio start.
     let raf = 0;
     const scratch = { step: 0, orderIndex: 0 };
+    const audible = new AudibleSteps();
     let lastStep = -1, lastOrder = -1, lastBusy = 0;
     let lastChip: Chip | null = null;
     const tick = () => {
       const chip = current.current;
-      const pos = chip?.position(scratch) ?? null;
+      const pos = audible.read(chip,playback.current?.stepSeconds??0,scratch);
       const step = pos?.step ?? -1, order = pos?.orderIndex ?? -1;
       if (step !== lastStep || order !== lastOrder) {
         lastStep = step; lastOrder = order;
