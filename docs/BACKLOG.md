@@ -391,3 +391,10 @@ primitives and `/lab/components` document the existing identity; a separate
 Storybook build is deferred until the collection needs it. The public corpus is
 an explicitly versioned, on-demand snapshot. See
 [implementation and regression evidence](CONTINUOUS-PLAYBACK-LAB.md).
+
+
+**2026-09-06, composition controls.** Tempo now uses a shared 40–300 BPM slider
+with a synchronized manual input and grouped Undo. Further controls and sourced
+Mario/Zelda/Sonic repertoire proposals are recorded in
+[composition controls](COMPOSITION-CONTROLS.md); these proposals are not yet
+implemented or included in the public evaluation corpus.
