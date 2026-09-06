@@ -68,7 +68,7 @@ for(const preset of presets)for(const id of ids){
  const core=chip.create(44100);core.setGain(.78);for(const block of log.memory)core.load?.(block.address,block.bytes);core.schedule(log.events);
  const replay={sampleRate:44100,left:new Float32Array(audio.left.length),right:new Float32Array(audio.left.length)};core.render(replay.left,replay.right,0);
  const score={...preset.song,chip:chip.spec.id};await writeFile(resolve(out,`${preset.id}-${id}-score.json`),JSON.stringify(score,null,2));
- const row={id:`${preset.id}-${id}`,preset:preset.id,title:preset.title,chip:chip.spec.id,seconds,completeLoop:seconds>=loopSeconds(song),scoreSha256:hash(JSON.stringify(score)),issues:validation.issues,replay:comparePcm(audio,replay),assets:{mix:await asset(audio,`${preset.id}-${id}-mix.wav`)}};
+ const row={...(preset.source?{source:preset.source,composer:preset.composer,adaptation:preset.adaptation}:{}),id:`${preset.id}-${id}`,preset:preset.id,title:preset.title,chip:chip.spec.id,seconds,completeLoop:seconds>=loopSeconds(song),scoreSha256:hash(JSON.stringify(score)),issues:validation.issues,replay:comparePcm(audio,replay),assets:{mix:await asset(audio,`${preset.id}-${id}-mix.wav`)}};
  if(!args.includes('--mix-only'))for(const role of roles){
   const isolated={...score,patterns:score.patterns.map(pattern=>({...pattern,...Object.fromEntries(roles.filter(other=>other!==role).map(other=>[other,pattern[other].trim().split(/\s+/).map(()=>'.').join(' ')]))}))};
   row.assets[role]=await asset(renderSong(arrange(isolated),{seconds,stereo:true}),`${preset.id}-${id}-${role}.wav`);

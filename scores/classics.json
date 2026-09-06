@@ -1,0 +1,220 @@
+[
+  {
+    "version": 1,
+    "id": "mario",
+    "title": "Mario · Ground Theme",
+    "composer": "Koji Kondo",
+    "chip": "2a03",
+    "bpm": 200,
+    "mood": "World 1–1 · opening study",
+    "color": "#d46d52",
+    "grid": "exact-sixteenth",
+    "source": {
+      "url": "https://ichigos.com/sheets/293",
+      "transcriber": "AltoNicoRuso / Alejandro",
+      "fileId": 2073,
+      "excerpt": "Opening four bars; melody raised one octave from the viola transcription",
+      "pdfSha256": "315ad3407a97bc8705b2c0e1bfb02bba3511bcbe41eba92f20de9e9bce68a064"
+    },
+    "adaptation": "Four-bar opening study. Melody and written rests retained; new bass, harmony and drums. A short loop, not the complete game soundtrack.",
+    "intent": {
+      "lead": "bright",
+      "chord": "plucked",
+      "bass": "round",
+      "perc": "soft"
+    },
+    "bars": [
+      {
+        "melody": "E5:1/2 E5:1/2 r:1/2 E5:1/2 r:1/2 C5:1/2 E5:1/2 r:1/2",
+        "root": "C4",
+        "shape": [
+          0,
+          4,
+          7
+        ],
+        "bass": "C2",
+        "fifth": "G2"
+      },
+      {
+        "melody": "G5:1/2 r:3/2 G4:1/2 r:3/2",
+        "root": "G3",
+        "shape": [
+          0,
+          4,
+          7
+        ],
+        "bass": "G2",
+        "fifth": "D3"
+      },
+      {
+        "melody": "C5:1/2 r:1 G4:1/2 r:1 E4:1/2 r:1/2",
+        "root": "C4",
+        "shape": [
+          0,
+          4,
+          7
+        ],
+        "bass": "C2",
+        "fifth": "G2"
+      },
+      {
+        "melody": "r:1/2 A4:1/2 r:1/2 B4:1/2 r:1/2 Bb4:1/2 A4:1/2 r:1/2",
+        "root": "F3",
+        "shape": [
+          0,
+          4,
+          7
+        ],
+        "bass": "F2",
+        "fifth": "C3"
+      }
+    ]
+  },
+  {
+    "version": 1,
+    "id": "zelda",
+    "title": "Zelda · Overworld",
+    "composer": "Koji Kondo",
+    "chip": "snes",
+    "bpm": 150,
+    "mood": "An open world · heroic phrase",
+    "color": "#799776",
+    "grid": "nearest-sixteenth",
+    "source": {
+      "url": "https://ichigos.com/sheets/z",
+      "transcriber": "R2XC",
+      "fileId": 2377,
+      "excerpt": "Main-theme phrase, bars 7–10; concert pitch, recast in B-flat",
+      "pdfSha256": "80f8b11e286b3850f4c0bf563b46c196f03b4188c277ad4504737b4e8b7eb088"
+    },
+    "adaptation": "Four-bar main-theme study in B-flat. Triplet runs are explicitly fitted to the sixteenth grid; new supporting parts. A short arrangement, not an original audio capture.",
+    "intent": {
+      "lead": "round",
+      "chord": "held",
+      "bass": "round",
+      "perc": "soft"
+    },
+    "bars": [
+      {
+        "melody": "Bb4:1 F4:3/2 Bb4:1/2 Bb4:1/4 C5:1/4 D5:1/4 Eb5:1/4",
+        "root": "Bb3",
+        "shape": [
+          0,
+          4,
+          7
+        ],
+        "bass": "Bb1",
+        "fifth": "F2"
+      },
+      {
+        "melody": "F5:2 r:1/2 F5:1/2 F5:1/3 G5:1/3 A5:1/3",
+        "root": "Ab3",
+        "shape": [
+          0,
+          4,
+          7
+        ],
+        "bass": "Ab1",
+        "fifth": "Eb2"
+      },
+      {
+        "melody": "Bb5:2 Bb5:1/2 Bb5:1/2 A5:1/3 G5:1/3 F5:1/3",
+        "root": "Gb3",
+        "shape": [
+          0,
+          4,
+          7
+        ],
+        "bass": "Gb2",
+        "fifth": "Db3"
+      },
+      {
+        "melody": "G5:3/4 F5:1/4 Eb5:2 F5:1",
+        "root": "F3",
+        "shape": [
+          0,
+          4,
+          7,
+          10
+        ],
+        "bass": "F2",
+        "fifth": "C3"
+      }
+    ]
+  },
+  {
+    "version": 1,
+    "id": "sonic",
+    "title": "Sonic · Green Hill Zone",
+    "composer": "Masato Nakamura",
+    "chip": "md",
+    "bpm": 150,
+    "mood": "Green hills · syncopated sunshine",
+    "color": "#628faf",
+    "grid": "exact-sixteenth",
+    "source": {
+      "url": "https://ichigos.com/sheets/712",
+      "transcriber": "NPonline",
+      "fileId": 3093,
+      "excerpt": "Opening four bars of the seventh-chord piano exercise; melody lowered one octave",
+      "pdfSha256": "2fd70e0959e7d1b1a640f8c0f760029837e0906f1450e825403fe4aeca917397"
+    },
+    "adaptation": "Four-bar piano-study adaptation. Melody, rests and seventh-chord progression retained; lower bass and a new drum groove. Same score on every console.",
+    "intent": {
+      "lead": "round",
+      "chord": "plucked",
+      "bass": "bright",
+      "perc": "soft"
+    },
+    "bars": [
+      {
+        "melody": "r:2 C5:1/2 A4:1 C5:1/2",
+        "root": "F3",
+        "shape": [
+          0,
+          4,
+          7,
+          11
+        ],
+        "bass": "F2",
+        "fifth": "C3"
+      },
+      {
+        "melody": "B4:1 C5:1/2 B4:1 G4:3/2",
+        "root": "E3",
+        "shape": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "bass": "E2",
+        "fifth": "B2"
+      },
+      {
+        "melody": "r:3/2 A4:1/2 E5:1/2 D5:1 C5:1/2",
+        "root": "F3",
+        "shape": [
+          0,
+          4,
+          7,
+          11
+        ],
+        "bass": "F2",
+        "fifth": "C3"
+      },
+      {
+        "melody": "B4:1 C5:1/2 B4:1 G4:3/2",
+        "root": "E3",
+        "shape": [
+          0,
+          3,
+          7,
+          10
+        ],
+        "bass": "E2",
+        "fifth": "B2"
+      }
+    ]
+  }
+]

@@ -8,8 +8,8 @@ export function palette(role: Role, chromatic = false, key = 'C') {
   if (role === 'perc') return ['K', 'S', 'H', 'O'];
   const octave = role === 'bass' ? 2 : role === 'chord' ? 3 : 4;
   const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const root = key === 'A' ? 9 : key === 'E' ? 4 : 0;
-  const intervals = chromatic ? Array.from({ length: 13 }, (_, i) => i) : key === 'C' ? [0,2,4,5,7,9,11,12] : [0,2,3,5,7,8,10,12];
+  const root = key === 'A' ? 9 : key === 'E' ? 4 : key === 'Bb' ? 10 : 0;
+  const intervals = chromatic ? Array.from({ length: 13 }, (_, i) => i) : (key === 'C' || key === 'Bb') ? [0,2,4,5,7,9,11,12] : [0,2,3,5,7,8,10,12];
   return intervals.map(n => names[(n + root) % 12] + (octave + Math.floor((n + root) / 12)));
 }
 export function Editor({ song, onEdit, role, onRole, onPreview, chromatic, musicalKey, undo, redo, canUndo, canRedo }: {

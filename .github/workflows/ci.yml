@@ -34,6 +34,12 @@ jobs:
           key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
           restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm build
+      - run: pnpm scores:check
+      - name: Score import regressions
+        run: |
+          python3 -m venv /tmp/chipvoice-score-tools
+          /tmp/chipvoice-score-tools/bin/pip install -q -r scores/requirements.txt
+          /tmp/chipvoice-score-tools/bin/python scores/test-import-midi.py
       - run: pnpm typecheck
       - run: pnpm test:unit
       - run: pnpm exec playwright install --with-deps chromium
@@ -50,6 +56,7 @@ jobs:
             .artifacts/demo
             .artifacts/lab
             .artifacts/continuity
+            .artifacts/composition
           retention-days: 7
 
   conformance:

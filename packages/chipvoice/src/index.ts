@@ -364,3 +364,5 @@ export class Chip {
     if (this.ownsContext) void this.ctx.close();
   }
 }
+
+export {shapeScore, transposeBounds} from './composition.js';
