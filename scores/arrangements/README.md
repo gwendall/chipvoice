@@ -42,7 +42,11 @@ at most 100,000 notes, expanded MIDI expression is capped at 200,000 points,
 and renders at most ten minutes. Controller fan-out is checked before expansion. Nothing executes MIDI data
 as code. Unsupported controllers, aftertouch and SysEx configuration are reported;
 pan, modulation-wheel interpretation and game-specific samples are not silently
-claimed as reproduced. MIDI parsing and rendering stay in replaceable browser workers.
+claimed as reproduced. MIDI parsing and rendering stay in replaceable browser workers. MIDI text is read
+as UTF-8 first; invalid UTF-8 falls back to Windows-1252 with an explicit notice.
+This supports common Western legacy files without claiming universal encoding
+detection. Original names are preserved, with channel numbers distinguishing
+repeated names in the UI.
 
 Automatic role inference is a draft. Supply reviewed `parts` options by returned
 track/channel ID, or edit the returned part's role/priority. Source note IDs survive
@@ -70,6 +74,11 @@ arpeggio or slide is reported as omitted instead of embellishing the source.
 Render in a worker for interactive use. Compilation and full-file rendering are
 offline operations; this interface is not a real-time MIDI-input synthesizer.
 The audio cores and their per-sample paths are unchanged.
+`renderPerformance(plan, chip, {onProgress})` optionally reports the completed
+frame fraction (0–1) after each offline block. The worker publishes at most one
+update per integer percent. The deck shows the pending filename, preparation
+stage, real rendered percentage, elapsed time and whether playback will start
+automatically. A displayed title is not evidence that audio is ready.
 
 ## Reproduce source import
 
@@ -179,3 +188,19 @@ transpose or solos. The UI never treats an edited version as the original captur
   is retained/reported for future adapters; it is not silently synthesized.
 - Full arrangements currently have their own lab/player and JSON/SDK workflow.
   The four-role tracker editor and publication API continue using `Score`.
+
+### Long MIDI import regression
+
+```sh
+# CI uses a generated 82.5-second MIDI, without shipping a user's file.
+SITE=http://127.0.0.1:3074 node apps/web/test-midi-import.mjs
+# Optional local reproduction; the file is parsed in the browser, not uploaded.
+SITE=http://127.0.0.1:3074 MIDI_FILE=/absolute/path/song.mid \
+  MIDI_CHIPS='Famicom,Game Boy,Mega Drive,Super Famicom' \
+  node apps/web/test-midi-import.mjs
+```
+
+The test waits for visible progress and actual rendering/decode completion, then
+measures browser output. It also checks Stop while preparing, legacy track labels,
+mobile loading layout and browser errors. Screenshots/video/results are written to
+`.artifacts/midi-import/e2e/` and uploaded by CI.

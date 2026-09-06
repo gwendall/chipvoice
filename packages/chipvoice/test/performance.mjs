@@ -49,3 +49,14 @@ assert.deepEqual(fm.finish().events.map(e=>e.value),[0xa4,0x19,0xa0,0x80,0xa4,0x
 const expanded=[];for(let i=0;i<1000;i++)expanded.push([0,0x90,i%128,90]);for(let i=0;i<220;i++)expanded.push([1,0xb0,11,i%127]);expanded.push([1,0xb0,120,0],[0,0xff,0x2f,0]);
 assert.throws(()=>importMidi(midi(expanded)),/200,000 points/,'small MIDI cannot expand to unbounded expression objects');
 console.log('PASS atomic DSP pairs, shared FM FNUM latch, eight SNES pitched voices and bounded controller expansion');
+
+for(const name of [Buffer.from('Éclaté','utf8'),Buffer.from([0xc9,0x63,0x6c,0x61,0x74,0xe9])]){
+ const named=importMidi(midi([[0,0xff,3,name.length,...name],[0,0x90,60,100],[480,0x80,60,0],[0,0xff,0x2f,0]]));
+ assert.equal(named.parts[0].name,'Éclaté','UTF-8 and legacy MIDI labels preserve accents');
+ assert.equal(named.notices.some(n=>n.includes('Windows-1252')),name[0]===0xc9);
+}
+const updates=[],progressPlan=planPerformance(source,nesChip);
+const monitored=renderPerformance(progressPlan,nesChip,{sampleRate:8000,onProgress:p=>updates.push(p)}),plain=renderPerformance(progressPlan,nesChip,{sampleRate:8000});
+assert.equal(updates[0],0);assert.equal(updates.at(-1),1);assert.ok(updates.some(p=>p>0&&p<1));assert.ok(updates.every((p,i)=>!i||p>updates[i-1]));
+assert.deepEqual(monitored.left,plain.left,'reporting actual rendered frames does not change PCM');
+console.log('PASS legacy MIDI labels and monotonic sample-based render progress without audio changes');

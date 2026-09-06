@@ -8,6 +8,13 @@ the bottom, dated, and the ticket they change is updated in the same commit.
 
 Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
+## MIDI import feedback — 2026-09-06
+
+- doing — `fix/midi-import-feedback` (0.15.1): visible preparation stages,
+  sample-based progress and elapsed time, legacy MIDI text decoding with explicit
+  fallback, channel labels, and long-MIDI E2E through actual audio output.
+  Reproduced with the user's local Musha Aleste MIDI; source bytes stay local.
+
 ## Complete arrangements — 2026-09-06
 
 - done — `feat/complete-arrangements` (0.15.0): exact-tick polyphonic MIDI import,

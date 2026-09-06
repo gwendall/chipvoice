@@ -60,6 +60,7 @@ jobs:
             .artifacts/composition
             .artifacts/japanese-playground
             .artifacts/arrangements/browser
+            .artifacts/midi-import/e2e
           retention-days: 7
 
   conformance:

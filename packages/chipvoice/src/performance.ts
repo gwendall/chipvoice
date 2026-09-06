@@ -176,7 +176,7 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
 }
 
 /** Renders compiled commands, not a second interpretation of the score. */
-export function renderPerformance(plan: PerformancePlan, chip: ChipDefinition, options: {sampleRate?: number; gain?: number} = {}): RenderResult {
+export function renderPerformance(plan: PerformancePlan, chip: ChipDefinition, options: {sampleRate?: number; gain?: number; onProgress?: (fraction: number) => void} = {}): RenderResult {
   if (plan.chip !== chip.spec.id) throw new Error('Plan/chip mismatch');
   const sampleRate = options.sampleRate ?? 44100;
   if (!Number.isInteger(sampleRate) || sampleRate < 8000 || sampleRate > 192000 || !Number.isFinite(plan.seconds) || plan.seconds <= 0 || plan.seconds > 600) throw new Error('Invalid render size');
@@ -184,7 +184,11 @@ export function renderPerformance(plan: PerformancePlan, chip: ChipDefinition, o
   for (const block of plan.memory) core.load(block.address, block.bytes);
   core.schedule(plan.events);
   const total = Math.round(plan.seconds * sampleRate), left = new Float32Array(total), right = new Float32Array(total);
-  for (let offset = 0; offset < total; offset += 4096) core.render(left.subarray(offset, offset + 4096), right.subarray(offset, offset + 4096), offset);
+  options.onProgress?.(0);
+  for (let offset = 0; offset < total; offset += 4096) {
+    core.render(left.subarray(offset, offset + 4096), right.subarray(offset, offset + 4096), offset);
+    options.onProgress?.(Math.min(offset + 4096,total) / total);
+  }
   let peak = 0;
   for (let i = 0; i < total; i++) peak = Math.max(peak, Math.abs(left[i]), Math.abs(right[i]));
   return {sampleRate, left, right, seconds: total / sampleRate, peak};
