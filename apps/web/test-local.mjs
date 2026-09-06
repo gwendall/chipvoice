@@ -21,7 +21,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   if (!ready) throw new Error(`Server did not start: ${log}`);
-  for (const script of ['../../scores/arrangements/verify-publication.mjs', 'test-foundations.mjs', 'test-score-compiler.mjs', 'test-live-playback.mjs', 'test-lab-publication.mjs', 'test-recording.mjs', 'test-creative.mjs', 'test-render-cache.mjs', 'test-api.mjs', 'test-auth-http.mjs', 'test-arrival.mjs', 'test-demo.mjs', 'test-creative-browser.mjs', 'test-audio-transitions.mjs', 'test-buffer-playback.mjs', 'test-lab.mjs', 'test-arrangements.mjs', 'test-midi-import.mjs', 'test-composition-browser.mjs']) {
+  for (const script of ['../../scores/arrangements/verify-publication.mjs', 'test-foundations.mjs', 'test-score-compiler.mjs', 'test-live-playback.mjs', 'test-lab-publication.mjs', 'test-recording.mjs', 'test-creative.mjs', 'test-render-cache.mjs', 'test-api.mjs', 'test-auth-http.mjs', 'test-arrival.mjs', 'test-demo.mjs', 'test-creative-browser.mjs', 'test-audio-transitions.mjs', 'test-output-clock.mjs', 'test-buffer-playback.mjs', 'test-transport-browser.mjs', 'test-lab.mjs', 'test-arrangements.mjs', 'test-midi-import.mjs', 'test-composition-browser.mjs']) {
     const child = spawn(process.execPath, [script], { env, stdio: 'inherit' });
     const code = await new Promise(resolve => child.on('exit', resolve));
     if (code !== 0) throw new Error(`${script} exited ${code}`);

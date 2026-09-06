@@ -29,7 +29,7 @@ try{
   await page.waitForFunction(value=>{const p=document.querySelector('[aria-label="Audio rendering progress"]');return !p||Number(p.getAttribute('aria-valuenow'))>value;},first,{timeout:240000});
   await preparation.waitFor({state:'hidden',timeout:240000});
   await page.getByRole('link',{name:'Download audio',exact:false}).waitFor();await page.getByRole('heading',{name:title,exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);
+  assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);
   const levels=[];for(let i=0;i<16;i++)levels.push(await outputRms(page));assert.ok(Math.max(...levels)>.001,`${machines[index]} must produce measured audio after completion: ${levels}`);
   const labels=await page.locator('.arrangement-parts strong').allTextContents();assert.ok(!labels.some(s=>s.includes('\ufffd')),JSON.stringify(labels));if(!file)assert.ok(labels.includes('Éclaté'));
   results.push({machine:machines[index],elapsedMs:Date.now()-start,maxRms:Math.max(...levels),labels});
@@ -37,7 +37,7 @@ try{
  await page.screenshot({path:new URL('ready.png',out).pathname,fullPage:true});
  // Real render still finishes after Stop; it must not restart playback.
  await page.getByLabel('Transpose',{exact:true}).fill('1');await page.getByLabel('Transpose',{exact:true}).press('Tab');await preparation.waitFor();
- await page.getByRole('button',{name:'Stop',exact:true}).click();assert.match(await preparation.textContent(),/Playback is paused/);
+ await page.getByRole('button',{name:'Pause',exact:true}).click();assert.match(await preparation.textContent(),/Playback is paused/);
  await preparation.waitFor({state:'hidden',timeout:240000});assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1);assert.ok(await outputRms(page)<.0001,'Stop remains silent after the render completes');
  await page.setViewportSize({width:390,height:844});await page.getByLabel('Transpose',{exact:true}).fill('2');await preparation.waitFor();await page.screenshot({path:new URL('loading-mobile.png',out).pathname,fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);await writeFile(new URL('result.json',out),JSON.stringify({pass:true,source:file?basename(file):'generated 82.5-second MIDI',results,errors},null,2));

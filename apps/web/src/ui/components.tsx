@@ -11,8 +11,8 @@ export function SiteFooter() {
 export function MachinePicker({value, onChange, disabled = false}: {value: ChipId; onChange: (id: ChipId) => void; disabled?: boolean}) {
   return <div className="machines" aria-label="Sound machine">{DEMO_MACHINES.map(machine => <button key={machine.id} disabled={disabled} aria-label={machine.name} title={`${machine.name} · ${machine.chip}`} aria-pressed={value === machine.id} onClick={() => onChange(machine.id)}><img className={`machine-logo machine-logo-${machine.id}`} src={machine.logo} alt="" width="160" height="48" draggable={false}/></button>)}</div>;
 }
-export function PlayButton({playing, loading = false, shortcut = false, ...props}: ButtonHTMLAttributes<HTMLButtonElement> & {playing: boolean; loading?: boolean; shortcut?: boolean}) {
-  return <button {...props} className={`play-button ${playing ? 'playing' : ''} ${props.className ?? ''}`} aria-label={playing ? 'Stop' : 'Play'} aria-busy={loading || undefined}><span aria-hidden="true">{playing ? '■' : '▶'}</span>{playing ? 'Stop' : 'Play'}{shortcut && <kbd>space</kbd>}</button>;
+export function PlayButton({playing, loading = false, shortcut = false, pause = false, ...props}: ButtonHTMLAttributes<HTMLButtonElement> & {playing: boolean; loading?: boolean; shortcut?: boolean; pause?: boolean}) {
+  return <button {...props} className={`play-button ${playing ? 'playing' : ''} ${props.className ?? ''}`} aria-label={playing ? (pause ? 'Pause' : 'Stop') : 'Play'} aria-busy={loading || undefined}><span aria-hidden="true">{playing ? (pause ? 'Ⅱ' : '■') : '▶'}</span>{playing ? (pause ? 'Pause' : 'Stop') : 'Play'}{shortcut && <kbd>space</kbd>}</button>;
 }
 export function Button({className = '', ...props}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return <button {...props} className={`small-button ${className}`}/>;

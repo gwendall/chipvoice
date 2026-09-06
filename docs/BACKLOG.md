@@ -15,6 +15,14 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
   fallback, channel labels, and long-MIDI E2E through actual audio output.
   Reproduced with the user's local Musha Aleste MIDI; source bytes stay local.
 
+## Unified playground and transport — 2026-09-06
+
+- In qualification: [spec](UNIFIED-PLAYGROUND.md). Complete arrangements are the
+  default on `/`; the old arrangement URL redirects. Full-song pause/seek/restart,
+  loop/end, an output-clock score cursor and progressive composer tools preserve
+  source truth, imports, drafts and sharing. Browser/audio evaluation and review
+  must pass before shipping.
+
 ## Complete arrangements — 2026-09-06
 
 - done — `feat/complete-arrangements` (0.15.0): exact-tick polyphonic MIDI import,

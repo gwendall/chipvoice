@@ -15,7 +15,7 @@ try{
   const analyser=ctx.createAnalyser();transport.output.connect(analyser);const samples=new Float32Array(analyser.fftSize);
   const level=()=>{analyser.getFloatTimeDomainData(samples);return Math.sqrt(samples.reduce((s,x)=>s+x*x,0)/samples.length);};
   const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));const entry=name=>[{file:'/probe-'+name+'.wav'},{file:'/probe-'+name+'-b.wav'}];
-  await transport.select(entry('first'),[.5,.5]);await transport.toggle();await wait(120);
+  await transport.select(entry('first'),[.5,.5]);await transport.toggle();await wait(300);
   const initial=level(),pending=transport.select(entry('slow'),[.5,.5]);await wait(120);const duringLoad=level();await pending;await wait(130);
   const failed=await transport.select(entry('fail'),[.5,.5]);const afterFailure=level(),keptPlaying=transport.playing;
   await Promise.all(['first','slow','first'].map(name=>transport.select(entry(name),[.5,.5])));await wait(130);
@@ -25,8 +25,19 @@ try{
   const cancellationKeptCurrent=transport.entries[0].file==='/probe-first.wav'&&level()>.05&&transport.playing;
   const pendingStop=transport.select(entry('slow-new'),[.5,.5]);transport.pause();await pendingStop;await wait(100);const silent=level();
   const stopped=!transport.playing;
-  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent};
+  transport.seek(.6);const pausedSeek=transport.phase();await transport.toggle();await wait(300);
+  const resumed=transport.phase();transport.pause();const frozen=transport.phase();await wait(100);const stillFrozen=transport.phase();
+  transport.setLoop(false);transport.seek(.94);await transport.toggle();await wait(300);
+  const ended=!transport.playing&&transport.phase()===1;
+  await transport.toggle();await wait(300);const replayed=transport.playing&&transport.phase()<.3;
+  transport.setLoop(true);
+  for(let i=0;i<30;i++)transport.seek(i/40);
+  transport.seek(.4);await wait(450);const lastSeek=transport.phase();
+  for(let i=0;i<10;i++){transport.pause();void transport.toggle();}
+  await wait(200);transport.pause();await wait(100);
+  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,frozen,stillFrozen,ended,replayed,lastSeek};
  });
  assert.ok(result.initial>.05&&result.duringLoad>.05&&result.afterFailure>.05,JSON.stringify(result));
  assert.equal(result.failed,false);assert.equal(result.cancelled,false);assert.ok(result.cancellationKeptCurrent);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');console.log('PASS decoded player keeps audible output through delayed/failed loads, latest selection wins, stop wins, bounded overlap',result);
+ assert.equal(result.pausedSeek,.6);assert.ok(result.resumed>.6&&result.resumed<.9);assert.equal(result.frozen,result.stillFrozen);assert.ok(result.ended&&result.replayed);assert.ok(result.lastSeek>=.4&&result.lastSeek<.7,JSON.stringify(result));
 }finally{await browser.close();}

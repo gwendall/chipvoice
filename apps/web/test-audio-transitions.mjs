@@ -12,7 +12,7 @@ try{
   const line=Array(64).fill('.');line[0]='C4';
   localStorage.setItem('chipvoice.draft.v1',JSON.stringify({title:'Continuity probe',chip:'2a03',bpm:120,order:[0],patterns:[{lead:line.join(' '),chord:Array(64).fill('.').join(' '),bass:Array(64).fill('.').join(' '),perc:Array(64).fill('.').join(' '),chordShape:[[0,4,7]]}]}));
  });
- await page.goto(base);
+ await page.goto(base+'/?mode=compose');
  const valueIs=async(locator,value,message)=>{
   const id=await locator.getAttribute('id');
   await page.waitForFunction(({id,value})=>document.getElementById(id)?.value===value,{id,value});

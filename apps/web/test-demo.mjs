@@ -26,7 +26,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, recordVideo: { dir: `${artifacts}/videos`, size: { width: 1280, height: 1000 } } });
   await context.addInitScript(installOutputProbe);
   const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
-  await page.goto(base); await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
+  await page.goto(base+'/?mode=compose'); await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
   assert.equal(await page.evaluate(() => !!window.chipvoice), false); check('Opening the demo does not start audio');
   assert.equal(await page.locator('.machine-logo').count(), 4);
   for (const name of ['famicom', 'game-boy', 'mega-drive-jp', 'super-famicom']) assert.equal((await page.request.get(`${base}/machines/${name}.svg`)).status(), 200);
@@ -175,7 +175,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   const desktopVideo = page.video(); await context.close(); await desktopVideo.saveAs(`${artifacts}/${engine}-desktop.webm`);
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, ...(engine === 'firefox' ? {} : { isMobile: true }), reducedMotion: 'reduce', recordVideo: { dir: `${artifacts}/videos`, size: { width: 390, height: 844 } } });
-  const phone = await mobile.newPage(); phone.on('pageerror', e => errors.push(e.message)); await phone.goto(base);
+  const phone = await mobile.newPage(); phone.on('pageerror', e => errors.push(e.message)); await phone.goto(base+'/?mode=compose');
   await phone.getByRole('button', { name: 'Play', exact: true }).tap(); await phone.waitForFunction(() => window.chipvoice?.playing && window.chipvoice.position()); assert.ok((await amplitude(phone)).rms > .001);
   await phone.screenshot({ path: `${artifacts}/${engine}-mobile-playing.png`, fullPage: true });
   await phone.getByRole('button', { name: 'Edit loop', exact: false }).tap(); const touchCell = phone.getByRole('button', { name: 'Melody step 1 C4', exact: true }); await touchCell.tap(); assert.equal(await touchCell.getAttribute('aria-pressed'), 'true');

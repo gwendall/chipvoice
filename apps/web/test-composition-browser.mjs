@@ -7,7 +7,7 @@ await mkdir(out,{recursive:true});const browser=await chromium.launch();
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('videos/',out).pathname}});
  await context.addInitScript(installOutputProbe);const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(base);await page.waitForFunction(()=>!document.getElementById('tempo-slider')?.disabled);
+ await page.goto(base+'/?mode=compose');await page.waitForFunction(()=>!document.getElementById('tempo-slider')?.disabled);
  const number=name=>page.getByRole('spinbutton',{name,exact:true});
  const valueIs=async(name,value)=>page.waitForFunction(({name,value})=>document.querySelector(`input[type=number][aria-label="${name}"]`)?.value===value,{name,value});
  const draft=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('chipvoice.draft.v1')));

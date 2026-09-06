@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {outputTime} from './src/audio/output-clock.mjs';
+import {scoreOverview} from './src/arrangements/score-overview.mjs';
+const context={state:'running',currentTime:12,baseLatency:.02,outputLatency:.18,getOutputTimestamp:()=>({contextTime:11.8,performanceTime:5000})};
+assert.ok(Math.abs(outputTime(context,5050)-11.85)<1e-9,'Timestamp already includes device latency; extrapolate only elapsed frame time');
+assert.equal(outputTime(context,6000),12,'Do not lead the render clock');
+assert.ok(Math.abs(outputTime({...context,getOutputTimestamp:undefined},5050)-11.8)<1e-9,'Fallback accounts for both reported latency stages');
+assert.equal(outputTime({...context,currentTime:0,getOutputTimestamp:()=>({contextTime:0,performanceTime:0})},5050),0);
+const overview=scoreOverview({endTick:200,loopStartTick:100,parts:[{id:'lead',name:'Lead',role:'lead',notes:[{tick:100,endTick:150,pitch:60}]}]},tick=>tick<=100?tick*.01:1+(tick-100)*.02);
+assert.equal(overview.seconds,3);assert.equal(overview.loopStart,1/3);assert.deepEqual(overview.parts[0].notes,[[1/3,2/3,60]]);
+console.log('PASS audible timestamp, fallback, bounds and tempo-map score projection');

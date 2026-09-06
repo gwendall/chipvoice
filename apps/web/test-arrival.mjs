@@ -13,7 +13,7 @@ try {
     const context = await browser.newContext({viewport:{width:gesture === 'touch' ? 390 : 1280,height:gesture === 'touch' ? 844 : 1000},hasTouch:gesture === 'touch',recordVideo:{dir:new URL('videos/',out).pathname}});
     await context.addInitScript(installOutputProbe);
     const page = await context.newPage();page.on('pageerror',error => errors.push(error.message));
-    await page.goto(base);await page.waitForFunction(() => !document.getElementById('tempo-slider')?.disabled);
+    await page.goto(base+'/?mode=compose');await page.waitForFunction(() => !document.getElementById('tempo-slider')?.disabled);
     assert.equal(await page.evaluate(() => !!window.audioBus || !!window.chipvoice), false, 'Passive arrival creates no audio');
     const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('chipvoice.draft.v1')));
     assert.equal(saved.title, 'Mario · Ground Theme');
@@ -50,7 +50,7 @@ try {
   }
   // Old C64 drafts are valid documents, even while the public picker hides SID.
   const context = await browser.newContext();const page = await context.newPage();
-  await page.goto(base);await page.waitForFunction(() => !!localStorage.getItem('chipvoice.draft.v1'));
+  await page.goto(base+'/?mode=compose');await page.waitForFunction(() => !!localStorage.getItem('chipvoice.draft.v1'));
   await page.evaluate(() => {const song=JSON.parse(localStorage.getItem('chipvoice.draft.v1'));song.chip='c64';song.title='My SID draft';localStorage.setItem('chipvoice.draft.v1',JSON.stringify(song));});
   await page.reload();await page.getByRole('heading',{name:'My SID draft',exact:true}).waitFor();
   await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(() => window.chipvoice?.spec.id==='c64'&&window.chipvoice.playing);
