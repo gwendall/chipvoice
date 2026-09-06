@@ -96,3 +96,8 @@ handoff and A/B reference selection after returning from the composer.
 ![Desktop: full arrangement, source score and transport](unified-playground-desktop.png)
 
 ![Mobile: audible reference, seek and source parts](unified-playground-mobile.png)
+
+Linux CI exposed a test assumption about output latency: after a fixed 450 ms
+wait, the same correct seek had advanced farther than on macOS. The regression
+now asserts the exact committed seek/resume offset instead of a platform-specific
+phase interval. The separate instrumented E2E still measures the audible cursor.
