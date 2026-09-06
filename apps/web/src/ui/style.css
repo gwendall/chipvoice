@@ -26,3 +26,5 @@
 html:lang(ja) { line-break: strict; }
 html:lang(ja) .micro, html:lang(ja) .screen-kicker, html:lang(ja) .ui-select { letter-spacing: .04em; }
 @media (max-width:760px) { .site-header { flex-wrap: wrap; gap: 8px; }.site-header nav { flex-wrap: wrap; }.language-selector select { max-width: 100px; } }
+.language-selector { position:relative; }
+.language-error { position:absolute; right:0; top:100%; z-index:5; width:min(260px,80vw); padding:12px; border:1px solid var(--edge); border-radius:6px; background:var(--paper); color:var(--ink); font:var(--text-label)/1.5 Arial,sans-serif; box-shadow:0 4px 12px #0002; }

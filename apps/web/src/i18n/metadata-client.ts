@@ -8,7 +8,7 @@ export function syncMetadata(locale: Locale, t: ReturnType<typeof createTranslat
  const shared=document.querySelector<HTMLMetaElement>('meta[name="chipvoice:shared-description"]');
  if(!entry&&!shared)return;
  const title=entry?t(entry.title):document.title;
- const description=entry?t(entry.description):t(shared!.content);
+ const description=entry?t(entry.description):t.source(shared!.content);
  document.title=title;
  for(const [selector,content] of [['name="description"',description],['property="og:title"',title],['property="og:description"',description],['property="og:url"','https://chipvoice.dev'+localePath(path,locale)],['property="og:locale"',locale==='ja'?'ja_JP':'en_US'],['property="og:locale:alternate"',locale==='ja'?'en_US':'ja_JP'],['name="twitter:title"',title],['name="twitter:description"',description]]) {
   document.querySelectorAll<HTMLMetaElement>(`meta[${selector}]`).forEach(meta=>meta.content=content);

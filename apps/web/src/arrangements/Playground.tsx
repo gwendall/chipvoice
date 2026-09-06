@@ -16,7 +16,7 @@ export default function Playground({catalogue,initialOverview}:{catalogue:Report
  const [compose,setCompose]=useState(false);
  useEffect(()=>{const restore=()=>setCompose(new URLSearchParams(location.search).get('mode')==='compose'||location.hash.length>1);restore();window.addEventListener('popstate',restore);window.addEventListener('hashchange',restore);return()=>{window.removeEventListener('popstate',restore);window.removeEventListener('hashchange',restore);};},[]);
  const select=(next:boolean)=>{setCompose(next);history.replaceState(null,'',localePath(next?'/?mode=compose':'/',locale));};
- return <><SiteHeader/><nav className="playground-modes demo-main" aria-label={t("Playground mode")}><button aria-pressed={!compose} onClick={()=>select(false)}>{t("Listen & explore")}</button><button aria-pressed={compose} onClick={()=>select(true)}>{t("Make a loop ")}<span aria-hidden="true">＋</span></button><span>{t(compose?'Your own score · pads, recording & code':'Full arrangements · four consoles · your MIDI')}</span></nav>
+ return <><SiteHeader/><nav className="playground-modes demo-main" aria-label={t("Playground mode")}><button aria-pressed={!compose} onClick={()=>select(false)}>{t("Listen & explore")}</button><button aria-pressed={compose} onClick={()=>select(true)}>{t("Make a loop ")}<span aria-hidden="true">＋</span></button><span>{(compose?t('Your own score · pads, recording & code'):t('Full arrangements · four consoles · your MIDI'))}</span></nav>
   <div hidden={compose}><Arrangements catalogue={catalogue} initialOverview={initialOverview} active={!compose} embedded/></div>
   {compose&&<Studio embedded/>}<SiteFooter/></>;
 }

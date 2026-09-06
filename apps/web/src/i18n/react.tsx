@@ -4,30 +4,37 @@ import NextLink from 'next/link';
 import {createTranslator, localeOf, localePath, type Locale, type Messages} from './core';
 import {syncMetadata} from './metadata-client';
 
-const Context = createContext<{locale: Locale; t: ReturnType<typeof createTranslator>; switchLocale: (locale: Locale) => void; busy: boolean} | null>(null);
+const Context = createContext<{locale: Locale; t: ReturnType<typeof createTranslator>; switchLocale: (locale: Locale) => void; busy: boolean; error: string} | null>(null);
 export function I18nProvider({locale: initialLocale, messages, children}: {locale: Locale; messages: Messages; children: ReactNode}) {
   const [state, setState] = useState({locale: initialLocale, messages}), [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const generation = useRef(0);
   const t = useMemo(() => createTranslator(state.messages), [state.messages]);
   const switchLocale = async (locale: Locale, navigation = true) => {
     const ticket = ++generation.current;
+    setError('');
     setBusy(true);
     try {
       const next = (await (locale === 'ja' ? import('./messages/ja.json') : import('./messages/en.json'))).default;
       if (ticket !== generation.current) return;
       if (navigation) history.pushState(null, '', localePath(location.pathname, locale) + location.search + location.hash);
       setState({locale, messages: next});
-    } catch { if (ticket === generation.current) location.assign(localePath(location.pathname, locale) + location.search + location.hash); }
+    } catch {
+      if (ticket === generation.current) {
+        if (!navigation) history.replaceState(null, '', localePath(location.pathname, state.locale) + location.search + location.hash);
+        setError('Language could not load. Check your connection and try again.');
+      }
+    }
     finally { if (ticket === generation.current) setBusy(false); }
   };
   useEffect(() => {
     const restore = () => { void switchLocale(localeOf(location.pathname), false); };
     window.addEventListener('popstate', restore);
     return () => window.removeEventListener('popstate', restore);
-  }, []);
+  }, [state.locale]);
   useEffect(() => { setState({locale: initialLocale, messages}); }, [initialLocale, messages]);
   useEffect(() => { document.documentElement.lang = state.locale; syncMetadata(state.locale, t); }, [state.locale, t]);
-  return <Context.Provider value={{locale: state.locale, t, switchLocale, busy}}>{children}</Context.Provider>;
+  return <Context.Provider value={{locale: state.locale, t, switchLocale, busy, error}}>{children}</Context.Provider>;
 }
 export function useI18n() {
   const value = useContext(Context);
@@ -40,13 +47,13 @@ export const useT = () => useI18n().t;
 export function useErrorText() {
   const {locale, t} = useI18n();
   return (source: string) => {
-    const translated = t(source);
+    const translated = t.source(source);
     return locale === 'ja' && source && translated === source ? t('Something went wrong. Please try again.') : translated;
   };
 }
 export function LanguageSelector() {
-  const {locale, t, switchLocale, busy} = useI18n();
-  return <label className="language-selector"><span className="sr-only">{t('Language')}</span><select aria-label={t('Language')} value={locale} disabled={busy} aria-busy={busy} onChange={event => switchLocale(event.target.value as Locale)}><option value="en" lang="en">English</option><option value="ja" lang="ja">日本語</option></select></label>;
+  const {locale, t, switchLocale, busy, error} = useI18n();
+  return <div className="language-selector"><label><span className="sr-only">{t('Language')}</span><select aria-label={t('Language')} value={locale} disabled={busy} aria-busy={busy} onChange={event => switchLocale(event.target.value as Locale)}><option value="en" lang="en">English</option><option value="ja" lang="ja">日本語</option></select></label>{error&&<span className="language-error" role="alert">{t(error)}</span>}</div>;
 }
 export default function Link({href, ...props}: ComponentProps<typeof NextLink>) {
   const {locale} = useI18n();

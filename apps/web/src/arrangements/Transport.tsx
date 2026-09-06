@@ -6,7 +6,7 @@ import {Button} from '../ui/components';
 
 export type Overview={seconds:number;loopStart:number;parts:{id:string;name:string;role:string;notes:number[][]}[]};
 const colors=['#e8bc68','#98c9ad','#b6b2ee','#ec9c83','#99cbd8'];
-const time=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
+const time=(seconds:number)=>`${Math.floor(seconds/60)}:${Math.floor(seconds%60).padStart(2,'0')}`;
 
 /** Static note raster + one moving cursor. The long MIDI never becomes tens
  * of thousands of DOM nodes or gets redrawn on each animation frame. */
@@ -30,7 +30,7 @@ export function Transport({translateParts=true,playControl,player,overview,secon
   let raf=0,lastSecond=-1;const badges=root.current?.querySelectorAll<HTMLElement>('.score-part');
   const tick=()=>{const phase=player?.phase()??0;
    if(cursor.current)cursor.current.style.transform=`translateX(${phase*100}%)`;
-   if(range.current&&!dragging.current)range.current.value=String(phase*1000);
+   if(range.current&&!dragging.current)range.current.value=phase*1000;
    const second=Math.floor(phase*seconds);if(second!==lastSecond){lastSecond=second;if(elapsed.current)elapsed.current.textContent=time(second);range.current?.setAttribute('aria-valuetext',t('{elapsed} of {duration}',{elapsed:time(second),duration:time(seconds)}));}
    badges?.forEach((badge,i)=>{const notes=activity[i];let lo=0,hi=notes.length;while(lo<hi){const mid=(lo+hi)>>>1;if(notes[mid][0]<=phase)lo=mid+1;else hi=mid;}badge.dataset.sounding=String(!!player?.playing&&lo>0&&notes[lo-1][1]>phase);});
    raf=requestAnimationFrame(tick);
@@ -40,7 +40,7 @@ export function Transport({translateParts=true,playControl,player,overview,secon
  return <div ref={root} className="song-transport">
   <div className="song-time"><output ref={elapsed} aria-label={t("Elapsed time")}>0:00</output><span>{t(time(seconds))}</span></div>
   <input ref={range} className="song-seek" type="range" aria-label={t("Song position")} min={0} max={1000} defaultValue={0} disabled={!player?.buffers.length} onPointerDown={()=>{dragging.current=true;}} onPointerUp={()=>{dragging.current=false;}} onPointerCancel={()=>{dragging.current=false;}} onBlur={()=>{dragging.current=false;}} onChange={e=>seek(Number(e.target.value)/1000)}/>
-  <div className="transport-actions">{t(playControl)}<Button className="transport-restart" aria-label={t("Restart")} title={t("Restart from beginning")} disabled={!player?.buffers.length} onClick={()=>player?.restart()}><span aria-hidden="true">↤</span><span className="transport-restart-label">{t(" Restart")}</span></Button><Button aria-pressed={loop} onClick={()=>{const next=!loop;setLoop(next);onLoop(next);}}>{t("↻ Loop ")}{t(loop?'on':'off')}</Button><span>{t(pending?'Preparing your next sound…':'Click the score to jump. Solo a part below.')}</span></div>
+  <div className="transport-actions">{t(playControl)}<Button className="transport-restart" aria-label={t("Restart")} title={t("Restart from beginning")} disabled={!player?.buffers.length} onClick={()=>player?.restart()}><span aria-hidden="true">↤</span><span className="transport-restart-label">{t(" Restart")}</span></Button><Button aria-pressed={loop} onClick={()=>{const next=!loop;setLoop(next);onLoop(next);}}>{t("↻ Loop ")}{(loop?t('on'):t('off'))}</Button><span>{(pending?t('Preparing your next sound…'):t('Click the score to jump. Solo a part below.'))}</span></div>
   <div className="score-overview" role="region" tabIndex={0} aria-label={t("Source score")}>
    <div className="score-labels">{rows.map((row,i)=><div key={row.id} className="score-part" style={{borderColor:colors[i%colors.length]}} title={translateParts?t(row.name):row.name}><span className="score-part-name">{translateParts?t(row.name):row.name}</span></div>)}</div>
    <div className="score-notes" onClick={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
@@ -49,6 +49,6 @@ export function Transport({translateParts=true,playControl,player,overview,secon
    </div>
   </div>
   {rows.length>6&&<p className="score-scroll-hint">{t("Scroll the score to see all ")}{rows.length}{t(" parts.")}</p>}
-  <p className="score-caption">{t("Allocated source notes · cursor follows audio output")}{t(overview&&overview.loopStart>0?' · loop preserves the introduction':'')}</p>
+  <p className="score-caption">{t("Allocated source notes · cursor follows audio output")}{(overview&&overview.loopStart>0?t(' · loop preserves the introduction'):t(''))}</p>
  </div>;
 }

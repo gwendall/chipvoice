@@ -18,7 +18,7 @@ export function MachinePicker({value, onChange, disabled = false}: {value: ChipI
 }
 export function PlayButton({playing, loading = false, shortcut = false, pause = false, ...props}: ButtonHTMLAttributes<HTMLButtonElement> & {playing: boolean; loading?: boolean; shortcut?: boolean; pause?: boolean}) {
  const t = useT();
-  return <button {...props} className={`play-button ${playing ? 'playing' : ''} ${props.className ?? ''}`} aria-label={t(playing ? (pause ? 'Pause' : 'Stop') : 'Play')} aria-busy={loading || undefined}><span aria-hidden="true">{t(playing ? (pause ? 'Ⅱ' : '■') : '▶')}</span>{t(playing ? (pause ? 'Pause' : 'Stop') : 'Play')}{shortcut && <kbd>{t("space")}</kbd>}</button>;
+  return <button {...props} className={`play-button ${playing ? 'playing' : ''} ${props.className ?? ''}`} aria-label={(playing?t((pause ? 'Pause' : 'Stop')):t('Play'))} aria-busy={loading || undefined}><span aria-hidden="true">{(playing?t((pause ? 'Ⅱ' : '■')):t('▶'))}</span>{(playing?t((pause ? 'Pause' : 'Stop')):t('Play'))}{shortcut && <kbd>{t("space")}</kbd>}</button>;
 }
 export function Button({className = '', ...props}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return <button {...props} className={`small-button ${className}`}/>;

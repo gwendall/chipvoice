@@ -9,8 +9,8 @@ export function RangeControl({id, label, unit, min, max, value, disabled = false
 }) {
  const t = useT();
   const identity = useId(), sequence = useRef(0), group = useRef<string | null>(null);
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => setDraft(String(value)), [value]);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
   const begin = () => { group.current ??= `${identity}:${++sequence.current}`; };
   const end = () => { group.current = null; };
   const change = (next: number) => {
@@ -20,13 +20,13 @@ export function RangeControl({id, label, unit, min, max, value, disabled = false
   const commit = () => {
     const parsed = draft.trim() === '' ? value : Number(draft);
     const next = Number.isFinite(parsed) ? Math.max(min, Math.min(max, Math.round(parsed))) : value;
-    setDraft(String(next)); change(next); end();
+    setDraft(next); change(next); end();
   };
   return <div className="range-control" aria-disabled={disabled || undefined}>
     <label htmlFor={`${id}-slider`}>{t(label)}</label>
     <div className="range-control-fields">
       <div className="range-control-track">
-        <input id={`${id}-slider`} type="range" aria-label={t(`${label} slider`)} aria-valuetext={t(`${value} ${unit}`)} min={min} max={max} step={1} value={value} disabled={disabled}
+        <input id={`${id}-slider`} type="range" aria-label={t("{v0} slider",{v0:t(label)})} aria-valuetext={t("{v0} {v1}",{v0:value,v1:t(unit)})} min={min} max={max} step={1} value={value} disabled={disabled}
           onPointerDown={begin} onPointerUp={end} onPointerCancel={end} onBlur={end} onChange={event => change(Number(event.target.value))}/>
         <div className="range-control-bounds" aria-hidden="true"><span>{min}</span><span>{max}</span></div>
       </div>
