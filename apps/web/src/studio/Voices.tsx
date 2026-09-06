@@ -1,4 +1,5 @@
 'use client';
+import {useT} from '@/i18n/react';
 import { measure } from './metrics';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import { NES_2A03, GB_DMG, MEGA_DRIVE, SNES, C64, type Role } from 'chipvoice';
@@ -19,6 +20,7 @@ export const Voices = memo(function Voices({ song, position, stolen, muted, solo
   effect: { id: EffectId; at: number } | null;
   disabled?: boolean;
 }) {
+ const t = useT();
   const orderIndex = Math.min(position?.orderIndex ?? 0, song.order.length - 1);
   const pattern = song.patterns[song.order[orderIndex]];
   // Geometry belongs to the score; advancing the playhead only changes highlights.
@@ -46,26 +48,27 @@ export const Voices = memo(function Voices({ song, position, stolen, muted, solo
     return { count, lanes };
   }, [pattern]);
   const { count, lanes } = geometry;
-  return <div className="voice-display" aria-label="Live musical roles">
-    <div className="display-ruler"><span>THE MUSIC INSIDE</span><span>{position ? `SECTION ${orderIndex + 1} / ${song.order.length}` : 'READY WHEN YOU ARE'}</span></div>
+  return <div className="voice-display" aria-label={t("Live musical roles")}>
+    <div className="display-ruler"><span>{t("THE MUSIC INSIDE")}</span><span>{(position?t("SECTION {v0} / {v1}",{v0:orderIndex + 1,v1:song.order.length}):t('READY WHEN YOU ARE'))}</span></div>
     {lanes.map(({ role, notes }) => {
       const taken = stolen.includes(roleVoice(song, role));
       return <div key={role} className={`voice-lane ${role} ${muted.includes(role) ? 'is-muted' : ''} ${taken ? 'is-stolen' : ''}`} data-role={role} data-stolen={taken}>
-        <div className="voice-name"><button disabled={disabled} onClick={() => onMute(role)} aria-pressed={muted.includes(role)} aria-label={`Mute ${ROLE_NAMES[role]}`}><i />{ROLE_NAMES[role]}</button><span>{taken ? 'SFX HAS THIS VOICE' : roleVoice(song, role)}</span></div>
-        <div className="note-lane" aria-label={`${ROLE_NAMES[role]} notes`}>
+        <div className="voice-name"><button disabled={disabled} onClick={() => onMute(role)} aria-pressed={muted.includes(role)} aria-label={t("Mute {v0}",{v0:t(ROLE_NAMES[role])})}><i />{t(ROLE_NAMES[role])}</button><span>{(taken?t('SFX HAS THIS VOICE'):t(roleVoice(song, role)))}</span></div>
+        <div className="note-lane" aria-label={t("{v0} notes",{v0:t(ROLE_NAMES[role])})}>
           {notes.map(({ i, end, style }) => <span key={i} className={`voice-note ${position && position.step >= i && position.step < end ? 'sounding' : ''}`} style={style} />)}
           {position && <div className="playhead" style={{ left: `${position.step / count * 100}%` }} />}
-          {taken && <div className="taken-label">← borrowed by a sound effect →</div>}
+          {taken && <div className="taken-label">{t("← borrowed by a sound effect →")}</div>}
         </div>
-        <button className="solo-button" disabled={disabled} aria-label={`Solo ${ROLE_NAMES[role]}`} aria-pressed={solo === role} onClick={() => onSolo(role)}>S</button>
+        <button className="solo-button" disabled={disabled} aria-label={t("Solo {v0}",{v0:t(ROLE_NAMES[role])})} aria-pressed={solo === role} onClick={() => onSolo(role)}>{t("S")}</button>
       </div>;
     })}
-    <div className="display-bottom"><span><i className={position ? 'status-light active' : 'status-light'} />{position ? 'PLAYING LIVE ON THE CHIP' : 'PRESS PLAY. THEN TRY AN ARCADE PAD.'}</span><div className="arcade-scene" aria-hidden="true" key={effect?.at ?? 0} data-effect={effect?.id ?? 'idle'}><span className="pixel-runner">▟</span><span className="pixel-coin">◆</span><span className="pixel-shot">━</span><span className="pixel-burst">✳</span></div></div>
+    <div className="display-bottom"><span><i className={position ? 'status-light active' : 'status-light'} />{(position?t('PLAYING LIVE ON THE CHIP'):t('PRESS PLAY. THEN TRY AN ARCADE PAD.'))}</span><div className="arcade-scene" aria-hidden="true" key={effect?.at ?? 0} data-effect={effect?.id ?? 'idle'}><span className="pixel-runner">▟</span><span className="pixel-coin">◆</span><span className="pixel-shot">━</span><span className="pixel-burst">✳</span></div></div>
   </div>;
 });
 
 /** Measured mixed output. Note lanes above show commands, not fake meters. */
 export function OutputScope({ node }: { node: AudioNode | null }) {
+ const t = useT();
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const el = canvas.current; if (!el) return;
@@ -89,5 +92,5 @@ export function OutputScope({ node }: { node: AudioNode | null }) {
     };draw();
     return () => { cancelAnimationFrame(raf); if (analyser && node) { try { node.disconnect(analyser); } catch { /* Disposing a replaced chip already disconnects its output. */ } } analyser?.disconnect(); };
   }, [node]);
-  return <canvas ref={canvas} className="output-scope" width="180" height="36" aria-label="Measured mixed audio waveform" role="img" />;
+  return <canvas ref={canvas} className="output-scope" width="180" height="36" aria-label={t("Measured mixed audio waveform")} role="img" />;
 }

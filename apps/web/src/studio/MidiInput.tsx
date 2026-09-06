@@ -1,9 +1,11 @@
 'use client';
+import {useT} from '@/i18n/react';
 import { useEffect, useRef, useState } from 'react';
 import type { Role } from 'chipvoice';
 import { midiTap } from './midi';
 
 export function MidiInput({ role, onNote }: { role: Role; onNote: (role: Role, note: string) => void }) {
+ const t = useT();
   const [available, setAvailable] = useState(false);
   const [access, setAccess] = useState<MIDIAccess | null>(null);
   const [ports, setPorts] = useState<MIDIInput[]>([]);
@@ -45,9 +47,9 @@ export function MidiInput({ role, onNote }: { role: Role; onNote: (role: Role, n
     } catch { if (request.current === token) setMessage('MIDI access was not granted. You can keep using the keys and pads.'); }
     finally { if (request.current === token) setPending(false); }
   };
-  if (!available) return <p className="keyboard-hint">MIDI input is unavailable in this browser. The keys and pads work without it.</p>;
+  if (!available) return <p className="keyboard-hint">{t("MIDI input is unavailable in this browser. The keys and pads work without it.")}</p>;
   return <div className="midi-input">
-    {access ? <><label htmlFor="midi-port">MIDI input</label><select id="midi-port" value={selected} onChange={e => setSelected(e.target.value)}>{ports.length ? ports.map(port => <option key={port.id} value={port.id}>{port.name || 'MIDI keyboard'}</option>) : <option value="">Connect a keyboard or drum pad</option>}</select><button className="small-button" onClick={() => { request.current++; setAccess(null); setPorts([]); setSelected(''); }}>Disconnect MIDI</button></> : <button className="small-button" disabled={pending} onClick={() => void connect()}>{pending ? 'Connecting MIDI…' : 'Connect MIDI'}</button>}
-    <span className="keyboard-hint" role="status">{message || (access ? 'Note presses play the selected role. Channel 10 plays drums. Record captures taps.' : 'Optional keyboard or drum pad. Permission is requested when you connect.')}</span>
+    {access ? <><label htmlFor="midi-port">{t("MIDI input")}</label><select id="midi-port" value={selected} onChange={e => setSelected(e.target.value)}>{ports.length ? ports.map(port => <option key={port.id} value={port.id}>{port.name || t('MIDI keyboard')}</option>) : <option value="">{t("Connect a keyboard or drum pad")}</option>}</select><button className="small-button" onClick={() => { request.current++; setAccess(null); setPorts([]); setSelected(''); }}>{t("Disconnect MIDI")}</button></> : <button className="small-button" disabled={pending} onClick={() => void connect()}>{(pending?t('Connecting MIDI…'):t('Connect MIDI'))}</button>}
+    <span className="keyboard-hint" role="status">{t(message || (access ? 'Note presses play the selected role. Channel 10 plays drums. Record captures taps.' : 'Optional keyboard or drum pad. Permission is requested when you connect.'))}</span>
   </div>;
 }

@@ -62,6 +62,7 @@ jobs:
             .artifacts/arrangements/browser
             .artifacts/midi-import/e2e
             .artifacts/unified-playground
+            .artifacts/i18n
           retention-days: 7
 
   conformance:

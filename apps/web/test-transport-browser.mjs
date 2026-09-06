@@ -46,8 +46,12 @@ try{
  await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.keyboard.press('Home');await page.keyboard.press('ArrowRight');
  assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'paused seek stays paused');
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('resume');
- await page.getByRole('button',{name:'Game Boy',exact:true}).click();await ready(page);await sync('console change');
- await page.getByLabel('Tempo',{exact:true}).fill('125');await page.getByLabel('Tempo',{exact:true}).press('Tab');await ready(page);await sync('tempo change');
+ // A ready button can still belong to the previous selection before React
+ // commits the pending state. Observe the actual audio replacement first.
+ await page.evaluate(()=>{window.beforeSelection=window.lastRecording.source;});
+ await page.getByRole('button',{name:'Game Boy',exact:true}).click();await page.waitForFunction(()=>window.lastRecording.source!==window.beforeSelection,{},{timeout:120000});await ready(page);await sync('console change');
+ await page.evaluate(()=>{window.beforeSelection=window.lastRecording.source;});
+ await page.getByLabel('Tempo',{exact:true}).fill('125');await page.getByLabel('Tempo',{exact:true}).press('Tab');await page.waitForFunction(()=>window.lastRecording.source!==window.beforeSelection,{},{timeout:120000});await ready(page);await sync('tempo change');
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.getByLabel('Tempo',{exact:true}).fill('100');await page.getByLabel('Tempo',{exact:true}).press('Tab');await ready(page);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'pause wins over render');
  await page.getByRole('button',{name:'Famicom',exact:true}).click();await ready(page);
  await page.getByRole('button',{name:'Loop on',exact:false}).click();
