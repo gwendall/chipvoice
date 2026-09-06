@@ -53,3 +53,13 @@ PCM with a peak of 0.183 before the fix. Disabling echo writes alone still let
 reads wrap into sample RAM during the DSP's initial delay. Echo volume now stays
 zero until that delay expires; the same silent-score regression produces exact
 silence. Native DSP behavior is unchanged.
+
+During palette authoring, rebuild after editing `scripts/snes-bank-source.ts`
+(`pnpm --filter chipvoice build`). The normal development watch does not watch
+these build-time recipes; a running demo otherwise retains its previous bank.
+
+Review follow-up: decoded BRR boundary slopes are compared with the original
+PCM at initial sustain entry and two subsequent wraps. Worst observed boundary
+error is 0.4% of sample peak (limit 1%); deliberately broken BRR entries exceed
+50% at all three boundaries and are rejected. Periodicity alone is not used
+as proof that a loop is free of discontinuity spikes.

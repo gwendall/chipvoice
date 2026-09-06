@@ -15,6 +15,23 @@
 const int16 = (x: number) => (x << 16) >> 16;
 const clamp16 = (io: number) => (int16(io) !== io ? (io >> 31) ^ 0x7fff : io);
 
+/** Decode a sequence of BRR blocks for build-time encoding diagnostics.
+ * Directory/loop traversal is the caller's responsibility. */
+export function decodeBrr(bytes: Uint8Array): Int16Array {
+  if (bytes.length % 9) throw new Error("BRR data must contain whole blocks");
+  const pcm = new Int16Array(bytes.length / 9 * 16);
+  let p1 = 0, p2 = 0, sample = 0;
+  for (let block = 0; block < bytes.length; block += 9) {
+    const shift = bytes[block] >> 4, filter = (bytes[block] >> 2) & 3;
+    for (let i = 0; i < 16; i++) {
+      const packed = bytes[block + 1 + (i >> 1)];
+      const value = decodeNibble(i & 1 ? packed & 15 : packed >> 4, shift, filter, p1, p2 >> 1);
+      pcm[sample++] = value; p2 = p1; p1 = value;
+    }
+  }
+  return pcm;
+}
+
 /** One nibble through the DSP's decoder, given the two samples before it. */
 function decodeNibble(nibble: number, shift: number, filter: number, p1: number, p2half: number): number {
   let s = ((nibble << 28) >> 28);

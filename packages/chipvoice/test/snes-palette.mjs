@@ -8,7 +8,7 @@ const ram=snesChip.driver().memory()[0];
 assert.ok(ram.address+ram.bytes.length<=0xe000,'Bank must fit below echo RAM');
 assert.throws(()=>encodeBrr(new Int16Array(32),true,3),/loop start/);
 assert.throws(()=>encodeBrr(new Int16Array(32),true,32),/loop start/);
-const families=FACTORY_SAMPLES.filter(entry=>entry.loopStart>entry.start);
+const families=FACTORY_SAMPLES.filter(entry=>entry.loopAddress>entry.start);
 assert.equal(families.length,8);
 const rms=(data,from,to)=>{
   let sum=0;for(let i=from;i<to;i++)sum+=data[i]*data[i];return Math.sqrt(sum/(to-from));
@@ -26,10 +26,10 @@ const results=[];
 for(const entry of families){
   const data=note(entry.name,entry.baseHz);
   assert.ok(rms(data,32000,40000)>.003,`${entry.name} sustain is inaudibly low`);
-  const loopFrames=(entry.start+entry.bytes-entry.loopStart)/9*16;
+  const loopFrames=(entry.start+entry.bytes-entry.loopAddress)/9*16;
   let delta=0;for(let i=32000;i<40000;i++)delta=Math.max(delta,Math.abs(data[i]-data[i+loopFrames]));
   assert.ok(delta<1e-5,`${entry.name}: sustain loop repeats its attack or is unstable (${delta})`);
-  const loopOffset=entry.loopStart-ram.address;
+  const loopOffset=entry.loopAddress-ram.address;
   assert.equal((ram.bytes[loopOffset]>>2)&3,0,'A loop entry must decode independently of the attack history');
   // Autocorrelation around the expected period, with parabolic interpolation.
   // Test low/mid/high playback, not just the pitch register's computed number.

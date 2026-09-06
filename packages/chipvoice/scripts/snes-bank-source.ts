@@ -105,13 +105,13 @@ const RECIPES: Recipe[] = [
   {name:'synth-bass',period:128,attackCycles:8,harmonics:[1,.5,.26,.16,.08],transient:[0,.3,.3,.24,.15,.1],swell:.02,sustain:.65,adsr1:0x9f,adsr2:0xc0},
 ];
 function instrument(recipe: Recipe) {
-  const loopStart=recipe.period*recipe.attackCycles;
-  const pcm=new Int16Array(loopStart+recipe.period*4);
+  const loopSampleOffset=recipe.period*recipe.attackCycles;
+  const pcm=new Int16Array(loopSampleOffset+recipe.period*4);
   const partials=Math.max(recipe.harmonics.length,recipe.transient.length);
   const raw=new Float64Array(pcm.length);
   let peak=0;
   for(let i=0;i<pcm.length;i++){
-    const position=Math.min(1,i/loopStart);
+    const position=Math.min(1,i/loopSampleOffset);
     const decay=(1-position)**3;
     const attack=Math.min(1,position/recipe.swell);
     const envelope=attack*(recipe.sustain+(1-recipe.sustain)*decay);
@@ -123,23 +123,23 @@ function instrument(recipe: Recipe) {
     raw[i]=envelope*value;peak=Math.max(peak,Math.abs(raw[i]));
   }
   for(let i=0;i<pcm.length;i++)pcm[i]=Math.round(raw[i]*28000/peak);
-  return {name:recipe.name,pcm,loop:true,loopStart,baseHz:RATE/recipe.period,adsr1:recipe.adsr1,adsr2:recipe.adsr2};
+  return {name:recipe.name,pcm,loop:true,loopSampleOffset,baseHz:RATE/recipe.period,adsr1:recipe.adsr1,adsr2:recipe.adsr2};
 }
 export function compileFactoryBank() {
-  const entries=[...legacyBank().map(entry=>({...entry,loopStart:0,adsr1:0xff,adsr2:0xe0})),...RECIPES.map(instrument)];
-  const encoded=entries.map(entry=>encodeBrr(entry.pcm,entry.loop,entry.loopStart));
+  const entries=[...legacyBank().map(entry=>({...entry,loopSampleOffset:0,adsr1:0xff,adsr2:0xe0})),...RECIPES.map(instrument)];
+  const encoded=entries.map(entry=>encodeBrr(entry.pcm,entry.loop,entry.loopSampleOffset));
   const image=new Uint8Array(0x400+encoded.reduce((size,bytes)=>size+bytes.length,0));
   const metadata=[];
   let address=0x400;
   for(let i=0;i<entries.length;i++){
-    const entry=entries[i],bytes=encoded[i],loopAddress=address+(entry.loopStart/16)*9;
+    const entry=entries[i],bytes=encoded[i],loopAddress=address+(entry.loopSampleOffset/16)*9;
     image.set(bytes,address);
     const directory=0x200+i*4;
     image[directory]=address&255;image[directory+1]=address>>8;
     image[directory+2]=loopAddress&255;image[directory+3]=loopAddress>>8;
-    metadata.push({name:entry.name,baseHz:entry.baseHz,loop:entry.loop,start:address,loopStart:loopAddress,bytes:bytes.length,adsr1:entry.adsr1,adsr2:entry.adsr2});
+    metadata.push({name:entry.name,baseHz:entry.baseHz,loop:entry.loop,start:address,loopAddress,bytes:bytes.length,adsr1:entry.adsr1,adsr2:entry.adsr2});
     address+=bytes.length;
   }
   if(address>0xe000)throw new Error('Factory bank overlaps the echo buffer');
-  return {image,metadata};
+  return {image,metadata,entries,encoded};
 }
