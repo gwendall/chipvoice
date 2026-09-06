@@ -1,0 +1,26 @@
+{
+  "sourceSha256": "a58f95749bb2943ebe858fa1ed49f1d442040e442e29b5524da5ddafaaa1e83d",
+  "oracle": "Game_Music_Emu",
+  "oracleRevision": "fe8da4b6d3876d7542c2fb69d94487e19836d678",
+  "musicCommands": 41999,
+  "commandsSha256": "1a956e4e7a753a8383892108a82e4c70e7f3caf319b4934c641ab76e9661f67d",
+  "first": {
+    "at": 29793,
+    "addr": 16407,
+    "value": 255
+  },
+  "last": {
+    "at": 158432645,
+    "addr": 16401,
+    "value": 48
+  },
+  "loop": {
+    "startFrame": 136,
+    "endFrame": 5320,
+    "repeatVerifiedFrames": 5184
+  },
+  "scope": "All music register values and absolute cycles after the first PLAY; initialization is separately specified by NSF playback. Portable 240 Hz expression is not the independent reference.",
+  "pcmSha256": "650fba601ec4da0d65cabe4777ca4bf4fbd1dc7a48f963b5e06b5712de72145b",
+  "performanceSha256": "2a94d51a55d8d9dec6cc00342859181ba33d0f60436b1d452b91c12a7f9f7600",
+  "traceSha256": "26f115a51bd2101db14f7fb4a81606f17df00555c8feefa9196cbecd004fcf8d"
+}

@@ -10,6 +10,25 @@ ROMs. The [conformance sheets](https://github.com/gwendall/chipvoice/tree/main/d
 state verified behavior and remaining differences; this is not a claim that
 every analog characteristic has been measured on physical hardware.
 
+For complete polyphonic arrangements, `Performance` complements the compact
+four-role `Score`. Import a MIDI with exact ticks and expression, compile an
+explicit hardware allocation, inspect its losses, and render in a worker:
+
+```ts
+import {importMidi, planPerformance, renderPerformance, toWav, snesChip} from 'chipvoice';
+const source = importMidi(midiBytes); // Uint8Array; SMF 0/1, PPQ timing
+const plan = planPerformance(source, snesChip, {allowLoss: true});
+console.log(source.notices, plan.losses); // review roles, timbres and omitted notes
+const wav = toWav(renderPerformance(plan, snesChip));
+```
+
+Without `allowLoss`, voice-budget omissions throw. Tempo maps, polyphony,
+velocities, sustain, pitch bend and volume/expression survive import; unsupported
+controllers are retained and reported. GM-family patches are approximations,
+not original-game instrument certification. The
+[arrangement method](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md)
+documents input limits, source checks, native references and worker playback.
+
 ```bash
 npm i chipvoice
 ```

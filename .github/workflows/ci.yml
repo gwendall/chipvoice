@@ -35,6 +35,7 @@ jobs:
           restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm build
       - run: pnpm scores:check
+      - run: pnpm arrangements:check
       - name: Score import regressions
         run: |
           python3 -m venv /tmp/chipvoice-score-tools
@@ -58,6 +59,7 @@ jobs:
             .artifacts/continuity
             .artifacts/composition
             .artifacts/japanese-playground
+            .artifacts/arrangements/browser
           retention-days: 7
 
   conformance:

@@ -366,3 +366,7 @@ export class Chip {
 }
 
 export {shapeScore, transposeBounds} from './composition.js';
+export {importMidi} from './midi.js';
+export type {MidiImportOptions} from './midi.js';
+export {planPerformance, renderPerformance, performanceClock, validatePerformance} from './performance.js';
+export type {Performance, PerformancePart, PerformanceNote, PerformancePlan, PerformanceOptions, PerformanceLoss} from './performance.js';

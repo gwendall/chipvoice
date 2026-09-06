@@ -1,5 +1,11 @@
 # Source melodies, without invented backing
 
+For **complete multivoice arrangements**, use the additive
+[performance workflow](arrangements/README.md) and the public
+[/lab/arrangements](https://chipvoice.dev/lab/arrangements) deck. This document
+describes the original melody-only tracker cartridges, which remain available
+in the composition editor. Their independent melody checks are still valid.
+
 The familiar cartridges are **melody-only transcriptions**. Bass, chords and
 drums are silent unless a source part is explicitly transcribed. Choosing a
 console changes its instrument, not the notes or the musical form.

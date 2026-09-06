@@ -20,5 +20,12 @@ apps/web/generated/
 # Generated from original sample recipes; never synthesized at playback.
 packages/chipvoice/src/chips/snes/bank-inline.ts
 
+# Compiled browser arrangement renderer and source documents, copied at build.
+apps/web/public/arrangement-render.js
+apps/web/public/arrangement-data/mario.json
+apps/web/public/arrangement-data/zelda.json
+apps/web/public/arrangement-data/sonic.json
+apps/web/public/arrangement-data/mario-native.json
+
 # Local Python score tooling
 __pycache__/

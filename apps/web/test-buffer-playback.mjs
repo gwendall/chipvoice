@@ -20,10 +20,13 @@ try{
   const failed=await transport.select(entry('fail'),[.5,.5]);const afterFailure=level(),keptPlaying=transport.playing;
   await Promise.all(['first','slow','first'].map(name=>transport.select(entry(name),[.5,.5])));await wait(130);
   const lastWins=transport.entries[0].file==='/probe-first.wav';
+  const pendingCancelled=transport.select(entry('slow-cancelled'),[.5,.5]);await wait(30);transport.cancelSelection();
+  const cancelled=await pendingCancelled;await wait(350);
+  const cancellationKeptCurrent=transport.entries[0].file==='/probe-first.wav'&&level()>.05&&transport.playing;
   const pendingStop=transport.select(entry('slow-new'),[.5,.5]);transport.pause();await pendingStop;await wait(100);const silent=level();
   const stopped=!transport.playing;
-  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max};
+  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent};
  });
  assert.ok(result.initial>.05&&result.duringLoad>.05&&result.afterFailure>.05,JSON.stringify(result));
- assert.equal(result.failed,false);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');console.log('PASS decoded player keeps audible output through delayed/failed loads, latest selection wins, stop wins, bounded overlap',result);
+ assert.equal(result.failed,false);assert.equal(result.cancelled,false);assert.ok(result.cancellationKeptCurrent);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');console.log('PASS decoded player keeps audible output through delayed/failed loads, latest selection wins, stop wins, bounded overlap',result);
 }finally{await browser.close();}

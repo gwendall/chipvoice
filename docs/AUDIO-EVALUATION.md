@@ -172,3 +172,11 @@ cores' cancellable event queue. Regressions cover the final note, fractional-sam
 loop lengths at 44.1/48 kHz, and short notes whose obsolete releases must be
 cancelled after a rest. These fixes make replay evidence reliable; they are not
 a claim of soundtrack authenticity.
+
+## Complete multivoice arrangements
+
+The [arrangement workflow](../scores/arrangements/README.md) separates independent
+source-note/command evidence, deterministic console allocation, register-transaction
+validation and complete PCM publication. See [the qualified collection and review](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md).
+The public deck is available at `/lab/arrangements`; its reference and transcription
+labels have deliberately different evidence scopes.

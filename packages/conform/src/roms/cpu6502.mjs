@@ -139,6 +139,7 @@ export class Cpu6502 {
     const entry = OPS[opcode];
     this.pc = (this.pc + 1) & 0xffff;
     if (!entry) {
+      if (this.strict) throw new Error(`Unsupported 6502 opcode $${opcode.toString(16)} at $${((this.pc - 1) & 0xffff).toString(16)}`);
       // Unofficial: a NOP of the length its column implies. Rare here.
       const size = [1, 2, 2, 2, 1, 3, 3, 3][opcode & 7] ?? 1;
       this.pc = (this.pc + size - 1) & 0xffff;
