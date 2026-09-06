@@ -478,3 +478,12 @@ without rescanning the already captured history.
 
 See [the source comparison workflow](https://github.com/gwendall/chipvoice/blob/main/scores/README.md) for deterministic
 melody checks, their tolerances and the distinction from acoustic/DSP fidelity.
+
+### Offline arrangement progress
+
+`renderPerformance(plan, chip, {onProgress: fraction => { /* update your UI */ }})`
+reports completed audio frames as a fraction from 0 to 1. Run long renders in a
+worker and throttle UI messages; this callback does not change the produced PCM.
+The arrangement lab demonstrates parsing, rendering and playback preparation
+states. MIDI import preserves UTF-8 names and reports a Windows-1252 fallback for
+legacy Western text.

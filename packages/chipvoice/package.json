@@ -1,6 +1,6 @@
 {
   "name": "chipvoice",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "description": "Five classic sound chips in an AudioWorklet or offline: NES, Game Boy, Mega Drive, SNES and C64. Musical scores and sound effects that borrow hardware voices.",
   "keywords": [
     "chiptune",

@@ -14,12 +14,13 @@ export interface MidiImportOptions {
 export function importMidi(bytes: Uint8Array, options: MidiImportOptions = {}): Performance {
   if (bytes.length > 8 * 1024 * 1024) throw new Error('MIDI exceeds 8 MiB');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let pos = 0, limit = bytes.length;
+  let pos = 0, limit = bytes.length, legacyText = false;
+  const utf8 = new TextDecoder('utf-8',{fatal:true}), western = new TextDecoder('windows-1252');
   const need = (size: number) => {if (pos + size > limit) throw new Error('Truncated MIDI');};
   const u8 = () => {need(1); return bytes[pos++];};
   const u16 = () => {need(2); const n = view.getUint16(pos); pos += 2; return n;};
   const u32 = () => {need(4); const n = view.getUint32(pos); pos += 4; return n;};
-  const text = (length: number) => {need(length); const s = new TextDecoder().decode(bytes.subarray(pos,pos+length)); pos += length; return s;};
+  const text = (length: number) => {need(length); const data=bytes.subarray(pos,pos+length);pos+=length;try{return utf8.decode(data);}catch{legacyText=true;return western.decode(data);}};
   const variable = () => {let n = 0; for (let i = 0; i < 4; i++) {const b = u8(); n = n * 128 + (b & 127); if (!(b & 128)) return n;} throw new Error('Invalid MIDI variable integer');};
   if (text(4) !== 'MThd') throw new Error('Expected a MIDI file');
   const header = u32(); if (header < 6) throw new Error('Invalid MIDI header');
@@ -125,6 +126,7 @@ export function importMidi(bytes: Uint8Array, options: MidiImportOptions = {}): 
   if (active.size) throw new Error('Unterminated MIDI notes or sustain pedal');
   if (!count || !endTick) throw new Error('MIDI has no playable notes');
   for (const part of parts.values()) for (const note of part.notes) note.expression = note.expression?.filter(p=>p.tick<note.endTick);
+  if(legacyText)notices.add('Non-UTF-8 MIDI text decoded as Windows-1252; review track names');
   const score: Performance = {version:1,title:options.title ?? names[0] ?? 'Imported MIDI',ticksPerBeat:division,endTick,tempos:[...tempos].filter(([tick])=>tick<endTick).sort((a,b)=>a[0]-b[0]).map(([tick,microsecondsPerBeat])=>({tick,microsecondsPerBeat})),parts:[...parts.values()],source:{kind:'midi',name:options.title??'Imported MIDI'},notices:[...notices]};
   score.midi={format,events};
   validatePerformance(score); return score;
