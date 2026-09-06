@@ -22,10 +22,12 @@ export default function Arrangements(){
  const [imported,setImported]=useState<Performance|null>(null),[loaded,setLoaded]=useState<{title:string;chip:string;part:string;seconds:number;losses:PerformanceLoss[];entries:Entry[]}|null>(null);
  const player=useRef<BufferPlayback|null>(null),worker=useRef<Worker|null>(null),generation=useRef(0),urls=useRef<string[]>([]),documents=useRef(new Map<string,Performance|PerformancePlan>());
  const interacted=useRef(false),alive=useRef(true),[position,setPosition]=useState(0);
+ const importer=useRef<Worker|null>(null),importGeneration=useRef(0);
+ const [importing,setImporting]=useState(false),[importError,setImportError]=useState('');
  useEffect(()=>{
   alive.current=true;const abort=new AbortController();
   fetch('/arrangement-data/report.json',{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('The arrangement collection could not load.');return r.json();}).then(setReport).catch(e=>{if(!abort.signal.aborted)setError(e.message);});
-  return()=>{alive.current=false;abort.abort();generation.current++;worker.current?.terminate();const p=player.current;p?.dispose();void p?.context.close();for(const url of urls.current)URL.revokeObjectURL(url);};
+  return()=>{alive.current=false;abort.abort();generation.current++;worker.current?.terminate();importer.current?.terminate();const p=player.current;p?.dispose();void p?.context.close();for(const url of urls.current)URL.revokeObjectURL(url);};
  },[]);
  useEffect(()=>{const timer=setInterval(()=>{if(player.current?.playing)setPosition(player.current.phase());},200);return()=>clearInterval(timer);},[]);
  const piece=pieceId==='imported'&&imported?{id:'imported',title:imported.title,source:imported.source!,notices:imported.notices,parts:imported.parts.map(p=>({...p,notes:p.notes.length})),cases:[]} as Piece:report?.pieces.find(p=>p.id===pieceId);
@@ -36,9 +38,15 @@ export default function Arrangements(){
  };
  const interact=()=>{const transport=ensure();if(!interacted.current){interacted.current=true;void transport.toggle();}};
  const toggle=()=>{interacted.current=true;void ensure().toggle();};
+ const change=(edit:()=>void)=>{
+  generation.current++;worker.current?.terminate();player.current?.cancelSelection();
+  importGeneration.current++;importer.current?.terminate();
+  setImporting(false);setImportError('');edit();setSession(s=>s+1);
+ };
  useEffect(()=>{
-  if(!piece||!player.current)return;
+  if(!piece||!player.current||importing)return;
   const ticket=++generation.current,abort=new AbortController();worker.current?.terminate();worker.current=null;
+  player.current.cancelSelection();
   setPreparing(true);setError('');
   const timer=setTimeout(()=>{void(async()=>{
    let row=current,entries:Entry[];
@@ -70,15 +78,21 @@ export default function Arrangements(){
    if(await transport.select(entries,levels(entries))&&ticket===generation.current){transport.setSide(0);setSide(0);setLoaded({title:piece.title,chip,part,seconds:row!.seconds,losses:row!.losses,entries});setPreparing(false);}
    else if(ticket===generation.current)setPreparing(false);
   })().catch(e=>{if(ticket===generation.current&&!abort.signal.aborted){setError(e.message);setPreparing(false);}});},180);
-  return()=>{clearTimeout(timer);abort.abort();generation.current++;worker.current?.terminate();};
- },[pieceId,chip,part,tempo,transpose,session,report,imported]); // Source changes commit together; the old audio keeps playing during preparation.
+  return()=>{clearTimeout(timer);abort.abort();generation.current++;worker.current?.terminate();player.current?.cancelSelection();};
+ },[pieceId,chip,part,tempo,transpose,session,report,imported,importing]); // Source changes commit together; the old audio keeps playing during preparation.
  const upload=async(file:File)=>{
-  if(file.size>8*1024*1024){setError('Choose a MIDI smaller than 8 MiB.');return;}
+  setImportError('');
+  if(file.size>8*1024*1024){setImportError('Choose a MIDI smaller than 8 MiB.');return;}
+  const ticket=++importGeneration.current;importer.current?.terminate();
+  generation.current++;worker.current?.terminate();player.current?.cancelSelection();
+  setImporting(true);setPreparing(true);interact();
   try{
-   // The parser is loaded only when needed, never with the initial page.
-   const {importMidi}=await import('chipvoice');const score=importMidi(new Uint8Array(await file.arrayBuffer()),{title:file.name.replace(/\.midi?$/i,'')});
-   setImported(score);setPieceId('imported');setPart('mix');setTempo(100);setTranspose(0);interact();
-  }catch(e){setError(e instanceof Error?e.message:String(e));}
+   const midi=await file.arrayBuffer();if(ticket!==importGeneration.current||!alive.current)return;
+   const active=new Worker('/arrangement-render.js');importer.current=active;
+   const score=await new Promise<Performance>((resolve,reject)=>{active.onerror=()=>reject(Error('MIDI import failed'));active.onmessage=({data})=>data.error?reject(Error(data.error)):resolve(data.score);active.postMessage({id:ticket,importOnly:true,midi,title:file.name.replace(/\.midi?$/i,'')},[midi]);});
+   active.terminate();if(ticket!==importGeneration.current||!alive.current)return;
+   change(()=>{setImported(score);setPieceId('imported');setPart('mix');setTempo(100);setTranspose(0);});interact();
+  }catch(e){if(ticket===importGeneration.current&&alive.current){importer.current?.terminate();setImporting(false);setPreparing(false);if(!loaded)player.current?.pause();setImportError(e instanceof Error?e.message:String(e));}}
  };
  const losses=loaded?.losses??current?.losses??[],omitted=losses.filter(l=>l.kind==='voice-omitted').length;
  const pending=preparing||audio.loading;
@@ -87,19 +101,20 @@ export default function Arrangements(){
   {!piece&&!error&&<p role="status">Loading complete arrangements…</p>}
   {piece&&<section className="console arrangement-deck" aria-label="Complete arrangement player">
    <div className="console-top"><span className="micro">CHIPVOICE / FULL ARRANGEMENTS</span><PlayButton playing={audio.playing} loading={pending} onClick={toggle}/></div>
-   <div className="arrangement-choices" aria-label="Complete compositions">{report?.pieces.map(p=><button key={p.id} aria-pressed={pieceId===p.id} onClick={()=>{setPieceId(p.id);setPart('mix');setTempo(100);setTranspose(0);interact();}}>{p.title.split(' · ')[0]}<span>{p.parts.length} parts</span></button>)}<label className="arrangement-upload">Import MIDI<input aria-label="Import MIDI" type="file" accept=".mid,.midi,audio/midi" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.target.value='';}}/></label></div>
-   <MachinePicker value={chip} onChange={next=>{setChip(next);interact();}}/>
+   <div className="arrangement-choices" aria-label="Complete compositions">{report?.pieces.map(p=><button key={p.id} aria-pressed={pieceId===p.id} onClick={()=>{change(()=>{setPieceId(p.id);setPart('mix');setTempo(100);setTranspose(0);});interact();}}>{p.title.split(' · ')[0]}<span>{p.parts.length} parts</span></button>)}<label className="arrangement-upload">Import MIDI<input aria-label="Import MIDI" type="file" accept=".mid,.midi,audio/midi" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.target.value='';}}/></label></div>
+   <MachinePicker value={chip} onChange={next=>{change(()=>setChip(next));interact();}}/>
    <DisplayPanel><div className="screen-title"><div><span className="screen-kicker">{loaded?.chip.toUpperCase()??chip.toUpperCase()} / {loaded?.part==='mix'||!loaded?'FULL MIX':'ISOLATED PART'}</span><h2>{loaded?.title??piece.title}</h2></div><span>{(loaded?.seconds??current?.seconds??0).toFixed(1)} SEC</span></div>
     <div className="arrangement-progress" role="progressbar" aria-label="Playback progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(position*100)}><span style={{width:`${position*100}%`}}/></div>
     <p>{pending?'Preparing your changes. The current music keeps playing.':audio.playing?'Playing continuously · explore another sound.':'Press Play or tap a console to start.'}</p>
    </DisplayPanel>
-   <div className="arrangement-controls"><RangeControl id="arrangement-tempo" label="Tempo" unit="%" min={40} max={200} value={tempo} onChange={value=>setTempo(value)}/><RangeControl id="arrangement-transpose" label="Transpose" unit="st" min={-24} max={24} value={transpose} onChange={value=>setTranspose(value)}/></div>
+   <div className="arrangement-controls"><RangeControl id="arrangement-tempo" label="Tempo" unit="%" min={40} max={200} value={tempo} onChange={value=>change(()=>setTempo(value))}/><RangeControl id="arrangement-transpose" label="Transpose" unit="st" min={-24} max={24} value={transpose} onChange={value=>change(()=>setTranspose(value))}/></div>
    <div className="arrangement-versions" aria-label="Compare recordings"><Button disabled={!loaded||pending} aria-pressed={side===0} onClick={()=>{setSide(0);player.current?.setSide(0);}}>Our {chip==='2a03'&&pieceId==='mario'&&tempo===100&&transpose===0?'native rendering':'adaptation'}</Button><Button disabled={!loaded||loaded.entries.length<2||pending} aria-pressed={side===1} onClick={()=>{setSide(1);player.current?.setSide(1);}}>Independent original reference</Button>{loaded&&<a href={loaded.entries[side]?.file} download>Download audio ↓</a>}</div>
-   <div className="arrangement-parts" aria-label="Isolate instruments"><button aria-pressed={part==='mix'} onClick={()=>{setPart('mix');interact();}}>Full mix</button>{piece.parts.map(p=><button key={p.id} aria-pressed={part===p.id} onClick={()=>{setPart(p.id);interact();}}><strong>{p.name}</strong><span>{p.notes} source notes</span></button>)}</div>
+   <div className="arrangement-parts" aria-label="Isolate instruments"><button aria-pressed={part==='mix'} onClick={()=>{change(()=>setPart('mix'));interact();}}>Full mix</button>{piece.parts.map(p=><button key={p.id} aria-pressed={part===p.id} onClick={()=>{change(()=>setPart(p.id));interact();}}><strong>{p.name}</strong><span>{p.notes} source notes</span></button>)}</div>
   </section>}
+  {importError&&<p className="ui-status ui-error" role="alert">{importError} Choose another MIDI file to try again.</p>}
   {(error||audio.error)&&<p className="ui-status ui-error" role="alert">{error||audio.error} <Button onClick={()=>setSession(s=>s+1)}>Retry rendering</Button></p>}
   {piece&&<div className="arrangement-evidence"><section><span className="micro">WHAT IS VERIFIED?</span><h2>{piece.source.kind==='native'?'The original commands.':'Every source part.'}</h2><p>{piece.source.kind==='native'?'Mario’s 41,999 music commands match an independent NSF emulator, including their exact cycle timing. The native Famicom rendering keeps the game’s settings. Other consoles use adapted instruments.':'Notes, velocities, programs and exact MIDI timing are preserved in the source arrangement. This is a complete transcription; its instruments have not been verified against the original game.'}</p><p>{piece.source.description??'Your MIDI stays in this browser. No file is uploaded.'}</p>{piece.source.url&&<a href={piece.source.url} target="_blank" rel="noreferrer">Source & credits ↗</a>}</section>
-   <section><span className="micro">THE COST OF A PORT</span><h2>{omitted?`${omitted} notes omitted.`:'All source notes fit.'}</h2><p>{omitted?'This console has fewer available voices. Higher-priority melody and bass parts reserve them first. The source is kept intact; the omissions belong to this adaptation.':'No extra bass, chords or drums are invented. Only parts present in the source are played.'}</p><details><summary>Instrument choices & limitations</summary><ul>{[...new Set(losses.filter(l=>l.kind!=='voice-omitted').map(l=>l.detail)),...piece.notices].map(text=><li key={text}>{text}</li>)}</ul></details><p>Recordings compare at matched levels. MIDI imports and edits render locally in a worker. Audio comparisons are listening evidence, not a universal fidelity score.</p></section>
+   <section><span className="micro">THE COST OF A PORT</span><h2>{omitted?`${omitted} notes omitted.`:'No voice omissions.'}</h2><p>{omitted?'This console has fewer available voices. Higher-priority melody and bass parts reserve them first. The source is kept intact; the omissions belong to this adaptation.':'No extra bass, chords or drums are invented. Only parts present in the source are played.'}</p><details><summary>Instrument choices & limitations</summary><ul>{[...new Set(losses.filter(l=>l.kind!=='voice-omitted').map(l=>l.detail)),...piece.notices].map(text=><li key={text}>{text}</li>)}</ul></details><p>Recordings compare at matched levels. MIDI imports and edits render locally in a worker. Audio comparisons are listening evidence, not a universal fidelity score.</p></section>
   </div>}
   <div className="arrangement-links"><Link href="/">Compose in the playground →</Link><Link href="/lab">Engine listening tests →</Link>{pieceId!=='imported'&&<a href={`/arrangement-data/${pieceId}.json`} download>Source arrangement JSON ↓</a>}<a href="/arrangement-data/report.json" download>Evidence & porting reports ↓</a><a href="https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md">Reproduce the method ↗</a></div>
  </main><SiteFooter/></>;

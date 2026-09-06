@@ -38,10 +38,11 @@ notes, channel-wide program/volume/expression, pitch bend and RPN bend range,
 sustain and all-notes-off. It rejects truncated files, bad status/data, unmatched
 releases, unclosed notes/pedal, zero-duration notes, SMPTE timing and format 2.
 Input is bounded to 8 MiB, 256 tracks and 250,000 channel events; performances have
-at most 100,000 notes and renders at most ten minutes. Nothing executes MIDI data
+at most 100,000 notes, expanded MIDI expression is capped at 200,000 points,
+and renders at most ten minutes. Controller fan-out is checked before expansion. Nothing executes MIDI data
 as code. Unsupported controllers, aftertouch and SysEx configuration are reported;
 pan, modulation-wheel interpretation and game-specific samples are not silently
-claimed as reproduced. MIDI imports stay in the browser.
+claimed as reproduced. MIDI parsing and rendering stay in replaceable browser workers.
 
 Automatic role inference is a draft. Supply reviewed `parts` options by returned
 track/channel ID, or edit the returned part's role/priority. Source note IDs survive
@@ -49,6 +50,12 @@ allocation, making every omission traceable. A larger priority reserves interval
 first, so an earlier low-priority chord cannot occupy the future melody's voice.
 No source note is shortened or stolen mid-note. Allocation uses binary interval
 lookup; encoding happens afterward in time order because chip drivers cache state.
+All eight SNES DSP voices can carry pitched notes.
+Register selectors and their data remain atomic on the bus, including the shared
+Mega Drive FM frequency latch. Delayed transactions preserve hardware spacing;
+the maximum added delay is reported explicitly. The source checker independently
+decodes the generated SNES/FM register destinations and compares every byte to
+the driver's intent. Finite, unclipped audio alone cannot detect a wrong register.
 The Mega Drive's PSG3 is reserved for its noise clock. The DMC is not a generic
 pitched voice. Soloing happens **after allocation**, retaining the same omissions.
 
@@ -99,6 +106,8 @@ redistribution rights when adding a new source.
 ```sh
 python3 scores/arrangements/native-oracle.py source.nsf .artifacts/arrangements
 node scores/arrangements/capture-mario.mjs source.nsf .artifacts/arrangements/reproduced
+node scores/arrangements/compare-native.mjs .artifacts/arrangements \
+  .artifacts/arrangements/reproduced/mario-native.json
 ```
 
 The native tool builds pinned Game_Music_Emu revision
@@ -119,19 +128,27 @@ observer samples effective hardware envelope/timer state at 240 Hz and preserves
 hardware note attacks. Leading/trailing silent envelope portions are trimmed;
 this avoids starting a Game Boy noise envelope at zero. That observer uses our
 core and is **not independent evidence**. The untouched command stream is the
-native truth; portable expression and target instruments are adaptations.
+native truth; portable expression and target instruments are adaptations. A separate
+reviewed checksum protects that portable extraction against accidental changes,
+without presenting it as an independent musical oracle.
 
 ## Evaluate and publish a snapshot
 
 ```sh
 pnpm arrangements:check
 pnpm arrangements:eval
+node scores/arrangements/verify-publication.mjs
 ```
 
 Evaluation runs sequentially. It renders all twelve complete mixes twice, checks
 exact PCM repeatability, finite/unclipped output and SNES internal dry/echo-add
 headroom, then writes lossless FLAC and the report under
 `apps/web/public/arrangement-data/`. Intermediate WAVs stay in `.artifacts`.
+The reference manifest binds the exact NSF, pinned emulator revision, track,
+sample format, complete PCM and write trace to frozen checksums. The publication
+verifier checks the twelve-case matrix, current engine/source/evaluation identity,
+reference provenance, full decoded duration and lossless FLAC-to-WAV identity.
+It runs in the regular web CI suite; incomplete or stale assets cannot qualify.
 The original reference is the independent GME render, with its own filter and
 resampler. Different PCM does not invalidate exact register evidence. This is
 not a recording of a physical console and not a universal musical-quality score.
@@ -140,7 +157,10 @@ The existing chip-conformance suite separately qualifies the digital cores.
 The public deck loads recordings only after an interaction. Tempo, transpose,
 solo and imported MIDI render in a replaceable worker; superseded jobs terminate,
 the currently audible recording remains, and the latest completed selection
-crossfades into the same musical phase. Stop remains authoritative during loading.
+crossfades into the same musical phase. A parameter change immediately cancels
+any pending decode, before its replacement is ready, so stale audio cannot commit.
+Import failures keep the current music and a persistent, actionable error.
+Stop remains authoritative during loading.
 The native introduction plays once; playback loops at the source's loop start.
 Short 3 ms playback-only tapers suppress recording-boundary clicks; downloadable
 recordings and reference PCM are unchanged. A/B uses synchronized clocks and

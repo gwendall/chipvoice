@@ -10,10 +10,13 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 ## Complete arrangements — 2026-09-06
 
-- doing — `feat/complete-arrangements`: exact-tick polyphonic MIDI import,
+- done — `feat/complete-arrangements` (0.15.0): exact-tick polyphonic MIDI import,
   deterministic interval allocation with per-note loss reports, native Mario
   source extraction and independent GME command comparison; full Zelda/Sonic
   MIDI arrangements; public arrangement deck and local worker rendering.
+  [Evaluation and review](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md) records
+  atomic bus transactions, eight SNES pitched voices, bounded MIDI expression,
+  exact reference binding and publication checks.
 - todo — independently validate Zelda/Sonic game-specific instruments against
   native sources. Complete MIDI transcription is not native timbre certification.
 - todo — additional MIDI expression adapters (pan, modulation/aftertouch, SysEx
@@ -35,7 +38,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P1-9 | `conform` in CI on the subset | done | PR #3, against a committed baseline |
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | done | PR #7. 29 of 29 pass, in CI |
-| P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | todo | needs P1-11 or an NSF player |
+| P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | doing | First complete source: Mario Ground Theme, all 41,999 music commands match pinned GME at exact cycles; broader NSF corpus remains |
 | P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | todo | found in P1-6; the frame timing is settled by the ROMs |
 | P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 

@@ -4,6 +4,7 @@ import {instrumentsFor} from './score.js';
 import type {RenderResult} from './render.js';
 import {performanceInstrument} from './performance-palette.js';
 import {pitchRange} from './pitch-range.js';
+import {RegisterTransactions} from './register-transactions.js';
 
 /** Exact source ticks, independent voices, and expression. The compact tracker
  * remains useful for composition; importing an arrangement must not flatten it. */
@@ -108,7 +109,8 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   if (!Number.isFinite(transpose) || Math.abs(transpose) > 48) throw new Error('Invalid transpose');
   const time = performanceClock(score, options.tempoScale), seconds = time(score.endTick);
   if (seconds > 600) throw new Error('Performance exceeds ten minutes');
-  const driver = chip.driver(), events = driver.powerOn(), notes: PlannedNote[] = [], losses: PerformanceLoss[] = [];
+  const driver = chip.driver(), bus = new RegisterTransactions(chip.spec.id), notes: PlannedNote[] = [], losses: PerformanceLoss[] = [];
+  bus.add(driver.powerOn());
   const instruments = instrumentsFor(chip.spec.id, undefined);
   const sounding = new Map<string, {start: number; end: number}[]>(), selected = options.parts && new Set(options.parts);
   const voices = chip.spec.voices.filter(v => v.notes !== 'sample' && !(chip.spec.id === 'md' && v.id === 'psg3'));
@@ -125,7 +127,7 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   for (const {part, note} of queue) {
     const percussion = note.drum !== undefined || part.role === 'perc';
     const preferred = chip.spec.roles[part.role];
-    const choices = voices.filter(v => percussion ? v.notes === 'period' || chip.spec.id === 'snes' || chip.spec.id === 'c64' : v.notes === 'pitch');
+    const choices = voices.filter(v => chip.spec.id === 'snes' || (percussion ? v.notes === 'period' || chip.spec.id === 'c64' : v.notes === 'pitch'));
     choices.sort((a,b) => Number(b.id === preferred) - Number(a.id === preferred));
     const voice = choices.find(v => placement(v.id,note.tick,note.endTick)>=0);
     if (!voice) {losses.push({part: part.id, note: note.id, kind: 'voice-omitted', detail: `No free ${percussion ? 'percussion' : 'pitched'} voice at tick ${note.tick}`}); continue;}
@@ -164,12 +166,13 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
       const volume = (inst.volume[Math.min(frame, inst.volume.length - 1)] ?? 0) * (inst.sustain || frame < inst.volume.length ? 1 : 0) * note.velocity / 127 * expressionGain;
       frames.push({at: Math.round(t * chip.spec.clockHz), volume: chip.spec.id === 'snes' ? volume : Math.round(volume), freq: percussion ? 0 : 440 * 2 ** ((note.pitch + transpose + bend - 69) / 12), period: noisePeriod, duty: Array.isArray(inst.duty) ? inst.duty[frame % inst.duty.length] : duty, noiseMode: inst.noiseMode ?? false, pitchOffset: 0, waveform: Array.isArray(inst.waveform) ? inst.waveform[Math.min(frame, inst.waveform.length - 1)] : inst.waveform ?? null, wave: inst.wave ?? null, fm: inst.fm ?? null, sample: inst.sample ?? null});
     }
-    for (const event of driver.note(voice, frames)) events.push(event);
-    for (const event of driver.noteOff(voice, Math.round(until * chip.spec.clockHz))) events.push(event);
+    bus.add(driver.note(voice, frames));
+    bus.add(driver.noteOff(voice, Math.round(until * chip.spec.clockHz)));
   }
   if (!options.allowLoss && losses.some(l => l.kind === 'voice-omitted')) throw new Error('Arrangement exceeds hardware voices; opt into allowLoss and inspect losses');
-  events.sort((a,b) => a.at - b.at);
-  return {chip: chip.spec.id, seconds, loopStartSeconds: time(score.loopStartTick ?? 0), events, memory: driver.memory?.() ?? [], notes, losses};
+  const scheduled=bus.finish();
+  if(scheduled.delayed)losses.push({part:'*',kind:'bus-timing',detail:`${scheduled.delayed} transactions serialized; maximum extra delay ${(scheduled.maxDelayCycles/chip.spec.clockHz*1000).toFixed(3)} ms`});
+  return {chip: chip.spec.id, seconds, loopStartSeconds: time(score.loopStartTick ?? 0), events:scheduled.events, memory: driver.memory?.() ?? [], notes, losses};
 }
 
 /** Renders compiled commands, not a second interpretation of the score. */

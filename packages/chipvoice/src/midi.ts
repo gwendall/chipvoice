@@ -72,13 +72,14 @@ export function importMidi(bytes: Uint8Array, options: MidiImportOptions = {}): 
   const parts = new Map<string,PerformancePart>();
   const channels = Array.from({length:16}, () => ({program:0, volume:1, expression:1, bend:0, range:2, rangeFine:0, rpnMSB:127, rpnLSB:127, pedal:false}));
   const active = new Map<string,{note: PerformanceNote; channel: number; down: boolean}[]>();
-  let count = 0;
+  let count = 0,expressionPoints=0;
+  const reservePoint=()=>{if(++expressionPoints>200000)throw new Error('MIDI expression expands beyond 200,000 points');};
   const point = (channel: number, tick: number) => {
     const c = channels[channel];
     for (const rows of active.values()) for (const row of rows) if (row.channel === channel) {
       const next = {tick,pitch:c.bend*(c.range+c.rangeFine/100),gain:c.volume*c.expression};
       const expression = row.note.expression!;
-      if (expression.at(-1)?.tick === tick) expression[expression.length-1] = next; else expression.push(next);
+      if (expression.at(-1)?.tick === tick) expression[expression.length-1] = next; else {reservePoint();expression.push(next);}
     }
   };
   const release = (channel: number, tick: number, all: boolean) => {
@@ -97,6 +98,8 @@ export function importMidi(bytes: Uint8Array, options: MidiImportOptions = {}): 
         parts.set(id,part);
         if (!override?.role) notices.add(`${id}: ${role} role inferred; review before publishing`);
       }
+      if(count>=100000)throw new Error('MIDI exceeds 100,000 notes');
+      reservePoint();
       const note: PerformanceNote = {id:`n${count++}`,tick,endTick:0,pitch:a,velocity:b,program:c.program,...(channel===9?{drum:a}:{}),expression:[{tick,pitch:c.bend*(c.range+c.rangeFine/100),gain:c.volume*c.expression}]};
       part.notes.push(note);
       const rows = active.get(key) ?? []; rows.push({note,channel,down:true}); active.set(key,rows);

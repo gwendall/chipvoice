@@ -54,6 +54,11 @@ export class BufferPlayback {
       return false;
     }
   }
+  /** Invalidate a pending decode immediately while keeping the current music.
+   * Call when preparing a replacement that is not ready to select yet. */
+  cancelSelection() {
+    this.generation++;this.abort?.abort();this.loading=false;this.changed();
+  }
   phase(at = this.context.currentTime) {
     const group = this.group;
     if (!group) return this.offset;

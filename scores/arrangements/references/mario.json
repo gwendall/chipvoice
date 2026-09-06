@@ -19,5 +19,8 @@
     "endFrame": 5320,
     "repeatVerifiedFrames": 5184
   },
-  "scope": "All music register values and absolute cycles after the first PLAY; initialization is separately specified by NSF playback. Portable 240 Hz expression is not the independent reference."
+  "scope": "All music register values and absolute cycles after the first PLAY; initialization is separately specified by NSF playback. Portable 240 Hz expression is not the independent reference.",
+  "pcmSha256": "650fba601ec4da0d65cabe4777ca4bf4fbd1dc7a48f963b5e06b5712de72145b",
+  "performanceSha256": "2a94d51a55d8d9dec6cc00342859181ba33d0f60436b1d452b91c12a7f9f7600",
+  "traceSha256": "26f115a51bd2101db14f7fb4a81606f17df00555c8feefa9196cbecd004fcf8d"
 }

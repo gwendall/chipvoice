@@ -1,8 +1,9 @@
 import {importMidi,planPerformance,renderPerformance,toWav,nesChip,gbChip,mdChip,snesChip,type Performance,type PerformancePlan} from 'chipvoice';
 const chips={'2a03':nesChip,dmg:gbChip,md:mdChip,snes:snesChip};
-onmessage=async ({data}:{data:{id:number;score?:Performance;midi?:ArrayBuffer;title?:string;native?:PerformancePlan;chip:keyof typeof chips;tempo:number;transpose:number;part:string}})=>{
+onmessage=async ({data}:{data:{id:number;importOnly?:boolean;score?:Performance;midi?:ArrayBuffer;title?:string;native?:PerformancePlan;chip:keyof typeof chips;tempo:number;transpose:number;part:string}})=>{
  try{
   const score=data.midi?importMidi(new Uint8Array(data.midi),{title:data.title}):data.score!;
+  if(data.importOnly){postMessage({id:data.id,score});return;}
   let plan:PerformancePlan;
   if(data.native&&data.chip==='2a03'&&data.tempo===100&&data.transpose===0){
    plan=data.native;

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {importMidi,planPerformance,renderPerformance,performanceClock,validatePerformance,nesChip,gbChip,mdChip,snesChip} from '../dist/index.js';
+import {RegisterTransactions} from '../dist/register-transactions.js';
 
 const variable = n => {const bytes=[n&127];while(n>>=7)bytes.unshift((n&127)|128);return bytes;};
 const chunk = (name,data) => [...Buffer.from(name),...[(data.length>>>24)&255,(data.length>>>16)&255,(data.length>>>8)&255,data.length&255],...data];
@@ -34,3 +35,17 @@ assert.throws(()=>importMidi(bytes.subarray(0,-1)),/Truncated/);
 assert.throws(()=>importMidi(midi([[0,0x90,60,100],[480,0xff,0x2f,0]])),/Unterminated/);
 assert.throws(()=>importMidi(midi([[0,0x80,60,0],[0,0xff,0x2f,0]])),/Unmatched/);
 console.log('PASS multivoice MIDI, running status, sustain, expression, bends, tempo map, deterministic allocation, explicit losses, solo invariance and malformed sources');
+
+const eight=structuredClone(crowded);eight.parts[0].notes=eight.parts[0].notes.slice(0,8);
+assert.equal(planPerformance(eight,snesChip).notes.length,8,'SNES has eight general-purpose sample voices');
+const dsp=new RegisterTransactions('snes');
+dsp.add([{at:3000,addr:0xf2,value:0x14},{at:3005,addr:0xf3,value:3}]);
+dsp.add([{at:3000,addr:0xf2,value:4},{at:3005,addr:0xf3,value:12}]);
+const commands=dsp.finish();assert.deepEqual(commands.events.map(e=>[e.at,e.addr,e.value]),[[3000,0xf2,0x14],[3005,0xf3,3],[3010,0xf2,4],[3015,0xf3,12]]);
+const fm=new RegisterTransactions('md');
+fm.add([{at:0,addr:0xa04000,value:0xa4},{at:42,addr:0xa04001,value:0x19},{at:1344,addr:0xa04000,value:0xa0},{at:1386,addr:0xa04001,value:0x80}]);
+fm.add([{at:10,addr:0xa04002,value:0xa4},{at:52,addr:0xa04003,value:0x2a},{at:1354,addr:0xa04002,value:0xa0},{at:1396,addr:0xa04003,value:0x40}]);
+assert.deepEqual(fm.finish().events.map(e=>e.value),[0xa4,0x19,0xa0,0x80,0xa4,0x2a,0xa0,0x40],'both banks share the FM high-frequency latch');
+const expanded=[];for(let i=0;i<1000;i++)expanded.push([0,0x90,i%128,90]);for(let i=0;i<220;i++)expanded.push([1,0xb0,11,i%127]);expanded.push([1,0xb0,120,0],[0,0xff,0x2f,0]);
+assert.throws(()=>importMidi(midi(expanded)),/200,000 points/,'small MIDI cannot expand to unbounded expression objects');
+console.log('PASS atomic DSP pairs, shared FM FNUM latch, eight SNES pitched voices and bounded controller expansion');
