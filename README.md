@@ -172,3 +172,7 @@ A tag publishes the package from GitHub Actions over trusted publishing. See
 MIT for the original code; LGPL-2.1-or-later for the derived YM2612 and S-DSP
 cores. The package licence is `(MIT AND LGPL-2.1-or-later)`. See the source
 headers and bundled licence notices. Console marks retain their owners’ rights.
+
+For composition quality checks, use the [audio listening lab](docs/AUDIO-EVALUATION.md):
+actual presets on all five consoles, isolated parts, level-matched comparisons,
+and independent SNES DSP execution. Digital parity does not guarantee a good arrangement.

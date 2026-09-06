@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chipvoice · Banc d’écoute</title>
+<style>
+:root{color-scheme:dark;font:16px/1.5 system-ui,sans-serif;background:#101410;color:#e9efe2}*{box-sizing:border-box}body{margin:0}main{max-width:1050px;margin:auto;padding:40px 24px}header{border-bottom:1px solid #354332;margin-bottom:28px;padding-bottom:22px}h1{font-size:clamp(28px,5vw,46px);letter-spacing:-.04em;margin:8px 0}p{color:#b3c2ad;max-width:76ch}.eyebrow{color:#b7e18d;font:12px monospace;letter-spacing:.15em}label{display:block;font-size:13px;color:#b3c2ad}select,button,textarea,input{font:inherit}select,button,textarea{color:inherit;background:#1b2319;border:1px solid #485442;border-radius:7px;padding:10px}select{width:100%;margin-top:6px}button{cursor:pointer;min-height:44px}button:disabled{opacity:.45;cursor:default}button[aria-pressed=true],#play{background:#b7e18d;color:#14200d;border-color:#b7e18d}button:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #cbeaa8;outline-offset:3px}.filters{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}.panel{margin-top:22px;border:1px solid #354332;padding:22px;border-radius:10px}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0}#status{min-height:24px;color:#cbeaa8}canvas{width:100%;height:120px;display:block;background:#131a11;border-radius:5px}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}td,th{text-align:left;padding:10px 6px;border-bottom:1px solid #354332}th{font-weight:500;color:#b3c2ad}textarea{width:100%;min-height:90px;margin:8px 0}.small{font-size:13px;color:#b3c2ad}a{color:#cbeaa8}input[type=range]{accent-color:#b7e18d;width:150px;vertical-align:middle}#identity{overflow-wrap:anywhere}#reveal{margin-left:auto}[hidden]{display:none!important}@media(max-width:600px){main{padding:24px 16px}.filters{grid-template-columns:1fr}.panel{padding:16px}td,th{font-size:13px;padding:8px 3px}}
+</style>
+<main>
+<header><div class="eyebrow">CHIPVOICE / LISTENING LAB</div><h1>Écouter. Isoler. Comparer.</h1><p>Le même morceau sur chaque machine, avec des preuves techniques et des écoutes à niveau égal. Un moteur conforme peut jouer un mauvais arrangement.</p></header>
+<div class="filters">
+<label>Morceau et console<select id="case"></select></label>
+<label>Piste<select id="role"></select></label>
+<label>Comparaison<select id="reference"></select></label>
+</div>
+<section class="panel" aria-label="Écoute comparative">
+<div id="checks"></div><p id="context" class="small"></p>
+<div class="controls"><button id="play" disabled>Écouter</button><button id="a" aria-pressed="true" disabled>A</button><button id="b" aria-pressed="false" disabled>B</button><label>Volume <input id="volume" type="range" min="0" max="1" step=".01" value=".7"></label><button id="blind" disabled>Masquer et tirer au sort</button><button id="reveal" hidden>Révéler</button></div>
+<div id="status" role="status">Chargement…</div>
+<p id="identity" class="small"></p>
+<div id="measurements"><canvas id="wave" width="1000" height="120" aria-label="Enveloppe de crête brute du rendu actuel"></canvas><p class="small">Enveloppe de crête brute · Les volumes d’écoute sont ajustés, les WAV restent intacts.</p>
+<table><thead><tr><th>Source</th><th>LUFS</th><th>Crête dBTP</th><th>Écrêtés*</th><th>WAV</th></tr></thead><tbody id="metrics"></tbody></table><p class="small">* Échantillons dont |amplitude| ≥ 1 avant conversion WAV. Ces mesures ne notent pas la fidélité musicale.</p></div>
+</section>
+<section class="panel" aria-label="Observations">
+<label>Observations — instrument, note et instant précis<textarea id="notes" placeholder="Ex. basse trop brillante à 1,2 s ; attaque du lead ; accord qui disparaît…"></textarea></label>
+<div class="controls"><label>Préférence<select id="preference"><option value="unsure">Indécis</option><option>A</option><option>B</option><option value="same">Pas de différence perçue</option></select></label><button id="save">Enregistrer cette observation</button><button id="export">Exporter les observations</button></div><p id="saved" class="small">Les observations restent dans cet onglet jusqu’à l’export.</p>
+</section>
+<footer><p class="small">Comparer les versions pour détecter les régressions. Comparer à un oracle pour tester le DSP. Comparer à des références musicales choisies pour juger les timbres et l’écriture. L’écoute masquée ci-dessus est exploratoire, sans verdict statistique ABX.</p><a href="report.json" download>Rapport complet et empreintes SHA-256</a></footer>
+</main><script src="report.js"></script><script type="module" src="player.js"></script>
+</html>

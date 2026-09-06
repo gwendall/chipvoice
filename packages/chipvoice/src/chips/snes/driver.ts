@@ -18,9 +18,9 @@ import { encodeBrr } from "./brr.js";
  * the others' state, which this one, writing notes out of time order, does
  * not have.
  *
- * The echo is on for the pitched voices, at a short delay through the FIR
- * most games used: that is the machine's signature, and a song without it
- * does not sound like one.
+ * The factory palette adds a short filtered echo to the pitched voices.
+ * This is one arrangement choice, not proof of a particular game's sound;
+ * that also depends on its sample bank, envelopes, tuning and voicing.
  */
 
 /** The DSP's registers, as `$F2` selects them. */
@@ -66,6 +66,11 @@ interface BankEntry {
 }
 
 const RATE = 32000;
+/** Headroom for the arranger's four simultaneous parts. The DSP clamps each
+ * voice addition before MVOL; lowering master/output gain cannot undo that
+ * distortion. Four full-scale voices at $20 fit the signed 16-bit dry bus.
+ * This is driver policy, not a limit on the emulated volume registers. */
+const VOICE_VOLUME = 0x20;
 
 /** Tuning shared by bank construction and arrangement diagnostics. Unknown
  * pitched sources use tri, matching the driver's source fallback. */
@@ -228,7 +233,7 @@ export class SnesDriver implements ChipDriver {
     reg(R_ESA, ECHO_PAGE);
     reg(R_EDL, ECHO_DELAY);
     reg(R_EON, 0x07); // the three pitched voices, not the kit
-    // The FIR most games shipped with: a low-pass that sums to unity.
+    // Factory low-pass FIR; signed coefficients sum to 128 (unity gain).
     [0x0c, 0x21, 0x2b, 0x2b, 0x13, 0xfe, 0xf3, 0xf9].forEach((c, i) => reg(R_FIR + i * 0x10, c));
     for (let v = 0; v < 8; v++) {
       reg(v * 0x10 + 0x00, 0);
@@ -267,7 +272,7 @@ export class SnesDriver implements ChipDriver {
     for (let f = 0; f < frames.length; f++) {
       const s = frames[f];
       t = s.at + offset;
-      const volume = Math.round((Math.max(0, Math.min(15, s.volume)) * 127) / 15);
+      const volume = Math.round((Math.max(0, Math.min(15, s.volume)) * VOICE_VOLUME) / 15);
       // A looped waveform plays its base pitch at $1000; a drum plays as recorded.
       const pitch = entry.loop && entry.baseHz > 0 ? Math.max(1, Math.min(0x3fff, Math.round((s.freq * 0x1000) / entry.baseHz))) : 0x1000;
       if (f === 0) {
