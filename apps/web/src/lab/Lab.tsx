@@ -47,7 +47,7 @@ export default function Lab() {
   if(!player.current){
    const context=new AudioContext();
    const transport=new BufferPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});});
-   player.current=transport;void load(selection,transport);
+   transport.setVolume(volume);player.current=transport;void load(selection,transport);
   }
   if(player.current.error&&!player.current.playing)void load(selection,player.current);
   void player.current.toggle();

@@ -382,3 +382,12 @@ the triangle, cycle for cycle. The noise is verified by the formula tests and by
 its envelope, which shares code with the pulses. The sheet says so.
 
 **2026-09-06, P4-7.** All three demo SNES loops match the native DSP, but their driver saturates the dry sum on 13–20% of 32-clock windows before master attenuation. Lowering per-voice levels removes measured dry/echo-input clipping while retaining exact native parity. `recordSong` also inserted early stop events in its final block; complete PCM replay now guards all five consoles. See [the evaluation protocol](AUDIO-EVALUATION.md).
+
+
+**2026-09-06, continuous playback and public lab.** The demo retains Play through
+tempo, score, instrument and console changes with fractional-phase handoffs.
+The local and public `/lab` share the buffered A/B transport. Shared visual
+primitives and `/lab/components` document the existing identity; a separate
+Storybook build is deferred until the collection needs it. The public corpus is
+an explicitly versioned, on-demand snapshot. See
+[implementation and regression evidence](CONTINUOUS-PLAYBACK-LAB.md).

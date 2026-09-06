@@ -9,8 +9,8 @@ import { LivePlayback } from '../audio/LivePlayback';
 export function useDemoAudio(song: SongDocument, muted: Role[], recording = false) {
   const current = useRef<Chip | null>(null);
   const playback = useRef<LivePlayback | null>(null);
-  const latest = useRef({ song, muted });
-  latest.current = { song, muted };
+  const latest = useRef({ song, muted, recording });
+  latest.current = { song, muted, recording };
   const mounted = useRef(true);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,6 +33,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
   }, []);
   const ensure = useCallback(async () => {
     const player = session(); await player.context.resume();
+    if (latest.current.recording && player.current) return player.current;
     const chip = await player.update(musicSong(latest.current.song, latest.current.muted));
     player.audition(); return chip;
   }, [session]);

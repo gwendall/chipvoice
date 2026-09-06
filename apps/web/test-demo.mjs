@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {installOutputProbe} from './test/audio-probe.mjs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { arrange, renderSong, toWav } from '../../packages/chipvoice/dist/index.js';
@@ -15,14 +16,15 @@ const check = (name, evidence) => { report.push({ name, evidence }); console.log
 const songFrom = page => page.evaluate(() => JSON.parse(document.querySelector('.code-panel pre').textContent));
 async function amplitude(page) {
   return page.evaluate(async () => {
-    const chip = window.chipvoice; const analyser = chip.audioContext.createAnalyser(); analyser.fftSize = 2048; chip.output.connect(analyser);
+    const chip = window.chipvoice, output = window.audioBus ?? chip.output; const analyser = chip.audioContext.createAnalyser(); analyser.fftSize = 2048; output.connect(analyser);
     const samples = new Float32Array(2048); let peak = 0; let square = 0; let count = 0;
     for (let i = 0; i < 12; i++) { await new Promise(r => setTimeout(r, 30)); analyser.getFloatTimeDomainData(samples); for (const v of samples) { peak = Math.max(peak, Math.abs(v)); square += v*v; count++; } }
-    chip.output.disconnect(analyser); return { peak, rms: Math.sqrt(square/count) };
+    output.disconnect(analyser); return { peak, rms: Math.sqrt(square/count) };
   });
 }
 try {
   const context = await browser.newContext({ viewport: { width: 1280, height: 1000 }, recordVideo: { dir: `${artifacts}/videos`, size: { width: 1280, height: 1000 } } });
+  await context.addInitScript(installOutputProbe);
   const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message));
   await page.goto(base); await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
   assert.equal(await page.evaluate(() => !!window.chipvoice), false); check('Opening the demo does not start audio');
@@ -87,7 +89,7 @@ try {
     window.capturedPositions = []; window.takeRestarts = 0;
     chip.quantizedPosition = (...args) => { const p = quantized(...args); if (p) window.capturedPositions.push(p); return p; };
     chip.play = (...args) => { window.takeRestarts++; return play(...args); };
-    return chip.songId;
+    window.backingChip = chip; return chip.songId;
   });
   await page.keyboard.press('a'); await page.keyboard.press('d');
   await page.getByLabel('Audition role', { exact: true }).selectOption('perc');
@@ -101,6 +103,8 @@ try {
     line[step] = ['C4', 'E4', 'S'][i]; pattern[role] = line.join(' ');
   }
   assert.deepEqual(await songFrom(page), expectedTake);
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => window.chipvoice === window.backingChip), true, 'Recorded previews keep the same backing engine');
   assert.equal(await page.evaluate(() => window.chipvoice.songId), backingId);
   assert.equal(await page.evaluate(() => window.takeRestarts), 0, 'taps do not restart the backing transport');
   assert.equal(await page.locator('#tempo').isDisabled(), true);

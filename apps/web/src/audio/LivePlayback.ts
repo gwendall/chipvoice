@@ -18,7 +18,7 @@ export class LivePlayback {
   private disposed = false;
   private wake: (() => void) | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  constructor(readonly context: AudioContext, private changed: () => void) {
+  constructor(readonly context: AudioContext, private changed: () => void, private createChip: typeof Chip.create = Chip.create) {
     this.output = context.createGain();
     this.output.connect(context.destination);
   }
@@ -48,7 +48,7 @@ export class LivePlayback {
     while (!this.disposed && this.song) {
       const song = this.song;
       const active = this.active;
-      if (active && active.chip.spec.id === song.chip && (!this.playing || active.chip.songId === song.id)) {
+      if (active && active.chip.spec.id === song.chip && (!this.playing || !active.chip.playing || active.chip.songId === song.id)) {
         if (this.playing && !active.chip.playing) {
           active.chip.play(song); active.fade.toValue(1);
         }
@@ -57,7 +57,7 @@ export class LivePlayback {
       this.loading = true; this.changed();
       let chip: Chip | null = null;
       try {
-        chip = await Chip.create({chip: song.chip, context: this.context});
+        chip = await this.createChip({chip: song.chip, context: this.context});
         if (!chip) throw new Error('This browser cannot start AudioWorklet. Try a current browser over HTTPS.');
         if (this.disposed || this.song?.chip !== song.chip) { chip.dispose(); continue; }
         const fade = new Fade(this.context, this.output);
@@ -82,6 +82,7 @@ export class LivePlayback {
         if (!this.playing) return chip;
       } catch (error) {
         chip?.dispose(); this.incoming?.fade.disconnect(); this.incoming = null;
+        if (!this.disposed && (this.song?.chip !== song.chip || this.song?.id !== song.id)) continue;
         if (!this.disposed) {
           this.error = error instanceof Error ? error.message : 'Audio could not start.';
           this.loading = false;

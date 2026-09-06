@@ -447,8 +447,11 @@ export class APU implements NoteSink {
 
   /** What a program did first: its samples into memory, then the chip's own driver's writes. */
   protected powerOn() {
+    const origin = this.cycleAt(this.ctx.currentTime);
     for (const block of this.encoder.memory?.() ?? []) this.load(block.address, block.bytes);
-    for (const e of this.encoder.powerOn()) this.enqueue(e);
+    // Driver startup offsets are relative to this engine's creation, while the
+    // worklet clock belongs to the shared (possibly already running) context.
+    for (const e of this.encoder.powerOn()) this.enqueue({ ...e, at: origin + e.at });
   }
 
   private silence(channel: Channel, at: number, owner = channel) {

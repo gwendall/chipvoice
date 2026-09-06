@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {build} from '../../packages/chipvoice/node_modules/esbuild/lib/main.js';
+const built=await build({entryPoints:[new URL('src/audio/LivePlayback.ts',import.meta.url).pathname],bundle:true,platform:'node',format:'esm',write:false,plugins:[{name:'share-sdk',setup(build){build.onResolve({filter:/^chipvoice$/},()=>({path:new URL('../../packages/chipvoice/dist/index.js',import.meta.url).href,external:true}));}}]});
+const {LivePlayback}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
+const gain=()=>({connect(){},disconnect(){},gain:{value:0,cancelScheduledValues(){},setValueAtTime(){},linearRampToValueAtTime(){}}});
+const context={get currentTime(){return performance.now()/1000;},destination:{},createGain:gain,resume:async()=>{}};
+const calls=[];let rejectStale,alive=0,maxAlive=0;
+const factory=async({chip})=>{
+ calls.push(chip);if(chip==='snes')return new Promise((_,reject)=>{rejectStale=reject;});
+ alive++;maxAlive=Math.max(maxAlive,alive);let disposed=false;
+ return {spec:{id:chip},songId:null,playing:false,output:gain(),play(song){this.songId=song.id;this.playing=true;},stop(){this.playing=false;this.songId=null;},phaseAt(){return {step:0,orderIndex:0,progress:.5};},dispose(){if(!disposed)alive--;disposed=true;}};
+};
+const player=new LivePlayback(context,()=>{},factory);
+await player.start({id:'original',chip:'2a03'});
+const stale=player.update({id:'obsolete',chip:'snes'}),latest=player.update({id:'latest',chip:'dmg'});
+rejectStale(new Error('Stale worklet failed'));await Promise.all([stale,latest]);
+assert.deepEqual(calls,['2a03','snes','dmg']);assert.equal(player.current.spec.id,'dmg');assert.equal(player.current.songId,'latest');assert.equal(player.error,'');assert.ok(player.playing);assert.equal(alive,1);assert.ok(maxAlive<=2);
+player.stop();await player.start({id:'restart',chip:'dmg'});assert.equal(calls.length,3,'A stopped compatible engine is reused');
+player.dispose();assert.equal(alive,0);
+console.log('PASS stale failed chip creation preserves the latest request; overlap bounded to two engines; stopped engine reused and disposal complete');

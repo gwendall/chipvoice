@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {installOutputProbe} from './test/audio-probe.mjs';
 import {chromium} from 'playwright';
 import {mkdir,writeFile} from 'node:fs/promises';
 const base=process.env.SITE??'http://127.0.0.1:3070';
@@ -6,16 +7,8 @@ const out=new URL('../../.artifacts/continuity/',import.meta.url);await mkdir(ou
 const browser=await chromium.launch();
 try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(installOutputProbe);
  await page.addInitScript(()=>{
-  const buses=new WeakMap(),connect=AudioNode.prototype.connect;
-  AudioNode.prototype.connect=function(destination,...args){
-   if(destination===this.context.destination){
-    let bus=buses.get(this.context);
-    if(!bus){bus=this.context.createGain();connect.call(bus,destination);buses.set(this.context,bus);window.audioBus=bus;}
-    return connect.call(this,bus,...args);
-   }
-   return connect.call(this,destination,...args);
-  };
   const line=Array(64).fill('.');line[0]='C4';
   localStorage.setItem('chipvoice.draft.v1',JSON.stringify({title:'Continuity probe',chip:'2a03',bpm:120,order:[0],patterns:[{lead:line.join(' '),chord:Array(64).fill('.').join(' '),bass:Array(64).fill('.').join(' '),perc:Array(64).fill('.').join(' '),chordShape:[[0,4,7]]}]}));
  });
@@ -40,7 +33,7 @@ try{
  let longest=0,run=0;for(const block of results.blocks){run=block.peak<.00001?run+128:0;longest=Math.max(longest,run);}
  const sampleRate=await page.evaluate(()=>window.audioBus.context.sampleRate);
  const gapMs=longest/sampleRate*1000;
- assert.ok(gapMs<20,`Continuous held note has ${gapMs.toFixed(1)} ms of transition silence`);
+ assert.equal(gapMs,0,`Continuous held note has ${gapMs.toFixed(1)} ms of transition silence`);
  assert.ok(results.transitions.length>=4);
  for(const transition of results.transitions){assert.ok(transition.expected);assert.deepEqual(transition.position,transition.expected,'Incoming engine must preserve fractional musical phase');}
  await page.locator('.machines').getByRole('button',{name:'Game Boy',exact:true}).click();
@@ -49,7 +42,7 @@ try{
  assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'Stop wins over pending engine creation');
  assert.equal(await page.evaluate(()=>window.chipvoice.playing),false);
  assert.deepEqual(errors,[]);
- const evidence={pass:true,gapMs,transitions:results.transitions,errors};
+ const evidence={pass:true,gapMs,silentBlocks:results.blocks.filter(block=>block.peak<.00001),transitions:results.transitions,errors};
  await writeFile(new URL('live-audio.json',out),JSON.stringify(evidence,null,2));
  console.log(JSON.stringify(evidence));
 }finally{await browser.close();}

@@ -61,3 +61,27 @@ it. The original local evaluation files remain immutable and uncompressed.
 
 Sources: [Web Audio codec guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Audio_codecs),
 [AudioParam ramps](https://developer.mozilla.org/en-US/docs/Web/API/AudioParam/linearRampToValueAtTime).
+
+## Regression evidence
+
+The continuous-note browser probe measures the shared output in 128-sample
+audio-clock blocks. Three tempo changes and NES → SNES retain the exact
+fractional position and produce zero near-silent blocks (peak threshold 1e-5).
+The assertion requires zero milliseconds; it does not tolerate a short dropout.
+This is a deterministic continuity check, not a claim that arbitrary timbre
+changes produce identical waveforms.
+
+The probe exposed a separate startup bug: register initialization offsets were
+anchored at AudioContext time zero when creating a replacement engine later.
+Anchoring them at creation preserves SNES startup delays. A regression renders
+the same note at origins zero and two seconds and requires identical relative
+PCM; before the fix the maximum sample difference was 0.04544. Offline goldens
+for the five consoles remain unchanged.
+
+Additional regressions cover a failed stale engine followed by a newer console
+request, reuse of stopped engines, recording backing identity, volume set before
+the first Play, interrupted buffer loads, and the four-source overlap bound.
+Publication rejects incomplete collections and repairs corrupted cached FLAC
+files only after checking their decoded PCM against the verified source WAV.
+Browser runs save desktop/mobile screenshots, videos and measured audio results
+in `.artifacts`; CI uploads these without rendering a new evaluation corpus.
