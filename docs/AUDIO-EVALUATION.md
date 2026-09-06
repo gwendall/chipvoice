@@ -26,7 +26,7 @@ Options: `--chips snes` (or comma-separated `2a03,dmg,md,snes,c64`),
 `--preset overworld`, `--seconds 5`, `--mix-only`, `--skip-oracle`,
 `--scores path/to/score.json`. A score file is one `Score`, or an array of
 `{id,title,song}` entries. Default duration is one complete score loop, capped at
-30 seconds; the report marks truncated excerpts. Test longer sessions separately.
+180 seconds; the report marks truncated excerpts and publication rejects them.
 
 The report contains raw 16-bit stereo WAVs of the mix and four isolated roles,
 score files, waveform envelopes, averaged spectra, and measurements before WAV
@@ -35,14 +35,22 @@ vendor oracle sources, scores and WAVs; the Git revision and working diff digest
 record whether this came from a working tree. Rebuild before running: the harness
 measures the **built** engine. Keep the source revision/patch with shared evidence.
 
-`--baseline` verifies previous WAV hashes and refuses different scores, durations,
-or sample rates. It compares engine/arranger changes with fixed input. For a
+`--baseline` verifies previous WAV hashes and only attaches cases with matching
+scores and durations; a sample-rate mismatch is rejected. It compares
+engine/arranger changes with fixed input. For a
 composition rewrite, keep both reports and judge the changed score explicitly;
 do not call that an engine regression test. Baseline cases absent from an earlier
 report simply have no version comparison.
 
 ## What each check establishes
 
+- **Source melody, familiar cartridges:** independently decode the score and
+  observe the real sequencer's note sink on all five role maps. Compare both to
+  frozen MIDI note ledgers: pitches, onsets/releases, missing/extra notes, total
+  form and unexpected backing. The 415 selected notes are checked with no pitch
+  tolerance and at most 1/24 beat per boundary for grid rounding. This verifies
+  the selected transcription before the driver/DSP, not the original game's
+  recording. See [sources, coverage and mutation tests](../scores/README.md).
 - **Capture replay, all five consoles:** replay the captured register writes and
   memory into a fresh chip, compare against offline PCM sample by sample (absolute
   tolerance `1e-7`). This catches scheduling/capture inconsistencies, but both paths
@@ -156,3 +164,11 @@ shared controls. Audio is lossless FLAC loaded only on demand. The standalone
 report and public lab share the same continuous A/B transport: selection changes
 retain Play, keep the old audio during loading and crossfade at the new loop
 phase. See [publication and playback design](CONTINUOUS-PLAYBACK-LAB.md).
+
+The longer melody collection contains six cartridges on five consoles (30 cases).
+Offline exports now start at musical time zero, preserving the end of a full
+loop. Register captures use the same sample-rounded endpoint as the WAV and the
+cores' cancellable event queue. Regressions cover the final note, fractional-sample
+loop lengths at 44.1/48 kHz, and short notes whose obsolete releases must be
+cancelled after a rest. These fixes make replay evidence reliable; they are not
+a claim of soundtrack authenticity.

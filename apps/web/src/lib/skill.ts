@@ -149,7 +149,7 @@ Telegram, X and Discord show when the link is pasted - so an unfiltered title is
 way to make an official-looking picture say anything.
 
 The rule is an allowlist rather than a blocklist: **letters, numbers, spaces and
-\`. , ' ! ? & ( ) - + : /\`**, up to 60 characters. No emoji, no arrows, no
+\`. · , ' ! ? & ( ) - + : /\`**, up to 60 characters. No emoji, no arrows, no
 invisible characters. \`author\` follows the same rule.
 
 A song with no title is fine - the page shows its id. But the share card is the

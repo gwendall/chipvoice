@@ -6,6 +6,8 @@
  * silent, that a fork inherits what it did not send, and that the MP3 is a real
  * file rather than a 200 with nothing in it.
  */
+import {readFileSync} from 'node:fs';
+import {isDeepStrictEqual} from 'node:util';
 const BASE = process.env.API_URL || 'http://localhost:3010';
 const guard = setTimeout(() => { console.error('TIMEOUT'); process.exit(1); }, 120000);
 guard.unref();
@@ -207,9 +209,25 @@ check('carrying og:audio for chat clients', /og:audio/.test(html));
 check('and the editor itself', /transport|__next/.test(html));
 check('and a card image', (await fetch(`${BASE}/s/${song.id}/card`)).status === 200);
 
-const tripletParent = await (await post('/api/songs', {...SONG, stepsPerBeat:12})).json();
+const fullTheme = JSON.parse(readFileSync(new URL('./src/studio/classics.json',import.meta.url),'utf8')).find(preset=>preset.id==='mario').song;
+const themeResponse = await post('/api/songs', fullTheme);
+const tripletParent = await themeResponse.json();
+check('the actual cartridge can be published',themeResponse.status===201,tripletParent.error?JSON.stringify(tripletParent):String(themeResponse.status));
+check('a full 50-bar theme survives publication',tripletParent.stepsPerBeat===12&&isDeepStrictEqual(tripletParent.patterns,fullTheme.patterns)&&isDeepStrictEqual(tripletParent.order,fullTheme.order));
+check('the published theme retains its full musical duration',Math.abs(tripletParent.measured?.loopSeconds-80)<1e-8);
+check('long-theme audio links request bounded previews',tripletParent.mp3?.endsWith('.mp3?seconds=30')&&tripletParent.wav?.endsWith('.wav?seconds=30'));
+if(tripletParent.wav){
+  const previewUrl = new URL(tripletParent.wav);
+  const previewResponse = await fetch(BASE+previewUrl.pathname+previewUrl.search);
+  const previewBytes = await previewResponse.arrayBuffer();
+  const wav = new DataView(previewBytes);
+  check('the advertised long-theme WAV plays a 30-second preview',previewResponse.status===200&&previewBytes.byteLength>44&&wav.getUint32(40,true)/wav.getUint32(28,true)===30,String(previewResponse.status));
+}
+const themePage = await (await fetch(`${BASE}/s/${tripletParent.id}`)).text();
+check('the share page advertises a playable audio preview',themePage.includes(`${tripletParent.id}.mp3?seconds=30`));
 const tripletFork = await (await post(`/api/songs/${tripletParent.id}/fork`, {title:'Triplet fork'})).json();
 check('fork inherits its source grid',tripletFork.stepsPerBeat===12,JSON.stringify(tripletFork.stepsPerBeat));
+check('fork preserves all source notes and sections',isDeepStrictEqual(tripletFork.patterns,fullTheme.patterns)&&isDeepStrictEqual(tripletFork.order,fullTheme.order));
 const straightFork = await (await post(`/api/songs/${tripletFork.id}/fork`, {stepsPerBeat:4})).json();
 check('fork can explicitly return to the straight grid',straightFork.stepsPerBeat===4,JSON.stringify(straightFork.stepsPerBeat));
 

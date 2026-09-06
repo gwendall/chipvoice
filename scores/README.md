@@ -131,6 +131,13 @@ migration gives existing songs a default grid of four; no existing notes change.
   It never certifies a modified score based only on its cartridge title.
 - Notes, order and `stepsPerBeat` survive drafts, shares, forks, recording and
   exports. Undo/Reset keep the existing composition-control behavior.
+- For a complete long theme, download a single WAV from the playground or use
+  the SDK locally (the default export plays two loops, capped at 300 seconds).
+  Public API audio excerpts accept `?seconds=1..30`; multi-file export bundles
+  also retain their 30-second bound. Neither limit shortens the playable score
+  or the full-loop recordings published in the listening lab.
+  Published audio links and social audio metadata explicitly request a 30-second
+  preview for longer scores, while their share page plays the full score.
 
 The older `import-midi.py` remains a small strict sixteenth-grid draft helper.
 For these longer source comparisons, use `extract-reference.py` and the frozen

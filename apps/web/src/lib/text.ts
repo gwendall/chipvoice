@@ -11,7 +11,7 @@
  * bypassed the day after they ship; an allowlist of what a song title actually
  * needs is not.
  */
-const ALLOWED = /^[\p{L}\p{N} .,'!?&()\-+:/]*$/u;
+const ALLOWED = /^[\p{L}\p{N} .·,'!?&()\-+:/]*$/u;
 const MAX = 60;
 
 export interface TitleCheck {
@@ -43,7 +43,7 @@ export function cleanTitle(input: string | undefined): TitleCheck {
       ok: false,
       value: "",
       message:
-        "a title can hold letters, numbers, spaces and . , ' ! ? & ( ) - + : / and nothing else",
+        "a title can hold letters, numbers, spaces and . · , ' ! ? & ( ) - + : / and nothing else",
     };
   }
   return { ok: true, value: stripped };

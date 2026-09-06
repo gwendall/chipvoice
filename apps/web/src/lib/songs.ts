@@ -1,4 +1,4 @@
-import { arrange, validateSong, type Intent, type Measured, type Issue } from "chipvoice";
+import { arrange, loopSeconds, validateSong, type Intent, type Measured, type Issue } from "chipvoice";
 import { db, newId } from "./db";
 import type { Caller } from "./auth";
 import type { SongInput } from "./schema";
@@ -91,13 +91,17 @@ export function present(
   forks = 0,
   lineage?: Lineage,
 ): SongResponse {
-  const validation = validateSong(toLibrarySong(song));
+  const arranged = toLibrarySong(song);
+  const validation = validateSong(arranged);
+  // Public audio has a 30-second compute budget; a long score's advertised
+  // links must request an excerpt instead of an export that returns 422.
+  const preview = loopSeconds(arranged) * 2 > 30 ? "?seconds=30" : "";
   const { userId, ...publicSong } = song;
   return {
     ...publicSong,
     url: `${SITE}/s/${song.id}`,
-    mp3: `${SITE}/s/${song.id}.mp3`,
-    wav: `${SITE}/s/${song.id}.wav`,
+    mp3: `${SITE}/s/${song.id}.mp3${preview}`,
+    wav: `${SITE}/s/${song.id}.wav${preview}`,
     measured: validation.measured,
     forks,
     authorVerified: userId !== null,
