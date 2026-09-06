@@ -9,6 +9,7 @@ Base: `606242c` (PR #33). SDK remains 0.15.1; no DSP or reference recording chan
 | --- | --- | --- |
 | Home plays a melody; a banner points to a third surface | Complete Mario, Zelda and Sonic arrangements on `/`; old arrangement URL redirects | Full accompaniment is immediately discoverable |
 | Static loading message before the deck | Server-rendered catalogue and initial four-part score | No full evidence download needed to see what the library does |
+| Play above the song and console selectors | Play/Pause first beneath the progress bar; Restart and Loop alongside | Keep playback controls next to the position they control |
 | Stop/restart and a passive progress bar | Pause, restart, accessible seek, score click, elapsed/total and loop toggle | Navigate and compare full compositions |
 | Cursor uses render time | Cursor and selected score use output-device timing | Do not lead delayed audio or show the next score prematurely |
 | Editor competes with listening surfaces | Make a loop in the same playground, with exclusive audio ownership | Keep drafts, recording, pads, code and sharing accessible |
@@ -118,3 +119,8 @@ composer handoff, screenshots and video. Its observed output delay was about
 30–37 ms (different from the macOS device), with cursor error of 1.6–44.0 ms on
 this busy host. CI failure artifacts now retain the source offset, ended flag,
 context state, output timestamp, screenshot and finalized video.
+
+After production review, Play/Pause moved into the player beneath the seek bar,
+aligned left. Desktop and 390/320 px browser captures verify the placement; on
+mobile, Restart uses its icon with an accessible name and a 44 px target.
+Measured output and Pause were exercised from the relocated control.

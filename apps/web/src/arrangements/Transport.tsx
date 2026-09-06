@@ -1,5 +1,5 @@
 'use client';
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useEffect, useMemo, useRef, useState, type ReactNode} from 'react';
 import type {BufferPlayback} from '../audio/BufferPlayback.mjs';
 import {Button} from '../ui/components';
 
@@ -9,7 +9,7 @@ const time=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seco
 
 /** Static note raster + one moving cursor. The long MIDI never becomes tens
  * of thousands of DOM nodes or gets redrawn on each animation frame. */
-export function Transport({player,overview,seconds,part,pending,active,onLoop}:{player:BufferPlayback|null;overview:Overview|null;seconds:number;part:string;pending:boolean;active:boolean;onLoop:(loop:boolean)=>void}){
+export function Transport({playControl,player,overview,seconds,part,pending,active,onLoop}:{playControl:ReactNode;player:BufferPlayback|null;overview:Overview|null;seconds:number;part:string;pending:boolean;active:boolean;onLoop:(loop:boolean)=>void}){
  const root=useRef<HTMLDivElement>(null),canvas=useRef<HTMLCanvasElement>(null),cursor=useRef<HTMLDivElement>(null),range=useRef<HTMLInputElement>(null),elapsed=useRef<HTMLOutputElement>(null);
  const dragging=useRef(false);
  const [loop,setLoop]=useState(true);
@@ -38,7 +38,7 @@ export function Transport({player,overview,seconds,part,pending,active,onLoop}:{
  return <div ref={root} className="song-transport">
   <div className="song-time"><output ref={elapsed} aria-label="Elapsed time">0:00</output><span>{time(seconds)}</span></div>
   <input ref={range} className="song-seek" type="range" aria-label="Song position" min={0} max={1000} defaultValue={0} disabled={!player?.buffers.length} onPointerDown={()=>{dragging.current=true;}} onPointerUp={()=>{dragging.current=false;}} onPointerCancel={()=>{dragging.current=false;}} onBlur={()=>{dragging.current=false;}} onChange={e=>seek(Number(e.target.value)/1000)}/>
-  <div className="transport-actions"><Button disabled={!player?.buffers.length} onClick={()=>player?.restart()}>↤ Restart</Button><Button aria-pressed={loop} onClick={()=>{const next=!loop;setLoop(next);onLoop(next);}}>↻ Loop {loop?'on':'off'}</Button><span>{pending?'Preparing your next sound…':'Click the score to jump. Solo a part below.'}</span></div>
+  <div className="transport-actions">{playControl}<Button className="transport-restart" aria-label="Restart" title="Restart from beginning" disabled={!player?.buffers.length} onClick={()=>player?.restart()}><span aria-hidden="true">↤</span><span className="transport-restart-label"> Restart</span></Button><Button aria-pressed={loop} onClick={()=>{const next=!loop;setLoop(next);onLoop(next);}}>↻ Loop {loop?'on':'off'}</Button><span>{pending?'Preparing your next sound…':'Click the score to jump. Solo a part below.'}</span></div>
   <div className="score-overview" aria-label="Source score" style={{minHeight:Math.max(104,rows.length*34)}}>
    <div className="score-labels">{rows.map((row,i)=><div key={row.id} className="score-part" style={{borderColor:colors[i%colors.length]}} title={row.name}>{row.name}</div>)}</div>
    <div className="score-notes" onPointerDown={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
