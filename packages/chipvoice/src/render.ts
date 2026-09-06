@@ -125,10 +125,14 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
  */
 export function recordSong(
   song: Song,
-  options: { seconds?: number; chip?: string } = {},
+  options: { seconds?: number; chip?: string; sampleRate?: number } = {},
 ): { events: RegisterEvent[]; cycles: number; memory: { address: number; bytes: Uint8Array }[] } {
   const chip = chipFor(options.chip ?? song.chip ?? "2a03");
-  const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
+  const sampleRate = options.sampleRate ?? 44100;
+  const requestedSeconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
+  const total = Math.max(1, Math.round(requestedSeconds * sampleRate));
+  // Match the WAV's actual duration, including its last rounded sample.
+  const seconds = total / sampleRate;
   const cycles = Math.round(seconds * chip.spec.clockHz);
   const events: RegisterEvent[] = [];
   const memory: { address: number; bytes: Uint8Array }[] = [];
@@ -150,10 +154,10 @@ export function recordSong(
   // must not steal the end of a full-loop export.
   sequencer.play(song, undefined, 0);
   // The renderer's block, so a song records the way it renders.
-  const block = 4096 / 44100;
-  for (let t = 0; t < seconds; t += block) {
-    clock = t;
-    sequencer.pump();
+  const block = 4096;
+  for (let offset = 0; offset < total; offset += block) {
+    clock = offset / sampleRate;
+    sequencer.pump(Math.max(clock + 0.2, Math.min(offset + block, total) / sampleRate));
     driver.flush();
   }
   // Stop at the requested boundary, not at the start of the final block.

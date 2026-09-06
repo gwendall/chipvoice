@@ -450,6 +450,9 @@ with `=` followed by `.` tokens; an arranger never needs an invented bass line.
 Offline `renderSong` and `recordSong` start at musical time zero. A full-loop
 duration therefore includes the final note; live playback retains its preparation
 lookahead. The audio golden snapshots changed intentionally with this correction.
+Captures use the same sample-rounded duration as WAVs. When rendering at a rate
+other than 44100 Hz, pass the same `sampleRate` to `recordSong` for exact replay
+through the final sample, including loops whose duration is fractional in samples.
 
 See [the source comparison workflow](../../scores/README.md) for deterministic
 melody checks, their tolerances and the distinction from acoustic/DSP fidelity.
