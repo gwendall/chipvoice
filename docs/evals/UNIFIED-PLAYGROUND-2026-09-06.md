@@ -9,7 +9,9 @@ Base: `606242c` (PR #33). SDK remains 0.15.1; no DSP or reference recording chan
 | --- | --- | --- |
 | Home plays a melody; a banner points to a third surface | Complete Mario, Zelda and Sonic arrangements on `/`; old arrangement URL redirects | Full accompaniment is immediately discoverable |
 | Static loading message before the deck | Server-rendered catalogue and initial four-part score | No full evidence download needed to see what the library does |
+| Play above the song and console selectors | Play/Pause first beneath the progress bar; Restart and Loop alongside | Keep playback controls next to the position they control |
 | Stop/restart and a passive progress bar | Pause, restart, accessible seek, score click, elapsed/total and loop toggle | Navigate and compare full compositions |
+| Narrow name column clips mobile source parts | Full-width names above notes, reduced padding and bounded vertical score scroll | Keep names readable without shrinking the type |
 | Cursor uses render time | Cursor and selected score use output-device timing | Do not lead delayed audio or show the next score prematurely |
 | Editor competes with listening surfaces | Make a loop in the same playground, with exclusive audio ownership | Keep drafts, recording, pads, code and sharing accessible |
 
@@ -118,3 +120,23 @@ composer handoff, screenshots and video. Its observed output delay was about
 30–37 ms (different from the macOS device), with cursor error of 1.6–44.0 ms on
 this busy host. CI failure artifacts now retain the source offset, ended flag,
 context state, output timestamp, screenshot and finalized video.
+
+After production review, Play/Pause moved into the player beneath the seek bar,
+aligned left. Desktop and 390/320 px browser captures verify the placement; on
+mobile, Restart uses its icon with an accessible name and a 44 px target.
+Measured output and Pause were exercised from the relocated control.
+
+The subsequent mobile pass keeps source labels at 14 px, places them above the
+notes across the full width, reduces nested padding and removes the duplicate
+mobile duration. Mario, Zelda and Sonic names were inspected at 320, 390 and
+768 px. Long scores scroll vertically inside a six-row viewport on phones, with
+a visible hint and a focusable named region; the final part and the full-height
+cursor remain reachable. Desktop labels have enough width for the catalogue.
+
+A native touch-scroll evaluation initially changed the paused song position from
+0 to 500/1000: seeking on pointer-down treated every swipe as a seek. Score seeking
+now uses a confirmed click/tap, letting the browser distinguish scrolling. The
+transport E2E covers the real touch gesture, unchanged music position, access to
+the last part, keyboard return, readable labels and a tap that still seeks.
+
+![Mobile: full-width part names and bounded score scrolling](unified-playground-mobile-parts.png)
