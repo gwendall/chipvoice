@@ -75,7 +75,7 @@ export class LivePlayback {
             // A new form starts at its beginning through the same crossfade.
             // Console/tempo/notation edits with the same form retain the beat.
             if (!compatible) phase = undefined;
-            else { const step = (phase.step + (phase.progress ?? 0)) * nextGrid / grid; phase = {...phase, step: Math.floor(step), progress: step % 1}; }
+            else if (grid !== nextGrid) { const step = (phase.step + (phase.progress ?? 0)) * nextGrid / grid; phase = {...phase, step: Math.floor(step), progress: step % 1}; }
           }
           chip.play(this.song!, phase, at);
           // Allow the new chip's note-on to reach its DSP before releasing the
