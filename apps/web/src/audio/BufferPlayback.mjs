@@ -19,11 +19,21 @@ export class BufferPlayback {
     this.loading = true; this.error = ''; this.changed();
     try {
       const buffers = await Promise.all(entries.map(async entry => {
-        const key = entry.file;
+        const key = entry.loopFadeSeconds ? `${entry.file}|${entry.loopStartSeconds??0}|${entry.loopFadeSeconds}` : entry.file;
         if (this.cache.has(key)) { const buffer = this.cache.get(key); this.cache.delete(key); this.cache.set(key, buffer); return buffer; }
-        const response = await fetch(key, {signal: abort.signal});
+        const response = await fetch(entry.file, {signal: abort.signal});
         if (!response.ok) throw new Error(`Audio unavailable (${response.status}). Try again.`);
         const buffer = await this.context.decodeAudioData(await response.arrayBuffer());
+        // Optional playback-only seam taper. Downloads and offline reference
+        // PCM stay untouched; short fades avoid an arbitrary waveform jump.
+        if (entry.loopFadeSeconds) {
+          const start = Math.max(0,Math.round((entry.loopStartSeconds??0)*buffer.sampleRate));
+          const size = Math.max(0,Math.min(Math.round(entry.loopFadeSeconds*buffer.sampleRate),Math.floor((buffer.length-start)/2)));
+          for(let channel=0;channel<buffer.numberOfChannels;channel++){
+            const samples=buffer.getChannelData(channel);
+            for(let i=0;i<size;i++){const gain=size>1?i/(size-1):0;samples[start+i]*=gain;samples[buffer.length-1-i]*=gain;}
+          }
+        }
         if (ticket !== this.generation) return buffer;
         this.cache.set(key, buffer);
         while (this.cache.size > 8) this.cache.delete(this.cache.keys().next().value);
@@ -46,22 +56,26 @@ export class BufferPlayback {
   }
   phase(at = this.context.currentTime) {
     const group = this.group;
-    return group ? ((group.offset + Math.max(0, at - group.at)) % group.duration) / group.duration : this.offset;
+    if (!group) return this.offset;
+    let position = group.offset + Math.max(0, at - group.at);
+    if (position >= group.duration) position = group.loopStart + (position - group.loopStart) % (group.duration - group.loopStart);
+    return position / group.duration;
   }
   swap() {
     if (!this.buffers.length || this.disposed) return;
     const at = this.context.currentTime + .025;
     const phase = this.phase(at), previous = this.group;
     const duration = Math.min(...this.buffers.map(buffer => buffer.duration));
+    const loopStart = Math.max(0, Math.min(duration - .001, this.entries[0]?.loopStartSeconds ?? 0));
     const fade = new Fade(this.context, this.output);
     const parts = this.buffers.map((buffer, index) => {
       const source = this.context.createBufferSource();
       const level = new Fade(this.context, fade.node, index === this.side ? this.levels[index] * this.volume : 0);
-      source.buffer = buffer; source.loop = true; source.loopEnd = duration;
+      source.buffer = buffer; source.loop = true; source.loopStart = loopStart; source.loopEnd = duration;
       source.connect(level.node); source.start(at, phase * duration);
       return {source, level};
     });
-    this.group = {parts, fade, at, offset: phase * duration, duration};
+    this.group = {parts, fade, at, offset: phase * duration, duration, loopStart};
     fade.toValue(1, at); previous?.fade.toValue(0, at);
     if (previous) {
       this.retiring = previous;

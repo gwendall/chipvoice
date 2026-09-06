@@ -8,6 +8,18 @@ the bottom, dated, and the ticket they change is updated in the same commit.
 
 Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
+## Complete arrangements — 2026-09-06
+
+- doing — `feat/complete-arrangements`: exact-tick polyphonic MIDI import,
+  deterministic interval allocation with per-note loss reports, native Mario
+  source extraction and independent GME command comparison; full Zelda/Sonic
+  MIDI arrangements; public arrangement deck and local worker rendering.
+- todo — independently validate Zelda/Sonic game-specific instruments against
+  native sources. Complete MIDI transcription is not native timbre certification.
+- todo — additional MIDI expression adapters (pan, modulation/aftertouch, SysEx
+  patch banks), with independently reviewed references. Events are retained and
+  unsupported behavior is disclosed.
+
 ## Phase 1. The bench
 
 | # | Ticket | Status | Where |

@@ -20,6 +20,15 @@ constraints, evaluation and credits. Console marks are self-hosted colour SVGs;
 see the [source manifest](apps/web/public/machines/README.md). No account is required.
 See the [demo spec](docs/DEMO.md) for the interaction design.
 
+The [complete-arrangement lab](https://chipvoice.dev/lab/arrangements) adds the
+whole band: Mario's native Famicom commands, all four Zelda MIDI parts and all
+fourteen Sonic parts. Isolate instruments, compare Mario against an independent
+NSF renderer, switch consoles without stopping, or import a MIDI locally. Every
+port reports its voice omissions and instrument substitutions. The reusable SDK
+interface is `importMidi → planPerformance → renderPerformance`;
+[the method and its limits](scores/arrangements/README.md) distinguish original
+game verification from complete MIDI transcription and cross-console adaptation.
+
 ## Why
 
 Every console and home computer of the eighties and nineties had a sound chip,

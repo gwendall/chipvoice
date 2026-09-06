@@ -12,7 +12,10 @@
     "test:unit": "pnpm --filter chipvoice test:unit",
     "scores:build": "node apps/web/scripts/scores/compile.mjs",
     "scores:check": "node apps/web/scripts/scores/compile.mjs --check",
-    "scores:compare": "node apps/web/scripts/scores/compare.mjs"
+    "scores:compare": "node apps/web/scripts/scores/compare.mjs",
+    "arrangements:check": "node scores/arrangements/test.mjs",
+    "arrangements:import": "node scores/arrangements/import.mjs",
+    "arrangements:eval": "node scores/arrangements/evaluate.mjs"
   },
   "devDependencies": {
     "@breezystack/lamejs": "^1.2.7",

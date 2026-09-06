@@ -1,0 +1,10 @@
+import {readFile,writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {importMidi} from '../../packages/chipvoice/dist/index.js';
+const [input,output,settings]=process.argv.slice(2);
+if(!input||!output)throw new Error('Usage: node scores/arrangements/import.mjs input.mid output.json [reviewed-options.json]');
+const bytes=await readFile(input),options=settings?JSON.parse(await readFile(settings,'utf8')):{};
+const score=importMidi(bytes,options);
+score.source={...score.source,name:input.split('/').at(-1),sha256:createHash('sha256').update(bytes).digest('hex')};
+await writeFile(output,JSON.stringify(score,null,2)+'\n',{flag:'wx'});
+console.log(`${score.parts.length} parts / ${score.parts.reduce((n,p)=>n+p.notes.length,0)} notes. Review source notices and role priorities before publishing.`);

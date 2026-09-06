@@ -20,6 +20,7 @@ import { Account } from './Account';
 import { MidiInput } from './MidiInput';
 import {RangeControl} from '../ui/RangeControl';
 import {SiteHeader, SiteFooter, MachinePicker, PlayButton} from '../ui/components';
+import '../arrangements/style.css';
 
 export default function App({ initial, initialId }: { initial?: SongDocument; initialId?: string }) {
   const doc = useSongDocument(initial, initialId);
@@ -134,6 +135,7 @@ export default function App({ initial, initialId }: { initial?: SongDocument; in
         <div><span className="micro">OPEN-SOURCE SOUND-CHIP EMULATION</span><h1 id="intro-title">Old consoles.<br/><span>New JavaScript.</span></h1></div>
         <div className="intro-copy"><p>We rebuilt their sound chips in JavaScript. Hear familiar melodies come alive on different consoles, with every note generated in your browser.</p><Link href="/about">How it works <span aria-hidden="true">↗</span></Link></div>
       </section>
+      <Link href="/lab/arrangements" className="full-arrangement-link"><span><strong>Hear the whole band.</strong>Complete Mario, Zelda & Sonic arrangements. Every part, four consoles, your own MIDI.</span><span aria-hidden="true">↗</span></Link>
       <section className="console" aria-label="Chipvoice musical console" onClick={event => {
         if (doc.ready && !(event.target instanceof Element && event.target.closest('a, input[type="number"], textarea, select'))) audio.startOnInteraction();
       }}>
