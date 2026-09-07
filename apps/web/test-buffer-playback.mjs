@@ -10,7 +10,9 @@ try{
  await page.route('**/probe-*.wav',async route=>{if(route.request().url().includes('slow'))await new Promise(resolve=>setTimeout(resolve,300));if(route.request().url().includes('fail'))return route.fulfill({status:500});return route.fulfill({contentType:'audio/wav',body:wav});});
  await page.addScriptTag({content:built.outputFiles[0].text});
  const result=await page.evaluate(async()=>{
-  const ctx=new AudioContext();await ctx.resume();const transport=new PlaybackTest.BufferPlayback(ctx);
+  // Decode the 48 kHz fixture at 44.1 kHz on every platform. Resampling can
+  // change its length by a frame; seek positions are fractions, not seconds.
+  const ctx=new AudioContext({sampleRate:44100});await ctx.resume();const transport=new PlaybackTest.BufferPlayback(ctx);
   let count=0,max=0;const create=ctx.createBufferSource.bind(ctx);ctx.createBufferSource=()=>{const source=create();count++;max=Math.max(max,count);source.addEventListener('ended',()=>count--);return source;};
   const analyser=ctx.createAnalyser();transport.output.connect(analyser);const samples=new Float32Array(analyser.fftSize);
   const level=()=>{analyser.getFloatTimeDomainData(samples);return Math.sqrt(samples.reduce((s,x)=>s+x*x,0)/samples.length);};
@@ -18,7 +20,7 @@ try{
   const until=async (predicate,label)=>{
    const deadline=performance.now()+10000;
    while(!predicate()&&performance.now()<deadline)await wait(10);
-   if(!predicate())throw new Error(`Timed out: ${label}; audio=${ctx.currentTime}, playing=${transport.playing}, retiring=${!!transport.retiring}`);
+   if(!predicate())throw new Error(`Timed out: ${label}; audio=${ctx.currentTime}, playing=${transport.playing}, retiring=${!!transport.retiring}, offset=${transport.group?.offset}, duration=${transport.group?.duration}`);
   };
   const reachAudioTime=at=>until(()=>ctx.currentTime>=at,`audio clock reaches ${at}`);
   await transport.select(entry('first'),[.5,.5]);await transport.toggle();await until(()=>level()>.05,'first audible buffer');
@@ -38,7 +40,7 @@ try{
   await transport.toggle();await until(()=>!!transport.group,'replay starts');const replayed=transport.playing&&transport.group.offset===0;
   transport.setLoop(true);
   for(let i=0;i<30;i++)transport.seek(i/40);
-  transport.seek(.4);await until(()=>!transport.retiring&&transport.group?.offset===.4,'last seek is applied');const lastSeek=transport.phase(),lastSeekOffset=transport.group.offset/transport.group.duration;
+  transport.seek(.4);await until(()=>!transport.retiring&&transport.group?.offset/transport.group?.duration===.4,'last seek is applied');const lastSeek=transport.phase(),lastSeekOffset=transport.group.offset/transport.group.duration;
   for(let i=0;i<10;i++){transport.pause();void transport.toggle();}
   await wait(200);transport.pause();await until(()=>!transport.retiring,'paused sources retire');
   transport.restart();await transport.toggle();await until(()=>!!transport.group,'loop starts');await reachAudioTime(transport.group.at+1.35);
