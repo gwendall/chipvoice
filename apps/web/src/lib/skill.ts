@@ -1,433 +1,150 @@
-import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
+import catalog from "../../generated/agent-catalog.json";
+import example from "../../generated/agent-example.json";
 
-const VERSION = "0.10.0";
-const UPDATED = "2026-09-08";
-
-/**
- * The file an agent reads first.
- *
- * The endpoint table comes from the OpenAPI spec rather than being typed here,
- * because a hand-kept second copy is the one that goes stale - and the reader
- * of this file has no way to tell that it has.
- *
- * The prose does not come from the spec, and should not: a schema says what a
- * field accepts, and this has to say what makes a piece worth listening to.
- * That is the half an agent cannot infer.
- */
 export function skillMarkdown(): string {
-  const table = endpointRows()
-    .map((row) => `| \`${row.method}\` | \`${row.path}\` | ${row.summary} |`)
+  const endpoints = endpointRows()
+    .map((r) => `| \`${r.method}\` | \`${r.path}\` | ${r.summary} |`)
     .join("\n");
-  const intents = Object.entries(INTENTS)
-    .flatMap(([role, words]) => Object.entries(words).map(([word, what], i) => `| ${i === 0 ? `\`${role}\`` : ""} | \`"${word}"\`${i === 0 ? " (default)" : ""} | ${what} |`))
+  const targets = catalog.targets
+    .map(
+      (t) =>
+        `| \`${t.id}\` | ${t.system} | ${t.voices.map((v) => `${v.id} (${v.kind})`).join(", ")} | ${t.voiceConflicts.map((pair) => pair.join(" / ")).join(", ") || "None declared"} |`,
+    )
     .join("\n");
-
   return `---
 name: chipvoice
-description: Write chiptune for the emulated sound chips of the old machines - the NES's 2A03, the Game Boy's APU, the Mega Drive's YM2612 and PSG, the SNES's S-DSP - as four lines of text, and get back a shareable link and an MP3. No audio files, no samples - each chip is emulated at the clock level, and what has been verified against the hardware is on its conformance sheet. Songs fork like code.
-compatibility: Requires curl and network access. Nothing to install.
+description: Compose, import, arrange, evaluate and publish complete multi-instrument music for emulated retro sound chips. Exact-tick projects, machine capabilities and explicit adaptation reports.
+compatibility: HTTP discovery and publication require a network client. Local composition and rendering require Node.js and the chipvoice npm package. Publishing projects requires an account key.
 homepage: ${SITE}
-metadata: {"version":"${VERSION}","updated":"${UPDATED}","author":"gwendall","openclaw":{"requires":{"bins":["curl"]},"capabilities":[],"emoji":"musical_keyboard","homepage":"${SITE}"}}
+metadata: {"version":"0.11.0","updated":"2026-09-08","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
 ---
 
-# chipvoice - chiptune agents can write
+# Compose complete music with chipvoice
 
-Music for the sound chips of the old machines - the Ricoh 2A03 in the NES, the
-APU in the Game Boy, the YM2612 and its PSG in the Mega Drive, the S-DSP in the
-SNES - as text you can read and diff. Post four lines, get a link and an MP3 that plays anywhere. The
-same four lines play on any of them, each in its own idiom.
+Use **MusicProject version 1 with a Performance source** for new multi-instrument music and MIDI imports. Parts are independent musical lines; roles (lead, chord, bass, perc) describe their purpose, not a four-part limit. Each part can contain overlapping notes. Physical voices are limited by the selected chip.
 
-## Complete projects and creation
+Create locally without an account. Publish only when asked, with an authenticated account. A valid project or a deterministic render does not prove musical quality or fidelity to an original game. Generic programs are approximations, not a complete orchestral sample library.
 
-For MIDI, polyphonic performances, exact expression, per-part timbres and mix settings, use the versioned project contract, not four tracker lines:
+## Discover before composing
 
-1. Create or import a \`MusicProject\` locally with the npm SDK (\`projectFromPerformance\`, \`importProjectMidi\`, \`projectFromScore\`).
-2. Validate with \`POST /api/v1/validate\`; unknown fields fail explicitly.
-3. Publish \`{project, visibility, parentId?}\` to \`POST /api/v1/projects\`, with a Bearer key or browser session and a new \`Idempotency-Key\` for each revision. Reuse a key only for an identical retry.
-4. Request a pinned \`preview\` (up to 30 seconds) or \`full\` WAV through \`POST /api/v1/projects/{id}/render\`, then poll \`/api/v1/jobs/{id}\`.
+1. GET ${SITE}/api/v1/capabilities: supported targets, current engine version, actual voices, resource conflicts, generic instrument mappings and the project JSON Schema. Do not hard-code the number of consoles.
+2. GET ${SITE}/.well-known/openapi.json: exact bodies, path/query/header parameters, authentication and response schemas.
+3. Use ${SITE}/create for interactive editing, ${SITE}/docs for SDK examples and ${SITE}/explore for public music.
+4. Detailed guide: https://github.com/gwendall/chipvoice/blob/main/docs/AGENT-COMPOSITION.md (Japanese: AGENT-COMPOSITION_ja.md).
 
-The SDK creates and plays without an account. Publishing complete projects requires account ownership; public, unlisted and private access remain distinct. Public search, handles, favourites, reports and withdrawal are in the endpoint table. Published source and ready audio are immutable; never execute somebody else's stored generator code. Attribution and music reuse licences are separate from the software licence.
+The catalogue is generated at build time from the same chip definitions, palette and allocation helpers as the renderer. Its contentHash identifies this capability document. It is not an original-game audio fingerprint.
 
-Open the retro note/code workspace at ${SITE}/create, community at ${SITE}/explore and SDK/HTTP examples at ${SITE}/docs. Read https://github.com/gwendall/chipvoice/blob/main/docs/CREATION.md for parameters, cancellation, limits and the cooperative job queue. The compact format documented below remains compatible; do not flatten a complete performance into it.
+| Target | System | Declared voices | Shared resource pairs |
+| --- | --- | --- | --- |
+${targets}
 
-> **Skill version ${VERSION} (${UPDATED}).** To check for updates, fetch \`${SITE}/skill.md\`
-> and compare the \`updated\` date in the frontmatter with the one above.
->
-> Since 0.1.0: the noise channel ran at half the hardware rate, so every drum was
-> an octave darker than a NES. Fixed. A song published before this date sounds
-> brighter on its drums now than it did when it was written.
->
-> Since 0.2.0: the chip now takes register writes as bytes, the way a NES did,
-> and two things follow. Pulse notes at G#2 and below were silent - the sweep
-> unit mutes them until a register is written - and now sound. And a vibrato or
-> a slide on \`lead\` or \`chord\` that crosses a period boundary restarts the
-> pulse's phase with a click, as on the hardware: A4 with the default vibrato
-> does, E4 does not. The chip is compared with a reference emulator on every
-> change; the pulses are identical to it cycle for cycle.
->
-> Since 0.4.0: a second chip, the Game Boy's. Send \`"chip": "dmg"\` and the same
-> four lines play on it: the bass moves to the wave channel, which reaches an
-> octave lower and plays a triangle; a volume change retriggers a pulse; a drum's
-> decay becomes the hardware envelope, so the kit is softer and longer than the
-> NES's. Every one of blargg's twelve dmg_sound test ROMs passes on it.
->
-> Since 0.5.0: \`intent\`. A word per role for what it should sound like - a
-> bright lead, a held chord, a hollow bass - the same words on every chip, each
-> chip playing them its own way. Before this every song shared one timbre.
->
-> Since 0.5.2: the click is gone. A vibrato or a slide across a period
-> boundary on the NES no longer restarts the pulse's phase: the driver moves
-> the period through the sweep unit, the way FamiStudio's engine does, so A4
-> with the default vibrato is as smooth as E4. Only a slide faster than a
-> high byte a frame still clicks, as it must.
->
-> Since 0.6.0: a third chip, the Mega Drive's. Send \`"chip": "md"\` and the
-> lead and the bass become four-operator FM patches, the chord a PSG square,
-> the drums the PSG's noise. The FM chip is a port of a reading of the die and
-> is identical to it cycle for cycle.
->
-> Since 0.7.0: a fourth chip, the SNES's. Send \`"chip": "snes"\` and everything
-> becomes a sample - waveforms the driver synthesised for the pitched roles, a
-> kit of drums - with the echo the machine is known for. The DSP is a port of
-> snes_spc and identical to it sample for sample.
->
-> Since 0.8.0: a fifth chip, the Commodore 64's SID. Send \`"chip": "c64"\`
-> and the piece plays on three voices: the lead and the bass have one each,
-> the chord and the drums share the third, where a drum cuts the chord and
-> the chord comes back after it, as on every C64 tune. The chip is written
-> from the documents and identical to reSID-fp cycle for cycle.
+Read each target's melodicPalette: programs are zero-based General MIDI numbers. voices lists eligible destinations; preservesInstrument=false means fallback substitution. pitchHz is the base register range before modulation; null means unknown. excludedPerformanceVoices may exist in raw/native APIs without being allocated by Performance. percussionVoices describes the generic drum path, not every custom patch. A voice count is not a promise that all combinations fit. The planner's report is decisive.
 
-How accurate each chip is, and how that is measured, is on its conformance sheet:
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md,
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md,
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md,
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md and
-https://github.com/gwendall/chipvoice/blob/main/docs/chips/c64.md
+## Compose deliberately
 
-## The one thing to understand first
+- Decide an original musical brief: mood, form, tempo, tonal centre, foreground and supporting lines. Develop complete phrases and an ending or intentional loop. Vary rhythm, register and instrumentation across sections.
+- Write melody, harmony, bass, counterpoint and percussion only when useful. For transcriptions, preserve identifiable source parts and rests; never invent backing or claim a repeated fragment is the full source.
+- One chord tone consumes one voice. A held triad plus melody plus bass consumes five pitched voices before drums and counterpoint. Instrument names do not create additional hardware.
+- Use priority to protect musically essential notes when voices run out; higher values win. Priority is allocation order, not volume. mix.importance (0–1) controls prominence, mix.gainDb is an explicit trim, velocity (0–127) is note expression. Lower priority does not automatically lower volume.
+- Keep melody intelligible, avoid unnecessary unison doubling and crowded low-register chords, and leave rhythmic space. These are starting points, not universal genre rules. Automatic mixing cannot repair a poor arrangement.
+- On constrained targets, make an explicit adaptation: remove redundant doublings, alternate accompaniment with fills, use two-note voicings or write a timed arpeggio. The Performance allocator reports omitted notes; it does not invent arpeggios or choose an artistically optimal reduction.
+- Percussion uses note.drum: 35/36 kick, 38/40 snare, 46 open hat; other keys currently use the generic closed-hat fallback. Preserve imported keys, but do not claim a complete GM drum kit.
+- Inspect the catalogue for each build. Sample voices can suggest chamber/orchestral textures, FM voices offer synthetic timbres, pulses have a narrow palette. Realistic strings/brass or a game's exact patches require appropriate explicit instruments/sample memory; a GM number alone does not provide them.
 
-**A mistyped note is silent.** A token that is not a note name resolves to 0 Hz, the
-driver schedules nothing, and you get a hole in the piece with no error anywhere.
+## Exact source units
 
-So: **call \`/api/validate\` before \`/api/songs\`.** It is free and unlimited. Every
-issue it returns carries \`silent: true\` when the mistake would have left no
-evidence, which is the class of fault you cannot hear for yourself.
+Performance has version, title, ticksPerBeat, endTick, tempos, parts and notices. All ticks are absolute integers, not milliseconds. At ticksPerBeat=480, one quarter note lasts 480 ticks. microsecondsPerBeat=500000 means 120 BPM. Note endTick is exclusive and must exceed tick. An intentional rest is the absence of notes, not a fake zero-velocity voice. Distinct part IDs and per-part note IDs make losses traceable.
 
-## How a whole song gets made
+Each part needs id, name, role, priority and notes. Set part.program for its default instrument; note.program overrides it. Notes need id, tick, endTick, pitch (MIDI semitones), velocity and optionally drum or absolute-tick expression. Do not attach origin to an original GM composition: native patch IDs have different semantics.
 
-1. **Write** four lines per pattern, and an \`order\` that plays them
-2. **\`POST /api/validate\`** - free, unlimited, and it checks the title too, so
-   nothing it approves can be refused by the next call
-3. **Fix** whatever it names, and validate again. Every issue says what to write
-   instead
-4. **\`POST /api/songs\`** with the same body. You get an id, a page and an MP3
-5. **\`POST /api/songs/{id}/fork\`** to try a variation - send only what changes
+Project settings select chip, mix ('auto' or 'authored'), allowLoss, tempoScale, transpose and gain. Full contracts and limits: https://github.com/gwendall/chipvoice/blob/main/docs/CREATION.md.
 
-## The format
+## Executable original ensemble
 
-Four roles, one token per step. The default is four steps per quarter note; optional \`stepsPerBeat: 12\` preserves triplets and straight rhythms together.
+In a new directory run npm install chipvoice@${catalog.engineVersion}. Save the following JavaScript as compose.mjs and run node compose.mjs TARGET, using a target ID from the catalogue. It writes project.json, preview.wav and evaluation.json. The eight-bar source has six parts; overlapping strings consume separate voices. No network publication occurs.
 
-| Channel | On the 2A03 | On the Game Boy | On the Mega Drive | On the SNES | Takes |
-| --- | --- | --- | --- | --- | --- |
-| \`lead\` | Pulse 1 | Pulse 1 | FM 1 | Voice 0, a waveform | Note names |
-| \`chord\` | Pulse 2 | Pulse 2 | PSG 1 | Voice 1, a waveform | Note names, arpeggiated by \`chordShape\` |
-| \`bass\` | Triangle | Wave channel | FM 2 | Voice 2, a waveform | Note names. **Its token count sets the pattern length** |
-| \`perc\` | Noise | Noise | PSG noise | Voice 3, sampled drums | \`K\` kick, \`S\` snare, \`H\` hat, \`O\` open hat |
+\`\`\`js
+${example.trim()}
+\`\`\`
 
-A note is a letter A-G, an optional \`#\` or \`b\`, then an octave: \`A4\`, \`F#3\`, \`Bb2\`.
-\`.\` holds the previous note. \`=\` cuts it.
+The example deliberately enables allowLoss for **audition**, so it runs on small machines and reveals their compromises. Read evaluation.json before sharing. For strict production, set allowLoss=false; voice omissions then reject rendering. This flag does not reject every timbre substitution or certify fidelity.
 
-All four lines must have the same number of tokens. The bass line is what defines
-the length, so a longer lead loses its tail every loop - and nothing reports that,
-which is why the validator does.
+## Evaluate and iterate
 
-## What you send
+1. Validate the complete source. POST /api/v1/validate takes the **raw project**, not {project}. SDK validateProject works offline.
+2. Render an audition with renderProject, or prepareProject in a browser worker (progress/cancellation). Read plan.losses and plan.mix; prepared results expose losses and mix too. HTTP jobs currently expose status/progress/audio, not the full arrangement report: retain your local evaluation.
+3. Count omissions by part, identify substitutions, out-of-range and uncalibrated-mix diagnostics. Protect the melody and intentional bass line. Do not hide warnings by merely setting allowLoss=true.
+4. Make one explicit musical change, record why, and rerender. Keep the original project as the canonical source and target-specific reductions as separate documents with attribution.
+5. Check finite samples, non-silent RMS, clipping, complete duration, section transitions and endings. Compare identical inputs at the same sample rate/engine for determinism. Bit equality across different engines or consoles is not expected.
+6. Listen to the full mix and isolated parts, especially dense passages. Measurements do not measure taste. If no listening tool is available, say that auditory judgement remains unverified.
+7. For an existing game, compare against an independently identified native reference. Imported MIDI is a transcription, not proof of original instruments or register timing. Untouched native projects preserve original commands; transposition, tempo changes or part isolation create adaptations.
 
-| Field | Required | What it does |
-| --- | --- | --- |
-| \`bpm\` | yes | 40 to 300 |
-| \`stepsPerBeat\` | no | 4 (default) or 12 for straight notes and triplets |
-| \`patterns\` | yes | One or more, each with four channels and a \`chordShape\` |
-| \`order\` | yes | Which patterns play, in which order. \`[0,0,1,0]\` is four bars from two |
-| \`title\` | no | Shown on the page and **drawn onto the share card** |
-| \`author\` | no | Who or what made it |
-| \`chip\` | no | \`"2a03"\` (the NES, the default), \`"dmg"\` (the Game Boy), \`"md"\` (the Mega Drive), \`"snes"\` (the SNES) or \`"c64"\` (the Commodore 64) |
-| \`intent\` | no | A word per role for what it should sound like; see below. \`{"lead": "bright", "bass": "hollow"}\` |
+## Validate, publish and render over HTTP
 
-**Titles are filtered, and it is worth knowing why before you get a 422.** The
-title is composed onto an image in the site's own colours, and that image is what
-Telegram, X and Discord show when the link is pasted - so an unfiltered title is a
-way to make an official-looking picture say anything.
-
-The rule is an allowlist rather than a blocklist: **letters, numbers, spaces and
-\`. · , ' ! ? & ( ) - + : /\`**, up to 60 characters. No emoji, no arrows, no
-invisible characters. \`author\` follows the same rule.
-
-A song with no title is fine - the page shows its id. But the share card is the
-first thing a person sees, so a title is usually worth the eight words.
-
-**\`author\` is free text and anybody can write anything in it.** Responses carry
-\`authorVerified\`, which is false unless the request authenticated an account. Say who you are by
-all means; just know that without a key it reads as a claim rather than a credit.
-
-## What it should sound like: \`intent\`
-
-The score says what the music is; each chip decides what to do with it. An
-intent is one word per role, from this list, and it means the same thing on
-every chip - a bright lead is a thin 12.5 % pulse on a NES and on a Game Boy,
-and will be a sharp FM patch on a Mega Drive. A role you leave out takes the
-default, which is what every song sounded like before there was a word for it.
-
-| Role | Word | What it does |
-| --- | --- | --- |
-${intents}
-
-The bass shows what "the chip's own idiom" means: a NES has one bass voice, the
-triangle, and plays it whatever you ask; a Game Boy's bass is its wave channel,
-which plays whatever waveform the word names. Ask for \`"hollow"\` and only the
-Game Boy version changes. That is not a bug; it is the machine.
-
-## Writing something worth hearing
-
-For a source transcription, fidelity comes before adding activity:
-
-1. Preserve the identified melody, complete phrases, repeats and written rests.
-   Never repeat a short snippet just to claim a full piece.
-2. Transcribe only source voices you can identify. An absent bass, harmony or
-   drum part stays silent; do not add a stock accompaniment.
-3. Keep source accidentals, register and rhythm. Do not force a familiar melody
-   into a simpler scale or flatten triplets to sixteenths.
-4. Record source credits, excerpt boundaries and any deliberate transformation.
-   The repo's frozen MIDI ledgers and \`scores:compare\` check pitches, timing,
-   missing/extra notes and unwanted backing before audio evaluation.
-5. A technically valid render is not evidence that the composition is faithful.
-   Compare the source and listen to complete phrases and their endings.
-
-For original music, use the roles that serve the piece. Bass and drums are
-optional. Chip-specific voice limits and chord allocation remain the arranger's
-responsibility; heed its validation warnings.
-
-## Writing for each chip
-
-The same score plays on both, and it is worth knowing what each one does with
-it. Send \`"chip"\` with the song; fork a song onto the other chip by sending
-only \`{"chip": "dmg"}\`.
-
-**The NES (\`"2a03"\`).** Two pulses, a triangle, a noise. The lead and the chord
-are pulses whose only timbre is the duty, which the \`intent\` words pick. The
-bass is the triangle: no volume, one waveform, an octave below where you write
-it, and it cannot be made brighter or softer - the bass words do nothing here.
-It is at its best on steady eighths or sixteenths between A1 and A3. A pulse
-note below G#2 sounds; a lead above C7 gets thin. The chord is one pulse
-arpeggiated at frame rate, so wide shapes (\`[0,4,7,12]\`) shimmer and tight
-ones (\`[0,3,7]\`) sit. Every volume table is free: a note can swell and decay
-without a click. This is the chip the format was written for, and the kit is
-the classic one.
-
-**The Game Boy (\`"dmg"\`).** Two pulses, a wave channel, a noise. The pulses
-are the NES's, duty for duty, with one difference you may hear: a volume
-change is a retrigger on this hardware, so a lead with a steep decay is a
-little more percussive than on the NES. The bass is the wave channel playing a
-waveform from RAM, which is where the bass words matter: \`"round"\` is a
-triangle, \`"hollow"\` a square, \`"bright"\` a sawtooth. It reaches an octave
-lower than the NES's triangle - down to C1 - and it has four levels rather than
-sixteen volumes. The drums are the hardware envelope, which decays more slowly
-than the NES's tables: the kit is softer and rounder, and \`"tight"\` is the
-sharper of the two words. Everything comes out in stereo, every voice on both
-sides. What does not carry over from the NES: nothing you can write; what
-carries over differently: the bass and the drums, and those are the machine.
-
-**The Mega Drive (\`"md"\`).** Six FM channels and a PSG. The lead and the bass are
-four-operator FM patches, and the words pick them: \`"bright"\` is one modulator
-driving three carriers hard, \`"round"\` four carriers added like an organ,
-\`"soft"\` a two-stack electric piano. The chord is a PSG square wave, thin and
-high like the arpeggios of the era, so keep it above the bass. The drums are
-the PSG's noise, white, at the same sixteen rates as the NES kit. FM volume
-is a level in decibels rather than a linear 0 to 15, so a decay in a table
-sounds longer here; FM notes have their own release after the note ends. The
-PSG cannot go below about 110 Hz. Everything comes out in stereo, every voice
-on both sides.
-
-**The SNES (\`"snes"\`).** Eight sample voices and an echo; four are used. The
-lead, the chord and the bass are looped waveforms the driver synthesised -
-\`"soft"\` a triangle, \`"bright"\` a sawtooth, \`"round"\` a sine; the bass
-words the same an octave down, \`"hollow"\` a square - played through the chip's
-Gaussian interpolation, which rounds everything off: this is the softest of the
-five machines. The drums are synthesised samples, a kick that sweeps down, a
-snare, two hats. Every pitched voice goes through the echo, 48 ms with the
-low-pass filter most games used, and that echo is most of what makes it sound
-like the machine: write with space for it. Volume is the voice's own, so
-tables work as on the NES.
-
-**The Commodore 64 (\`"c64"\`).** Three voices, and the score has four lines:
-the lead and the bass get a voice each, and the chord and the drums share the
-third. A drum cuts the chord and the chord comes back after it until the next
-drum, so a busy drum line leaves little room for the chord: write the two
-lines together, and put the chord's changes where the drums leave gaps. The
-lead is a pulse, \`"bright"\` thin and \`"round"\` square, with the same tables
-as the NES; the bass is a triangle for \`"round"\`, a square for \`"hollow"\`
-and a sawtooth for \`"bright"\`, and reaches as low as you like. The drums are
-the SID's own: a triangle falling through an octave for the kick, a click
-into pitched noise for the snare and the hats. Volume tables work as on the
-NES, through the chip's envelope: a falling table is free, a rising step is a
-new attack you may hear as a tick. The filter, which is most of what a SID
-is known for, is not reached by any word yet.
-
-## Endpoints
-
-| Method | Path | What it does |
-| --- | --- | --- |
-${table}
-
-## Write a song
+Save the source as project.json. These commands use jq for response extraction. Use a Bearer key already provided by the user; never put it in source control or output it in logs. Read auth routes below if an account needs setup; sending a login email is a separate user-authorized action.
 
 \`\`\`bash
-curl -s -X POST ${SITE}/api/validate \\
-  -H 'content-type: application/json' \\
-  -d '{
-    "title": "corridor theme",
-    "author": "claude",
-    "bpm": 152,
-    "order": [0, 0, 1, 0],
-    "patterns": [
-      {
-        "lead":  "E4 .  .  .  G4 .  A4 .  .  .  B4 .  C5 .  .  .",
-        "chord": "A3 .  .  .  .  .  .  .  .  .  .  .  .  .  .  .",
-        "bass":  "A1 .  A1 .  A1 .  A1 .  A1 .  A1 .  A1 .  G1 .",
-        "perc":  "K  .  H  .  S  .  H  .  K  .  H  K  S  .  H  .",
-        "chordShape": [[0, 3, 7]]
-      },
-      {
-        "lead":  "C5 .  .  .  E5 .  D5 .  .  .  B4 .  A4 .  =  .",
-        "chord": "F3 .  .  .  .  .  .  .  G3 .  .  .  .  .  .  .",
-        "bass":  "F1 .  F1 .  F1 .  F1 .  G1 .  G1 .  G1 .  G1 .",
-        "perc":  "K  .  H  .  S  .  H  H  K  K  S  .  S  .  H  O",
-        "chordShape": [[0, 4, 7], [0, 4, 7]]
-      }
-    ]
-  }'
+set -eu
+# CHIPVOICE_API_KEY must already contain the user's account key.
+: "\${CHIPVOICE_API_KEY:?Provide an account key through the environment}"
+API_BASE="\${CHIPVOICE_URL:-https://chipvoice.dev}"
+# Validate the raw project. A 422 response contains path/code/message/level issues.
+curl --fail-with-body -sS "$API_BASE/api/v1/validate" \\
+  -H 'Content-Type: application/json' --data-binary @project.json
+
+# Keep this file for retries of THIS revision. For an intentional new revision,
+# choose a fresh working directory or remove request-key.txt before running.
+if [ ! -s request-key.txt ]; then
+  node -e "console.log(require('node:crypto').randomUUID())" > request-key.txt
+fi
+REQUEST_KEY=$(cat request-key.txt)
+jq '{project: ., visibility: "unlisted"}' project.json > publication.json
+curl --fail-with-body -sS "$API_BASE/api/v1/projects" \\
+  -H "Authorization: Bearer $CHIPVOICE_API_KEY" \\
+  -H "Idempotency-Key: $REQUEST_KEY" \\
+  -H 'Content-Type: application/json' --data-binary @publication.json > published.json
+PROJECT_ID=$(jq -r '.id' published.json)
+curl --fail-with-body -sS "$API_BASE/api/v1/projects/$PROJECT_ID/render" \\
+  -H "Authorization: Bearer $CHIPVOICE_API_KEY" \\
+  -H 'Content-Type: application/json' --data '{"kind":"preview"}' > job.json
+JOB_ID=$(jq -r '.id' job.json)
+ATTEMPTS=0
+while [ "$ATTEMPTS" -lt 300 ]; do
+  STATUS=$(jq -r '.status' job.json)
+  case "$STATUS" in
+    ready) break ;;
+    failed|cancelled) jq '{status,error}' job.json; exit 1 ;;
+    queued|rendering|cancelling) ;;
+    *) echo 'Unknown job state'; exit 1 ;;
+  esac
+  sleep 1
+  curl --fail-with-body -sS "$API_BASE/api/v1/jobs/$JOB_ID" \\
+    -H "Authorization: Bearer $CHIPVOICE_API_KEY" > job.json
+  ATTEMPTS=$((ATTEMPTS + 1))
+done
+[ "$(jq -r '.status' job.json)" = ready ] || { echo 'Polling deadline reached; retain the job ID'; exit 1; }
+curl --fail-with-body -sS "$API_BASE/api/v1/jobs/$JOB_ID/audio" \\
+  -H "Authorization: Bearer $CHIPVOICE_API_KEY" -o published.wav
 \`\`\`
 
-If \`ok\` is true, post the same body to \`${SITE}/api/songs\`. You get back:
+Never assume the ready state immediately. queued, rendering and cancelling are nonterminal; ready, failed and cancelled are terminal. Owner polling also advances the cooperative queue. Honour Retry-After on 429/503; retain the same idempotency key for uncertain identical publication retries. A 409 means a conflicting key/body or state: inspect it, do not blindly change keys and duplicate a publication. A 401 needs authentication; a 422 needs corrected input.
 
-\`\`\`json
-{
-  "id": "k3n8vq2p",
-  "url": "${SITE}/s/k3n8vq2p",
-  "mp3": "${SITE}/s/k3n8vq2p.mp3",
-  "wav": "${SITE}/s/k3n8vq2p.wav",
-  "measured": { "loopSeconds": 25.3, "onsetsPerSecond": 5.3, "range": 13, "steps": 128 }
-}
-\`\`\`
+public appears in Explore; unlisted is accessible by link; private is owner-only. To remix, GET the accessible project's full document, edit a copy, and publish with parentId set to the original ID. Source/ready audio are immutable; publishing another revision gets another ID. Software licensing grants no rights to imported music. Keep source credits and set the music's reuse licence deliberately. Never execute somebody else's stored generator code.
 
-The MP3 URL is a plain file. Send it to a person, put it in an \`<audio>\` tag, attach
-it to a message. It is computed on request and never changes, because the chip is a
-pure function of the song.
+Server bodies are capped at 4 MB. preview covers at most 30 seconds; full source is bounded to ten minutes, while server output additionally has a 40 MB ceiling and 240-second worker deadline. Full WAV can fail before ten minutes. This is a bounded cooperative queue, not an unlimited render farm. Browser preparation retains prior audio during updates and applies ready buffers with a crossfade; it is not zero-latency live synthesis.
 
-**It is tagged and named**, which is why the title is worth setting: the file
-downloads as \`your title.mp3\` and carries ID3 tags, so Telegram, iTunes and a car
-stereo all show the title and the author rather than "unknown". Without a title
-both fall back to the id.
+## Compact legacy songs
 
-## Fork instead of rewriting
+The existing /api/validate and /api/songs endpoints accept a different format: bpm, patterns, order, optional chip, title, author and intent. Each pattern has equally long lead/chord/bass/perc token strings and chordShape. Four steps per beat is the default; stepsPerBeat:12 supports triplets. Notes use C4/F#3/Bb2; '.' holds, '=' cuts; percussion uses K/S/H/O. The bass token count determines pattern length. A mistyped note is silent in direct legacy playback, so validate before publishing.
 
-\`\`\`bash
-curl -s -X POST ${SITE}/api/songs/k3n8vq2p/fork \\
-  -H 'content-type: application/json' \\
-  -d '{"bpm": 168}'
-\`\`\`
+Legacy /api/songs can publish anonymously and provides MP3/WAV URLs. Complete /api/v1/projects requires authentication and pins WAV through jobs. Their bodies, ownership and audio persistence differ: do not mix them. Preserve an existing compact Score with projectFromScore; do not flatten a polyphonic Performance into tracker lines. See OpenAPI for the complete legacy schema. Revalidated legacy audio URLs can change after an engine deployment; only ready project renditions are pinned to stored bytes.
 
-Send only what differs. The copy keeps a link back to what it came from, so a run of
-attempts is a tree rather than a pile.
+## Endpoint reference
 
-## Reading the measurements
-
-\`measured\` comes back on every successful call, and is the closest thing to feedback
-you have without ears:
-
-- **\`loopSeconds\`** - under 14 triggers a repetition warning; this is a composing heuristic, not a musical rule
-- **\`onsetsPerSecond\`** - roughly 5 is a calm piece, 12 is a busy one, past 15 is
-  usually a mess
-- **\`range\`** - semitones between the highest and lowest note. Under 7 is flat,
-  over 24 is usually an octave error
-
-You cannot judge whether it sounds good. Nobody can, from numbers. What you can do is
-produce several and hand a person the links.
-
-## Identity, when you want it
-
-Publishing works with no key at all, and that is the intended path for a one-off.
-A key buys three things:
-
-- **\`GET /api/me\`** - everything you published. Without it a lost id is a lost song,
-  permanently: nothing anywhere records that you made it
-- **A verified author line.** \`author\` is free text, so anyone can put any name in
-  it. Responses carry \`authorVerified\`, which is false unless the request authenticated an account
-- **240 writes a minute** instead of 20, which is the difference between a person
-  clicking save and an agent exploring
-
-\`\`\`bash
-curl -s -X POST ${SITE}/api/keys \\
-  -H 'content-type: application/json' \\
-  -d '{"email": "you@example.com", "label": "my agent"}'
-\`\`\`
-
-The key arrives by email and is never returned in a response - a secret in a body
-ends up in a proxy log and a shell history, and whoever asked for it cannot tell
-which. Send it as \`Authorization: Bearer cv_live_...\`. Only its fingerprint is
-stored, so it cannot be looked up or resent: ask for another if you lose it.
-
-Keys belong to a stable account identified by email. Reissuing a key retains
-access to earlier publications. Browser sign-in uses \`POST /api/auth/signin\`
-with an email; the link establishes an HttpOnly, SameSite session for 30 days.
-It does not rotate or expose an agent key. \`GET /api/keys\` lists key metadata;
-\`DELETE /api/keys/{id}\` revokes a key without losing songs.
-\`DELETE /api/auth/session\` signs the browser out.
-
-**Withdrawing.** \`DELETE /api/songs/{id}\` accepts an active key or session of the publishing account. A
-song published anonymously cannot be withdrawn by anybody, which is the honest cost
-of publishing without one.
-
-## Following a lineage
-
-Every song carries \`depth\`, \`rootId\` and, on \`GET\`, a \`lineage\`:
-
-\`\`\`json
-{ "depth": 2, "rootId": "k3n8vq2p",
-  "lineage": {
-    "parent":   { "id": "vY7aLR5T", "title": "brighter" },
-    "root":     { "id": "k3n8vq2p", "title": "corridor theme" },
-    "children": [],
-    "familySize": 12 } }
-\`\`\`
-
-\`familySize\` is every song descended from the same original. If you generate twenty
-candidates as forks of one seed, that is the number that tells you so - and
-\`rootId\` is how you fetch them as a set rather than walking parent links one round
-trip at a time.
-
-## Limits
-
-Anonymous writes are limited to 20/minute per address; authenticated writes to
-240/minute per account. Public audio accepts integer \`?seconds=1..30\`; the
-default is two loops and returns 422 if longer than 30 seconds. Bad duration
-queries return 400. Local WAV export supports up to five minutes; local stems
-and five-machine ZIP bundles support up to 30 seconds.
-
-Audio runs in a worker, with one active computation per server instance.
-Identical concurrent requests share work; other cold jobs receive 503 with
-Retry-After. Cold renders are limited to 6/minute per address; hits are free.
-The LRU cache is capped at 32 MiB, 16 entries and 10 minutes, and keys include
-the built engine and encoder. These limits are per instance, not a fleet-wide
-quota. Stable audio URLs revalidate with ETags, including after deployment or
-deletion. Browser and API exports use the same DSP.
-
-Five machines ship: NES, Game Boy, Mega Drive, SNES and C64. VGM exports cover
-NES, Game Boy and Mega Drive. SNES triads, FM drums and SID filter controls
-remain planned. The conformance sheets distinguish reference-corpus parity
-from physical verification. \`pitch_range\` warnings identify base notes and
-arpeggio extremes a voice cannot represent; they do not cover all modulation.
+| Method | Path | Purpose |
+| --- | --- | --- |
+${endpoints}
 `;
 }

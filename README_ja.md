@@ -151,3 +151,5 @@ MIDI の役割はトラックの順番ではなく音符から推定し、Web �
 Sonic の DAC 移植も、すべてをキックにせず、観測したキックとスネアの発音を区別します。
 機種間の音色が完全に同一になることを保証するものではありません。手順は
 [ミキシング API](docs/MIXING-API_ja.md)。
+
+[エージェント向け作曲ガイド](docs/AGENT-COMPOSITION_ja.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)
