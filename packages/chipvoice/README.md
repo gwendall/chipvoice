@@ -505,3 +505,9 @@ worker and throttle UI messages; this callback does not change the produced PCM.
 The arrangement lab demonstrates parsing, rendering and playback preparation
 states. MIDI import preserves UTF-8 names and reports a Windows-1252 fallback for
 legacy Western text.
+
+MIDI imports infer musical roles from the notes rather than track order; the web
+player lets you review and override them. Adaptation mixing excludes source-silent
+notes from voice allocation and reserves shared SNES dry/echo headroom. Evaluation
+checks complete performances, dynamic contrast and calibration error; deterministic
+output is not a guarantee of original-game timbre or subjective mix quality.

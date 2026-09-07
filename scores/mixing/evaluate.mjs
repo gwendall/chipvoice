@@ -1,3 +1,4 @@
+import {validationPerformances} from './validation-corpus.mjs';
 import assert from 'node:assert/strict';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
@@ -17,8 +18,9 @@ const profileSha256=hash(await readFile('packages/chipvoice/dist/mix-profiles.js
 if(held){const frozen=JSON.parse(await readFile('.artifacts/automatic-mixing/frozen-candidate.json'));assert.equal(identity.inputsSha256,frozen.inputsSha256);assert.equal(engineSha256,frozen.engineSha256);assert.equal(policySha256,frozen.policySha256);assert.equal(profileSha256,frozen.profileSha256);}
 const cases=[];
 for(const seed of (held?contract.heldOut:contract.development).generatedSeeds)for(const style of ['lead','bass','drums','solo'])cases.push(generatedPerformance(seed,style));
-// Full catalogue renders have their own evaluation. Short windows here make
-// joint/solo and baseline comparisons practical while retaining complete plans.
+if(held)cases.push(...validationPerformances());
+// Full catalogue renders have their own evaluation. This suite now renders the entire
+// performance, so later sections and expression changes cannot escape checks.
 for(const id of held?['mario']:['zelda','sonic']){const score=JSON.parse(await readFile(`scores/arrangements/${id}.json`));cases.push(score);}
 if(midiPath){const bytes=await readFile(midiPath),score=importMidi(bytes,{title:'Local MIDI development fixture'});score.source.sha256=hash(bytes);cases.splice(0,cases.length,score);}
 const report={engineSha256,policySha256,profileSha256,heldOut:held,contract,scope:'Deterministic correctness and descriptive acoustics; no universal musical score or human preference claim',cases:[]};
@@ -28,15 +30,19 @@ for(const [caseIndex,score] of cases.entries())for(const chip of [nesChip,gbChip
   const before=timer.now(),plan=planPerformance(score,chip,{allowLoss:true,mix:mode==='legacy'?false:{}}),planningMs=timer.now()-before;
   const sourceNotes=new Set(score.parts.flatMap(p=>p.notes.map(n=>`${p.id}:${n.id}`)));
   const allocated=new Set(plan.notes.map(n=>`${n.part}:${n.id}`)),omitted=new Set(plan.losses.filter(l=>l.kind==='voice-omitted').map(n=>`${n.part}:${n.note}`));
-  assert.equal(allocated.size,plan.notes.length);assert.equal(allocated.size+omitted.size,sourceNotes.size);
-  for(const id of allocated)assert.ok(sourceNotes.has(id),'no invented notes');
-  const window={...plan,seconds:Math.min(plan.seconds,6)};
+  const silent=new Set((plan.silentNotes??[]).map(n=>`${n.part}:${n.id}`));
+  assert.equal(allocated.size,plan.notes.length);assert.equal(allocated.size+omitted.size+silent.size,sourceNotes.size);
+  for(const id of silent)assert.ok(sourceNotes.has(id)&&!allocated.has(id)&&!omitted.has(id),'silent source ledger is disjoint');
+  for(const id of allocated)assert.ok(sourceNotes.has(id)&&!omitted.has(id),'allocated and omitted notes are disjoint source subsets');
+  for(const id of omitted)assert.ok(sourceNotes.has(id),'no invented omissions');
+  const window=plan;
   const start=timer.now(),audio=renderPerformance(window,chip),renderMs=timer.now()-start,metrics=measureAudio(audio);
   assert.equal(metrics.invalidSamples,0);assert.equal(metrics.clippedSamples,0);
+  assert.ok(Number.isFinite(metrics.rmsDbFS)&&metrics.rmsDbFS> -70,'non-silent complete performance');
   if(mode==='automatic')assert.ok(comparePcm(audio,renderPerformance(window,chip),0).ok,'repeatable PCM');
   let internal;
   if(chip===snesChip&&mode==='automatic'){const core=chip.digital();for(const block of plan.memory)core.load(block.address,block.bytes);core.schedule(plan.events);internal=observeSnesMixer(core);core.trace(Math.round(window.seconds*chip.spec.clockHz),()=>{});assert.equal(internal.mainClampedAdditions,0);assert.equal(internal.echoClampedAdditions,0);}
-  const row={mode,planningMs,renderMs,events:plan.events.length,notes:plan.notes.length,omitted:omitted.size,mix:plan.mix,metrics,spectrum:spectrum(audio),internal};measurements.push(row);
+  const row={mode,planningMs,renderMs,events:plan.events.length,notes:plan.notes.length,omitted:omitted.size,silent:silent.size,mix:plan.mix,metrics,spectrum:spectrum(audio),internal};measurements.push(row);
   if(caseIndex===0||score.source)await writeFile(`${out}/${caseIndex}-${chip.spec.id}-${mode}.wav`,toWav(audio));
  }
  report.cases.push({title:score.title,sourceSha256:hash(JSON.stringify(score)),chip:chip.spec.id,measurements});

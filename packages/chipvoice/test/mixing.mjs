@@ -70,3 +70,8 @@ assert.notDeepEqual(planPerformance(nativeOrigin,mdChip).events,planPerformance(
 console.log('PASS authored target envelope and realized phrase duration review regressions');
 const noise={voice:'noise',part:'perc',role:'perc',at:0,note:7,duration:.1,instrument:instrumentsFor('md').perc.H.instrument};
 assert.deepEqual(prepareMixPhrase(mdChip,[{...noise,detune:2}]).notes[0].instrument.volume,prepareMixPhrase(mdChip,[{...noise,note:9}]).notes[0].instrument.volume,'noise response uses the same detuned period as the APU');
+const sourceProfile={...clean,chip:'2a03',voice:'p1',rms:[0,.003,.023,.05,0,.003,.023,.05,0,.01,.07,.15,0,.01,.07,.15]};
+const sourceBank=new MixProfileBank([clean,sourceProfile]);
+const transposed=planMix(mdChip,[{...n,pitch:72,sourcePitch:48,origin:{chip:'2a03',voice:'p1'},referenceInstrument:instrument}],{profiles:sourceBank});
+assert.ok(Math.abs(transposed.level(0,15,0,9,72)-5)<1e-8,'transposition samples target response at the target pitch and source response at the original pitch');
+console.log('PASS independent source and target calibration positions under transpose');

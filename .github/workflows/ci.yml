@@ -37,6 +37,8 @@ jobs:
       - run: pnpm scores:check
       - run: pnpm arrangements:check
       - run: node scores/mixing/check-calibration.mjs
+      - run: node scores/mixing/acceptance.mjs
+      - run: node scores/mixing/validate-profiles.mjs
       - name: Score import regressions
         run: |
           python3 -m venv /tmp/chipvoice-score-tools
@@ -64,6 +66,7 @@ jobs:
             .artifacts/arrangements/browser
             .artifacts/midi-import/e2e
             .artifacts/unified-playground
+            .artifacts/cold-review/browser
             .artifacts/i18n
           retention-days: 7
 

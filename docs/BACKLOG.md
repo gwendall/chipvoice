@@ -22,6 +22,8 @@ the bottom, dated, and the ticket they change is updated in the same commit.
 
 Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
+Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](evals/AUTOMATIC-MIXING-COLD-REVIEW-2026-09-07.md): joint SNES headroom, silent allocation, shared resources, MIDI role review and stronger acoustic acceptance. The original 0.16.1 evaluation is historical evidence, not qualification of the new engine.
+
 ## MIDI import feedback — 2026-09-06
 
 - done — `fix/midi-import-feedback` (0.15.1): visible preparation stages,

@@ -23,3 +23,5 @@
  .score-part[data-sounding=true]{background:none}
  .score-part[data-sounding=true] .score-part-name{background:#3e5442}
 }
+
+.import-roles{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}.import-roles summary{cursor:pointer;min-height:44px;align-content:center;font-weight:600}.import-roles p{font-size:var(--text-body);line-height:1.6}.import-role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px}.import-role-grid label{display:grid;gap:8px;min-width:0}.import-role-grid label>span{overflow-wrap:anywhere}.import-role-grid select{width:100%;min-height:44px;padding:8px 12px;font:inherit;color:var(--ink);background:var(--paper,#f9f5ec);border:1px solid var(--line);border-radius:8px}.role-confidence{font-size:var(--text-label);color:var(--muted)}

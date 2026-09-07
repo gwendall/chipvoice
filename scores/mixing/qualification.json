@@ -1,28 +1,34 @@
 {
+  "version": 2,
   "candidate": {
-    "inputsSha256": "602effc060f766a0b34d1c049ce389404a1e786e084f72ac80536e593a86f00d",
-    "engineSha256": "fa401c80c383a297d4787c877b12a640d1440beb67713e0d6da3f4bec2f1d2c0",
-    "policySha256": "5a3357a744341c154099c1851f5df341a55a27f758f1587d4bc97e69a172f15e",
+    "inputsSha256": "b637857327c0a505ba74e4c5c420013dda4cd30aed371b553b93928812162afe",
+    "engineSha256": "86665723bd131528bb4f5163b386d020076fad5df916b6c1408ac697611a097f",
+    "policySha256": "137dad261666e2329bc885637f1cabec3dc925fb5f2b316ece0ced3469140b93",
     "profileSha256": "f787b13780c819ea9161f6d4c9be5b8b8194a02ad76e20857a68f831fb7a1b91",
-    "revision": "8ed23aac4d403583aae350d12fcdffac623df559",
-    "createdAt": "2026-09-07T15:37:51.370Z"
+    "revision": "ffedd1c1a16276fb272014abc2a32ca7cc4307a5",
+    "createdAt": "2026-09-07T18:39:37.027Z"
+  },
+  "development": {
+    "scoreConsolePairs": 70,
+    "fullPerformances": true
   },
   "heldOut": {
-    "engineSha256": "fa401c80c383a297d4787c877b12a640d1440beb67713e0d6da3f4bec2f1d2c0",
-    "policySha256": "5a3357a744341c154099c1851f5df341a55a27f758f1587d4bc97e69a172f15e",
-    "profileSha256": "f787b13780c819ea9161f6d4c9be5b8b8194a02ad76e20857a68f831fb7a1b91",
+    "scoreConsolePairs": 85,
+    "distinctScores": 17,
+    "fullPerformances": true,
     "cases": [
       {
         "title": "Generated 103 lead",
-        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "chip": "2a03",
+        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 3.5785410000000297,
-          "renderMs": 171.68404100000004,
+          "planningMs": 3.1984169999999494,
+          "renderMs": 243.311875,
           "events": 95,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -58,15 +64,16 @@
       },
       {
         "title": "Generated 103 lead",
-        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "chip": "dmg",
+        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.727041999999983,
-          "renderMs": 313.4922079999999,
+          "planningMs": 1.390333999999939,
+          "renderMs": 498.12466700000004,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -91,15 +98,16 @@
       },
       {
         "title": "Generated 103 lead",
-        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "chip": "md",
+        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 3.450000000000273,
-          "renderMs": 788.111375,
+          "planningMs": 3.684374999999818,
+          "renderMs": 1348.0277909999995,
           "events": 594,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -124,20 +132,27 @@
       },
       {
         "title": "Generated 103 lead",
-        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "chip": "snes",
+        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.6394579999996495,
-          "renderMs": 75.98204200000055,
-          "events": 644,
+          "planningMs": 2.8413339999997334,
+          "renderMs": 85.56316599999991,
+          "events": 1032,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
             "fallbackNotes": 0,
-            "diagnostics": []
+            "diagnostics": [
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
           },
           "metrics": {
             "frames": 88200,
@@ -145,13 +160,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -13.974149281749536,
-            "rmsDbFS": -25.640762192712188,
-            "crestDb": 11.666612910962652,
-            "dc": 2.2306175019831488e-07,
+            "samplePeakDbFS": -24.473180340011723,
+            "rmsDbFS": -33.1378672312947,
+            "crestDb": 8.664686891282978,
+            "dc": -7.965026135516705e-08,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.06795217748731375,
-            "stereoCosine": 0.9936999095979107
+            "maxAdjacentStep": 0.02282928628847003,
+            "stereoCosine": 0.993020178126836
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -163,15 +178,16 @@
       },
       {
         "title": "Generated 103 lead",
-        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "chip": "c64",
+        "sourceSha256": "83b1b7a38c51f5e5ddf9cdc2b1a0a660e8f432b7fd2ba44e0f33399715628b1f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.1056659999994736,
-          "renderMs": 190.4322919999995,
+          "planningMs": 6.948500000000422,
+          "renderMs": 267.6149579999992,
           "events": 138,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -196,15 +212,16 @@
       },
       {
         "title": "Generated 103 bass",
-        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "chip": "2a03",
+        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7181250000003274,
-          "renderMs": 159.6434589999999,
+          "planningMs": 1.7724170000001322,
+          "renderMs": 186.7413749999996,
           "events": 95,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -240,15 +257,16 @@
       },
       {
         "title": "Generated 103 bass",
-        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "chip": "dmg",
+        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.2293330000002243,
-          "renderMs": 339.5746670000008,
+          "planningMs": 1.2669999999998254,
+          "renderMs": 721.1332910000001,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -273,15 +291,16 @@
       },
       {
         "title": "Generated 103 bass",
-        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "chip": "md",
+        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 2.135457999999744,
-          "renderMs": 775.251874999999,
+          "planningMs": 1.7995829999999842,
+          "renderMs": 1191.8022920000003,
           "events": 594,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -306,15 +325,16 @@
       },
       {
         "title": "Generated 103 bass",
-        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "chip": "snes",
+        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.1309999999994034,
-          "renderMs": 110.8066660000004,
-          "events": 644,
+          "planningMs": 1.6314170000005106,
+          "renderMs": 261.00883299999987,
+          "events": 976,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -324,6 +344,11 @@
                 "part": "bass",
                 "kind": "mix-headroom",
                 "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
               }
             ]
           },
@@ -333,13 +358,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -14.096511643808947,
-            "rmsDbFS": -27.57260333605742,
-            "crestDb": 13.476091692248474,
-            "dc": 3.7620684790109213e-07,
+            "samplePeakDbFS": -25.078213311213982,
+            "rmsDbFS": -35.4161844400167,
+            "crestDb": 10.337971128802717,
+            "dc": 1.742382064624424e-07,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.06139315292239189,
-            "stereoCosine": 0.9903079296375096
+            "maxAdjacentStep": 0.01578076370060444,
+            "stereoCosine": 0.9861018103477258
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -351,15 +376,16 @@
       },
       {
         "title": "Generated 103 bass",
-        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "chip": "c64",
+        "sourceSha256": "c037cca89ae1d3e49d2b80da9ff536175162cba1f829c70076a64e42854de291",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.9987500000006548,
-          "renderMs": 195.85450000000128,
+          "planningMs": 0.8622090000026219,
+          "renderMs": 819.2296249999999,
           "events": 138,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -384,15 +410,16 @@
       },
       {
         "title": "Generated 103 drums",
-        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "chip": "2a03",
+        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7655419999991864,
-          "renderMs": 169.0452089999999,
+          "planningMs": 8.800624999999854,
+          "renderMs": 543.2019589999982,
           "events": 107,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -428,15 +455,16 @@
       },
       {
         "title": "Generated 103 drums",
-        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "chip": "dmg",
+        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.6650000000008731,
-          "renderMs": 355.58366699999897,
+          "planningMs": 1.0386660000003758,
+          "renderMs": 457.37049999999726,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -461,15 +489,16 @@
       },
       {
         "title": "Generated 103 drums",
-        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "chip": "md",
+        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.28558300000077,
-          "renderMs": 747.4205840000013,
+          "planningMs": 1.4470000000001164,
+          "renderMs": 909.4362089999995,
           "events": 592,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -500,15 +529,16 @@
       },
       {
         "title": "Generated 103 drums",
-        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "chip": "snes",
+        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.9720410000008997,
-          "renderMs": 77.71075000000019,
-          "events": 612,
+          "planningMs": 2.098290999998426,
+          "renderMs": 117.71566600000006,
+          "events": 992,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -518,6 +548,11 @@
                 "part": "drums",
                 "kind": "mix-headroom",
                 "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
               }
             ]
           },
@@ -527,13 +562,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -13.974149281749536,
-            "rmsDbFS": -25.44576887531459,
-            "crestDb": 11.471619593565055,
-            "dc": 2.2306165944122293e-07,
+            "samplePeakDbFS": -24.135372375003655,
+            "rmsDbFS": -33.439524247633294,
+            "crestDb": 9.304151872629644,
+            "dc": -7.938637452882343e-08,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.06795217748731375,
-            "stereoCosine": 0.9939716853615114
+            "maxAdjacentStep": 0.0247380833607167,
+            "stereoCosine": 0.9926973424780937
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -545,15 +580,16 @@
       },
       {
         "title": "Generated 103 drums",
-        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "chip": "c64",
+        "sourceSha256": "3c6220c1e274ad9209e804db09fc432cb9cab4b291676780f2c2d86fdf91227f",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5072080000009009,
-          "renderMs": 186.62079099999937,
+          "planningMs": 1.0321660000008706,
+          "renderMs": 302.8952919999974,
           "events": 148,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -578,15 +614,16 @@
       },
       {
         "title": "Generated 103 solo",
-        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "chip": "2a03",
+        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.3983329999991838,
-          "renderMs": 142.42645900000025,
+          "planningMs": 0.6587080000026617,
+          "renderMs": 335.40758300000016,
           "events": 41,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -611,15 +648,16 @@
       },
       {
         "title": "Generated 103 solo",
-        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "chip": "dmg",
+        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7232500000009168,
-          "renderMs": 226.39283299999988,
+          "planningMs": 0.4429999999993015,
+          "renderMs": 267.1063749999994,
           "events": 59,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -644,15 +682,16 @@
       },
       {
         "title": "Generated 103 solo",
-        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "chip": "md",
+        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.6228330000012647,
-          "renderMs": 989.5480419999985,
+          "planningMs": 0.511583999999857,
+          "renderMs": 1212.3685829999995,
           "events": 190,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -677,20 +716,27 @@
       },
       {
         "title": "Generated 103 solo",
-        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "chip": "snes",
+        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 4.2893329999969865,
-          "renderMs": 117.77954099999988,
-          "events": 292,
+          "planningMs": 0.5832499999996799,
+          "renderMs": 134.68454199999906,
+          "events": 368,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
             "fallbackNotes": 0,
-            "diagnostics": []
+            "diagnostics": [
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
           },
           "metrics": {
             "frames": 88200,
@@ -698,12 +744,12 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -22.035186177255458,
-            "rmsDbFS": -27.47120294921299,
-            "crestDb": 5.436016771957535,
-            "dc": -8.444327780823516e-08,
+            "samplePeakDbFS": -22.100238414187814,
+            "rmsDbFS": -27.792256028939676,
+            "crestDb": 5.692017614751861,
+            "dc": -1.201943192083802e-07,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.040084630250930786,
+            "maxAdjacentStep": 0.03995523974299431,
             "stereoCosine": 1
           },
           "internal": {
@@ -716,15 +762,16 @@
       },
       {
         "title": "Generated 103 solo",
-        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "chip": "c64",
+        "sourceSha256": "22fe18534697cd020e05e19288384928266337ba2f277340d36e99730b8a3d06",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 2.3440000000009604,
-          "renderMs": 270.046875,
+          "planningMs": 0.34229200000118,
+          "renderMs": 288.4250000000029,
           "events": 68,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -749,15 +796,16 @@
       },
       {
         "title": "Generated 211 lead",
-        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "chip": "2a03",
+        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.4637079999993148,
-          "renderMs": 281.4148750000022,
+          "planningMs": 1.4707080000007409,
+          "renderMs": 192.6571249999979,
           "events": 95,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -793,15 +841,16 @@
       },
       {
         "title": "Generated 211 lead",
-        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "chip": "dmg",
+        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.0829579999990528,
-          "renderMs": 484.82045800000196,
+          "planningMs": 1.0090000000054715,
+          "renderMs": 525.9165829999984,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -826,15 +875,16 @@
       },
       {
         "title": "Generated 211 lead",
-        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "chip": "md",
+        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.801499999997759,
-          "renderMs": 889.4265410000007,
+          "planningMs": 2.8696669999990263,
+          "renderMs": 929.1305829999983,
           "events": 594,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -859,20 +909,27 @@
       },
       {
         "title": "Generated 211 lead",
-        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "chip": "snes",
+        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.5614170000008016,
-          "renderMs": 101.37924999999814,
-          "events": 644,
+          "planningMs": 2.307375000003958,
+          "renderMs": 102.46891699999833,
+          "events": 1040,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
             "fallbackNotes": 0,
-            "diagnostics": []
+            "diagnostics": [
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
           },
           "metrics": {
             "frames": 88200,
@@ -880,13 +937,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -14.035944479798406,
-            "rmsDbFS": -25.443706275806605,
-            "crestDb": 11.407761796008202,
-            "dc": -6.283886931374375e-07,
+            "samplePeakDbFS": -24.01388432764948,
+            "rmsDbFS": -33.0046519291225,
+            "crestDb": 8.990767601473028,
+            "dc": -8.032098591990222e-07,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.06031403690576553,
-            "stereoCosine": 0.9940904273002887
+            "maxAdjacentStep": 0.027791735716164112,
+            "stereoCosine": 0.9931833800724381
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -898,15 +955,16 @@
       },
       {
         "title": "Generated 211 lead",
-        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "chip": "c64",
+        "sourceSha256": "2dc10c6f6e4743f6f02e8e7c8298de7e3790c7e3c4501c87e4bc6c1ce3aa3e19",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7807500000017171,
-          "renderMs": 213.86804100000154,
+          "planningMs": 0.6677909999998519,
+          "renderMs": 215.3241659999985,
           "events": 138,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -931,15 +989,16 @@
       },
       {
         "title": "Generated 211 bass",
-        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "chip": "2a03",
+        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7377080000005662,
-          "renderMs": 168.28845899999942,
+          "planningMs": 0.6899999999950523,
+          "renderMs": 157.52491700000246,
           "events": 95,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -975,15 +1034,16 @@
       },
       {
         "title": "Generated 211 bass",
-        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "chip": "dmg",
+        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5794589999968593,
-          "renderMs": 346.8590409999997,
+          "planningMs": 0.7888330000059796,
+          "renderMs": 314.171957999999,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1008,15 +1068,16 @@
       },
       {
         "title": "Generated 211 bass",
-        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "chip": "md",
+        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.9537080000009155,
-          "renderMs": 828.572959000001,
+          "planningMs": 1.096333000001323,
+          "renderMs": 828.916250000002,
           "events": 594,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1041,15 +1102,16 @@
       },
       {
         "title": "Generated 211 bass",
-        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "chip": "snes",
+        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.8223330000000715,
-          "renderMs": 87.83787499999744,
-          "events": 644,
+          "planningMs": 1.284417000002577,
+          "renderMs": 79.98845900000015,
+          "events": 956,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1059,6 +1121,11 @@
                 "part": "bass",
                 "kind": "mix-headroom",
                 "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
               }
             ]
           },
@@ -1068,13 +1135,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -14.169259391775977,
-            "rmsDbFS": -27.43856363676128,
-            "crestDb": 13.2693042449853,
-            "dc": -2.25562995458347e-09,
+            "samplePeakDbFS": -24.966520163470307,
+            "rmsDbFS": -35.253561724067936,
+            "crestDb": 10.287041560597634,
+            "dc": -2.016833067251109e-07,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.060409288853406906,
-            "stereoCosine": 0.9907224967205378
+            "maxAdjacentStep": 0.015608889982104301,
+            "stereoCosine": 0.9866610926352273
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -1086,15 +1153,16 @@
       },
       {
         "title": "Generated 211 bass",
-        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "chip": "c64",
+        "sourceSha256": "19ed06bb0fa64146495d9caa7d7dbd16b7e6de857caddf5c988de0d62d1bd624",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7300840000025346,
-          "renderMs": 206.74833299999955,
+          "planningMs": 0.490708999997878,
+          "renderMs": 202.34604200000467,
           "events": 138,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -1119,15 +1187,16 @@
       },
       {
         "title": "Generated 211 drums",
-        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "chip": "2a03",
+        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.78125,
-          "renderMs": 170.08879199999865,
+          "planningMs": 0.5598329999993439,
+          "renderMs": 144.43479200000002,
           "events": 107,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1163,15 +1232,16 @@
       },
       {
         "title": "Generated 211 drums",
-        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "chip": "dmg",
+        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.9646250000005239,
-          "renderMs": 338.9519999999975,
+          "planningMs": 0.6214160000017728,
+          "renderMs": 335.39137499999924,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1196,15 +1266,16 @@
       },
       {
         "title": "Generated 211 drums",
-        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "chip": "md",
+        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.2934999999997672,
-          "renderMs": 808.8032079999975,
+          "planningMs": 1.079208999995899,
+          "renderMs": 890.6916249999995,
           "events": 592,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1235,15 +1306,16 @@
       },
       {
         "title": "Generated 211 drums",
-        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "chip": "snes",
+        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.0522080000009737,
-          "renderMs": 89.41612500000338,
-          "events": 612,
+          "planningMs": 2.2765419999996084,
+          "renderMs": 113.14749999999913,
+          "events": 948,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1253,6 +1325,11 @@
                 "part": "drums",
                 "kind": "mix-headroom",
                 "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
               }
             ]
           },
@@ -1262,13 +1339,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -14.035944479798406,
-            "rmsDbFS": -25.258281590716827,
-            "crestDb": 11.222337110918419,
-            "dc": -6.283872209230992e-07,
+            "samplePeakDbFS": -24.037993634419045,
+            "rmsDbFS": -33.35836926998399,
+            "crestDb": 9.320375635564949,
+            "dc": -7.91688059651604e-07,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.06031403690576553,
-            "stereoCosine": 0.9943290043093025
+            "maxAdjacentStep": 0.02777819475159049,
+            "stereoCosine": 0.992964358217208
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -1280,15 +1357,16 @@
       },
       {
         "title": "Generated 211 drums",
-        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "chip": "c64",
+        "sourceSha256": "23f1026ed8cc021abeb00451fdb8fbc251f3e509bfc8aae266421c24444399a6",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5139999999955762,
-          "renderMs": 205.1618329999983,
+          "planningMs": 0.6930419999989681,
+          "renderMs": 206.46845799999574,
           "events": 148,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -1313,15 +1391,16 @@
       },
       {
         "title": "Generated 211 solo",
-        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "chip": "2a03",
+        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.37358300000050804,
-          "renderMs": 147.4498339999991,
+          "planningMs": 0.27458300000580493,
+          "renderMs": 137.15791699999681,
           "events": 41,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -1346,15 +1425,16 @@
       },
       {
         "title": "Generated 211 solo",
-        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "chip": "dmg",
+        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7345829999976559,
-          "renderMs": 224.1085829999938,
+          "planningMs": 0.3098329999993439,
+          "renderMs": 371.3604999999952,
           "events": 59,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -1379,15 +1459,16 @@
       },
       {
         "title": "Generated 211 solo",
-        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "chip": "md",
+        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.4809580000001006,
-          "renderMs": 741.9373750000013,
+          "planningMs": 0.6168330000000424,
+          "renderMs": 675.9623330000031,
           "events": 190,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -1412,20 +1493,27 @@
       },
       {
         "title": "Generated 211 solo",
-        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "chip": "snes",
+        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.2675420000014128,
-          "renderMs": 88.53491699999722,
-          "events": 292,
+          "planningMs": 0.42045800000050804,
+          "renderMs": 116.66124999999738,
+          "events": 348,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
             "fallbackNotes": 0,
-            "diagnostics": []
+            "diagnostics": [
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
           },
           "metrics": {
             "frames": 88200,
@@ -1433,12 +1521,12 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -21.766908722031197,
-            "rmsDbFS": -27.55519380513629,
-            "crestDb": 5.788285083105094,
-            "dc": -9.36351208692381e-07,
+            "samplePeakDbFS": -21.851511223551494,
+            "rmsDbFS": -27.84136032724822,
+            "crestDb": 5.989849103696726,
+            "dc": -9.36428797387638e-07,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.036846915259957314,
+            "maxAdjacentStep": 0.03660863637924194,
             "stereoCosine": 1
           },
           "internal": {
@@ -1451,15 +1539,16 @@
       },
       {
         "title": "Generated 211 solo",
-        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "chip": "c64",
+        "sourceSha256": "b716648455e02b9165d2781a6b9b91e31196cae3d661f9a21c89a8cb829caa15",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.2840000000069267,
-          "renderMs": 182.07545899999968,
+          "planningMs": 0.3335000000006403,
+          "renderMs": 228.43512499999633,
           "events": 68,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -1484,15 +1573,16 @@
       },
       {
         "title": "Generated 409 lead",
-        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "chip": "2a03",
+        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5024169999960577,
-          "renderMs": 158.0323750000025,
+          "planningMs": 0.9977910000015981,
+          "renderMs": 288.440208,
           "events": 95,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1528,15 +1618,16 @@
       },
       {
         "title": "Generated 409 lead",
-        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "chip": "dmg",
+        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5462499999994179,
-          "renderMs": 324.4076669999995,
+          "planningMs": 0.9309169999978621,
+          "renderMs": 477.70933300000615,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1561,15 +1652,16 @@
       },
       {
         "title": "Generated 409 lead",
-        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "chip": "md",
+        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.0288340000042808,
-          "renderMs": 762.661374999996,
+          "planningMs": 0.987249999998312,
+          "renderMs": 743.536417000003,
           "events": 594,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1594,20 +1686,27 @@
       },
       {
         "title": "Generated 409 lead",
-        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "chip": "snes",
+        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.2924589999965974,
-          "renderMs": 85.26199999999517,
-          "events": 644,
+          "planningMs": 1.1198330000042915,
+          "renderMs": 73.30391700000473,
+          "events": 1040,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
             "fallbackNotes": 0,
-            "diagnostics": []
+            "diagnostics": [
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
           },
           "metrics": {
             "frames": 88200,
@@ -1615,13 +1714,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -15.473686058758382,
-            "rmsDbFS": -25.936412230498807,
-            "crestDb": 10.462726171740425,
-            "dc": -2.1557352118314165e-06,
+            "samplePeakDbFS": -24.829523051241956,
+            "rmsDbFS": -33.58226764082329,
+            "crestDb": 8.752744589581333,
+            "dc": -1.9410161872935893e-06,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.05979928374290466,
-            "stereoCosine": 0.9935622406485523
+            "maxAdjacentStep": 0.02054790745023638,
+            "stereoCosine": 0.9930185216108377
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -1633,15 +1732,16 @@
       },
       {
         "title": "Generated 409 lead",
-        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "chip": "c64",
+        "sourceSha256": "646fc66fd5138fe0d06c30b1b0167d22c4c2878378782a126efa9e0191648174",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.6743749999950523,
-          "renderMs": 193.03816700000607,
+          "planningMs": 0.4554999999963911,
+          "renderMs": 242.07754199999908,
           "events": 138,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -1666,15 +1766,16 @@
       },
       {
         "title": "Generated 409 bass",
-        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "chip": "2a03",
+        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5849580000067363,
-          "renderMs": 160.4273749999993,
+          "planningMs": 0.5369589999972959,
+          "renderMs": 167.6372080000001,
           "events": 95,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1710,15 +1811,16 @@
       },
       {
         "title": "Generated 409 bass",
-        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "chip": "dmg",
+        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5679579999996349,
-          "renderMs": 333.22170899999765,
+          "planningMs": 1.1481669999993755,
+          "renderMs": 449.8515000000043,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1743,15 +1845,16 @@
       },
       {
         "title": "Generated 409 bass",
-        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "chip": "md",
+        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 1.1817499999961,
-          "renderMs": 754.3909589999967,
+          "planningMs": 1.1172910000022966,
+          "renderMs": 924.4421250000014,
           "events": 594,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1776,15 +1879,16 @@
       },
       {
         "title": "Generated 409 bass",
-        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "chip": "snes",
+        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.9409169999998994,
-          "renderMs": 82.93229099999735,
-          "events": 644,
+          "planningMs": 2.2398749999993015,
+          "renderMs": 126.37095899999258,
+          "events": 960,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1794,6 +1898,11 @@
                 "part": "bass",
                 "kind": "mix-headroom",
                 "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
               }
             ]
           },
@@ -1803,13 +1912,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -15.961669759164954,
-            "rmsDbFS": -28.183632278330304,
-            "crestDb": 12.221962519165348,
-            "dc": -1.4466135839965206e-06,
+            "samplePeakDbFS": -25.898846289501563,
+            "rmsDbFS": -36.055172154445614,
+            "crestDb": 10.156325864944051,
+            "dc": -1.2343582550056362e-06,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.05931854248046875,
-            "stereoCosine": 0.9892344996419467
+            "maxAdjacentStep": 0.015292922966182232,
+            "stereoCosine": 0.9847809753638678
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -1821,15 +1930,16 @@
       },
       {
         "title": "Generated 409 bass",
-        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "chip": "c64",
+        "sourceSha256": "fa8093c83ea52d70ad927260b56aabb54d176862ba70dc44af63b225e37bf6e3",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7032089999993332,
-          "renderMs": 191.6904579999973,
+          "planningMs": 1.2230409999901894,
+          "renderMs": 547.8285830000095,
           "events": 138,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -1854,15 +1964,16 @@
       },
       {
         "title": "Generated 409 drums",
-        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "chip": "2a03",
+        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.7252089999965392,
-          "renderMs": 154.734666999997,
+          "planningMs": 2.7277499999909196,
+          "renderMs": 197.99170800000138,
           "events": 107,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1898,15 +2009,16 @@
       },
       {
         "title": "Generated 409 drums",
-        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "chip": "dmg",
+        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.5488340000010794,
-          "renderMs": 316.4477079999997,
+          "planningMs": 2.2741660000028787,
+          "renderMs": 520.4347500000003,
           "events": 136,
           "notes": 18,
           "omitted": 4,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 18,
@@ -1931,15 +2043,16 @@
       },
       {
         "title": "Generated 409 drums",
-        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "chip": "md",
+        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.8699159999960102,
-          "renderMs": 741.5226249999978,
+          "planningMs": 0.9850829999923008,
+          "renderMs": 825.1474580000067,
           "events": 592,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1970,15 +2083,16 @@
       },
       {
         "title": "Generated 409 drums",
-        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "chip": "snes",
+        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.670125000004191,
-          "renderMs": 80.07029200000397,
-          "events": 612,
+          "planningMs": 1.7192080000095302,
+          "renderMs": 123.64587499998743,
+          "events": 1012,
           "notes": 22,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 22,
@@ -1988,6 +2102,11 @@
                 "part": "drums",
                 "kind": "mix-headroom",
                 "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
               }
             ]
           },
@@ -1997,13 +2116,13 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -14.412439598980418,
-            "rmsDbFS": -25.68929685039217,
-            "crestDb": 11.276857251411752,
-            "dc": -2.155732187780223e-06,
+            "samplePeakDbFS": -24.82613217035702,
+            "rmsDbFS": -33.884771188558354,
+            "crestDb": 9.058639018201333,
+            "dc": -1.932511103476966e-06,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.05979928374290466,
-            "stereoCosine": 0.9939175257045034
+            "maxAdjacentStep": 0.02244078926742077,
+            "stereoCosine": 0.9926676921802652
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -2015,15 +2134,16 @@
       },
       {
         "title": "Generated 409 drums",
-        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "chip": "c64",
+        "sourceSha256": "bcb1bcd582b842c551a92028987c8eea2e624d10581930e1c35ce4bf9ef25ffd",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.3460830000040005,
-          "renderMs": 182.80799999999726,
+          "planningMs": 0.8164170000090962,
+          "renderMs": 263.41045899999153,
           "events": 148,
           "notes": 16,
           "omitted": 6,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 16,
@@ -2048,15 +2168,16 @@
       },
       {
         "title": "Generated 409 solo",
-        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "chip": "2a03",
+        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.18195900000137044,
-          "renderMs": 127.08695799999987,
+          "planningMs": 0.3704169999982696,
+          "renderMs": 181.69187500000407,
           "events": 41,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -2081,15 +2202,16 @@
       },
       {
         "title": "Generated 409 solo",
-        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "chip": "dmg",
+        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.19070800000190502,
-          "renderMs": 200.45891600000323,
+          "planningMs": 0.21816600000602193,
+          "renderMs": 209.56558300000324,
           "events": 59,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -2114,15 +2236,16 @@
       },
       {
         "title": "Generated 409 solo",
-        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "chip": "md",
+        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.33429199999955017,
-          "renderMs": 683.1368750000038,
+          "planningMs": 0.5237079999933485,
+          "renderMs": 710.1313329999975,
           "events": 190,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -2147,20 +2270,27 @@
       },
       {
         "title": "Generated 409 solo",
-        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "chip": "snes",
+        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 0.20958300000347663,
-          "renderMs": 81.22825000000012,
-          "events": 292,
+          "planningMs": 0.5170000000071013,
+          "renderMs": 73.26704199999222,
+          "events": 356,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
             "fallbackNotes": 0,
-            "diagnostics": []
+            "diagnostics": [
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
           },
           "metrics": {
             "frames": 88200,
@@ -2168,12 +2298,12 @@
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -22.468083908021622,
-            "rmsDbFS": -27.706331545067787,
-            "crestDb": 5.238247637046159,
-            "dc": -1.7210667758585443e-06,
+            "samplePeakDbFS": -22.564687051456712,
+            "rmsDbFS": -28.00969590662248,
+            "crestDb": 5.445008855165771,
+            "dc": -1.7395558804408333e-06,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.03439095616340637,
+            "maxAdjacentStep": 0.0338415177538991,
             "stereoCosine": 1
           },
           "internal": {
@@ -2186,15 +2316,16 @@
       },
       {
         "title": "Generated 409 solo",
-        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "chip": "c64",
+        "sourceSha256": "0454ca47ebe0a6c6318252f398ca85f5811a297a5f55ba884a65ff5fcb087755",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 2.8985830000019632,
-          "renderMs": 186.92808299999888,
+          "planningMs": 0.2666249999892898,
+          "renderMs": 164.98037499999919,
           "events": 68,
           "notes": 8,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 8,
@@ -2218,16 +2349,812 @@
         }
       },
       {
-        "title": "Mario \u00b7 Ground Theme",
-        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
+        "title": "Independent moving counterpoint",
         "chip": "2a03",
+        "sourceSha256": "5b6583f6db2c97400fd18001f12eaa6f8b14da3eb32d353d2a64f122a9758c81",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 34.77704100000119,
-          "renderMs": 484.79349999999977,
+          "planningMs": 1.7267920000012964,
+          "renderMs": 605.3365840000042,
+          "events": 91,
+          "notes": 18,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.03028842917557,
+            "rmsDbFS": -28.5222422425625,
+            "crestDb": 12.491953813386925,
+            "dc": -2.7892810907657543e-13,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1294827125966549,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Independent moving counterpoint",
+        "chip": "dmg",
+        "sourceSha256": "5b6583f6db2c97400fd18001f12eaa6f8b14da3eb32d353d2a64f122a9758c81",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.912292000008165,
+          "renderMs": 1051.3077919999923,
+          "events": 121,
+          "notes": 18,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -18.305402731275798,
+            "rmsDbFS": -28.9865563963016,
+            "crestDb": 10.681153665025802,
+            "dc": -9.128688923848858e-05,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.11735483258962631,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Independent moving counterpoint",
+        "chip": "md",
+        "sourceSha256": "5b6583f6db2c97400fd18001f12eaa6f8b14da3eb32d353d2a64f122a9758c81",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.260208000006969,
+          "renderMs": 3078.3379580000037,
+          "events": 386,
+          "notes": 18,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.18371920276137,
+            "rmsDbFS": -28.47618579186633,
+            "crestDb": 12.29246658910496,
+            "dc": 1.0970875059262901e-05,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.022328689694404602,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Independent moving counterpoint",
+        "chip": "snes",
+        "sourceSha256": "5b6583f6db2c97400fd18001f12eaa6f8b14da3eb32d353d2a64f122a9758c81",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 2.0457079999905545,
+          "renderMs": 398.51762499999313,
+          "events": 828,
+          "notes": 18,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -19.505289878876088,
+            "rmsDbFS": -29.11900134796508,
+            "crestDb": 9.613711469088994,
+            "dc": 1.2643802955446288e-07,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.020075226202607155,
+            "stereoCosine": 0.9873955619683553
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      },
+      {
+        "title": "Independent moving counterpoint",
+        "chip": "c64",
+        "sourceSha256": "5b6583f6db2c97400fd18001f12eaa6f8b14da3eb32d353d2a64f122a9758c81",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.0730840000032913,
+          "renderMs": 844.7992919999961,
+          "events": 148,
+          "notes": 18,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -8.793832885987175,
+            "rmsDbFS": -28.793270183304138,
+            "crestDb": 19.99943729731696,
+            "dc": 0.00019982896652976604,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2708095572888851,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Expression across long notes",
+        "chip": "2a03",
+        "sourceSha256": "401278bc532328e8bef7e3cb4f4800066dbdcf6ecc461cbe8dfc8bf4d3f711bc",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.0322910000104457,
+          "renderMs": 996.2231250000041,
+          "events": 52,
+          "notes": 5,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 5,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "pedal",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -22.06428273520644,
+            "rmsDbFS": -36.40014562887501,
+            "crestDb": 14.335862893668569,
+            "dc": 1.9204269695797953e-13,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.05383644439280033,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Expression across long notes",
+        "chip": "dmg",
+        "sourceSha256": "401278bc532328e8bef7e3cb4f4800066dbdcf6ecc461cbe8dfc8bf4d3f711bc",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.1524170000047889,
+          "renderMs": 1144.275834,
+          "events": 94,
+          "notes": 5,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 4,
+            "fallbackNotes": 1,
+            "diagnostics": [
+              {
+                "part": "pedal",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -24.167535121581768,
+            "rmsDbFS": -33.37075293750382,
+            "crestDb": 9.203217815922056,
+            "dc": -4.672574989577535e-05,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.0648881047964096,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Expression across long notes",
+        "chip": "md",
+        "sourceSha256": "401278bc532328e8bef7e3cb4f4800066dbdcf6ecc461cbe8dfc8bf4d3f711bc",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.2385829999984708,
+          "renderMs": 2868.642332999996,
+          "events": 536,
+          "notes": 5,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 4,
+            "fallbackNotes": 1,
+            "diagnostics": [
+              {
+                "part": "pedal",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -28.70914708042859,
+            "rmsDbFS": -41.578205449876585,
+            "crestDb": 12.869058369447998,
+            "dc": 9.635227312766063e-06,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.008181212469935417,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Expression across long notes",
+        "chip": "snes",
+        "sourceSha256": "401278bc532328e8bef7e3cb4f4800066dbdcf6ecc461cbe8dfc8bf4d3f711bc",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.5146250000107102,
+          "renderMs": 278.87329200000386,
+          "events": 472,
+          "notes": 5,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 4,
+            "fallbackNotes": 1,
+            "diagnostics": [
+              {
+                "part": "pedal",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "foreground",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.696332343462895,
+            "rmsDbFS": -39.37386728719911,
+            "crestDb": 17.677534943736216,
+            "dc": -3.946013730692897e-08,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.024469606578350067,
+            "stereoCosine": 0.999999973500943
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      },
+      {
+        "title": "Expression across long notes",
+        "chip": "c64",
+        "sourceSha256": "401278bc532328e8bef7e3cb4f4800066dbdcf6ecc461cbe8dfc8bf4d3f711bc",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 0.9984169999952428,
+          "renderMs": 652.7546659999934,
+          "events": 80,
+          "notes": 5,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 4,
+            "fallbackNotes": 1,
+            "diagnostics": [
+              {
+                "part": "pedal",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -7.334818658177245,
+            "rmsDbFS": -34.76731063810006,
+            "crestDb": 27.432491979922812,
+            "dc": 0.00019982896041445758,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3075418546795845,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Program changes and tempo boundaries",
+        "chip": "2a03",
+        "sourceSha256": "170b7282f9d29b2f676f7b0f0153a848a871d4530717deaf31b61ce357f3a44d",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 0.7157499999884749,
+          "renderMs": 594.5896669999929,
+          "events": 89,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 12,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 411600,
+            "seconds": 9.333333333333334,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -17.660746609166694,
+            "rmsDbFS": -33.7466785506703,
+            "crestDb": 16.085931941503603,
+            "dc": 1.1168918180625421e-13,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.11982253030873835,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Program changes and tempo boundaries",
+        "chip": "dmg",
+        "sourceSha256": "170b7282f9d29b2f676f7b0f0153a848a871d4530717deaf31b61ce357f3a44d",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 0.8104170000005979,
+          "renderMs": 828.757375000001,
+          "events": 135,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 12,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 411600,
+            "seconds": 9.333333333333334,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -18.454302706189857,
+            "rmsDbFS": -34.49381581974072,
+            "crestDb": 16.03951311355086,
+            "dc": -2.7318888321341922e-05,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.11988024786114693,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Program changes and tempo boundaries",
+        "chip": "md",
+        "sourceSha256": "170b7282f9d29b2f676f7b0f0153a848a871d4530717deaf31b61ce357f3a44d",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 2.699292000004789,
+          "renderMs": 3429.8166250000068,
+          "events": 634,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 12,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 411600,
+            "seconds": 9.333333333333334,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.868350983620147,
+            "rmsDbFS": -32.976206690748015,
+            "crestDb": 16.107855707127868,
+            "dc": 8.886492226942104e-06,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.055916326120495796,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Program changes and tempo boundaries",
+        "chip": "snes",
+        "sourceSha256": "170b7282f9d29b2f676f7b0f0153a848a871d4530717deaf31b61ce357f3a44d",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 2.668667000005371,
+          "renderMs": 370.1009170000034,
+          "events": 436,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 12,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "solo",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 411600,
+            "seconds": 9.333333333333334,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -20.353078860084786,
+            "rmsDbFS": -28.95478976761286,
+            "crestDb": 8.601710907528073,
+            "dc": -4.0570558015689324e-08,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.02395461592823267,
+            "stereoCosine": 1
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      },
+      {
+        "title": "Program changes and tempo boundaries",
+        "chip": "c64",
+        "sourceSha256": "170b7282f9d29b2f676f7b0f0153a848a871d4530717deaf31b61ce357f3a44d",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 0.8013750000100117,
+          "renderMs": 761.8534170000057,
+          "events": 119,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 12,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 411600,
+            "seconds": 9.333333333333334,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -8.621787974922784,
+            "rmsDbFS": -33.429364827920296,
+            "crestDb": 24.807576852997506,
+            "dc": 0.00017128196729301762,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25620074942708015,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Sparse percussion with late harmony",
+        "chip": "2a03",
+        "sourceSha256": "b7ad6415b1c39e1cb4f8476668e0f4398ee185e20781455bae46cbecbca05dae",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 0.7440420000057202,
+          "renderMs": 514.0412919999799,
+          "events": 71,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 10,
+            "fallbackNotes": 2,
+            "diagnostics": [
+              {
+                "part": "harmony",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "harmony",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.28959740398165,
+            "rmsDbFS": -26.234751703591495,
+            "crestDb": 11.945154299609847,
+            "dc": -4.275939449168406e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06870793737471104,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Sparse percussion with late harmony",
+        "chip": "dmg",
+        "sourceSha256": "b7ad6415b1c39e1cb4f8476668e0f4398ee185e20781455bae46cbecbca05dae",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 0.8083330000226852,
+          "renderMs": 803.0944580000069,
+          "events": 88,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 10,
+            "fallbackNotes": 2,
+            "diagnostics": [
+              {
+                "part": "harmony",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -7.809409278966881,
+            "rmsDbFS": -35.724944614513994,
+            "crestDb": 27.915535335547116,
+            "dc": -0.0003235720877079468,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3587763905525166,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Sparse percussion with late harmony",
+        "chip": "md",
+        "sourceSha256": "b7ad6415b1c39e1cb4f8476668e0f4398ee185e20781455bae46cbecbca05dae",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.1334579999966081,
+          "renderMs": 2773.795374999987,
+          "events": 334,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 12,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -20.63358343683508,
+            "rmsDbFS": -38.82347039510732,
+            "crestDb": 18.189886958272243,
+            "dc": 9.08828500650338e-06,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.017958334181457758,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Sparse percussion with late harmony",
+        "chip": "snes",
+        "sourceSha256": "b7ad6415b1c39e1cb4f8476668e0f4398ee185e20781455bae46cbecbca05dae",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 1.0643339999951422,
+          "renderMs": 306.47949999998673,
+          "events": 680,
+          "notes": 12,
+          "omitted": 0,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 12,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "kit",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -20.42041136562199,
+            "rmsDbFS": -36.62317491084756,
+            "crestDb": 16.202763545225565,
+            "dc": -4.1483408690281294e-08,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.05995967052876949,
+            "stereoCosine": 0.9844161092474757
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      },
+      {
+        "title": "Sparse percussion with late harmony",
+        "chip": "c64",
+        "sourceSha256": "b7ad6415b1c39e1cb4f8476668e0f4398ee185e20781455bae46cbecbca05dae",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 0.5695419999829028,
+          "renderMs": 651.0050829999964,
+          "events": 94,
+          "notes": 10,
+          "omitted": 2,
+          "silent": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 2,
+            "diagnostics": [
+              {
+                "part": "harmony",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 352800,
+            "seconds": 8,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.52923872429803,
+            "rmsDbFS": -35.504710650434596,
+            "crestDb": 24.975471926136564,
+            "dc": 0.00019982896066742835,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2786981165409088,
+            "stereoCosine": 1
+          }
+        }
+      },
+      {
+        "title": "Mario \u00b7 Ground Theme",
+        "chip": "2a03",
+        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
+        "automatic": {
+          "mode": "automatic",
+          "planningMs": 40.940749999979744,
+          "renderMs": 6520.33916600002,
           "events": 8453,
           "notes": 1276,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 1276,
@@ -2241,32 +3168,33 @@
             ]
           },
           "metrics": {
-            "frames": 264600,
-            "seconds": 6,
+            "frames": 3904504,
+            "seconds": 88.53750566893424,
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -8.21770418813786,
-            "rmsDbFS": -25.27445131485372,
-            "crestDb": 17.056747126715862,
-            "dc": -1.247703981135396e-07,
+            "samplePeakDbFS": -7.030604834552026,
+            "rmsDbFS": -25.279096712506053,
+            "crestDb": 18.248491877954027,
+            "dc": -5.677795991745097e-13,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.27924246713519096,
+            "maxAdjacentStep": 0.31055450439453125,
             "stereoCosine": 1
           }
         }
       },
       {
         "title": "Mario \u00b7 Ground Theme",
-        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "chip": "dmg",
+        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 30.04279200000019,
-          "renderMs": 1029.6779999999999,
+          "planningMs": 73.90804199999548,
+          "renderMs": 20831.634416999994,
           "events": 12553,
           "notes": 1276,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 1276,
@@ -2280,32 +3208,33 @@
             ]
           },
           "metrics": {
-            "frames": 264600,
-            "seconds": 6,
+            "frames": 3904504,
+            "seconds": 88.53750566893424,
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -7.290932460835742,
-            "rmsDbFS": -24.750846834534403,
-            "crestDb": 17.45991437369866,
-            "dc": -0.0005225195689075409,
+            "samplePeakDbFS": -6.885900565446118,
+            "rmsDbFS": -25.229471752037796,
+            "crestDb": 18.34357118659168,
+            "dc": -3.844319759811727e-05,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.2731407359242439,
+            "maxAdjacentStep": 0.5079037845134735,
             "stereoCosine": 1
           }
         }
       },
       {
         "title": "Mario \u00b7 Ground Theme",
-        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "chip": "md",
+        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 51.78183400000853,
-          "renderMs": 2369.428417000003,
+          "planningMs": 59.256332999968436,
+          "renderMs": 40626.29995800002,
           "events": 31012,
           "notes": 1276,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 1276,
@@ -2324,32 +3253,33 @@
             ]
           },
           "metrics": {
-            "frames": 264600,
-            "seconds": 6,
+            "frames": 3904504,
+            "seconds": 88.53750566893424,
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -9.924766405160668,
-            "rmsDbFS": -25.48619635571315,
-            "crestDb": 15.561429950552483,
-            "dc": 7.228520505941392e-06,
+            "samplePeakDbFS": -9.014270159761228,
+            "rmsDbFS": -25.276618642138736,
+            "crestDb": 16.262348482377508,
+            "dc": 1.1439616154016105e-06,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.05504373833537102,
+            "maxAdjacentStep": 0.0899617001414299,
             "stereoCosine": 1
           }
         }
       },
       {
         "title": "Mario \u00b7 Ground Theme",
-        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "chip": "snes",
+        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 31.140666000006604,
-          "renderMs": 260.24679099999776,
-          "events": 35460,
+          "planningMs": 71.60237499995856,
+          "renderMs": 4812.780791999947,
+          "events": 44596,
           "notes": 1276,
           "omitted": 0,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 1276,
@@ -2374,22 +3304,27 @@
                 "part": "p2",
                 "kind": "mix-headroom",
                 "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "*",
+                "kind": "mix-bus-headroom",
+                "detail": "Shared SNES dry and echo headroom reserved before internal mixing"
               }
             ]
           },
           "metrics": {
-            "frames": 264600,
-            "seconds": 6,
+            "frames": 3904504,
+            "seconds": 88.53750566893424,
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -11.210206299417699,
-            "rmsDbFS": -26.443187655703838,
-            "crestDb": 15.232981356286135,
-            "dc": -4.031851244598483e-07,
+            "samplePeakDbFS": -19.5099102447901,
+            "rmsDbFS": -36.34958338173143,
+            "crestDb": 16.839673136941332,
+            "dc": -3.4901369812613473e-09,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.09873075596988201,
-            "stereoCosine": 0.9869751677008614
+            "maxAdjacentStep": 0.04385916888713837,
+            "stereoCosine": 0.9859296318621567
           },
           "internal": {
             "mainClampedAdditions": 0,
@@ -2401,15 +3336,16 @@
       },
       {
         "title": "Mario \u00b7 Ground Theme",
-        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "chip": "c64",
+        "sourceSha256": "85c0293749c57ecfc65725a1b63f8025a93a6f35e25967877888e252632f7b01",
         "automatic": {
           "mode": "automatic",
-          "planningMs": 27.15254100000311,
-          "renderMs": 539.214415999988,
+          "planningMs": 105.59691600000951,
+          "renderMs": 12973.885791999986,
           "events": 11334,
           "notes": 1166,
           "omitted": 110,
+          "silent": 0,
           "mix": {
             "version": 1,
             "calibratedNotes": 1166,
@@ -2423,2211 +3359,147 @@
             ]
           },
           "metrics": {
-            "frames": 264600,
-            "seconds": 6,
+            "frames": 3904504,
+            "seconds": 88.53750566893424,
             "sampleRate": 44100,
             "channels": 2,
             "invalidSamples": 0,
-            "samplePeakDbFS": -4.814865859606157,
-            "rmsDbFS": -26.069632605161146,
-            "crestDb": 21.25476674555499,
-            "dc": 0.0003872363838326697,
+            "samplePeakDbFS": -3.488229933549048,
+            "rmsDbFS": -25.862363505363195,
+            "crestDb": 22.37413357181415,
+            "dc": 1.8055989863444056e-05,
             "clippedSamples": 0,
-            "maxAdjacentStep": 0.30410923063755035,
+            "maxAdjacentStep": 0.39969369769096375,
             "stereoCosine": 1
           }
         }
-      }
-    ]
-  },
-  "midi": {
-    "engineSha256": "fa401c80c383a297d4787c877b12a640d1440beb67713e0d6da3f4bec2f1d2c0",
-    "policySha256": "5a3357a744341c154099c1851f5df341a55a27f758f1587d4bc97e69a172f15e",
-    "profileSha256": "f787b13780c819ea9161f6d4c9be5b8b8194a02ad76e20857a68f831fb7a1b91",
-    "cases": [
-      {
-        "title": "Local MIDI development fixture",
-        "sourceSha256": "db54b1aed1f0785988c03e032fa8445056d9d4cd36995817f574096415dc1a85",
-        "chip": "2a03",
-        "automatic": {
-          "mode": "automatic",
-          "planningMs": 111.61558299999979,
-          "renderMs": 1035.9897920000003,
-          "events": 8089,
-          "notes": 1428,
-          "omitted": 650,
-          "mix": {
-            "version": 1,
-            "calibratedNotes": 1428,
-            "fallbackNotes": 0,
-            "diagnostics": [
-              {
-                "part": "track-6-ch-5",
-                "kind": "mix-resolution",
-                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
-              },
-              {
-                "part": "track-5-ch-4",
-                "kind": "mix-resolution",
-                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
-              },
-              {
-                "part": "track-6-ch-5",
-                "kind": "mix-headroom",
-                "detail": "Requested balance exceeds instrument headroom; the control is capped"
-              },
-              {
-                "part": "track-5-ch-4",
-                "kind": "mix-headroom",
-                "detail": "Requested balance exceeds instrument headroom; the control is capped"
-              }
-            ]
-          },
-          "metrics": {
-            "frames": 264600,
-            "seconds": 6,
-            "sampleRate": 44100,
-            "channels": 2,
-            "invalidSamples": 0,
-            "samplePeakDbFS": -12.604644180443485,
-            "rmsDbFS": -31.43724994370133,
-            "crestDb": 18.832605763257845,
-            "dc": -1.1499969538619601e-05,
-            "clippedSamples": 0,
-            "maxAdjacentStep": 0.19277739711105824,
-            "stereoCosine": 1
-          }
-        }
-      },
-      {
-        "title": "Local MIDI development fixture",
-        "sourceSha256": "db54b1aed1f0785988c03e032fa8445056d9d4cd36995817f574096415dc1a85",
-        "chip": "dmg",
-        "automatic": {
-          "mode": "automatic",
-          "planningMs": 73.00175000000036,
-          "renderMs": 2207.109042,
-          "events": 9584,
-          "notes": 1428,
-          "omitted": 650,
-          "mix": {
-            "version": 1,
-            "calibratedNotes": 1428,
-            "fallbackNotes": 0,
-            "diagnostics": []
-          },
-          "metrics": {
-            "frames": 264600,
-            "seconds": 6,
-            "sampleRate": 44100,
-            "channels": 2,
-            "invalidSamples": 0,
-            "samplePeakDbFS": -10.502059417560151,
-            "rmsDbFS": -33.36522888639203,
-            "crestDb": 22.86316946883188,
-            "dc": -0.0005176337533247288,
-            "clippedSamples": 0,
-            "maxAdjacentStep": 0.21354379504919052,
-            "stereoCosine": 1
-          }
-        }
-      },
-      {
-        "title": "Local MIDI development fixture",
-        "sourceSha256": "db54b1aed1f0785988c03e032fa8445056d9d4cd36995817f574096415dc1a85",
-        "chip": "md",
-        "automatic": {
-          "mode": "automatic",
-          "planningMs": 319.9240839999984,
-          "renderMs": 9770.153249999996,
-          "events": 40926,
-          "notes": 2078,
-          "omitted": 0,
-          "mix": {
-            "version": 1,
-            "calibratedNotes": 2049,
-            "fallbackNotes": 29,
-            "diagnostics": [
-              {
-                "part": "track-8-ch-2",
-                "kind": "mix-calibration",
-                "detail": "Instrument response is uncalibrated; conservative mix fallback"
-              }
-            ]
-          },
-          "metrics": {
-            "frames": 264600,
-            "seconds": 6,
-            "sampleRate": 44100,
-            "channels": 2,
-            "invalidSamples": 0,
-            "samplePeakDbFS": -10.822980039040173,
-            "rmsDbFS": -29.844798603432086,
-            "crestDb": 19.02181856439191,
-            "dc": 1.3969197771069017e-05,
-            "clippedSamples": 0,
-            "maxAdjacentStep": 0.03320768103003502,
-            "stereoCosine": 1
-          }
-        }
-      },
-      {
-        "title": "Local MIDI development fixture",
-        "sourceSha256": "db54b1aed1f0785988c03e032fa8445056d9d4cd36995817f574096415dc1a85",
-        "chip": "snes",
-        "automatic": {
-          "mode": "automatic",
-          "planningMs": 86.718541000002,
-          "renderMs": 284.7493340000001,
-          "events": 53920,
-          "notes": 2078,
-          "omitted": 0,
-          "mix": {
-            "version": 1,
-            "calibratedNotes": 2078,
-            "fallbackNotes": 0,
-            "diagnostics": [
-              {
-                "part": "track-7-ch-10",
-                "kind": "mix-headroom",
-                "detail": "Requested balance exceeds instrument headroom; the control is capped"
-              },
-              {
-                "part": "track-6-ch-5",
-                "kind": "mix-headroom",
-                "detail": "Requested balance exceeds instrument headroom; the control is capped"
-              },
-              {
-                "part": "track-3-ch-1",
-                "kind": "mix-headroom",
-                "detail": "Requested balance exceeds instrument headroom; the control is capped"
-              },
-              {
-                "part": "track-4-ch-3",
-                "kind": "mix-headroom",
-                "detail": "Requested balance exceeds instrument headroom; the control is capped"
-              },
-              {
-                "part": "track-2-ch-6",
-                "kind": "mix-headroom",
-                "detail": "Requested balance exceeds instrument headroom; the control is capped"
-              }
-            ]
-          },
-          "metrics": {
-            "frames": 264600,
-            "seconds": 6,
-            "sampleRate": 44100,
-            "channels": 2,
-            "invalidSamples": 0,
-            "samplePeakDbFS": -14.395102180935474,
-            "rmsDbFS": -28.67703428794281,
-            "crestDb": 14.281932107007336,
-            "dc": 1.5421693031488236e-05,
-            "clippedSamples": 0,
-            "maxAdjacentStep": 0.06175471656024456,
-            "stereoCosine": 0.979238778847346
-          },
-          "internal": {
-            "mainClampedAdditions": 0,
-            "echoClampedAdditions": 0,
-            "mainClippedFrames": 0,
-            "echoClippedFrames": 0
-          }
-        }
-      },
-      {
-        "title": "Local MIDI development fixture",
-        "sourceSha256": "db54b1aed1f0785988c03e032fa8445056d9d4cd36995817f574096415dc1a85",
-        "chip": "c64",
-        "automatic": {
-          "mode": "automatic",
-          "planningMs": 30.189999999995052,
-          "renderMs": 730.7848329999979,
-          "events": 10304,
-          "notes": 1226,
-          "omitted": 852,
-          "mix": {
-            "version": 1,
-            "calibratedNotes": 1226,
-            "fallbackNotes": 0,
-            "diagnostics": []
-          },
-          "metrics": {
-            "frames": 264600,
-            "seconds": 6,
-            "sampleRate": 44100,
-            "channels": 2,
-            "invalidSamples": 0,
-            "samplePeakDbFS": -7.854059451311861,
-            "rmsDbFS": -31.83894956182128,
-            "crestDb": 23.98489011050942,
-            "dc": 0.00028658681557140514,
-            "clippedSamples": 0,
-            "maxAdjacentStep": 0.007877498865127563,
-            "stereoCosine": 1
-          }
-        }
-      }
-    ]
-  },
-  "benchmark": {
-    "scope": "Same-host interleaved warmed planning; legacy control mode uses the same allocator. This isolates policy overhead, not an exact historical SDK or phone baseline.",
-    "results": [
-      {
-        "legacyRenderMs": 40.53820799999994,
-        "automaticRenderMs": 39.442541000000006,
-        "chip": "2a03",
-        "legacyMs": 0.2661000000000001,
-        "automaticMs": 0.38350829999999975,
-        "phraseMs": 0.011374999999998182
-      },
-      {
-        "legacyRenderMs": 82.09570899999972,
-        "automaticRenderMs": 77.99749999999995,
-        "chip": "dmg",
-        "legacyMs": 0.17419589999999516,
-        "automaticMs": 0.23018750000001093,
-        "phraseMs": 0.007329200000003766
-      },
-      {
-        "legacyRenderMs": 187.89712500000041,
-        "automaticRenderMs": 190.97270900000058,
-        "chip": "md",
-        "legacyMs": 0.2512916000000132,
-        "automaticMs": 0.49600000000000366,
-        "phraseMs": 0.023633300000028612
-      },
-      {
-        "legacyRenderMs": 18.46629099999973,
-        "automaticRenderMs": 18.47425000000021,
-        "chip": "snes",
-        "legacyMs": 0.22604590000000827,
-        "automaticMs": 0.3668541999999434,
-        "phraseMs": 0.010870799999975134
-      },
-      {
-        "legacyRenderMs": 48.23449999999957,
-        "automaticRenderMs": 54.31695799999943,
-        "chip": "c64",
-        "legacyMs": 0.28986669999994774,
-        "automaticMs": 0.35850829999999406,
-        "phraseMs": 0.0135417000000416
-      }
-    ],
-    "profiles": {
-      "bytes": 190271,
-      "gzipBytes": 37089
-    }
-  },
-  "ablation": {
-    "candidate": {
-      "inputsSha256": "602effc060f766a0b34d1c049ce389404a1e786e084f72ac80536e593a86f00d",
-      "engineSha256": "fa401c80c383a297d4787c877b12a640d1440beb67713e0d6da3f4bec2f1d2c0",
-      "policySha256": "5a3357a744341c154099c1851f5df341a55a27f758f1587d4bc97e69a172f15e",
-      "profileSha256": "f787b13780c819ea9161f6d4c9be5b8b8194a02ad76e20857a68f831fb7a1b91"
-    },
-    "ablationSha256": "d780705f1b63aa97dcb824bdda50bca6b75347f13f3eda4a5a2fe7241a1a64f5",
-    "replacements": [
-      [
-        "const importance = note.mix?.importance ?? (source ? 1 : prominence[note.role]);",
-        "const importance = note.mix?.importance ?? 1;"
-      ],
-      [
-        "densityGain = segment.target + (segment.from - segment.target) * Math.exp(-Math.max(0, at - segment.at) / .03)",
-        "densityGain = 1"
-      ]
-    ],
-    "scope": "Development-only ablation. Instrument calibration, explicit author controls and allocation remain; only inferred role weights and density sharing are removed. This is not another unseen holdout.",
-    "rows": [
-      {
-        "style": "lead",
-        "chip": "2a03",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -9.45086508165937,
-              "rmsDbFS": -25.23042126167256,
-              "crestDb": 15.779556180013191,
-              "dc": 3.924399871640021e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.20817777514457703,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -10.642887707678476,
-              "rmsDbFS": -27.15794483063454,
-              "crestDb": 16.515057122956062,
-              "dc": 1.4906174237053041e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.14582031965255737,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.807191251289858,
-              "rmsDbFS": -28.385791745403715,
-              "crestDb": 14.578600494113855,
-              "dc": 4.097593096840519e-13,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.1273893006145954,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "lead",
-        "chip": "dmg",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -6.986163071795355,
-              "rmsDbFS": -20.309330509591376,
-              "crestDb": 13.32316743779602,
-              "dc": -0.0010028840785163702,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.2754458338022232,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -12.87007898523113,
-              "rmsDbFS": -25.828259737007908,
-              "crestDb": 12.958180751776778,
-              "dc": -0.0006792390124109916,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.15915329985858762,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.976305194068708,
-              "rmsDbFS": -28.951525279830417,
-              "crestDb": 14.975220085761709,
-              "dc": -0.0006416195713975165,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.1456284075975418,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "lead",
-        "chip": "md",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -5.845066714719193,
-              "rmsDbFS": -17.778820324356772,
-              "crestDb": 11.933753609637577,
-              "dc": 8.261938641065804e-06,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.030679311603307724,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -10.810573335680512,
-              "rmsDbFS": -23.534532838138972,
-              "crestDb": 12.72395950245846,
-              "dc": 1.1906375896803365e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.03431323263794184,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -15.548539656352593,
-              "rmsDbFS": -27.59846586446553,
-              "crestDb": 12.049926208112936,
-              "dc": 1.9909476220498798e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.02133698435500264,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "lead",
-        "chip": "snes",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.670735037784034,
-              "rmsDbFS": -23.782123525645304,
-              "crestDb": 10.111388487861268,
-              "dc": -1.723239978562152e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.04870810965076089,
-              "stereoCosine": 0.9887505004628496
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -10.923650679961005,
-              "rmsDbFS": -21.499927107763014,
-              "crestDb": 10.57627642780201,
-              "dc": -1.0249503997439493e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.06397850066423416,
-              "stereoCosine": 0.9788598369355811
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -14.896136651383308,
-              "rmsDbFS": -25.439912475303558,
-              "crestDb": 10.54377582392025,
-              "dc": -1.0575351478484332e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.06250303983688354,
-              "stereoCosine": 0.9940088818020242
-            }
-          }
-        ]
-      },
-      {
-        "style": "lead",
-        "chip": "c64",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -20.174402884762785,
-              "crestDb": 15.259038922071262,
-              "dc": 0.0007993966100240021,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -26.21289868183991,
-              "crestDb": 21.297534719148384,
-              "dc": 0.0007993534715199258,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -27.914048222128606,
-              "crestDb": 22.998684259437077,
-              "dc": 0.0007993531231719446,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "bass",
-        "chip": "2a03",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -9.45086508165937,
-              "rmsDbFS": -25.23042126167256,
-              "crestDb": 15.779556180013191,
-              "dc": 3.924399871640021e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.20817777514457703,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -11.609001676765175,
-              "rmsDbFS": -29.27943623527927,
-              "crestDb": 17.670434558514096,
-              "dc": -3.846101327727251e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.1485350765287876,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -15.37634208278943,
-              "rmsDbFS": -31.611187430444332,
-              "crestDb": 16.234845347654904,
-              "dc": 1.5941786347472592e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.08395771309733391,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "bass",
-        "chip": "dmg",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -6.986163071795355,
-              "rmsDbFS": -20.309330509591376,
-              "crestDb": 13.32316743779602,
-              "dc": -0.0010028840785163702,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.2754458338022232,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -14.757813879152986,
-              "rmsDbFS": -27.01739634551747,
-              "crestDb": 12.259582466364481,
-              "dc": -0.000644606069002734,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.14667685329914093,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -15.456353024065034,
-              "rmsDbFS": -27.83016326592105,
-              "crestDb": 12.373810241856019,
-              "dc": -0.0006069866107696976,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.15338686108589172,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "bass",
-        "chip": "md",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -5.845066714719193,
-              "rmsDbFS": -17.778820324356772,
-              "crestDb": 11.933753609637577,
-              "dc": 8.261938641065804e-06,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.030679311603307724,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -11.722147135655032,
-              "rmsDbFS": -24.459017093996994,
-              "crestDb": 12.736869958341963,
-              "dc": 1.255924218527595e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.03258933313190937,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -15.88533946821805,
-              "rmsDbFS": -27.430778988179448,
-              "crestDb": 11.545439519961405,
-              "dc": 2.0470917859769677e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.019016235135495663,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "bass",
-        "chip": "snes",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.670735037784034,
-              "rmsDbFS": -23.782123525645304,
-              "crestDb": 10.111388487861268,
-              "dc": -1.723239978562152e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.04870810965076089,
-              "stereoCosine": 0.9887505004628496
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -11.926043002500414,
-              "rmsDbFS": -22.488047935198338,
-              "crestDb": 10.562004932697919,
-              "dc": 8.886733373791489e-09,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.060031212866306305,
-              "stereoCosine": 0.9737540553912999
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -15.101158718453405,
-              "rmsDbFS": -27.494125553439616,
-              "crestDb": 12.392966834986211,
-              "dc": 2.1955873403497479e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.06121170148253441,
-              "stereoCosine": 0.9905148754760444
-            }
-          }
-        ]
-      },
-      {
-        "style": "bass",
-        "chip": "c64",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -20.174402884762785,
-              "crestDb": 15.259038922071262,
-              "dc": 0.0007993966100240021,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -28.274466343894442,
-              "crestDb": 23.359102381202916,
-              "dc": 0.000799324738206354,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -28.36325393731093,
-              "crestDb": 23.447889974619404,
-              "dc": 0.0007993247378998182,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "drums",
-        "chip": "2a03",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -9.45086508165937,
-              "rmsDbFS": -25.23042126167256,
-              "crestDb": 15.779556180013191,
-              "dc": 3.924399871640021e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.20817777514457703,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -10.642887707678476,
-              "rmsDbFS": -27.15794483063454,
-              "crestDb": 16.515057122956062,
-              "dc": 1.4906174237053041e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.14582031965255737,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -11.891641762963573,
-              "rmsDbFS": -28.081094063909397,
-              "crestDb": 16.18945230094582,
-              "dc": 1.9772481644479785e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.14580799639225006,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "drums",
-        "chip": "dmg",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -6.986163071795355,
-              "rmsDbFS": -20.309330509591376,
-              "crestDb": 13.32316743779602,
-              "dc": -0.0010028840785163702,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.2754458338022232,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -12.87007898523113,
-              "rmsDbFS": -25.828259737007908,
-              "crestDb": 12.958180751776778,
-              "dc": -0.0006792390124109916,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.15915329985858762,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.976305194068708,
-              "rmsDbFS": -28.75826758295151,
-              "crestDb": 14.781962388882803,
-              "dc": -0.000641619570536621,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.1456284075975418,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "drums",
-        "chip": "md",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -5.845066714719193,
-              "rmsDbFS": -17.778820324356772,
-              "crestDb": 11.933753609637577,
-              "dc": 8.261938641065804e-06,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.030679311603307724,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -10.810573335680512,
-              "rmsDbFS": -23.534532838138972,
-              "crestDb": 12.72395950245846,
-              "dc": 1.1906375896803365e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.03431323263794184,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.786955743039009,
-              "rmsDbFS": -27.480256298108582,
-              "crestDb": 13.693300555069571,
-              "dc": 1.9909476958070514e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.032223262125626206,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "drums",
-        "chip": "snes",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.670735037784034,
-              "rmsDbFS": -23.782123525645304,
-              "crestDb": 10.111388487861268,
-              "dc": -1.723239978562152e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.04870810965076089,
-              "stereoCosine": 0.9887505004628496
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -10.923650679961005,
-              "rmsDbFS": -21.499927107763014,
-              "crestDb": 10.57627642780201,
-              "dc": -1.0249503997439493e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.06397850066423416,
-              "stereoCosine": 0.9788598369355811
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -14.384900616389654,
-              "rmsDbFS": -25.25568902242371,
-              "crestDb": 10.870788406034055,
-              "dc": -1.0575255606096954e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.06250303983688354,
-              "stereoCosine": 0.9942524910350021
-            }
-          }
-        ]
-      },
-      {
-        "style": "drums",
-        "chip": "c64",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -20.174402884762785,
-              "crestDb": 15.259038922071262,
-              "dc": 0.0007993966100240021,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -26.21289868183991,
-              "crestDb": 21.297534719148384,
-              "dc": 0.0007993534715199258,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -4.915363962691525,
-              "rmsDbFS": -27.856411099369435,
-              "crestDb": 22.94104713667791,
-              "dc": 0.0007993531264030044,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25633180141448975,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "solo",
-        "chip": "2a03",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -15.15872875111242,
-              "rmsDbFS": -26.82294451230149,
-              "crestDb": 11.664215761189071,
-              "dc": 1.3375647886094626e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.16082626022398472,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -17.63771437388613,
-              "rmsDbFS": -30.016474972242797,
-              "crestDb": 12.378760598356662,
-              "dc": 1.1212554099105935e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.1208948123967275,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -17.63771437388613,
-              "rmsDbFS": -30.016474972242797,
-              "crestDb": 12.378760598356662,
-              "dc": 1.1212554099105935e-12,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.1208948123967275,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "solo",
-        "chip": "dmg",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -13.212108444380812,
-              "rmsDbFS": -23.135505235693806,
-              "crestDb": 9.923396791312992,
-              "dc": -0.000390224374414026,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.21930135414004326,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -21.975414291408253,
-              "rmsDbFS": -31.476923211640884,
-              "crestDb": 9.501508920232629,
-              "dc": -0.00012748702239929528,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.079915352165699,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -21.975414291408253,
-              "rmsDbFS": -31.476923211640884,
-              "crestDb": 9.501508920232629,
-              "dc": -0.00012748702239929528,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.079915352165699,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "solo",
-        "chip": "md",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -16.498673581413918,
-              "rmsDbFS": -22.429347361911162,
-              "crestDb": 5.930673780497245,
-              "dc": 3.8401940872121215e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.023102944833226502,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -21.41640704845998,
-              "rmsDbFS": -29.646408218231983,
-              "crestDb": 8.230001169771997,
-              "dc": 4.02536239626256e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.010368771676439792,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -21.41640704845998,
-              "rmsDbFS": -29.646408218231983,
-              "crestDb": 8.230001169771997,
-              "dc": 4.02536239626256e-05,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.010368771676439792,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "solo",
-        "chip": "snes",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -21.28653185032843,
-              "rmsDbFS": -26.557206555267516,
-              "crestDb": 5.270674704939086,
-              "dc": -4.3400690328278856e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.041810015216469765,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -22.011799423579408,
-              "rmsDbFS": -27.310289662925115,
-              "crestDb": 5.2984902393457105,
-              "dc": -4.154003207237451e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.03833634965121746,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -22.011799423579408,
-              "rmsDbFS": -27.310289662925115,
-              "crestDb": 5.2984902393457105,
-              "dc": -4.154003207237451e-07,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.03833634965121746,
-              "stereoCosine": 1
-            }
-          }
-        ]
-      },
-      {
-        "style": "solo",
-        "chip": "c64",
-        "modes": [
-          {
-            "mode": "legacy",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -9.646859360847262,
-              "rmsDbFS": -21.7743294736664,
-              "crestDb": 12.12747011281914,
-              "dc": 0.0007993958682657048,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25689825788140297,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "calibration-only",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -9.646859360847262,
-              "rmsDbFS": -29.205040192850905,
-              "crestDb": 19.558180832003643,
-              "dc": 0.0007993530483320685,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25689825788140297,
-              "stereoCosine": 1
-            }
-          },
-          {
-            "mode": "automatic",
-            "metrics": {
-              "frames": 88200,
-              "seconds": 2,
-              "sampleRate": 44100,
-              "channels": 2,
-              "invalidSamples": 0,
-              "samplePeakDbFS": -9.646859360847262,
-              "rmsDbFS": -29.205040192850905,
-              "crestDb": 19.558180832003643,
-              "dc": 0.0007993530483320685,
-              "clippedSamples": 0,
-              "maxAdjacentStep": 0.25689825788140297,
-              "stereoCosine": 1
-            }
-          }
-        ]
       }
     ]
   },
   "acoustic": {
-    "scope": "Zelda development excerpt. Peak-envelope correlation and coarse band-power cosine are descriptive proxies, not perceptual masking or click detection. Different hardware timbres need not have matching spectra.",
-    "comparisons": [
-      {
-        "part": "p2",
-        "rmsDifferenceDb": 0.13228739942061907,
-        "peakEnvelopeCorrelation": 0.7887801863004211,
-        "sourceMaxAdjacentStep": 0.13883435353636742,
-        "targetMaxAdjacentStep": 0.029339086264371872
-      },
-      {
-        "part": "p1",
-        "rmsDifferenceDb": 0.09970035633434193,
-        "peakEnvelopeCorrelation": 0.6600331356247109,
-        "sourceMaxAdjacentStep": 0.14943452551960945,
-        "targetMaxAdjacentStep": 0.019904719665646553
-      },
-      {
-        "part": "tri",
-        "rmsDifferenceDb": 0.740695897845562,
-        "peakEnvelopeCorrelation": 0.9753589317682121,
-        "sourceMaxAdjacentStep": 0.02781837247312069,
-        "targetMaxAdjacentStep": 0.008569938130676746
-      },
-      {
-        "part": "noi",
-        "rmsDifferenceDb": -6.907262110263403,
-        "peakEnvelopeCorrelation": 0.9451848049278708,
-        "sourceMaxAdjacentStep": 0.15144484490156174,
-        "targetMaxAdjacentStep": 0.024335453286767006
-      }
-    ],
-    "overlap": [
+    "scope": "Audibility and bounded dynamic/prominence contrast for a declared lead fixture; not a perceptual or timbre oracle",
+    "rows": [
       {
         "chip": "2a03",
-        "part": "p1",
-        "leadSpectralPowerCosine": 0.6711947158899683
+        "dynamicsDb": 11.43693052783056,
+        "prominenceDb": 11.43693052783056,
+        "levels": [
+          0.04091413499058274,
+          0.010965459806252966,
+          0.010965459806252966
+        ]
       },
       {
-        "chip": "2a03",
-        "part": "tri",
-        "leadSpectralPowerCosine": 0.030555739098407756
-      },
-      {
-        "chip": "2a03",
-        "part": "noi",
-        "leadSpectralPowerCosine": 0.24712720369895505
+        "chip": "dmg",
+        "dynamicsDb": 11.969996461958248,
+        "prominenceDb": 11.969996461958248,
+        "levels": [
+          0.03454845106904324,
+          0.008708207282782595,
+          0.008708207282782595
+        ]
       },
       {
         "chip": "md",
-        "part": "p1",
-        "leadSpectralPowerCosine": 0.4465388618927454
+        "dynamicsDb": 9.022707059263936,
+        "prominenceDb": 10.314413855968569,
+        "levels": [
+          0.038162374190490594,
+          0.013505169292669808,
+          0.011638973859191238
+        ]
       },
       {
-        "chip": "md",
-        "part": "tri",
-        "leadSpectralPowerCosine": 0.013327542063016899
+        "chip": "snes",
+        "dynamicsDb": 9.17407671787445,
+        "prominenceDb": 10.334532103040052,
+        "levels": [
+          0.045687322745406655,
+          0.01588882835604297,
+          0.013901738157326312
+        ]
       },
       {
-        "chip": "md",
-        "part": "noi",
-        "leadSpectralPowerCosine": 0.01790624068437045
+        "chip": "c64",
+        "dynamicsDb": 6.772741676252511,
+        "prominenceDb": 6.772741676252511,
+        "levels": [
+          0.044469768942426956,
+          0.020390495951859013,
+          0.020390495951859013
+        ]
       }
     ]
   },
-  "profileValidation": [
-    {
-      "chip": "2a03",
-      "voice": "p1",
-      "rate": 44100,
-      "scope": "Off-grid interpolation",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.02315043,
-          "predicted": 0.02899698666666667,
-          "errorDb": -1.9558761355056384
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.05157012,
-          "predicted": 0.055790542477034126,
-          "errorDb": -0.6832488459019332
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.07752602,
-          "predicted": 0.08039465323490813,
-          "errorDb": -0.31559354817902424
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.1013252,
-          "predicted": 0.10241330333333334,
-          "errorDb": -0.09277809715057204
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.03649756,
-          "predicted": 0.044624024324146985,
-          "errorDb": -1.7460980490920015
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.0813023,
-          "predicted": 0.08585715403871391,
-          "errorDb": -0.473473136292264
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1222228,
-          "predicted": 0.1237209096784777,
-          "errorDb": -0.1058175164494906
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.1597432,
-          "predicted": 0.15760581666666668,
-          "errorDb": 0.11700276664134632
-        }
-      ]
+  "performance": {
+    "scope": "Same-host interleaved warmed planning; legacy control mode uses the same allocator. This isolates policy overhead, not an exact historical SDK or phone baseline.",
+    "pass": true,
+    "limits": {
+      "planningRatio": 2,
+      "renderRatio": 1.25
     },
-    {
-      "chip": "2a03",
-      "voice": "p1",
-      "rate": 48000,
-      "scope": "Rate sensitivity only; 44.1 kHz profiles are not certified at 48 kHz",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.02323272,
-          "predicted": 0.02899698666666667,
-          "errorDb": -1.9250562102424449
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.05175342,
-          "predicted": 0.055790542477034126,
-          "errorDb": -0.6524305978838707
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.07780159,
-          "predicted": 0.08039465323490813,
-          "errorDb": -0.28477387460231085
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.1016854,
-          "predicted": 0.10241330333333334,
-          "errorDb": -0.06195546295553856
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.03662551,
-          "predicted": 0.044624024324146985,
-          "errorDb": -1.715701056366371
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.08158733,
-          "predicted": 0.08585715403871391,
-          "errorDb": -0.44307535528701214
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1226513,
-          "predicted": 0.1237209096784777,
-          "errorDb": -0.07541897688295383
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.1603032,
-          "predicted": 0.15760581666666668,
-          "errorDb": 0.1473990039451843
-        }
-      ]
-    },
-    {
-      "chip": "dmg",
-      "voice": "ch1",
-      "rate": 44100,
-      "scope": "Off-grid interpolation",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.0490023,
-          "predicted": 0.061462191489501314,
-          "errorDb": -1.9678315310795804
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.101931,
-          "predicted": 0.11026565666010499,
-          "errorDb": -0.6826796648643579
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.1578853,
-          "predicted": 0.16250824895013122,
-          "errorDb": -0.250674281773247
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.2145105,
-          "predicted": 0.2139442666666667,
-          "errorDb": 0.022958050598011953
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.04883839,
-          "predicted": 0.061374546512467196,
-          "errorDb": -1.9845391518209075
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.1014032,
-          "predicted": 0.10994788417650919,
-          "errorDb": -0.7027043188212563
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1570009,
-          "predicted": 0.1619542684711286,
-          "errorDb": -0.2698051357195751
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.2132726,
-          "predicted": 0.21316268333333332,
-          "errorDb": 0.004477697294330607
-        }
-      ]
-    },
-    {
-      "chip": "dmg",
-      "voice": "ch1",
-      "rate": 48000,
-      "scope": "Rate sensitivity only; 44.1 kHz profiles are not certified at 48 kHz",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.04902172,
-          "predicted": 0.061462191489501314,
-          "errorDb": -1.9643899260734181
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.1019777,
-          "predicted": 0.11026565666010499,
-          "errorDb": -0.6787011092344133
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.157959,
-          "predicted": 0.16250824895013122,
-          "errorDb": -0.24662070171532752
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.2146111,
-          "predicted": 0.2139442666666667,
-          "errorDb": 0.027030558314226596
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.04889303,
-          "predicted": 0.061374546512467196,
-          "errorDb": -1.9748268799788984
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.1015419,
-          "predicted": 0.10994788417650919,
-          "errorDb": -0.6908318165497491
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1572213,
-          "predicted": 0.1619542684711286,
-          "errorDb": -0.2576203162499442
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.2135739,
-          "predicted": 0.21316268333333332,
-          "errorDb": 0.01673999290929555
-        }
-      ]
-    },
-    {
-      "chip": "md",
-      "voice": "fm1",
-      "rate": 44100,
-      "scope": "Off-grid interpolation",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.05686241,
-          "predicted": 0.05857481519028872,
-          "errorDb": -0.2577132915032038
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.1109834,
-          "predicted": 0.11416103854986878,
-          "errorDb": -0.24519771236562998
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.1585461,
-          "predicted": 0.15790402693569555,
-          "errorDb": 0.0352471555832109
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.1824222,
-          "predicted": 0.18279353333333334,
-          "errorDb": -0.017662773913218636
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.0516547,
-          "predicted": 0.05405483484580053,
-          "errorDb": -0.39449402376081444
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.1006788,
-          "predicted": 0.10539457154855644,
-          "errorDb": -0.39760424351628876
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1446411,
-          "predicted": 0.1468624524606299,
-          "errorDb": -0.13238120525241062
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.1677608,
-          "predicted": 0.17220570000000002,
-          "errorDb": -0.22714068002226573
-        }
-      ]
-    },
-    {
-      "chip": "md",
-      "voice": "fm1",
-      "rate": 48000,
-      "scope": "Rate sensitivity only; 44.1 kHz profiles are not certified at 48 kHz",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.05686629,
-          "predicted": 0.05857481519028872,
-          "errorDb": -0.25712063104355337
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.1109909,
-          "predicted": 0.11416103854986878,
-          "errorDb": -0.24461075998140974
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.1585576,
-          "predicted": 0.15790402693569555,
-          "errorDb": 0.03587715599557724
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.1824353,
-          "predicted": 0.18279353333333334,
-          "errorDb": -0.017039050107034274
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.05166379,
-          "predicted": 0.05405483484580053,
-          "errorDb": -0.39296564801676737
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.1006966,
-          "predicted": 0.10539457154855644,
-          "errorDb": -0.3960687149863864
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1446653,
-          "predicted": 0.1468624524606299,
-          "errorDb": -0.13092808475641438
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.1677883,
-          "predicted": 0.17220570000000002,
-          "errorDb": -0.22571697204282706
-        }
-      ]
-    },
-    {
-      "chip": "snes",
-      "voice": "v0",
-      "rate": 44100,
-      "scope": "Off-grid interpolation",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.02790114,
-          "predicted": 0.02579403382545932,
-          "errorDb": 0.6820536651254776
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.05580465,
-          "predicted": 0.05206963252952756,
-          "errorDb": 0.6017175178382637
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.08022931,
-          "predicted": 0.08081033251312335,
-          "errorDb": -0.06267673283086814
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.1081244,
-          "predicted": 0.10579401666666667,
-          "errorDb": 0.18925208532015614
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.02788088,
-          "predicted": 0.026003293070866143,
-          "errorDb": 0.605562529509832
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.05576389,
-          "predicted": 0.05249216312664043,
-          "errorDb": 0.5251718409642464
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.08017071,
-          "predicted": 0.08146623001312336,
-          "errorDb": -0.1392377859398325
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.1080454,
-          "predicted": 0.10665257666666668,
-          "errorDb": 0.11269858866612695
-        }
-      ]
-    },
-    {
-      "chip": "snes",
-      "voice": "v0",
-      "rate": 48000,
-      "scope": "Rate sensitivity only; 44.1 kHz profiles are not certified at 48 kHz",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.0279037,
-          "predicted": 0.02579403382545932,
-          "errorDb": 0.6828505808585584
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.05580985,
-          "predicted": 0.05206963252952756,
-          "errorDb": 0.6025268504276791
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.08023688,
-          "predicted": 0.08081033251312335,
-          "errorDb": -0.06185721833240666
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.1081346,
-          "predicted": 0.10579401666666667,
-          "errorDb": 0.19007143687892689
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.02787455,
-          "predicted": 0.026003293070866143,
-          "errorDb": 0.6035902845950255
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.0557513,
-          "predicted": 0.05249216312664043,
-          "errorDb": 0.52321057719367
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.08015261,
-          "predicted": 0.08146623001312336,
-          "errorDb": -0.14119900534468244
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.108021,
-          "predicted": 0.10665257666666668,
-          "errorDb": 0.11073682405978622
-        }
-      ]
-    },
-    {
-      "chip": "c64",
-      "voice": "v1",
-      "rate": 44100,
-      "scope": "Off-grid interpolation",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.05772258,
-          "predicted": 0.06673136997703413,
-          "errorDb": -1.2596861314397354
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.1169754,
-          "predicted": 0.11944240790682416,
-          "errorDb": -0.18128022092010648
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.1749744,
-          "predicted": 0.17200066912729658,
-          "errorDb": 0.14888753062563076
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.2378008,
-          "predicted": 0.2269256666666667,
-          "errorDb": 0.4065938264643355
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.05350719,
-          "predicted": 0.06445224986220473,
-          "errorDb": -1.6165187605204459
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.1139966,
-          "predicted": 0.11739825711942257,
-          "errorDb": -0.2553950194860184
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1720389,
-          "predicted": 0.1696727807414698,
-          "errorDb": 0.12028959136285226
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.2345693,
-          "predicted": 0.2240188166666667,
-          "errorDb": 0.3997334600410784
-        }
-      ]
-    },
-    {
-      "chip": "c64",
-      "voice": "v1",
-      "rate": 48000,
-      "scope": "Rate sensitivity only; 44.1 kHz profiles are not certified at 48 kHz",
-      "errors": [
-        {
-          "pitch": 54,
-          "control": 3.779527559055118,
-          "actual": 0.05775368,
-          "predicted": 0.06673136997703413,
-          "errorDb": -1.2550075737123727
-        },
-        {
-          "pitch": 54,
-          "control": 7.559055118110236,
-          "actual": 0.1170196,
-          "predicted": 0.11944240790682416,
-          "errorDb": -0.17799881468007012
-        },
-        {
-          "pitch": 54,
-          "control": 11.338582677165354,
-          "actual": 0.1750355,
-          "predicted": 0.17200066912729658,
-          "errorDb": 0.15192006120420304
-        },
-        {
-          "pitch": 54,
-          "control": 15,
-          "actual": 0.2378841,
-          "predicted": 0.2269256666666667,
-          "errorDb": 0.409635901645812
-        },
-        {
-          "pitch": 78,
-          "control": 3.779527559055118,
-          "actual": 0.05357133,
-          "predicted": 0.06445224986220473,
-          "errorDb": -1.6061130689211167
-        },
-        {
-          "pitch": 78,
-          "control": 7.559055118110236,
-          "actual": 0.1140699,
-          "predicted": 0.11739825711942257,
-          "errorDb": -0.24981177308733835
-        },
-        {
-          "pitch": 78,
-          "control": 11.338582677165354,
-          "actual": 0.1721325,
-          "predicted": 0.1696727807414698,
-          "errorDb": 0.1250139774691133
-        },
-        {
-          "pitch": 78,
-          "control": 15,
-          "actual": 0.2346923,
-          "predicted": 0.2240188166666667,
-          "errorDb": 0.404286845402032
-        }
-      ]
-    },
-    {
-      "chip": "2a03",
-      "aliases": [
-        "p1",
-        "p2"
-      ],
-      "scope": "Voice onset offset sensitivity",
-      "errors": [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0
-      ]
-    },
-    {
-      "chip": "md",
-      "aliases": [
-        "fm1",
-        "fm6"
-      ],
-      "scope": "Voice onset offset sensitivity",
-      "errors": [
-        0,
-        -0.2351280000917384,
-        -0.22234761106672593,
-        -0.2519140529150663,
-        0,
-        -0.07174312118180526,
-        -0.06952654172672083,
-        -0.056428062164329974
-      ]
-    }
-  ],
-  "acceptance": {
-    "automated": true,
-    "humanPreference": false,
-    "physicalMobileSafari": false
-  }
+    "results": [
+      {
+        "legacyRenderMs": 74.45825000000013,
+        "automaticRenderMs": 70.76541699999984,
+        "chip": "2a03",
+        "legacyMs": 0.4673832999999945,
+        "automaticMs": 0.6526207999999997,
+        "phraseMs": 0.027804199999991397
+      },
+      {
+        "legacyRenderMs": 191.59437500000013,
+        "automaticRenderMs": 150.98408300000028,
+        "chip": "dmg",
+        "legacyMs": 0.23755419999997684,
+        "automaticMs": 0.39552920000000996,
+        "phraseMs": 0.018887499999982536
+      },
+      {
+        "legacyRenderMs": 248.57829200000015,
+        "automaticRenderMs": 257.9751670000005,
+        "chip": "md",
+        "legacyMs": 0.5232041000000208,
+        "automaticMs": 0.8036957999999685,
+        "phraseMs": 0.04942909999999756
+      },
+      {
+        "legacyRenderMs": 28.967749999999796,
+        "automaticRenderMs": 27.40270799999962,
+        "chip": "snes",
+        "legacyMs": 0.3756499999999505,
+        "automaticMs": 0.6515375000000858,
+        "phraseMs": 0.021183399999972607
+      },
+      {
+        "legacyRenderMs": 73.5609170000007,
+        "automaticRenderMs": 66.1634580000009,
+        "chip": "c64",
+        "legacyMs": 0.3272624999999607,
+        "automaticMs": 0.358324999999968,
+        "phraseMs": 0.017420899999888207
+      }
+    ]
+  },
+  "native": {
+    "pass": true,
+    "rows": [
+      {
+        "piece": "mario",
+        "chip": "2a03",
+        "sha256": "a21392086d259a6c5d267496edc95e59c7d9a0f6cda8c1dc3158acf5fd28230a"
+      },
+      {
+        "piece": "zelda",
+        "chip": "2a03",
+        "sha256": "3ce8f9a9013afcf3e848dfce0db6e98796c1fe04b3bca266477edef5fa33862c"
+      },
+      {
+        "piece": "sonic",
+        "chip": "md",
+        "sha256": "7bb83e6314e5ecc2f0840c97d8c3ecee185b64b05d810cd3d02686780c90d40f"
+      }
+    ]
+  },
+  "scope": "Complete deterministic renders and declared acoustic gates; no universal timbre, human preference or physical-device certification"
 }

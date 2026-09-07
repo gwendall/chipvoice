@@ -14,6 +14,7 @@ for(const chip of [nesChip,gbChip,mdChip,snesChip,c64Chip]){
   for(let p=0;p<measured.positions.length;p++)for(let v=1;v<measured.controls.length;v++){
    const actual=measured.rms[p*measured.controls.length+v],predicted=mixProfileLevel(base,measured.positions[p],.25,false,measured.controls[v]);
    assert.ok(Number.isFinite(actual)&&actual>0);assert.ok(Number.isFinite(predicted)&&predicted>0);
+   if(rate===44100)assert.ok(Math.abs(20*Math.log10(actual/predicted))<=3,`${chip.spec.id}: off-grid amplitude error exceeds 3 dB`);
    errors.push({pitch:measured.positions[p],control:measured.controls[v],actual,predicted,errorDb:20*Math.log10(actual/predicted)});
   }
   report.push({chip:chip.spec.id,voice,rate,scope:rate===44100?'Off-grid interpolation':'Rate sensitivity only; 44.1 kHz profiles are not certified at 48 kHz',errors});
@@ -27,4 +28,4 @@ for(const [chip,source,target] of [[nesChip,'p1','p2'],[mdChip,'fm1','fm6']]){
  report.push({chip:chip.spec.id,aliases:[source,target],scope:'Voice onset offset sensitivity',errors:a.rms.map((r,i)=>r?20*Math.log10(b.rms[i]/r):0)});
 }
 await mkdir('.artifacts/automatic-mixing',{recursive:true});await writeFile('.artifacts/automatic-mixing/profile-validation.json',JSON.stringify(report,null,2));
-console.log('PASS finite off-grid velocity/pitch/duration probes and rate/voice sensitivity; inspect descriptive errors separately');
+console.log('PASS <=3 dB at 44.1 kHz; off-grid velocity/pitch/duration probes and rate/voice sensitivity; inspect descriptive errors separately');

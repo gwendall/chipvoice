@@ -19,6 +19,8 @@
 状態：`todo`（未着手）、`doing`（作業中）、`done`（完了）、`dropped`（理由付き中止）。既存表の`implemented`は実装済み、`partial`は一部完了です。履歴の状態は当時のまま残します。
 
 <a id="midi-import-feedback--2026-09-06"></a>
+0.16.2 のコールドレビュー修正は[追跡評価](evals/AUTOMATIC-MIXING-COLD-REVIEW-2026-09-07_ja.md)に記録します。SNES の共通ヘッドルーム、無音の割り当て、共有資源、MIDI の役割確認、音響基準を改善しました。0.16.1 の結果は過去の証拠で、新しいエンジンの認証ではありません。
+
 ## MIDIインポートの表示 — 2026-09-06
 
 - done — `fix/midi-import-feedback`（0.15.1）：準備段階、sample比の進捗／経過時間、明示fallback付き旧MIDI文字decode、channelラベル、実音までの長時間MIDI E2Eを実装。利用者のlocal Musha Aleste MIDIで再現し、source bytesはlocalに保持。
