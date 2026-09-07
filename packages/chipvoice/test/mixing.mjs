@@ -61,3 +61,12 @@ for(const chip of [nesChip,gbChip,mdChip,snesChip,c64Chip]){
  assert.throws(()=>prepareMixPhrase(chip,[{...input[0],mix:{gainDb:NaN}}]),/mix/);
 }
 console.log('PASS bounded game phrases, source ownership, hardware silence and overlap rejection');
+const short={voice:'fm1',part:'p',role:'lead',at:0,note:'C4',duration:.026,instrument:instrumentsFor('md').lead};
+assert.throws(()=>prepareMixPhrase(mdChip,[short,{...short,at:.026}]),/overlapping/,'APU-rounded note-off cannot cut the next note');
+assert.equal(prepareMixPhrase(mdChip,[short]).notes[0].duration,2/60,'density and response use the actual frame duration');
+const nativeOrigin={...score,parts:score.parts.map(p=>({...p,origin:{chip:'2a03',voice:'p1'},notes:p.notes.map(n=>({...n,expression:[{tick:0,gain:1}]})),instruments:{'2a03':{volume:[15],sustain:true},md:{...instrumentsFor('md').lead,volume:[15,0],sustain:false}}}))};
+const heldOrigin=structuredClone(nativeOrigin);heldOrigin.parts[0].instruments.md.volume=[15];heldOrigin.parts[0].instruments.md.sustain=true;
+assert.notDeepEqual(planPerformance(nativeOrigin,mdChip).events,planPerformance(heldOrigin,mdChip).events,'explicit target envelope survives native source expression');
+console.log('PASS authored target envelope and realized phrase duration review regressions');
+const noise={voice:'noise',part:'perc',role:'perc',at:0,note:7,duration:.1,instrument:instrumentsFor('md').perc.H.instrument};
+assert.deepEqual(prepareMixPhrase(mdChip,[{...noise,detune:2}]).notes[0].instrument.volume,prepareMixPhrase(mdChip,[{...noise,note:9}]).notes[0].instrument.volume,'noise response uses the same detuned period as the APU');

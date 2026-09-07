@@ -8,7 +8,8 @@
 ## Status and objective
 
 Planned on 2026-09-07 following the user's Zelda/Mega Drive balance report.
-No implementation or musical acceptance is claimed by this specification.
+The implementation is on `feat/automatic-console-mixing`; qualification is in progress.
+See [API and limits](MIXING-API.md) and the [development evaluation](evals/AUTOMATIC-MIXING-POLICY-2026-09-07.md).
 Sound and adaptation quality take priority over the deferred npm release and new features.
 
 Build a general, deterministic, local arrangement/mixing system for authored,
@@ -43,11 +44,14 @@ catalogue identity tests, outside the policy.
 - Evaluation combines hard correctness gates, useful acoustic diagnostics and
   controlled listening. It cannot certify that all possible music sounds good.
 
-Implementation update: MIX-01 contract and MIX-03 reproductions are recorded. MIX-04 has a verified pre-decimation filter repair; physical-output differences remain scoped. MIX-06/07/09/10 are in progress. No held-out musical acceptance, real-phone check, deployment or npm release is complete yet.
 
 ## Ordered tickets
 
-All tickets below are `todo`. Dependencies refer to MIX IDs. The execution order
+MIX-01–09 are implemented and development-tested. MIX-10/11 have the scoped
+hardware and bounded-phrase behavior documented in the API. MIX-12–18 remain
+in qualification: controlled human listening and real-device checks remain open,
+while automated holdouts, integration, publication and release proceed.
+Dependencies refer to MIX IDs. The execution order
 follows prerequisites; evaluator and device baselines begin early rather than
 being invented after the algorithm is tuned.
 

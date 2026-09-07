@@ -182,7 +182,7 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
     if (inst.arp?.length || inst.pitch?.length || inst.slide || inst.vibrato) loss(part, 'instrument-effects-omitted', 'Palette arpeggio/vibrato/slide is omitted; only source expression is applied');
     if (percussion && ![35,36,38,40,42,44,46].includes(note.drum ?? -1)) loss(part, 'drum-substitution', 'Percussion mapped to the closest available kit sound');
     if (chip.spec.id === 'dmg' && note.expression?.some(p => p.gain !== undefined)) loss(part, 'envelope-approximation', 'Game Boy volume steps and hardware envelope constrain expression');
-    const observedGain=!!mixing&&!!part.origin&&note.expression?.some(point=>point.gain!==undefined);
+    const observedGain=!!mixing&&!sound.explicit&&!!part.origin&&note.expression?.some(point=>point.gain!==undefined);
     const points = (note.expression ?? []).map(p => ({...p, seconds: time(p.tick)}));
     if(!percussion){
       const range=pitchRange(chip.spec,chip.spec.voices.find(v=>v.id===voice)!,inst);

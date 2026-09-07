@@ -5,21 +5,23 @@ import {performance as timer} from 'node:perf_hooks';
 import {planPerformance,renderPerformance,importMidi,toWav,nesChip,gbChip,mdChip,snesChip,c64Chip} from '../../packages/chipvoice/dist/index.js';
 import {measureAudio,spectrum,comparePcm} from '../../packages/conform/src/listening/metrics.mjs';
 import {observeSnesMixer} from '../../packages/conform/src/listening/snes-mixer.mjs';
+import {candidateIdentity} from './freeze.mjs';
 import {contract,generatedPerformance} from './corpus.mjs';
 const held=process.argv.includes('--held-out'), midiPath=process.argv.includes('--midi')?process.argv[process.argv.indexOf('--midi')+1]:null;
 if(held&&midiPath)throw Error('MIDI development input cannot replace the frozen holdout');
 const out=`.artifacts/automatic-mixing/${held?'held-out':midiPath?'development-midi':'development'}`;await mkdir(out,{recursive:true});
 const hash=x=>createHash('sha256').update(x).digest('hex');
+const identity=await candidateIdentity(), engineSha256=identity.engineSha256;
 const policySha256=hash(await readFile('packages/chipvoice/dist/mix.js'));
 const profileSha256=hash(await readFile('packages/chipvoice/dist/mix-profiles.js'));
-if(held){const frozen=JSON.parse(await readFile('.artifacts/automatic-mixing/frozen-candidate.json'));assert.equal(policySha256,frozen.policySha256);assert.equal(profileSha256,frozen.profileSha256);}
+if(held){const frozen=JSON.parse(await readFile('.artifacts/automatic-mixing/frozen-candidate.json'));assert.equal(identity.inputsSha256,frozen.inputsSha256);assert.equal(engineSha256,frozen.engineSha256);assert.equal(policySha256,frozen.policySha256);assert.equal(profileSha256,frozen.profileSha256);}
 const cases=[];
 for(const seed of (held?contract.heldOut:contract.development).generatedSeeds)for(const style of ['lead','bass','drums','solo'])cases.push(generatedPerformance(seed,style));
 // Full catalogue renders have their own evaluation. Short windows here make
 // joint/solo and baseline comparisons practical while retaining complete plans.
 for(const id of held?['mario']:['zelda','sonic']){const score=JSON.parse(await readFile(`scores/arrangements/${id}.json`));cases.push(score);}
 if(midiPath){const bytes=await readFile(midiPath),score=importMidi(bytes,{title:'Local MIDI development fixture'});score.source.sha256=hash(bytes);cases.splice(0,cases.length,score);}
-const report={policySha256,profileSha256,heldOut:held,contract,scope:'Deterministic correctness and descriptive acoustics; no universal musical score or human preference claim',cases:[]};
+const report={engineSha256,policySha256,profileSha256,heldOut:held,contract,scope:'Deterministic correctness and descriptive acoustics; no universal musical score or human preference claim',cases:[]};
 for(const [caseIndex,score] of cases.entries())for(const chip of [nesChip,gbChip,mdChip,snesChip,c64Chip]){
  const measurements=[];
  for(const mode of ['legacy','automatic']){
