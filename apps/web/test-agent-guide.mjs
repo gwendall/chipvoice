@@ -1,3 +1,5 @@
+import { chromium } from "playwright";
+import { installOutputProbe, outputPhraseRms } from "./test/audio-probe.mjs";
 import assert from "node:assert/strict";
 import {
   mkdtemp,
@@ -82,6 +84,29 @@ try {
     publishTool.inputSchema.properties.body.required.includes("project"),
   );
   assert.ok(publishTool.security.length > 0);
+  for (const name of ["listKeys", "revokeKey", "listMySongs", "deleteSong"])
+    assert.ok(
+      manifest.tools.find((tool) => tool.name === name).security.length > 0,
+      name + " authentication",
+    );
+  function checkReferences(value) {
+    if (!value || typeof value !== "object") return;
+    if (typeof value.$ref === "string" && value.$ref.startsWith("#/")) {
+      let target = manifest;
+      for (const key of value.$ref.slice(2).split("/"))
+        target = target?.[key.replace(/~1/g, "/").replace(/~0/g, "~")];
+      assert.ok(target, "Resolvable manifest reference: " + value.$ref);
+    }
+    for (const child of Object.values(value)) checkReferences(child);
+  }
+  checkReferences(manifest);
+  const spec = (await json("/.well-known/openapi.json")).body;
+  assert.deepEqual(
+    spec.paths["/api/v1/projects/{id}"].get.responses["200"].content[
+      "application/json"
+    ].schema.properties.chip.enum,
+    capabilities.targets.map((target) => target.id),
+  );
   const source = skill.match(/```js\n([\s\S]*?)\n```/)[1];
   await writeFile(join(directory, "compose.mjs"), source);
   await symlink(
@@ -312,6 +337,66 @@ try {
       2,
     ),
   );
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 1000 },
+    });
+    await context.addInitScript(installOutputProbe);
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(base + "/create", { waitUntil: "domcontentloaded" });
+    const imported = {
+      ...canonical,
+      settings: { ...canonical.settings, chip: "snes" },
+    };
+    await page
+      .locator("input[type=file]")
+      .setInputFiles({
+        name: "ensemble.json",
+        mimeType: "application/json",
+        buffer: Buffer.from(JSON.stringify(imported)),
+      });
+    await page
+      .getByRole("option", { name: "GM program 73", exact: true })
+      .waitFor({ state: "attached" });
+    assert.equal(
+      await page
+        .getByRole("combobox", { name: "Timbre", exact: true })
+        .inputValue(),
+      "73",
+      "unknown preset keeps the actual GM program visible",
+    );
+    await page.getByRole("button", { name: "Play", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Pause", exact: true })
+      .waitFor({ timeout: 120000 });
+    const rms = await outputPhraseRms(page);
+    assert.ok(rms > 0.001);
+    await page.screenshot({
+      path: join(out, "ensemble-desktop.png"),
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "Pause", exact: true }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await page.screenshot({
+      path: join(out, "ensemble-mobile.png"),
+      fullPage: true,
+    });
+    assert.deepEqual(errors, []);
+    await writeFile(
+      join(out, "browser.json"),
+      JSON.stringify({ rms, errors }, null, 2),
+    );
+  } finally {
+    await browser.close();
+  }
   console.log(
     "PASS executable served skill on every target; deterministic audio; overload/reduction; exact HTTP publication/retry/conflict/render/remix; future-target discovery",
   );

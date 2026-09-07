@@ -85,6 +85,7 @@ export function agentManifest() {
     instructions: `${SITE}/skill.md`,
     capabilities: `${SITE}/api/v1/capabilities`,
     openapi: `${SITE}/.well-known/openapi.json`,
+    components: spec.components,
     tools,
   };
 }

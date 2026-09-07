@@ -929,5 +929,7 @@
   "Text length outside supported bounds": "Text length outside supported bounds",
   "Array length outside supported bounds": "Array length outside supported bounds",
   "Document exceeds validation work limit": "Document exceeds validation work limit",
-  "Value does not match a supported source or value shape": "Value does not match a supported source or value shape"
+  "Value does not match a supported source or value shape": "Value does not match a supported source or value shape",
+  "GM program {program}": "GM program {program}",
+  "Source instrument {program}": "Source instrument {program}"
 }

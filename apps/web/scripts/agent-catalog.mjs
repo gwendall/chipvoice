@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   projectCapabilities,
+  instrumentsFor,
   getChip,
   PROJECT_ENGINE_VERSION,
   PROJECT_SCHEMA,
@@ -42,6 +43,20 @@ export function buildAgentCatalog(
       for (let b = a + 1; b < spec.voices.length; b++)
         if (voicesConflict(spec, spec.voices[a].id, spec.voices[b].id))
           conflicts.push([spec.voices[a].id, spec.voices[b].id]);
+    const percussionPalette = Object.entries(instrumentsFor(spec.id).perc).map(
+      ([token, drum]) => ({
+        token,
+        instrument: drum.instrument,
+        voices: performanceVoices(spec, drum.instrument, true).map((voice) => ({
+          id: voice.id,
+          preservesInstrument: instrumentFitsVoice(
+            spec,
+            voice,
+            drum.instrument,
+          ),
+        })),
+      }),
+    );
     return {
       ...capability,
       system: spec.system,
@@ -52,7 +67,14 @@ export function buildAgentCatalog(
         .filter((v) => v.notes === "sample")
         .map((v) => v.id),
       melodicPalette: [...groups.values()],
-      percussionVoices: performanceVoices(spec, {}, true).map((v) => v.id),
+      percussionPalette,
+      percussionVoices: [
+        ...new Set(
+          percussionPalette.flatMap((drum) =>
+            drum.voices.map((voice) => voice.id),
+          ),
+        ),
+      ],
     };
   });
   const body = {

@@ -1,4 +1,4 @@
-import { PROJECT_SCHEMA } from "chipvoice";
+import { PROJECT_SCHEMA, CHIP_IDS } from "chipvoice";
 const json = (schema: unknown) => ({ "application/json": { schema } });
 const id = {
   name: "id",
@@ -27,7 +27,7 @@ const response = {
   properties: {
     id: { type: "string" },
     title: { type: "string" },
-    chip: { enum: ["2a03", "dmg", "md", "snes", "c64"] },
+    chip: { enum: CHIP_IDS },
     tags: { type: "array", items: { type: "string" } },
     createdAt: { type: "integer", description: "Unix milliseconds" },
     favourites: { type: "integer" },

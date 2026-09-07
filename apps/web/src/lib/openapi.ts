@@ -10,6 +10,8 @@ import { SITE } from "./songs";
  * descriptions of one API is three things to forget to update, and the one that
  * goes stale is always the one an agent is reading.
  */
+const ACCOUNT_AUTH = [{bearerAuth: []}, {browserSession: []}];
+
 const INTENT_BODY = {
   type: "object",
   description:
@@ -129,6 +131,7 @@ export function openApiSpec() {
       "/api/songs": {
         post: {
           operationId: "createSong",
+          security: [{}, ...ACCOUNT_AUTH],
           summary: "Store a song and get its links",
           description: "Validates first. Returns a short id, a page, an MP3 and a WAV.",
           tags: ["songs"],
@@ -153,6 +156,7 @@ export function openApiSpec() {
         },
         delete: {
           operationId: "deleteSong",
+          security: ACCOUNT_AUTH,
           summary: "Withdraw a song you published",
           description:
             "Any active key or browser session of the publishing account may withdraw it. The row stays so its forks keep their parent, but the page and the audio stop being served. A song published anonymously cannot be withdrawn by anyone - which is the honest cost of publishing without a key.",
@@ -168,6 +172,7 @@ export function openApiSpec() {
       "/api/songs/{id}/fork": {
         post: {
           operationId: "forkSong",
+          security: [{}, ...ACCOUNT_AUTH],
           summary: "Copy a song with changes",
           description:
             "Send only what differs - a fork changing one line does not restate the other three. The copy keeps a link back to its parent. Null clears title, author or intent; unchanged inherited patterns retain compatibility with earlier publication limits.",
@@ -210,10 +215,10 @@ export function openApiSpec() {
         delete: { operationId: "signOut", summary: "Revoke the current browser session", tags:["identity"], responses:{"200":{description:"Signed out"},"403":{description:"Cross-origin request refused"}} },
       },
       "/api/keys/{id}": {
-        delete: {operationId:"revokeKey",summary:"Revoke one of your API keys; retain song ownership",tags:["identity"],parameters:[{name:"id",in:"path",required:true,schema:{type:"string"}}],responses:{"200":{description:"Revoked"},"401":{description:"Not signed in"},"404":{description:"No such key on this account"}}},
+        delete: {operationId:"revokeKey",security:ACCOUNT_AUTH,summary:"Revoke one of your API keys; retain song ownership",tags:["identity"],parameters:[{name:"id",in:"path",required:true,schema:{type:"string"}}],responses:{"200":{description:"Revoked"},"401":{description:"Not signed in"},"404":{description:"No such key on this account"}}},
       },
       "/api/keys": {
-        get: {operationId:"listKeys",summary:"List up to 100 account keys without secrets",tags:["identity"],responses:{"200":{description:"Key metadata"},"401":{description:"Not signed in"}}},
+        get: {operationId:"listKeys",security:ACCOUNT_AUTH,summary:"List up to 100 account keys without secrets",tags:["identity"],responses:{"200":{description:"Key metadata"},"401":{description:"Not signed in"}}},
         post: {
           operationId: "requestKey",
           summary: "Get a key, by email",
@@ -241,6 +246,7 @@ export function openApiSpec() {
       "/api/me": {
         get: {
           operationId: "listMySongs",
+          security: ACCOUNT_AUTH,
           summary: "The latest 50 songs this account has published",
           description:
             "Keys and browser sessions share a stable account. Reissuing a key to the same email retains access to prior publications. Anonymous publications cannot be claimed later.",
