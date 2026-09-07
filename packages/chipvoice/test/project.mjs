@@ -164,3 +164,13 @@ for (const settings of [
 console.log(
   "PASS section clipping, held expression, tempo preservation and admission/render consistency",
 );
+
+const authored = projectFromPerformance({...section,endTick:1920,parts:[{...section.parts[0],notes:[{id:'tone',tick:0,endTick:1600,pitch:64,velocity:90}],program:80}]},'snes');
+authored.settings.mix='authored';
+const level = p => { const audio=renderProject(p,{sampleRate:8000}).audio;return Math.sqrt(audio.left.reduce((sum,x)=>sum+x*x,0)/audio.left.length); };
+const normal=level(authored),quiet=structuredClone(authored),muted=structuredClone(authored);
+quiet.source.performance.parts[0].mix={gainDb:-12};muted.source.performance.parts[0].muted=true;
+assert.ok(level(quiet)<normal*.4);assert.ok(level(muted)<1e-8);
+const programExplicit=structuredClone(authored);programExplicit.source.performance.parts[0].notes[0].program=80;
+assert.deepEqual(renderProject(authored,{sampleRate:8000}).audio,renderProject(programExplicit,{sampleRate:8000}).audio);
+console.log('PASS explicit mute/trim with authored mixing and persistent default part instrument');

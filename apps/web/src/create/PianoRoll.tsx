@@ -77,7 +77,9 @@ export default function PianoRoll({
               ),
               pitch,
               velocity,
-              ...(drums ? { drum: pitch } : { program: 80 }),
+              ...(drums
+                ? { drum: pitch }
+                : { program: part.program ?? part.notes[0]?.program ?? 80 }),
             },
           ].sort((a, b) => a.tick - b.tick),
     });
@@ -95,7 +97,7 @@ export default function PianoRoll({
             >
               {Array.from({ length: 9 }, (_, n) => (
                 <option key={n} value={n}>
-                  C{n - 1}–C{n + 1}
+                  {`C${n - 1}–C${n + 1}`}
                 </option>
               ))}
             </select>

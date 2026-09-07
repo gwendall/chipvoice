@@ -62,7 +62,7 @@ try{
   if(width===390||width===1280)await page.screenshot({path:new URL(`${path.split('/').filter(Boolean).join('-')}-${width}.png`,out).pathname,fullPage:true});
  }
  await page.goto(base+'/ja/missing-i18n-page');await page.getByText('このページは見つかりませんでした。',{exact:false}).waitFor();
- await page.goto(base+'/ja/about#credits');assert.equal(await page.locator('.site-header a[href="/ja/lab"]').count(),1);
+ await page.goto(base+'/ja/about#credits');assert.equal(await page.locator('.site-footer a[href="/ja/lab"]').count(),1);
  await page.getByLabel('言語',{exact:true}).selectOption('en');await page.getByLabel('Language',{exact:true}).waitFor();assert.equal(new URL(page.url()).hash,'#credits');assert.equal(new URL(page.url()).pathname,'/about');
  const sitemap=await (await fetch(base+'/sitemap.xml')).text();assert.match(sitemap,/https:\/\/chipvoice.dev\/ja\/about/);assert.match(sitemap,/hreflang="ja"/);
  // A real locally published Japanese song exercises SSR share tags and Satori.

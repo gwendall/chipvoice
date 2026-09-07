@@ -6,6 +6,7 @@ import { Account } from "@/studio/Account";
 import type { Publication, Profile } from "@/lib/projects";
 import { PixelAvatar } from "./avatar";
 import "@/create/style.css";
+import LocalDrafts from "./LocalDrafts";
 export default function Explore({
   handle,
   mine = false,
@@ -152,9 +153,20 @@ export default function Explore({
             {t(mine ? "Explore songs" : "Your library")} →
           </Link>
         </div>
-        {!mine && !handle && <details className="curated-starters"><summary>{t("Original starters")}</summary><p>{t("An original four-part loop, ready for your first remix.")}</p><Link className="small-button" href="/create?starter=orbit">{t("Start with Pocket orbit")} →</Link></details>}
+        {!mine && !handle && (
+          <details className="curated-starters">
+            <summary>{t("Original starters")}</summary>
+            <p>
+              {t("An original four-part loop, ready for your first remix.")}
+            </p>
+            <Link className="small-button" href="/create?starter=orbit">
+              {t("Start with Pocket orbit")} →
+            </Link>
+          </details>
+        )}
         {mine && (
           <>
+            <LocalDrafts />
             <Account />
             {profile && (
               <details>

@@ -180,6 +180,8 @@ export const PERFORMANCE_DATA_SCHEMA = obj(
           name: str(240),
           role: choice("lead", "chord", "bass", "perc"),
           priority: num(-100000, 100000),
+          program: num(0,127,true),
+          muted: bool,
           notes: arr(note, 100000),
           origin: obj({ chip: str(64), voice: str(64) }),
           mix: optional(obj({ gainDb: num(-96, 12), importance: num(0, 1) })),

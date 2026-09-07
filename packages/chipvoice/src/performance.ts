@@ -27,6 +27,10 @@ export interface Performance {
   midi?: {format: number; events: {tick: number; track: number; order: number; status: number; data: number[]}[]};
 }
 export interface PerformancePart {
+  /** Explicit listening/edit controls, independent of automatic balance. */
+  muted?: boolean;
+  /** Default General MIDI program for newly authored notes. */
+  program?: number;
   /** Source hardware controls, when independently identified by the importer. */
   origin?: MixOrigin;
   mix?: PartMix;
@@ -94,6 +98,7 @@ export function validatePerformance(score: Performance): void {
   for (const part of score.parts) {
     if (!part.id || ids.has(part.id) || !['lead','chord','bass','perc'].includes(part.role) || !Number.isFinite(part.priority)) throw new Error('Invalid or duplicate part');
     if(part.origin&&(typeof part.origin.chip!=='string'||typeof part.origin.voice!=='string'||part.origin.chip.length>64||part.origin.voice.length>64))throw new Error('Invalid mix origin');
+    if(part.muted!==undefined&&typeof part.muted!=='boolean'||part.program!==undefined&&(!int(part.program)||part.program>127))throw new Error('Invalid part controls');
     if(part.mix&&(part.mix.gainDb!==undefined&&(!Number.isFinite(part.mix.gainDb)||part.mix.gainDb< -96||part.mix.gainDb>12)||part.mix.importance!==undefined&&(!Number.isFinite(part.mix.importance)||part.mix.importance<0||part.mix.importance>1)))throw new Error('Invalid part mix');
     if(part.portableTimbres){
       if(Object.keys(part.portableTimbres).length>128)throw new Error('Too many portable timbres');
@@ -166,14 +171,15 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   const paletteCache = new Map<PerformancePart,Map<string,{inst:Instrument;drum:typeof instruments.perc['K'];explicit:boolean;portable?:PortableTimbre;pitchOffset:number}>>();
   const resolveInstrument = (part:PerformancePart,note:PerformanceNote) => {
     let cache=paletteCache.get(part);if(!cache){cache=new Map();paletteCache.set(part,cache);}
-    const key=`${note.program??"default"}:${note.drum??-1}`;const cached=cache.get(key);if(cached)return cached;
+    const programId=note.program??part.program;
+    const key=`${programId??"default"}:${note.drum??-1}`;const cached=cache.get(key);if(cached)return cached;
     const percussion=isPercussion(part,note);
     const kitKey=note.drum===35||note.drum===36?'K':note.drum===38||note.drum===40?'S':note.drum===46?'O':'H';
-    const drum=instruments.perc[kitKey],explicit=part.instruments?.[`${chip.spec.id}:${note.program}`]??part.instruments?.[chip.spec.id];
-    const sourceKey=part.origin?`${part.origin.chip}:${note.program}`:undefined;
+    const drum=instruments.perc[kitKey],explicit=part.instruments?.[`${chip.spec.id}:${programId}`]??part.instruments?.[chip.spec.id];
+    const sourceKey=part.origin?`${part.origin.chip}:${programId}`:undefined;
     const portable=!explicit&&!percussion&&sourceKey?part.portableTimbres?.[sourceKey]:undefined;
     // Native patch IDs are local identifiers, never General MIDI programs.
-    const program=portable?.program??(part.origin?undefined:note.program);
+    const program=portable?.program??(part.origin?undefined:programId);
     if(portable&&portable.confidence<.9)loss(part,'timbre-ambiguous','Source pitch was not stable across probes; the register pitch is retained');
     const base=explicit??(percussion?drum.instrument:performanceInstrument(chip.spec.id,part.role,program));
     // Wide pulses retain the fundamental of measured native tones; the
@@ -205,7 +211,7 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   const referenceCache=new Map<Instrument,Map<number,Instrument>>();
   const referenceInstrument=(part:PerformancePart,note:PerformanceNote)=>{
     if(!part.origin)return undefined;
-    const base=part.instruments?.[`${part.origin.chip}:${note.program}`]??part.instruments?.[part.origin.chip];
+    const base=part.instruments?.[`${part.origin.chip}:${note.program??part.program}`]??part.instruments?.[part.origin.chip];
     if(!base||part.origin.chip!=='2a03')return base;
     const duty=note.expression?.find(p=>p.duty!==undefined)?.duty??(typeof base.duty==='number'?base.duty:2);
     let cache=referenceCache.get(base);if(!cache){cache=new Map();referenceCache.set(base,cache);}let sound=cache.get(duty);if(!sound){sound={...base,duty};cache.set(duty,sound);}return sound;
@@ -242,14 +248,16 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   const mixing=options.mix===false?null:planMix(chip,prepared.map(({part,note,voice,sound,frames,until})=>({part:part.id,role:part.role,voice,instrument:sound.inst,pitch:note.pitch+sound.pitchOffset+(isPercussion(part,note)?0:transpose),sourcePitch:note.pitch,sourceRms:sound.portable?.rms,start:time(note.tick),end:time(note.endTick),activity:mixActivity(frames,until,chip.spec.clockHz),origin:part.origin,referenceInstrument:referenceInstrument(part,note),mix:part.mix})),options.mix);
   for(let index=0;index<prepared.length;index++){
     const {frames,voice,note,part}=prepared[index];
+    const authoredGain = mixing ? 1 : 10**((part.mix?.gainDb??0)/20);
     for(const frame of frames){
+      if(!mixing)frame.volume *= authoredGain;
       if(mixing)frame.volume=mixing.level(index,frame.volume,frame.at/chip.spec.clockHz,frame.period,frame.freq>0?69+12*Math.log2(frame.freq/440):note.pitch+(isPercussion(part,note)?0:transpose));
       if(chip.spec.id!=='snes'&&!(mixing&&chip.spec.id==='md'&&voice.startsWith('fm')))frame.volume=Math.round(frame.volume);
     }
   }
   if(mixing)balanceMixFrames(chip,prepared,mixing.report);
   for(const {part,voice,frames,until} of prepared){
-    if(selected&&!selected.has(part.id)||frames.every(frame=>frame.volume<=0))continue;
+    if(part.muted||selected&&!selected.has(part.id)||frames.every(frame=>frame.volume<=0))continue;
     bus.add(driver.note(voice,frames));bus.add(driver.noteOff(voice,until));
   }
   if (!options.allowLoss && losses.some(l => l.kind === 'voice-omitted')) throw new Error('Arrangement exceeds hardware voices; opt into allowLoss and inspect losses');

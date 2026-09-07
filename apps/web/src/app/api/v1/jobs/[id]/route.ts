@@ -29,7 +29,7 @@ export async function DELETE(
     await (
       await db()
     ).execute({
-      sql: "update project_jobs set status='cancelled' where id=? and status in ('queued','rendering')",
+      sql: "update project_jobs set status=case when status='rendering' then 'cancelling' else 'cancelled' end where id=? and status in ('queued','rendering')",
       args: [id],
     });
     return { ok: true };

@@ -93,6 +93,35 @@ try {
     JSON.stringify(steal),
   );
 
+  const projects = await page.evaluate(async () => {
+    window.chip.stop();
+    const {ProjectPlayer, projectFromScore, projectFromPerformance, prepareProject} = await import('./node_modules/chipvoice/dist/index.js');
+    const score=projectFromScore({bpm:120,patterns:[{lead:'C4 . E4 . G4 . E4 .',bass:'. . . . . . . .',chord:'. . . . . . . .',perc:'. . . . . . . .',chordShape:[[0,4,7]]}],order:[0]},{title:'Fresh score'});
+    const context=new AudioContext(),player=new ProjectPlayer({context});
+    const legacy=await player.load(score);await player.play();
+    const performance=projectFromPerformance({version:1,title:'Fresh performance',ticksPerBeat:480,endTick:960,tempos:[{tick:0,microsecondsPerBeat:500000}],parts:[{id:'lead',name:'Lead',role:'lead',priority:1,notes:[{id:'one',tick:0,endTick:900,pitch:64,velocity:90,program:80}]}],notices:[]});
+    const complete=await player.load(performance);
+    const replaced=await player.update({chip:'md'});
+    const obsolete=player.update({chip:'snes'}),latest=player.update({chip:'dmg'});
+    const outcomes=await Promise.all([obsolete,latest]);
+    const failed=await player.load({...performance,settings:{chip:'invalid'}});
+    const preserved=player.playing && typeof player.prepared.engineVersion==='string';
+    const abort=new AbortController();abort.abort();
+    const realResume=context.resume.bind(context);let resumed;
+    context.resume=()=>new Promise(resolve=>{resumed=resolve;});
+    player.pause();const pendingPlay=player.play();player.pause();resumed();await pendingPlay;
+    const pauseWins=!player.playing;context.resume=realResume;await player.play();
+    const cancelled=await prepareProject(performance,{signal:abort.signal}).then(()=>false,e=>e.name==='AbortError');
+    player.seek(.4); await new Promise(r=>setTimeout(r,150));
+    const seek=player.position>.3 && player.position<.8;
+    const analyser=context.createAnalyser();player.output.connect(analyser);const samples=new Float32Array(analyser.fftSize);
+    await new Promise(r=>setTimeout(r,120));analyser.getFloatTimeDomainData(samples);const peak=Math.max(...samples.map(Math.abs));
+    player.dispose();const callerOwned=context.state!=='closed';await context.close();
+    const owned=new ProjectPlayer();owned.dispose();await new Promise(r=>setTimeout(r,20));
+    return {legacy,complete,replaced,outcomes,failed,preserved,cancelled,seek,peak,callerOwned,pauseWins,ownClosed:owned.context.state==='closed'};
+  });
+  check('installed project facade preserves playback, aborts superseded work and owns only its context', projects.legacy && projects.complete && projects.replaced && projects.outcomes[0]===false && projects.outcomes[1]===true && projects.failed===false && projects.preserved && projects.cancelled && projects.seek && projects.peak>.001 && projects.callerOwned && projects.pauseWins && projects.ownClosed, JSON.stringify(projects));
+
   check('no errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 } finally {
   await browser.close();

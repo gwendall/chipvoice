@@ -48,6 +48,7 @@ Project purpose, methods and decisions live beside the code and change with it.
 
 ## Evaluations
 
+- [Creation and publication — 2026-09-08](evals/CREATION-2026-09-08.md)
 - [Native song fidelity — 2026-09-07](evals/NATIVE-SONGS-2026-09-07.md)
 - [Zelda Overworld selection regression](evals/ZELDA-SELECTION-2026-09-07.md)
 - [Complete arrangements — 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md)

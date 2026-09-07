@@ -565,3 +565,21 @@
 .piano-row button {
   height: 22px;
 }
+
+.local-drafts {
+  margin: 24px 0;
+}
+.draft-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.draft-list a {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) { .note-editor > .part-tools:first-child > input { flex-basis: 100%; width: 100%; } }
+
+.published-listen h1, .community-header > div { overflow-wrap: anywhere; min-width: 0; }
+.published-listen audio { width: 480px; max-width: 100%; }

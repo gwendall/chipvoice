@@ -431,7 +431,7 @@ export async function withdrawProject(id: string, userId: string) {
   if (!r.rows.length)
     throw new ProjectHttpError(404, "not_found", "Publication not found");
   await client.execute({
-    sql: "update project_jobs set status='cancelled' where project_id=? and status in ('queued','rendering')",
+    sql: "update project_jobs set status=case when status='rendering' then 'cancelling' else 'cancelled' end where project_id=? and status in ('queued','rendering')",
     args: [id],
   });
 }

@@ -116,12 +116,6 @@ export function renderProject(
           parts: options.parts,
         });
   if (options.seconds !== undefined) {
-    if (
-      !Number.isFinite(options.seconds) ||
-      options.seconds <= 0 ||
-      options.seconds > 600
-    )
-      throw Error("Invalid render duration");
     plan.seconds = Math.min(plan.seconds, options.seconds);
     plan.loopStartSeconds = Math.min(
       plan.loopStartSeconds,

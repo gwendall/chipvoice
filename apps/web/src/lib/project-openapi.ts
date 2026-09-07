@@ -9,9 +9,43 @@ const id = {
 const auth = [{ bearerAuth: [] }, { browserSession: [] }];
 const response = {
   type: "object",
-  required: ["id", "project", "visibility"],
+  required: [
+    "id",
+    "parentId",
+    "rootId",
+    "title",
+    "chip",
+    "tags",
+    "visibility",
+    "createdAt",
+    "contentHash",
+    "profile",
+    "favourites",
+    "favourited",
+    "owned",
+  ],
   properties: {
     id: { type: "string" },
+    title: { type: "string" },
+    chip: { enum: ["2a03", "dmg", "md", "snes", "c64"] },
+    tags: { type: "array", items: { type: "string" } },
+    createdAt: { type: "integer", description: "Unix milliseconds" },
+    favourites: { type: "integer" },
+    favourited: { type: "boolean" },
+    owned: { type: "boolean" },
+    renditions: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["id", "kind", "status", "engine"],
+        properties: {
+          id: { type: "string" },
+          kind: { enum: ["preview", "full"] },
+          status: { type: "string" },
+          engine: { type: "string" },
+        },
+      },
+    },
     parentId: { type: ["string", "null"] },
     rootId: { type: "string" },
     project: PROJECT_SCHEMA,
@@ -29,7 +63,78 @@ const response = {
   },
   additionalProperties: true,
 };
+const jobResponse = {
+  type: "object",
+  required: [
+    "id",
+    "projectId",
+    "kind",
+    "status",
+    "engine",
+    "progress",
+    "bytes",
+    "error",
+    "audio",
+  ],
+  properties: {
+    id: { type: "string" },
+    projectId: { type: "string" },
+    kind: { enum: ["preview", "full"] },
+    status: {
+      enum: [
+        "queued",
+        "rendering",
+        "cancelling",
+        "cancelled",
+        "ready",
+        "failed",
+      ],
+    },
+    engine: { type: "string", description: "SHA-256 of the bundled renderer" },
+    progress: { type: "number", minimum: 0, maximum: 1 },
+    bytes: { type: "integer" },
+    error: { type: ["string", "null"] },
+    audio: { type: ["string", "null"] },
+  },
+};
+const issues = {
+  type: "array",
+  items: {
+    type: "object",
+    required: ["path", "code", "message", "level"],
+    properties: {
+      path: { type: "string" },
+      code: { type: "string" },
+      message: { type: "string" },
+      level: { enum: ["error", "warning"] },
+    },
+  },
+};
+const validation = {
+  type: "object",
+  required: ["ok", "issues"],
+  properties: { ok: { type: "boolean" }, issues },
+};
+const successSchemas: Record<string, unknown> = {
+  validateProject: validation,
+  listProjects: {
+    type: "object",
+    required: ["items", "cursor"],
+    properties: {
+      items: { type: "array", items: response },
+      cursor: { type: ["string", "null"] },
+    },
+  },
+  getProject: response,
+  favouriteProject: response,
+  unfavouriteProject: response,
+  getProfile: response.properties.profile,
+  editProfile: response.properties.profile,
+  getProjectJob: jobResponse,
+};
 const errors = {
+  "400": { description: "Malformed request or cursor" },
+  "409": { description: "Conflicting request key, handle or audio state" },
   "401": { description: "Sign in required" },
   "404": { description: "Not found or inaccessible" },
   "413": { description: "Body exceeds 4 MB" },
@@ -47,7 +152,19 @@ const operation = (
   operationId,
   summary,
   tags: ["projects"],
-  responses: { "200": { description: "Success" }, ...errors },
+  responses: {
+    "200": {
+      description: "Success",
+      content: json(
+        successSchemas[operationId] ?? {
+          type: "object",
+          required: ["ok"],
+          properties: { ok: { const: true } },
+        },
+      ),
+    },
+    ...errors,
+  },
   ...extra,
 });
 export const projectPaths = {
@@ -55,7 +172,15 @@ export const projectPaths = {
     post: operation(
       "validateProject",
       "Validate a complete project without saving",
-      { requestBody: { required: true, content: json(PROJECT_SCHEMA) } },
+      {
+        requestBody: { required: true, content: json(PROJECT_SCHEMA) },
+        responses: {
+          "200": { description: "Valid", content: json(validation) },
+          "422": { description: "Invalid project", content: json(validation) },
+          "400": errors["400"],
+          "413": errors["413"],
+        },
+      },
     ),
   },
   "/api/v1/projects": {
@@ -112,7 +237,6 @@ export const projectPaths = {
           description: "Published or identical retry",
           content: json(response),
         },
-        "409": { description: "Request key belongs to another document" },
         ...errors,
       },
     }),
@@ -172,8 +296,14 @@ export const projectPaths = {
           }),
         },
         responses: {
-          "200": { description: "Existing ready rendition" },
-          "202": { description: "Queued or rendering job" },
+          "200": {
+            description: "Existing ready rendition",
+            content: json(jobResponse),
+          },
+          "202": {
+            description: "Queued or rendering job",
+            content: json(jobResponse),
+          },
           ...errors,
         },
       },
@@ -195,7 +325,18 @@ export const projectPaths = {
     get: operation(
       "downloadProjectAudio",
       "Download ready WAV after checking publication access",
-      { parameters: [id] },
+      {
+        parameters: [id],
+        responses: {
+          "200": {
+            description: "Pinned WAV",
+            content: {
+              "audio/wav": { schema: { type: "string", format: "binary" } },
+            },
+          },
+          ...errors,
+        },
+      },
     ),
   },
   "/api/v1/profile": {

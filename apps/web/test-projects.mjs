@@ -189,6 +189,74 @@ try {
     () => api.getProjectJob(job.id, bob.userId),
     (error) => error.status === 404,
   );
+  const long = structuredClone(tiny);
+  long.source.performance.endTick = 172800;
+  long.source.performance.parts = [
+    {
+      id: "tone",
+      name: "Tone",
+      role: "lead",
+      priority: 1,
+      notes: [
+        {
+          id: "hold",
+          tick: 0,
+          endTick: 172799,
+          pitch: 64,
+          velocity: 90,
+          program: 80,
+        },
+      ],
+    },
+  ];
+  const cancelSong = await api.publishProject(alice.userId, {
+    project: long,
+    visibility: "private",
+    requestKey: "project-test-cancel-worker",
+  });
+  const running = await api.createProjectJob(
+    cancelSong.id,
+    alice.userId,
+    "full",
+  );
+  const blocked = await api.createProjectJob(
+    cancelSong.id,
+    alice.userId,
+    "preview",
+  );
+  const rendering = api.runProjectJob(running.id);
+  for (let i = 0; i < 100; i++) {
+    if (
+      (await api.getProjectJob(running.id, alice.userId)).status === "rendering"
+    )
+      break;
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  await client.execute({
+    sql: "update project_jobs set status='cancelling' where id=? and status='rendering'",
+    args: [running.id],
+  });
+  await api.runProjectJob(blocked.id);
+  assert.equal(
+    (await api.getProjectJob(blocked.id, alice.userId)).status,
+    "queued",
+    "cancellation holds the global lease",
+  );
+  await rendering;
+  assert.equal(
+    (await api.getProjectJob(running.id, alice.userId)).status,
+    "cancelled",
+  );
+  assert.equal(
+    (
+      await client.execute({
+        sql: "select count(*) n from project_audio where job_id=?",
+        args: [running.id],
+      })
+    ).rows[0].n,
+    0,
+  );
+  await api.withdrawProject(cancelSong.id, alice.userId);
   await api.withdrawProject(a.id, alice.userId);
   assert.equal(await api.getProject(a.id), null);
   assert.ok(await api.getProject(fork.id));

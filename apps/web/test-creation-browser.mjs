@@ -99,12 +99,31 @@ try {
   await button("Pause").click();
   await button("Code").click();
   await button("JavaScript").click();
+  await page.getByRole("spinbutton", { name: "Seed", exact: true }).fill("123");
   await button("Apply changes").click();
   await waitNotice("Applied");
   const generated = await source();
   await button("Apply changes").click();
   await button("Apply changes").waitFor();
   assert.deepEqual(await source(), generated);
+  const archivedCode = await page
+    .getByRole("textbox", { name: "JavaScript generator", exact: true })
+    .inputValue();
+  await page.reload({ waitUntil: "networkidle" });
+  await button("Code").click();
+  await button("JavaScript").click();
+  assert.equal(
+    await page
+      .getByRole("textbox", { name: "JavaScript generator", exact: true })
+      .inputValue(),
+    archivedCode,
+  );
+  assert.equal(
+    await page
+      .getByRole("spinbutton", { name: "Seed", exact: true })
+      .inputValue(),
+    "123",
+  );
   await page
     .getByRole("textbox", { name: "JavaScript generator", exact: true })
     .fill("while (true) {}");
@@ -128,6 +147,23 @@ try {
     (await source()).performance.endTick,
     generated.performance.endTick,
   );
+  const oldDraft = await page.evaluate(() =>
+    localStorage.getItem("chipvoice.project.v1:active"),
+  );
+  if (process.env.CREATION_MIDI) {
+    await page
+      .locator("input[type=file]")
+      .setInputFiles(process.env.CREATION_MIDI);
+    await waitNotice("Imported locally");
+    const imported = await source();
+    assert.ok(imported.performance.parts.length > 1);
+    evidence.midiParts = imported.performance.parts.length;
+    evidence.midiNotes = imported.performance.parts.reduce(
+      (sum, p) => sum + p.notes.length,
+      0,
+    );
+    await page.screenshot({ path: `${out}/midi-import.png`, fullPage: true });
+  }
   const short = api.starterProject();
   short.title = "E2E pocket orbit";
   short.source.performance.endTick = 1920;
@@ -135,14 +171,20 @@ try {
     p.notes = p.notes
       .filter((n) => n.tick < 1920)
       .map((n) => ({ ...n, endTick: Math.min(1920, n.endTick) }));
-  await page
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "complete.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(short)),
-    });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "complete.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(short)),
+  });
   await waitNotice("Imported locally");
+  assert.equal(
+    await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)).generator.seed,
+      oldDraft,
+    ),
+    123,
+    "Import cannot overwrite the older named draft",
+  );
   const pending = page.waitForEvent("download", { timeout: 120000 });
   await button("Download WAV").click();
   await (await pending).saveAs(`${out}/local.wav`);
@@ -203,12 +245,31 @@ try {
     short.title,
   );
   await visitor.screenshot({ path: `${out}/mobile.png`, fullPage: true });
+  await visitor
+    .getByRole("textbox", { name: "Song title", exact: true })
+    .fill("Recovered remix");
+  await visitor.waitForFunction(id=>JSON.parse(localStorage.getItem(`chipvoice.project.v1:${id}`)??"null")?.title==="Recovered remix",id);
+  await visitor.reload({ waitUntil: "networkidle" });
+  await visitor
+    .getByRole("button", { name: "Open / remix this project" })
+    .click();
+  assert.equal(
+    await visitor
+      .getByRole("textbox", { name: "Song title", exact: true })
+      .inputValue(),
+    "Recovered remix",
+  );
   await visitor.goto(`${base}/ja/create`, {
     waitUntil: "networkidle",
     timeout: 120000,
   });
   assert.equal(await visitor.locator("html").getAttribute("lang"), "ja");
   await visitor.screenshot({ path: `${out}/mobile-ja.png`, fullPage: true });
+  for (const width of [320,390,768,1440]) {
+    await visitor.setViewportSize({width,height:900});
+    assert.equal(await visitor.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`workspace overflow at ${width}`);
+    if(width===320||width===1440)await visitor.screenshot({path:`${out}/japanese-${width}.png`,fullPage:true});
+  }
   await fresh.close();
   const r = await context.request.put(`${base}/api/v1/profile`, {
     data: {

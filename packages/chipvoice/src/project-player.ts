@@ -102,6 +102,7 @@ export class ProjectPlayer {
   private job: AbortController | null = null;
   private generation = 0;
   private disposed = false;
+  private playGeneration = 0;
   private url: string | null = null;
   private wanted: MusicProject | null = null;
   private wantedOptions: Omit<PrepareProjectOptions, "signal"> = {};
@@ -223,8 +224,10 @@ export class ProjectPlayer {
   }
   async play() {
     if (this.disposed) throw Error("Player is disposed");
+    const intent = ++this.playGeneration;
     try {
       await this.context.resume();
+      if (this.disposed || intent !== this.playGeneration) return;
       if (!this.transport.playing) await this.transport.toggle();
     } catch (error) {
       this.error =
@@ -234,6 +237,7 @@ export class ProjectPlayer {
     }
   }
   pause() {
+    this.playGeneration++;
     this.transport.pause();
   }
   stop() {
@@ -262,6 +266,7 @@ export class ProjectPlayer {
   dispose() {
     if (this.disposed) return;
     this.disposed = true;
+    this.playGeneration++;
     this.cancel();
     this.transport.dispose();
     if (this.url) URL.revokeObjectURL(this.url);

@@ -2,6 +2,9 @@
 
 <p align="center"><a href="CREATION-API-REVIEW-2026-09-07.md">English</a> &bull; <a href="CREATION-API-REVIEW-2026-09-07_ja.md">日本語</a></p>
 
+Historical pre-implementation audit. The accepted work is now described in [Projects, creation and publication](CREATION.md); the proposed status below records the state at review time.
+
+
 Review of `a0e86918e605d6818a806fbd308b8dad4338fa24`, SDK **0.16.3**. This is a proposed implementation plan, not a description of newly shipped features. It follows the portable-timbre fixes in PR #44; outstanding human listening and real-device acceptance remain open.
 
 ## Verdict

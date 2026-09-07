@@ -28,7 +28,12 @@ import { starterProject, GENERATOR_EXAMPLE } from "./starter";
 import { runGenerator } from "./generator";
 import PianoRoll from "./PianoRoll";
 import "./style.css";
-const DRAFT = "chipvoice.project.v1";
+import {
+  DRAFT_ROOT as DRAFT,
+  newDraftKey,
+  readDraft,
+  isDraftKey,
+} from "./drafts";
 const stamp = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 export default function Creator({
@@ -96,6 +101,7 @@ export default function Creator({
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
+  const draftKey = useRef<string | null>(null);
   projectRef.current = project;
   const performance =
       project.source.kind === "score" ? null : project.source.performance,
@@ -131,7 +137,10 @@ export default function Creator({
     });
   };
   const ensurePlayer = () => {
-    if (!player.current) player.current = new ProjectPlayer({ onChange: sync });
+    if (!player.current) {
+      player.current = new ProjectPlayer({ onChange: sync });
+      player.current.loop = loop;
+    }
     return player.current;
   };
   const edit = (next: MusicProject, remember = true) => {
@@ -174,14 +183,32 @@ export default function Creator({
     });
   };
   const setting = (settings: Partial<MusicProject["settings"]>) =>
-    edit({ ...project, settings: { ...project.settings, ...settings } });
+    edit({ ...project, settings: { ...project.settings, ...settings, ...(settings.tempoScale !== undefined ? {tempoScale: Math.max(0.1, Math.min(10, settings.tempoScale))} : {}) } });
   useEffect(() => {
     alive.current = true;
     let cancelled = false;
     void (async () => {
       try {
+        const requestedKey = new URLSearchParams(location.search).get("draft");
+        const requestedDraft =
+          requestedKey && isDraftKey(requestedKey) ? requestedKey : null;
+        draftKey.current = publication
+          ? `${DRAFT}:${publication.id}`
+          : (requestedDraft ??
+            localStorage.getItem(`${DRAFT}:active`) ??
+            newDraftKey());
+        if (requestedDraft && !initial) {
+          const saved = readDraft(requestedDraft);
+          if (saved) setProject(saved);
+          return;
+        }
+        if (initial && publication) {
+          const saved = localStorage.getItem(`${DRAFT}:${publication.id}`);
+          if (saved) setProject(parseProject(saved));
+        }
         const piece = new URLSearchParams(location.search).get("piece");
         if (!initial && piece && ["mario", "zelda", "sonic"].includes(piece)) {
+          draftKey.current = newDraftKey();
           setBusy(true);
           const r = await fetch(`/arrangement-data/${piece}.json`);
           if (!r.ok) throw Error("Source arrangement unavailable");
@@ -199,13 +226,28 @@ export default function Creator({
             });
             setNotice("Editing the source parts creates an adaptation.");
           }
-        } else if (!initial && new URLSearchParams(location.search).get("starter") === "orbit") {
+        } else if (
+          !initial &&
+          new URLSearchParams(location.search).get("starter") === "orbit"
+        ) {
+          draftKey.current = newDraftKey();
           setProject(starterProject());
         } else if (!initial) {
-          const saved = localStorage.getItem(DRAFT);
-          if (saved) setProject(parseProject(saved));
+          const saved = readDraft(draftKey.current!) ?? readDraft(DRAFT);
+          if (saved) setProject(saved);
         }
       } catch {
+        try {
+          const raw =
+            localStorage.getItem(draftKey.current ?? DRAFT) ??
+            localStorage.getItem(DRAFT);
+          if (raw)
+            localStorage.setItem(
+              `${DRAFT}:recovery:${crypto.randomUUID()}`,
+              raw,
+            );
+        } catch {}
+        draftKey.current = newDraftKey();
         if (!cancelled)
           setNotice("Could not restore this project. Your starter is ready.");
       } finally {
@@ -229,17 +271,19 @@ export default function Creator({
     try {
       const { generator, ...base } = project;
       const clean = generator ? project : base;
-      localStorage.setItem(
-        publication ? `${DRAFT}:${publication.id}` : DRAFT,
-        JSON.stringify(clean),
-      );
+      const key = draftKey.current ?? DRAFT;
+      localStorage.setItem(key, JSON.stringify(clean));
+      if (key === DRAFT || key.startsWith(`${DRAFT}:draft:`)) {
+        localStorage.setItem(DRAFT, JSON.stringify(clean));
+        localStorage.setItem(`${DRAFT}:active`, key);
+      }
       setCode(JSON.stringify(clean, null, 2));
     } catch {
       setNotice(
         "Could not save the local draft. Download the project to keep it.",
       );
     }
-  }, [project, ready, publication]);
+  }, [project, ready]);
   useEffect(() => {
     if (!ready || !player.current) return;
     const timer = setTimeout(() => {
@@ -250,7 +294,7 @@ export default function Creator({
       }
     }, 180);
     return () => clearTimeout(timer);
-  }, [project, solo, ready]);
+  }, [project.source, project.settings, solo, ready]);
   useEffect(() => {
     if (!active) player.current?.pause();
   }, [active]);
@@ -269,7 +313,8 @@ export default function Creator({
     return () => cancelAnimationFrame(frame);
   }, [audio.playing]);
   useEffect(() => {
-    if (!job || !["queued", "rendering"].includes(job.status)) return;
+    if (!job || !["queued", "rendering", "cancelling"].includes(job.status))
+      return;
     const abort = new AbortController();
     const timer = setTimeout(() => {
       void fetch(`/api/v1/jobs/${job.id}`, { signal: abort.signal })
@@ -290,6 +335,12 @@ export default function Creator({
       abort.abort();
     };
   }, [job]);
+  useEffect(() => {
+    if (project.generator) {
+      setGeneratorCode(project.generator.code);
+      setSeed(project.generator.seed);
+    }
+  }, [project.generator]);
   const toggle = async () => {
     try {
       const p = ensurePlayer();
@@ -298,7 +349,7 @@ export default function Creator({
         return;
       }
       await p.play();
-      if (loaded.current !== project) {
+      if (!loaded.current || loaded.current.source !== project.source || loaded.current.settings !== project.settings) {
         loaded.current = project;
         await p.load(project, { parts: solo ? [solo] : undefined });
       }
@@ -352,6 +403,8 @@ export default function Creator({
         next.settings.allowLoss = true;
       } else next = parseProject(new TextDecoder().decode(bytes));
       if (ticket === importGeneration.current && alive.current) {
+        draftKey.current = newDraftKey();
+        setPublished(null);
         edit(next);
         setBar(0);
         setSolo(null);
@@ -460,6 +513,7 @@ export default function Creator({
     }
     positionTick = lo;
   }
+  if (!ready) return <>{!embedded && <SiteHeader active="create"/>}<main className="demo-main creation"><p role="status">{t("Opening this song…")}</p></main>{!embedded && <SiteFooter/>}</>;
   return (
     <>
       {!embedded && <SiteHeader active="create" />}
@@ -480,6 +534,7 @@ export default function Creator({
           <Button
             disabled={busy}
             onClick={() => {
+              draftKey.current = newDraftKey();
               edit(starterProject());
               setPublished(null);
               setBar(0);
@@ -542,8 +597,8 @@ export default function Creator({
               id="create-tempo"
               label={t("Tempo")}
               unit={t("BPM")}
-              min={40}
-              max={300}
+              min={Math.max(1, Math.min(40, Math.ceil(bpm)), Math.ceil(bpm * 0.1))}
+              max={Math.max(Math.ceil(bpm), Math.min(300, Math.floor(bpm * 10)))}
               value={Math.round(bpm * (project.settings.tempoScale ?? 1))}
               onChange={(value) => setting({ tempoScale: value / bpm })}
             />
@@ -703,14 +758,11 @@ export default function Creator({
                           onClick={() =>
                             editPart({
                               ...part,
-                              mix: {
-                                ...part.mix,
-                                importance: part.mix?.importance === 0 ? 1 : 0,
-                              },
+                              muted: !part.muted,
                             })
                           }
                         >
-                          {t(part.mix?.importance === 0 ? "Unmute" : "Mute")}
+                          {t(part.muted ? "Unmute" : "Mute")}
                         </Button>
                       </div>
                       <div className="part-tools">
@@ -718,11 +770,13 @@ export default function Creator({
                           {t("Timbre")}
                           <select
                             aria-label={t("Timbre")}
-                            value={part.notes[0]?.program ?? 80}
+                            value={part.program ?? part.notes[0]?.program ?? 80}
                             onChange={(e) => {
                               const program = Number(e.target.value);
                               editPart({
                                 ...part,
+                                program,
+                                origin: undefined,
                                 instruments: undefined,
                                 portableTimbres: undefined,
                                 notes: part.notes.map((n) => ({
@@ -805,6 +859,7 @@ export default function Creator({
                         <summary>{t("Advanced part controls")}</summary>
                         <RangeControl
                           id="part-importance"
+                          disabled={project.settings.mix === "authored"}
                           label={t("Mix importance")}
                           unit="%"
                           min={0}
@@ -1049,6 +1104,7 @@ export default function Creator({
               {t("Tags")}
               <input
                 placeholder={t("original, ambient, game")}
+                key={JSON.stringify(project.tags ?? [])}
                 defaultValue={(project.tags ?? []).join(", ")}
                 onBlur={(e) =>
                   edit({
@@ -1084,8 +1140,8 @@ export default function Creator({
                 <option value="reserved">
                   {t("No reuse licence granted")}
                 </option>
-                <option value="CC0-1.0">CC0 1.0</option>
-                <option value="CC-BY-4.0">CC BY 4.0</option>
+                <option value="CC0-1.0">{t("CC0 1.0")}</option>
+                <option value="CC-BY-4.0">{t("CC BY 4.0")}</option>
               </select>
             </label>
             <label>
@@ -1141,12 +1197,12 @@ export default function Creator({
                 {job.audio && (
                   <a href={job.audio}>{t("Download pinned audio")}</a>
                 )}
-                {["queued", "rendering"].includes(job.status) && (
+                {["queued", "rendering", "cancelling"].includes(job.status) && (
                   <Button
                     onClick={() =>
                       void fetch(`/api/v1/jobs/${job.id}`, {
                         method: "DELETE",
-                      }).then(() => setJob({ ...job, status: "cancelled" }))
+                      }).then(() => setJob({ ...job, status: "cancelling" }))
                     }
                   >
                     {t("Cancel")}

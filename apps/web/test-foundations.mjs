@@ -66,7 +66,7 @@ try {
   await db1.execute({sql:'update sessions set expires_at=0 where hash=?',args:[await api.hashKey(expired)]});
   assert.equal((await api.identify(new Request('https://chipvoice.test/api/me',{headers:{cookie:`${api.SESSION_COOKIE}=${expired}`}}))).userId,null);
   const fresh = createClient({url:`file:${join(directory,'fresh.db')}`});
-  await api.migrate(fresh); assert.equal((await fresh.execute('select * from schema_migrations')).rows.length,3); fresh.close();
+  await api.migrate(fresh); assert.equal((await fresh.execute('select * from schema_migrations')).rows.length,4); fresh.close();
   const broken = createClient({url:`file:${join(directory,'broken.db')}`});
   await broken.execute('create table users (incompatible text)');
   await assert.rejects(api.migrate(broken),/already exists/);

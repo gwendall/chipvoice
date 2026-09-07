@@ -62,13 +62,13 @@ export async function getProjectJob(id: string, viewer: string | null) {
   ).execute({ sql: "select * from project_jobs where id=?", args: [id] });
   const row = result.rows[0];
   if (
-    row?.status === "rendering" &&
+    ["rendering", "cancelling"].includes(String(row?.status)) &&
     Number(row.started_at) < Date.now() - 270000
   ) {
     await (
       await db()
     ).execute({
-      sql: "update project_jobs set status='failed',error='Render interrupted; publish a new revision to retry' where id=? and status='rendering'",
+      sql: "update project_jobs set status='failed',error='Render interrupted; publish a new revision to retry' where id=? and status in ('rendering','cancelling')",
       args: [id],
     });
     row.status = "failed";
@@ -83,11 +83,11 @@ export async function runProjectJob(id: string) {
     now = Date.now();
   // Expired leases fail visibly instead of producing a different engine's audio.
   await client.execute({
-    sql: "update project_jobs set status='failed',error='Render interrupted; publish a new revision to retry' where status='rendering' and started_at<?",
+    sql: "update project_jobs set status='failed',error='Render interrupted; publish a new revision to retry' where status in ('rendering','cancelling') and started_at<?",
     args: [now - 270000],
   });
   const claim = await client.execute({
-    sql: "update project_jobs set status='rendering',started_at=? where id=? and status='queued' and not exists(select 1 from project_jobs where status='rendering') returning *",
+    sql: "update project_jobs set status='rendering',started_at=? where id=? and status='queued' and not exists(select 1 from project_jobs where status in ('rendering','cancelling')) returning *",
     args: [now, id],
   });
   const row = claim.rows[0];
@@ -113,13 +113,33 @@ export async function runProjectJob(id: string) {
         if (ended) return;
         ended = true;
         clearTimeout(timer);
-        void worker.terminate();
-        error ? reject(error) : resolve(bytes!);
+        clearInterval(cancellation);
+        void worker
+          .terminate()
+          .then(() => (error ? reject(error) : resolve(bytes!)), reject);
       };
       const timer = setTimeout(
         () => finish(Error("Render exceeded 240 seconds; export locally")),
         240000,
       );
+      let polling = false;
+      const cancellation = setInterval(() => {
+        if (polling || ended) return;
+        polling = true;
+        void client
+          .execute({
+            sql: "select status from project_jobs where id=?",
+            args: [id],
+          })
+          .then((result) => {
+            if (result.rows[0]?.status !== "rendering")
+              finish(Error("Render cancelled"));
+          })
+          .catch((error) => finish(error))
+          .finally(() => {
+            polling = false;
+          });
+      }, 500);
       worker.on("message", (message) => {
         if (message.progress !== undefined) {
           void client
@@ -183,6 +203,12 @@ export async function runProjectJob(id: string) {
     await client.execute({
       sql: "update project_jobs set status='failed',error=? where id=? and status='rendering'",
       args: [error instanceof Error ? error.message : "Render failed", id],
+    });
+  } finally {
+    // Keep admission closed until termination, including cancellation during storage.
+    await client.execute({
+      sql: "update project_jobs set status='cancelled' where id=? and status='cancelling'",
+      args: [id],
     });
   }
 }
