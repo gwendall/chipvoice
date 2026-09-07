@@ -232,3 +232,9 @@ and exports; the UI distinguishes edited versions from checked source cartridges
 Offline audio now starts at musical time zero so full-loop exports retain their
 last note. This deliberately updates the audio golden snapshots; live startup
 lookahead is unchanged.
+
+MIDI imports infer musical roles from the notes rather than track order; the web
+player lets you review and override them. Adaptation mixing excludes source-silent
+notes from voice allocation and reserves shared SNES dry/echo headroom. Evaluation
+checks complete performances, dynamic contrast and calibration error; deterministic
+output is not a guarantee of original-game timbre or subjective mix quality.

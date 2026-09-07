@@ -1,7 +1,8 @@
 /** A lightweight, read-only projection. Fractions use elapsed source time,
  * including tempo changes, so tempo scaling preserves musical position. */
-export function scoreOverview(score, secondsAt, losses=[]) {
+export function scoreOverview(score, secondsAt, losses=[], silentNotes=[]) {
   const omitted=new Set(losses.filter(l=>l.kind==='voice-omitted').map(l=>`${l.part}:${l.note}`));
+  for(const note of silentNotes)omitted.add(`${note.part}:${note.id}`);
   const seconds = secondsAt(score.endTick);
   return {seconds, loopStart: secondsAt(score.loopStartTick ?? 0) / seconds,
     parts: score.parts.filter(p => p.notes.length).map(p => ({id:p.id, name:p.name, role:p.role,

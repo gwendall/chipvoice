@@ -15,7 +15,9 @@ export interface MixDiagnostic {part:string;kind:string;detail:string}
 export interface MixReport {version:1;calibratedNotes:number;fallbackNotes:number;diagnostics:MixDiagnostic[]}
 export interface MixNote {
   part:string;role:Role;voice:string;instrument:Instrument;pitch:number;start:number;end:number;
-  origin?:MixOrigin;referenceInstrument?:Instrument;mix?:PartMix;
+  origin?:MixOrigin;referenceInstrument?:Instrument;mix?:PartMix;sourcePitch?:number;
+  /** Audible control intervals, before calibration. Undefined means the full note. */
+  activity?:readonly {start:number;end:number}[];
 }
 
 // A fixed, versioned factory collection is distinct from the bounded cache of
@@ -26,11 +28,18 @@ const key=(chip:string,voice:string,signature:string,rate:number)=>JSON.stringif
 for(const profile of MIX_FACTORY_PROFILES)factory.set(key(profile.chip,profile.voice,profile.signature,profile.sampleRate),profile);
 const prominence:Record<Role,number>={lead:1,chord:.65,bass:.55,perc:.45};
 
-/** One event timeline per part: density depends only on voices actually
+/** One event timeline per musical role: file track grouping cannot change density.
+ * Density depends only on voices actually
  * allocated and active at that instant, not future notes or omitted voices. */
 function densityTimeline(notes:MixNote[]){
   const events=new Map<string,Map<number,number>>();
-  for(const note of notes){let part=events.get(note.part);if(!part){part=new Map();events.set(note.part,part);}part.set(note.start,(part.get(note.start)??0)+1);part.set(note.end,(part.get(note.end)??0)-1);}
+  for(const note of notes){
+    if(note.mix?.importance===0)continue;
+    let part=events.get(note.role);if(!part){part=new Map();events.set(note.role,part);}
+    for(const span of note.activity??[{start:note.start,end:note.end}]){
+      part.set(span.start,(part.get(span.start)??0)+1);part.set(span.end,(part.get(span.end)??0)-1);
+    }
+  }
   const result=new Map<string,{at:number;count:number;from:number;target:number}[]>();
   for(const [part,changes] of events){
     let count=0,previous:{at:number;count:number;from:number;target:number}|undefined;
@@ -68,15 +77,17 @@ export function planMix(chip:ChipDefinition,notes:MixNote[],options:MixOptions={
     const importance=note.mix?.importance??(source?1:prominence[note.role]);
     const trim=10**((note.mix?.gainDb??0)/20)*importance;
     if(chip.spec.id==='2a03'&&note.voice==='tri')warn(note.part,'mix-resolution','NES triangle has no amplitude control; requested attenuation may be unachievable');
-    return {note,target,source,trim,headroomWarned:false,changes:timeline.get(note.part)!};
+    return {note,target,source,trim,headroomWarned:false,lastVolume:NaN,lastTarget:NaN,lastSource:NaN,lastDensity:NaN,lastLevel:0,changes:timeline.get(note.role)??[{at:note.start,count:0,from:1,target:1}]};
   });
   return {report,level(index:number,volume:number,at:number,noisePeriod=9,pitch?:number){
     const d=decisions[index],{note,target,source}=d;
     if(volume<=0)return 0;
     let lo=0,hi=d.changes.length;while(lo+1<hi){const m=(lo+hi)>>>1;if(d.changes[m].at<=at)lo=m;else hi=m;}
-    const segment=d.changes[lo],densityGain=segment.target+(segment.from-segment.target)*Math.exp(-Math.max(0,at-segment.at)/.03),duration=note.end-note.start;
+    const segment=d.changes[lo],densityGain=segment.from===segment.target?segment.target:segment.target+(segment.from-segment.target)*Math.exp(-Math.max(0,at-segment.at)/.03),duration=note.end-note.start;
     const targetPosition=target?.axis==='noise-period'?noisePeriod:pitch??note.pitch;
-    const sourcePosition=source?.axis==='noise-period'?noisePeriod:pitch??note.pitch;
+    const sourcePosition=source?.axis==='noise-period'?noisePeriod:(pitch??note.pitch)-note.pitch+(note.sourcePitch??note.pitch);
+    if(volume===d.lastVolume&&targetPosition===d.lastTarget&&sourcePosition===d.lastSource&&densityGain===d.lastDensity)return d.lastLevel;
+    d.lastVolume=volume;d.lastTarget=targetPosition;d.lastSource=sourcePosition;d.lastDensity=densityGain;
     let sourceControl=volume;
     if(source?.chip==='md'&&(source.voice.startsWith('psg')||source.voice==='noise'))sourceControl=15-Math.min(15,Math.max(0,Math.round(-20*Math.log10(Math.min(1,volume/15))/2)));
     const sourceRms=source?mixProfileLevel(source,sourcePosition,duration,false,sourceControl):.1*volume/15;
@@ -84,12 +95,24 @@ export function planMix(chip:ChipDefinition,notes:MixNote[],options:MixOptions={
     if(target){
       const maximum=mixProfileLevel(target,targetPosition,duration);
       if(requested>maximum*1.001&&!d.headroomWarned){d.headroomWarned=true;warn(note.part,'mix-headroom','Requested balance exceeds instrument headroom; the control is capped');}
-      return mixProfileControl(target,targetPosition,duration,requested);
+      return d.lastLevel=mixProfileControl(target,targetPosition,duration,requested);
     }
     // Unknown patches remain bounded and explicitly uncalibrated. No hidden
     // synchronous rendering is triggered by a live note or slider change.
     const amplitude=Math.max(0,Math.min(1,volume/15*.5*d.trim*densityGain));
-    if(chip.spec.id==='md'&&(note.voice.startsWith('psg')||note.voice==='noise'))return amplitude<=0?0:15-Math.min(15,Math.max(0,Math.round(-20*Math.log10(amplitude)/2)));
-    return amplitude*15;
+    if(chip.spec.id==='md'&&(note.voice.startsWith('psg')||note.voice==='noise'))return d.lastLevel=amplitude<=0?0:15-Math.min(15,Math.max(0,Math.round(-20*Math.log10(amplitude)/2)));
+    return d.lastLevel=amplitude*15;
   }};
+}
+
+/** Collapse positive frame controls into spans without counting silent holds. */
+export function mixActivity(frames: readonly {at:number;volume:number}[], until:number, clock:number) {
+  const spans:{start:number;end:number}[]=[];
+  let start:number|undefined;
+  for(const frame of frames){
+    if(frame.volume>0&&start===undefined)start=frame.at/clock;
+    else if(frame.volume<=0&&start!==undefined){spans.push({start,end:frame.at/clock});start=undefined;}
+  }
+  if(start!==undefined)spans.push({start,end:until/clock});
+  return spans;
 }

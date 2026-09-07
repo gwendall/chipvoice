@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {importMidi,planPerformance,snesChip} from '../dist/index.js';
+import {inferMidiRole} from '../dist/midi-roles.js';
+import {roleMidi} from './fixtures/midi-roles.mjs';
+const a=importMidi(roleMidi()),b=importMidi(roleMidi(true));
+const melody=p=>p.parts.find(part=>part.notes.some(n=>n.pitch===72));
+assert.equal(melody(a).role,'lead');assert.equal(melody(b).role,'lead');
+assert.equal(a.parts.find(p=>p.notes.length===3).role,'chord');
+assert.deepEqual(planPerformance(a,snesChip).events,planPerformance(b,snesChip).events,'track order does not change this arrangement');
+const overridden=importMidi(roleMidi(),{parts:{'track-0-ch-1':{role:'bass',priority:123}}});
+assert.equal(melody(overridden).role,'bass');assert.equal(melody(overridden).priority,123);assert.equal(melody(overridden).roleInference.reason,'override');
+const part={id:'p',name:'Track 1',role:'chord',priority:1,notes:[{id:'n',tick:0,endTick:96,pitch:60,velocity:90,program:0}]};
+inferMidiRole(part,false);assert.equal(part.roleInference.confidence,'low');assert.equal(part.role,'lead');
+part.notes[0].program=33;inferMidiRole(part,false);assert.equal(part.role,'bass');
+part.name='メロディー';inferMidiRole(part,false);assert.equal(part.role,'lead');
+inferMidiRole(part,true);assert.equal(part.role,'perc');
+console.log('PASS order-independent MIDI roles, musical structure, uncertainty and explicit overrides');

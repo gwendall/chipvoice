@@ -17,5 +17,5 @@ const {scoreOverview}=await import('../src/arrangements/score-overview.mjs');
 for(const id of ['mario','zelda','sonic']){
  const score=JSON.parse(await readFile(`../../scores/arrangements/${id}.json`,'utf8'));
  await writeFile(`public/arrangement-data/${id}-view.json`,JSON.stringify(scoreOverview(score,performanceClock(score))));
- for(const row of report.pieces.find(p=>p.id===id).cases)await writeFile(`public/arrangement-data/${id}-${row.chip}-view.json`,JSON.stringify(scoreOverview(score,performanceClock(score),row.losses)));
+ for(const row of report.pieces.find(p=>p.id===id).cases)await writeFile(`public/arrangement-data/${id}-${row.chip}-view.json`,JSON.stringify(scoreOverview(score,performanceClock(score),row.losses,row.silentNotes)));
 }

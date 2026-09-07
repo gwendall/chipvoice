@@ -1,3 +1,4 @@
+import {inferMidiRole,rolePriority} from './midi-roles.js';
 import type {Performance, PerformanceNote, PerformancePart} from './performance.js';
 import {validatePerformance} from './performance.js';
 
@@ -94,10 +95,9 @@ export function importMidi(bytes: Uint8Array, options: MidiImportOptions = {}): 
       let part = parts.get(id);
       if (!part) {
         const name = names[event.track] || `Track ${event.track+1}`, override = options.parts?.[id];
-        const role = override?.role ?? (channel === 9 ? 'perc' : /bass/i.test(name) || c.program >= 32 && c.program <= 39 ? 'bass' : /lead|melody/i.test(name) || parts.size === 0 ? 'lead' : 'chord');
+        const role = override?.role ?? (channel === 9 ? 'perc' : 'lead');
         part = {id,name:override?.name ?? name,role,priority:override?.priority ?? ({lead:100,bass:80,perc:70,chord:50}[role]),notes:[]};
         parts.set(id,part);
-        if (!override?.role) notices.add(`${id}: ${role} role inferred; review before publishing`);
       }
       if(count>=100000)throw new Error('MIDI exceeds 100,000 notes');
       reservePoint();
@@ -126,6 +126,12 @@ export function importMidi(bytes: Uint8Array, options: MidiImportOptions = {}): 
   if (active.size) throw new Error('Unterminated MIDI notes or sustain pedal');
   if (!count || !endTick) throw new Error('MIDI has no playable notes');
   for (const part of parts.values()) for (const note of part.notes) note.expression = note.expression?.filter(p=>p.tick<note.endTick);
+  for(const part of parts.values()){
+    const override=options.parts?.[part.id];
+    if(override?.role){part.role=override.role;part.priority=rolePriority[part.role];part.roleInference={confidence:'high',reason:'override'};}
+    else {inferMidiRole(part,part.notes.some(n=>n.drum!==undefined));notices.add(`${part.id}: ${part.role} role inferred; review before publishing`);}
+    if(override?.priority!==undefined)part.priority=override.priority;
+  }
   if(legacyText)notices.add('Non-UTF-8 MIDI text decoded as Windows-1252; review track names');
   const score: Performance = {version:1,title:options.title ?? names[0] ?? 'Imported MIDI',ticksPerBeat:division,endTick,tempos:[...tempos].filter(([tick])=>tick<endTick).sort((a,b)=>a[0]-b[0]).map(([tick,microsecondsPerBeat])=>({tick,microsecondsPerBeat})),parts:[...parts.values()],source:{kind:'midi',name:options.title??'Imported MIDI'},notices:[...notices]};
   score.midi={format,events};

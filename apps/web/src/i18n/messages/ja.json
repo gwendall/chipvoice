@@ -648,5 +648,16 @@
   "Invalid calibration PCM": "校正用 PCM が無効です",
   "Mix profile cache is bounded at 64 entries": "ミックスプロファイルのキャッシュ上限は 64 件です",
   "Invalid mix profile": "ミックスプロファイルが無効です",
-  "Invalid mix profile grid": "ミックスプロファイルの測定グリッドが無効です"
+  "Invalid mix profile grid": "ミックスプロファイルの測定グリッドが無効です",
+  "Review MIDI roles": "MIDI のパートを確認",
+  "Roles are inferred from the notes and instruments. Change a role to adjust its sound and priority; playback continues while the new mix prepares.": "音符と楽器からパートを推定します。パートを変更すると音色と優先順位が変わります。新しいミックスの準備中も再生は続きます。",
+  "Role for {part}": "{part} の役割",
+  "Chosen by you": "手動設定",
+  "Strong evidence": "根拠が明確",
+  "Likely role": "推定パート",
+  "Uncertain · please review": "不確実・確認してください",
+  "Shared SNES dry and echo headroom reserved before internal mixing": "SNES の内部ミックス前に、全パートとエコーの音量余裕を確保しています",
+  "Instrument is incompatible with the hardware voice": "楽器がハードウェアの音声チャンネルに対応していません",
+  "Some SNES levels fall below a volume step after shared headroom protection": "共有ヘッドルームの保護により、一部の SNES 音量が最小ステップ未満になります",
+  "1 note omitted.": "1 個の音符を省略。"
 }

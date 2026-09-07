@@ -13,7 +13,7 @@ import {measureAudio} from '../../packages/conform/src/listening/metrics.mjs';
 const out='.artifacts/automatic-mixing/ablation';await mkdir(out,{recursive:true});
 const replacements=[
  ['const importance = note.mix?.importance ?? (source ? 1 : prominence[note.role]);','const importance = note.mix?.importance ?? 1;'],
- ['densityGain = segment.target + (segment.from - segment.target) * Math.exp(-Math.max(0, at - segment.at) / .03)','densityGain = 1'],
+ ['densityGain = segment.from === segment.target ? segment.target : segment.target + (segment.from - segment.target) * Math.exp(-Math.max(0, at - segment.at) / .03)','densityGain = 1'],
 ];
 let transformed=0;
 await build({entryPoints:['packages/chipvoice/dist/index.js'],bundle:true,platform:'node',format:'esm',outfile:`${out}/sdk.mjs`,plugins:[{name:'explicit-ablation',setup(build){build.onLoad({filter:/\/mix\.js$/},async ({path})=>{let contents=await readFile(path,'utf8');for(const [before,after] of replacements){assert.equal(contents.split(before).length,2,'ablation needs review when policy structure changes');contents=contents.replace(before,after);}transformed++;return {contents,loader:'js'};});}}]});

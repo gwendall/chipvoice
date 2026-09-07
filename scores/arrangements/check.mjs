@@ -65,10 +65,11 @@ export async function checkArrangements(){
     for(const chip of arrangementChips){
       const plan=planWithRegisterAudit(score,chip);
       const total=score.parts.reduce((n,p)=>n+p.notes.length,0),missing=plan.losses.filter(l=>l.kind==='voice-omitted');
-      assert.equal(plan.notes.length+missing.length,total,'every source note accounted for');
-      const keys=plan.notes.map(n=>`${n.part}:${n.id}`);assert.equal(new Set(keys).size,keys.length,'no invented duplicates');
-      for(const part of score.parts)for(const note of part.notes)assert.ok(plan.notes.some(n=>n.part===part.id&&n.id===note.id)||missing.some(n=>n.part===part.id&&n.note===note.id),'source identity retained');
-      ports[chip.spec.id]={played:plan.notes.length,omitted:missing.length,registerDestinationsVerified:['snes','md'].includes(chip.spec.id)};
+      const silent=plan.silentNotes??[];
+      const keys=[...plan.notes,...silent,...missing.map(n=>({part:n.part,id:n.note}))].map(n=>`${n.part}:${n.id}`),accounted=new Set(keys);
+      assert.equal(keys.length,total,'every source note accounted for');assert.equal(accounted.size,keys.length,'source ledger categories are disjoint');
+      for(const part of score.parts)for(const note of part.notes)assert.ok(accounted.has(`${part.id}:${note.id}`),'source identity retained');
+      ports[chip.spec.id]={played:plan.notes.length,silent:silent.length,omitted:missing.length,registerDestinationsVerified:['snes','md'].includes(chip.spec.id)};
     }
     results.push({id,evidence,ports});
   }

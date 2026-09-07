@@ -31,7 +31,7 @@ for(const id of arrangementIds){
    const core=chip.digital();for(const block of plan.memory)core.load(block.address,block.bytes);core.schedule(plan.events);mixer=observeSnesMixer(core);core.trace(Math.round(plan.seconds*chip.spec.clockHz),()=>{});
    if(mixer.mainClampedAdditions||mixer.echoClampedAdditions)throw new Error(`${id}: internal SNES clipping: ${JSON.stringify(mixer)}`);
   }
-  const row={chip:chip.spec.id,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,mode:chip.spec.id===nativeSpec.chip?'native-commands':'adaptation',notes:chip.spec.id===nativeSpec.chip?score.parts.reduce((sum,p)=>sum+p.notes.length,0):plan.notes.length,losses:plan.losses,mix:plan.mix,repeat,mixer,asset:await asset(`${id}-${chip.spec.id}`,audio)};
+  const row={chip:chip.spec.id,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,mode:chip.spec.id===nativeSpec.chip?'native-commands':'adaptation',notes:chip.spec.id===nativeSpec.chip?score.parts.reduce((sum,p)=>sum+p.notes.length,0):plan.notes.length,losses:plan.losses,silentNotes:plan.silentNotes,mix:plan.mix,repeat,mixer,asset:await asset(`${id}-${chip.spec.id}`,audio)};
   piece.cases.push(row);console.log(`PASS ${id}/${chip.spec.id}: ${plan.seconds.toFixed(2)}s, ${row.losses.filter(l=>l.kind==='voice-omitted').length} omitted, ${row.asset.metrics.rmsDbFS.toFixed(1)} dBFS RMS`);
  }
  if(nativeSpec){

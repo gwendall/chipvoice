@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "scope": "Automatic adaptation; native replay is unchanged unless explicitly remixed",
   "development": {
     "sourceFamilies": [
@@ -26,6 +26,12 @@
       103,
       211,
       409
+    ],
+    "structuralFamilies": [
+      "moving-counterpoint",
+      "long-note-expression",
+      "program-and-tempo-changes",
+      "sparse-percussion-late-harmony"
     ]
   },
   "correctness": {
@@ -59,7 +65,8 @@
       0.125,
       0.5,
       1.5
-    ]
+    ],
+    "maximumOffGridErrorDb": 3
   },
   "performance": {
     "note": "Relative CPU budgets are frozen against the same-host baseline; real-device acceptance remains separate",
@@ -67,5 +74,18 @@
     "maximumRenderSlowdown": 1.25
   },
   "musicalAcceptance": "Source dynamics and intended foreground retained; blind listening and held-out acoustic diagnostics reported separately from correctness. Thresholds cannot be fitted on held-out songs.",
-  "prohibition": "No song title, ID, source hash or held-out seed in the runtime policy"
+  "prohibition": "No song title, ID, source hash or held-out seed in the runtime policy",
+  "musicalGates": {
+    "scope": "Declared lead fixture on all five consoles; independent of timbre preference",
+    "minimumRms": 0.001,
+    "velocityContrastDb": [
+      4,
+      16
+    ],
+    "authorProminenceContrastDb": [
+      4,
+      18
+    ],
+    "completePerformanceRendering": true
+  }
 }

@@ -15,6 +15,6 @@ onmessage=async ({data}:{data:{id:number;importOnly?:boolean;score?:Performance;
   const audio=renderPerformance(plan,chips[data.chip],{onProgress:fraction=>{const percent=Math.floor(fraction*100);if(percent!==reported){reported=percent;postMessage({id:data.id,type:'progress',phase:'rendering',percent,seconds:plan.seconds});}}});
   postMessage({id:data.id,type:'progress',phase:'encoding',seconds:plan.seconds});
   const wav=toWav(audio);
-  postMessage({id:data.id,overview:scoreOverview(score,performanceClock(score),plan.losses),score:data.midi?score:undefined,wav:wav.buffer,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,losses:plan.losses,notes:plan.notes.length,peak:audio.peak}, {transfer:[wav.buffer]});
+  postMessage({id:data.id,overview:scoreOverview(score,performanceClock(score),plan.losses,plan.silentNotes),score:data.midi?score:undefined,wav:wav.buffer,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,losses:plan.losses,notes:plan.notes.length,peak:audio.peak}, {transfer:[wav.buffer]});
  }catch(error){postMessage({id:data.id,error:error instanceof Error?error.message:String(error)});}
 };

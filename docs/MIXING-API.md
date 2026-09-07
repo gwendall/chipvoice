@@ -13,10 +13,10 @@ levels; use `Performance` or the phrase API below to request automatic mixing.
 
 The planner resolves the instrument before choosing a compatible hardware voice.
 It then combines the note's velocity/expression, the measured response of that
-instrument, explicit part settings and simultaneous voices in that part. A
-four-note chord shares its part budget; it is not four independently normalized
+instrument, explicit part settings and audible simultaneous voices in the same musical role. A
+four-note chord shares that role budget even when split across MIDI tracks; it is not four independently normalized
 stems. A 30 ms exponential transition smooths changes in that density budget.
-Soloing is applied after allocation and uses the same density decisions.
+Soloing is applied after allocation and uses the same density and bus-headroom decisions. Completely source-silent notes reserve no voices and appear in `plan.silentNotes`, separately from allocated notes and hardware omissions. Notes that become audible later still reserve their voice.
 
 Known native source controls can be translated through a source response profile.
 For MIDI or unknown source instruments, a nominal RMS target and conservative role
@@ -106,11 +106,11 @@ no promise to preserve every ratio when the hardware cannot realize it.
 
 `prepareMixPhrase` shares the same policy with `planPerformance`, without audio
 rendering or a network judge. Supply already allocated voices, at most 128 notes
-ending within two seconds. Overlapping notes on one physical voice are rejected.
+ending within two seconds. Bounds are checked before allocating frame arrays. Overlapping notes on one physical voice or a shared resource (Mega Drive PSG3/noise) are rejected. Explicit FM percussion uses an FM voice and keeps its drum pitch under melodic transposition.
 The caller keeps its existing APU and transport alive, and schedules the returned
 note offsets against its audio clock. A phrase does not allocate future voices or
 claim to support arbitrary held notes across phrase boundaries; the game's voice
-arbiter owns that integration.
+arbiter owns that integration, including release tails from earlier phrases. A SNES headroom guarantee covers notes prepared together; separately prepared overlapping or contiguous phrases with outstanding tails need a combined preparation window before scheduling any of those notes.
 
 ```ts
 import {APU, mdChip, instrumentsFor, prepareMixPhrase} from 'chipvoice';
@@ -120,7 +120,7 @@ await apu.init(ctx.destination);
 const phrase = prepareMixPhrase(mdChip, [{
   voice: 'fm1', part: 'lead', role: 'lead', at: 0,
   note: 'C4', duration: 0.25, instrument: instrumentsFor('md').lead,
-}]);
+}], {sampleRate: ctx.sampleRate});
 const boundary = ctx.currentTime + 0.1;
 for (const note of phrase.notes)
   apu.playNote(note.voice, {...note, at: boundary + note.at});
@@ -169,3 +169,37 @@ They do not certify subjective preference or prove the absence of perceptual
 masking. Same-host interleaved planning measurements isolate policy overhead;
 real phone/Safari behavior and controlled human listening require their own evidence.
 See the [ordered tickets](AUTOMATIC-MIXING.md) for those explicitly open gates.
+
+## Cold-review corrections and acceptance
+
+The SNES factory adaptation reserves a common internal budget before both the
+dry voice sum and echo feedback. The bound uses the actual factory FIR absolute
+coefficient sum (172/128), feedback (56/128), register quantization, up to 80 ms
+of release and 12 ms of voice staggering. A 38-unit combined volume budget leaves
+rounding margin; it is deliberately conservative for correlated samples. A short
+30 ms gain ramp and budgeting across entire register holds avoid a late correction
+after clipping. Quiet contributions can fall below one hardware step; the report
+then includes `mix-bus-resolution`. Lowering final output gain cannot replace this
+protection. Native command replay and `mix:false` do not apply it. No new processing
+is added to the worklet.
+
+MIDI roles are inferred after reading all notes, using channel, explicit names,
+program families, polyphony and pitch register, never the first track's position.
+`part.roleInference` exposes confidence and the reason. Ambiguous monophonic lines
+remain low-confidence melody candidates. `importMidi(bytes, {parts: {[id]:
+{role: 'lead', priority: 100}}})` overrides the inference, including channel-derived
+percussion, without deleting original MIDI metadata. The web player's **Review MIDI
+roles** panel applies the same correction while the previous audio keeps playing.
+
+The source ledger is the disjoint union of `plan.notes`, `plan.silentNotes ?? []`
+and losses with kind `voice-omitted`. A source-silent note is not a hardware loss.
+Explicit `mix.importance: 0` remains an author mute with stable allocation.
+
+Run `node scores/mixing/acceptance.mjs` for audible output and bounded velocity/
+author-prominence contrasts on five consoles. CI also enforces a 3 dB maximum
+off-grid amplitude error for the declared 44.1 kHz lead probes; this is not a
+certification of every patch, pitch or duration. The general evaluator now renders
+complete performances, including late sections. The held-out corpus additionally
+contains counterpoint, long-note expression, program/tempo changes and sparse
+percussion families. These tests supplement source accounting and internal
+saturation checks; they do not claim universal timbre fidelity or human preference.

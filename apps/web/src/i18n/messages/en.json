@@ -648,5 +648,16 @@
   "Invalid calibration PCM": "Invalid calibration PCM",
   "Mix profile cache is bounded at 64 entries": "Mix profile cache is bounded at 64 entries",
   "Invalid mix profile": "Invalid mix profile",
-  "Invalid mix profile grid": "Invalid mix profile grid"
+  "Invalid mix profile grid": "Invalid mix profile grid",
+  "Review MIDI roles": "Review MIDI roles",
+  "Roles are inferred from the notes and instruments. Change a role to adjust its sound and priority; playback continues while the new mix prepares.": "Roles are inferred from the notes and instruments. Change a role to adjust its sound and priority; playback continues while the new mix prepares.",
+  "Role for {part}": "Role for {part}",
+  "Chosen by you": "Chosen by you",
+  "Strong evidence": "Strong evidence",
+  "Likely role": "Likely role",
+  "Uncertain · please review": "Uncertain · please review",
+  "Shared SNES dry and echo headroom reserved before internal mixing": "Shared SNES dry and echo headroom reserved before internal mixing",
+  "Instrument is incompatible with the hardware voice": "Instrument is incompatible with the hardware voice",
+  "Some SNES levels fall below a volume step after shared headroom protection": "Some SNES levels fall below a volume step after shared headroom protection",
+  "1 note omitted.": "1 note omitted."
 }
