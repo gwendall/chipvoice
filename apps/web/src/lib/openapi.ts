@@ -1,3 +1,4 @@
+import {projectPaths} from './project-openapi';
 import { INTENTS } from "chipvoice";
 import { SITE } from "./songs";
 
@@ -96,6 +97,7 @@ export function openApiSpec() {
     },
     servers: [{ url: SITE }],
     paths: {
+      ...projectPaths,
       "/api/validate": {
         post: {
           operationId: "validateSong",
@@ -261,6 +263,7 @@ export function openApiSpec() {
       },
     },
     components: {
+      securitySchemes:{bearerAuth:{type:"http",scheme:"bearer"},browserSession:{type:"apiKey",in:"cookie",name:"chipvoice_session"}},
       schemas: {
         Measured: {
           type: "object",

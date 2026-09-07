@@ -5,6 +5,12 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+## Creation and API review — implementation
+
+[The original review](CREATION-API-REVIEW-2026-09-07.md) is the historical CREATE-01–11 specification. [The implementation guide](CREATION.md) documents the versioned SDK, complete workspace, isolated code generator, immutable publications/audio, profiles, local draft library, discovery and favourites. CREATE-01–11 are implemented and locally qualified, including the production-build browser suite. Release CI runs on the associated pull request and version tag. Retro pixel avatars are generated locally from public profile IDs. Source docs/comments are English, with Japanese documentation and UI maintained alongside them.
+
+The existing sonic/hardware acceptance remains separate. Deployment-scale durable scheduling, moderation operations, real-device listening and multiple-account abuse resistance are stated limits, not claims of completed production-scale validation.
+
 ## General automatic mixing — priority plan (2026-09-07)
 
 Sound correctness and general adaptation remain the priority for subsequent releases and features.

@@ -154,6 +154,7 @@ SDK を変更せず、固定した検証曲で再調整もしません。`analyz
 実機のスマートフォン・Safari と人間による比較試聴には、それぞれの証拠が必要です。
 未完了の条件は[順序付きチケット](AUTOMATIC-MIXING_ja.md)を参照してください。
 
+<a id="cold-review-corrections-and-acceptance"></a>
 ## コールドレビュー後の修正と検証
 
 密度は MIDI トラックの分け方ではなく、同じ音楽的役割の中で実際に音が
@@ -194,6 +195,7 @@ AudioContext を使う場合は `{sampleRate: ctx.sampleRate}` を準備 API に
 曲には対位法、長音の expression、プログラムとテンポの変更、疎な打楽器を
 含めます。これらは音色の完全な忠実性や人間の好みを保証するものではありません。
 
+<a id="measured-native-fm-projections"></a>
 ## ネイティブ FM 音色の実測による移植
 
 FM 音色のローカル ID は General MIDI の楽器番号ではありません。また、レジスターの

@@ -2,8 +2,8 @@ import { INTENTS } from "chipvoice";
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 
-const VERSION = "0.9.0";
-const UPDATED = "2026-09-06";
+const VERSION = "0.10.0";
+const UPDATED = "2026-09-08";
 
 /**
  * The file an agent reads first.
@@ -38,6 +38,19 @@ Music for the sound chips of the old machines - the Ricoh 2A03 in the NES, the
 APU in the Game Boy, the YM2612 and its PSG in the Mega Drive, the S-DSP in the
 SNES - as text you can read and diff. Post four lines, get a link and an MP3 that plays anywhere. The
 same four lines play on any of them, each in its own idiom.
+
+## Complete projects and creation
+
+For MIDI, polyphonic performances, exact expression, per-part timbres and mix settings, use the versioned project contract, not four tracker lines:
+
+1. Create or import a \`MusicProject\` locally with the npm SDK (\`projectFromPerformance\`, \`importProjectMidi\`, \`projectFromScore\`).
+2. Validate with \`POST /api/v1/validate\`; unknown fields fail explicitly.
+3. Publish \`{project, visibility, parentId?}\` to \`POST /api/v1/projects\`, with a Bearer key or browser session and a new \`Idempotency-Key\` for each revision. Reuse a key only for an identical retry.
+4. Request a pinned \`preview\` (up to 30 seconds) or \`full\` WAV through \`POST /api/v1/projects/{id}/render\`, then poll \`/api/v1/jobs/{id}\`.
+
+The SDK creates and plays without an account. Publishing complete projects requires account ownership; public, unlisted and private access remain distinct. Public search, handles, favourites, reports and withdrawal are in the endpoint table. Published source and ready audio are immutable; never execute somebody else's stored generator code. Attribution and music reuse licences are separate from the software licence.
+
+Open the retro note/code workspace at ${SITE}/create, community at ${SITE}/explore and SDK/HTTP examples at ${SITE}/docs. Read https://github.com/gwendall/chipvoice/blob/main/docs/CREATION.md for parameters, cancellation, limits and the cooperative job queue. The compact format documented below remains compatible; do not flatten a complete performance into it.
 
 > **Skill version ${VERSION} (${UPDATED}).** To check for updates, fetch \`${SITE}/skill.md\`
 > and compare the \`updated\` date in the frontmatter with the one above.

@@ -32,6 +32,20 @@ const migrations = [
   { name: 'song-grid-resolution', async up(tx: Transaction) {
     await addColumns(tx, 'songs', { steps_per_beat: 'integer not null default 4 check (steps_per_beat in (4,12))' });
   } },
+
+  { name: 'complete-project-publications', async up(tx: Transaction) {
+    await tx.execute(`create table profiles (id text primary key, user_id text not null unique, handle text unique collate nocase, display_name text not null default '', bio text not null default '', created_at integer not null)`);
+    await tx.execute(`create table projects (id text primary key, user_id text not null, parent_id text, root_id text not null, document text not null, content_hash text not null, title text not null, chip text not null, tags text not null, visibility text not null check(visibility in ('public','unlisted','private')), created_at integer not null, deleted_at integer, request_key text, unique(user_id,request_key))`);
+    await tx.execute(`create index projects_public on projects(visibility,deleted_at,created_at,id)`);
+    await tx.execute(`create index projects_owner on projects(user_id,created_at,id)`);
+    await tx.execute(`create index projects_parent on projects(parent_id)`);
+    await tx.execute(`create table favourites (project_id text not null,user_id text not null,created_at integer not null,primary key(project_id,user_id))`);
+    await tx.execute(`create table project_jobs (id text primary key,project_id text not null,kind text not null check(kind in ('preview','full')),status text not null,engine text not null,created_at integer not null,started_at integer,finished_at integer,error text,bytes integer,etag text,progress real not null default 0,unique(project_id,kind))`);
+    await tx.execute(`create table project_audio (job_id text not null,chunk integer not null,bytes blob not null,primary key(job_id,chunk))`);
+    await tx.execute(`create table project_admission (scope text primary key, window integer not null, count integer not null)`);
+    await tx.execute(`create table project_reports (project_id text not null,user_id text not null,reason text not null,created_at integer not null,primary key(project_id,user_id))`);
+  } },
+
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

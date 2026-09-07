@@ -11,6 +11,8 @@
 
 | 文書 | 内容 |
 | --- | --- |
+| [プロジェクト・制作・公開](CREATION_ja.md) | バージョン付き SDK、制作画面、プロフィール、検索、固定音声、運用上限 |
+| [作曲・APIレビュー](CREATION-API-REVIEW-2026-09-07_ja.md) | 現状の不足点、作曲・共有契約の統一、CREATE-01〜11の提案 |
 | [ミックス API](MIXING-API_ja.md) | 楽器の校正、自動バランス、ゲーム用フレーズ、不確実性と検証 |
 | [自動ミックス](AUTOMATIC-MIXING_ja.md) | 汎用移植／ミックスの契約、チケット順、合格条件 |
 | [ロードマップ](ROADMAP_ja.md) | ロードマップと各段階の受け入れ |
@@ -50,6 +52,7 @@
 <a id="evaluations"></a>
 ## 評価報告
 
+- [制作・公開機能 — 2026-09-08](evals/CREATION-2026-09-08_ja.md)
 - [ネイティブ楽曲の再現性 — 2026-09-07](evals/NATIVE-SONGS-2026-09-07_ja.md)
 - [Zelda Overworld の選曲回帰](evals/ZELDA-SELECTION-2026-09-07_ja.md)
 - [完全アレンジ — 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06_ja.md)

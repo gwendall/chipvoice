@@ -1,0 +1,585 @@
+.creation {
+  padding-top: 28px;
+}
+.creation-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.creation-heading h1 {
+  font-size: clamp(26px, 4vw, 42px);
+  line-height: 1.15;
+  margin: 10px 0;
+}
+.creation-heading p {
+  max-width: 560px;
+}
+.project-actions,
+.part-tools,
+.create-tabs,
+.transport-controls,
+.bar-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.project-actions {
+  margin-bottom: 20px;
+}
+.file-button {
+  position: relative;
+  cursor: pointer;
+}
+.file-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}
+.creation-instrument {
+  border: 1px solid #aaa98e;
+  background: #eeede4;
+  padding: 24px;
+  box-shadow: 4px 4px 0 #b9bba6;
+}
+.project-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.project-title > input {
+  font-size: 24px;
+  font-weight: 700;
+  border: 0;
+  border-bottom: 1px dashed #aaa98e;
+  background: transparent;
+  min-width: 0;
+  width: 100%;
+  padding: 8px 0;
+}
+.project-title a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.pixel-avatar {
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  border: 1px solid #999b88;
+}
+.creation .machines {
+  margin: 8px 0 24px;
+}
+.create-parameters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.create-tabs {
+  border-bottom: 1px solid #aaa98e;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+.create-tabs > span {
+  margin-left: auto;
+}
+.part-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 20px;
+}
+.part-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.part-list > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 12px 8px;
+  text-align: left;
+  min-height: 44px;
+  color: inherit;
+  font: inherit;
+}
+.part-list > button[aria-pressed="true"] {
+  background: #d9e1c8;
+  border-color: #879378;
+}
+.part-list > button > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.part-list small {
+  font-size: 14px;
+  margin-left: auto;
+  color: #59614d;
+}
+.part-symbol {
+  color: #64774d;
+  font-size: 22px;
+}
+.part-symbol.perc {
+  color: #a96c51;
+}
+.part-symbol.bass {
+  color: #687799;
+}
+.part-symbol.chord {
+  color: #9b834c;
+}
+.note-editor {
+  min-width: 0;
+}
+.part-tools {
+  margin-bottom: 12px;
+}
+.part-tools input,
+.part-tools select,
+.creation-share input,
+.creation-share textarea,
+.creation-share select,
+.profile-form input,
+.profile-form textarea {
+  font: inherit;
+  color: inherit;
+  background: #faf9f0;
+  border: 1px solid #a5aa95;
+  padding: 10px;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 2px;
+}
+.part-tools > input {
+  flex: 1;
+  width: 140px;
+}
+.part-tools label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.part-tools .range-control {
+  flex: 1;
+  min-width: 180px;
+}
+.bar-navigation {
+  justify-content: space-between;
+  margin: 15px 0;
+}
+.piano-scroll {
+  overflow-x: auto;
+  border: 1px solid #9da38f;
+  background: #e3e9d7;
+}
+.piano-roll {
+  display: grid;
+  min-width: 0;
+}
+.piano-row {
+  display: contents;
+}
+.piano-key {
+  font-family: monospace;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d1d9c3;
+  border-bottom: 1px solid #b9c4a9;
+}
+.piano-row button {
+  height: 17px;
+  min-height: 0;
+  padding: 0;
+  min-width: 0;
+  border: 0;
+  border-left: 1px solid #d2dac5;
+  border-bottom: 1px solid #d2dac5;
+  background: transparent;
+  border-radius: 0;
+}
+.piano-row button.beat {
+  border-left-color: #adb99d;
+}
+.piano-row button.note-on {
+  background: #657d49;
+  box-shadow: inset 0 -2px #4d6434;
+}
+.piano-row button.now {
+  outline: 1px solid #bd7654;
+  outline-offset: -1px;
+}
+.piano-row button:focus-visible {
+  outline: 2px solid #244a6c;
+  outline-offset: -2px;
+}
+.create-transport {
+  border-top: 1px solid #a5aa95;
+  margin-top: 22px;
+  padding-top: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #a5aa95;
+  background: #eeede4;
+  z-index: 2;
+}
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.progress-row input {
+  flex: 1;
+  min-width: 0;
+  accent-color: #657d49;
+}
+.progress-row span {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.create-status {
+  min-height: 24px;
+  margin: 16px 0 0;
+  font-size: 15px;
+  color: #586049;
+}
+.code-workspace textarea {
+  width: 100%;
+  height: 480px;
+  resize: vertical;
+  background: #273127;
+  color: #e0e8d0;
+  border: 0;
+  padding: 20px;
+  font: 15px/1.65 monospace;
+  tab-size: 2;
+  white-space: pre;
+}
+.code-workspace input {
+  width: 120px;
+}
+.code-workspace p {
+  font-size: 15px;
+}
+.creation-share {
+  padding: 24px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: end;
+}
+.creation-share h2,
+.creation-share > p,
+.creation-share .account-panel {
+  width: 100%;
+}
+.creation-share > label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+}
+.creation-share textarea {
+  height: 85px;
+  resize: vertical;
+}
+.create-api {
+  border-top: 1px solid #b9bba6;
+  padding: 24px 0;
+  margin-top: 24px;
+}
+.create-api pre {
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-x: auto;
+  background: #e6e8dc;
+  padding: 20px;
+}
+.create-notice:empty {
+  display: none;
+}
+.community-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 28px 0;
+}
+.community-header h1 {
+  margin: 0;
+  font-size: 32px;
+}
+.community-header p {
+  margin: 6px 0;
+}
+.explore-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 24px 0;
+}
+.explore-filters input,
+.explore-filters select {
+  font: inherit;
+  padding: 12px;
+  background: #f8f7ed;
+  border: 1px solid #a5aa95;
+  min-width: 0;
+}
+.explore-filters input {
+  flex: 1;
+}
+.song-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.song-card {
+  border: 1px solid #aaa98e;
+  background: #eeede4;
+  padding: 20px;
+  box-shadow: 3px 3px 0 #c7c9b7;
+}
+.song-card h2 {
+  font-size: 21px;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.song-card .song-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.song-card .song-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  color: #59614d;
+  margin: 16px 0;
+}
+.song-card .song-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.song-card p {
+  overflow-wrap: anywhere;
+}
+.community-empty {
+  padding: 48px 0;
+  max-width: 600px;
+}
+.profile-form {
+  display: grid;
+  gap: 16px;
+  max-width: 560px;
+  margin: 24px 0;
+}
+.profile-form label {
+  display: grid;
+  gap: 8px;
+}
+.docs-page {
+  max-width: 860px;
+}
+.docs-page pre {
+  overflow: auto;
+  background: #273127;
+  color: #e0e8d0;
+  padding: 20px;
+  font: 15px/1.7 monospace;
+}
+.docs-page section {
+  margin: 36px 0;
+}
+.publication-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.creation button,
+.creation a,
+.community button,
+.community a {
+  touch-action: manipulation;
+}
+.creation button:focus-visible,
+.creation input:focus-visible,
+.creation textarea:focus-visible,
+.community button:focus-visible {
+  outline: 2px solid #315779;
+  outline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .part-layout {
+    grid-template-columns: 145px minmax(0, 1fr);
+  }
+  .song-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .creation-instrument {
+    padding: 18px;
+  }
+  .part-tools .range-control {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 600px) {
+  .creation {
+    padding-top: 18px;
+  }
+  .creation-heading {
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .creation-heading > a {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .creation-heading p {
+    font-size: 16px;
+  }
+  .creation-instrument {
+    padding: 12px;
+    box-shadow: 2px 2px 0 #b9bba6;
+  }
+  .project-title > input {
+    font-size: 21px;
+  }
+  .project-title > a {
+    font-size: 0;
+  }
+  .create-parameters {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .creation .machines {
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+  .creation .machines button {
+    padding: 8px 4px;
+    min-width: 0;
+  }
+  .creation .machines img {
+    max-width: 100%;
+    height: 34px;
+  }
+  .part-layout {
+    display: block;
+  }
+  .part-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+  .part-list > button {
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px;
+    gap: 6px;
+  }
+  .part-list small {
+    display: none;
+  }
+  .part-tools {
+    gap: 7px;
+  }
+  .part-tools select {
+    max-width: 145px;
+  }
+  .part-tools > input {
+    width: 110px;
+  }
+  .bar-navigation {
+    gap: 6px;
+    font-size: 14px;
+  }
+  .bar-navigation .small-button {
+    font-size: 14px;
+    padding: 8px;
+  }
+  .transport-controls {
+    gap: 7px;
+  }
+  .transport-controls .small-button {
+    font-size: 14px;
+    padding: 10px;
+  }
+  .progress-row {
+    gap: 8px;
+  }
+  .project-actions {
+    gap: 8px;
+  }
+  .project-actions .small-button {
+    font-size: 14px;
+  }
+  .song-grid {
+    grid-template-columns: 1fr;
+  }
+  .community-header h1 {
+    font-size: 26px;
+  }
+  .explore-filters > * {
+    width: 100%;
+  }
+  .creation-share > label {
+    min-width: 100%;
+  }
+  .code-workspace textarea {
+    padding: 12px;
+    font-size: 14px;
+  }
+  .create-api pre {
+    font-size: 14px;
+  }
+  .piano-key {
+    font-size: 12px;
+  }
+}
+
+.note-tools input {
+  width: 68px;
+}
+.piano-key {
+  font-size: 13px;
+}
+.piano-row button {
+  height: 22px;
+}
+
+.local-drafts {
+  margin: 24px 0;
+}
+.draft-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.draft-list a {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) { .note-editor > .part-tools:first-child > input { flex-basis: 100%; width: 100%; } }
+
+.published-listen h1, .community-header > div { overflow-wrap: anywhere; min-width: 0; }
+.published-listen audio { width: 480px; max-width: 100%; }

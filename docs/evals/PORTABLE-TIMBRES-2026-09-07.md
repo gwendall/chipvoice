@@ -1,5 +1,7 @@
 # Portable timbres and dry SNES — 0.16.3
 
+<p align="center"><a href="PORTABLE-TIMBRES-2026-09-07.md">English</a> &bull; <a href="PORTABLE-TIMBRES-2026-09-07_ja.md">日本語</a></p>
+
 The reported problems were audible arrangement defects that the previous
 finite/unclipped/deterministic gates did not detect. This follow-up fixes their
 measurable causes. It does not turn those gates into a universal musical judge.

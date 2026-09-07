@@ -69,6 +69,7 @@ jobs:
             .artifacts/unified-playground
             .artifacts/cold-review/browser
             .artifacts/timbre-review/browser
+            .artifacts/creation/e2e
             .artifacts/i18n
           retention-days: 7
 

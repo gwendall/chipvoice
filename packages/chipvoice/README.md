@@ -5,6 +5,9 @@
   <a href="https://github.com/gwendall/chipvoice/blob/main/packages/chipvoice/README_ja.md">日本語</a>
 </p>
 
+**Create, code and publish complete songs:** [music workspace](https://chipvoice.dev/create), [community](https://chipvoice.dev/explore), [SDK / HTTP docs](https://chipvoice.dev/docs). Versioned projects preserve complete performances, with cancellable playback, original pixel avatars and immutable published WAVs. No account is needed to create or listen; publication uses your account. [Project contracts and operating limits](https://github.com/gwendall/chipvoice/blob/main/docs/CREATION.md).
+
+
 Automatic mixing for complete adaptations uses measured instrument responses,
 with optional `PerformancePart.mix` importance/trim and explicit unknown-sound
 fallbacks. Native command playback keeps its original mix. Short game phrases

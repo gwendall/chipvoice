@@ -5,6 +5,9 @@
   <a href="README_ja.md">日本語</a>
 </p>
 
+**Create, code and publish complete songs:** [music workspace](https://chipvoice.dev/create), [community](https://chipvoice.dev/explore), [SDK / HTTP docs](https://chipvoice.dev/docs). Versioned projects preserve complete performances, with cancellable playback, original pixel avatars and immutable published WAVs. No account is needed to create or listen; publication uses your account. [Project contracts and operating limits](https://github.com/gwendall/chipvoice/blob/main/docs/CREATION.md).
+
+
 Automatic mixing for complete adaptations uses measured instrument responses,
 with optional `PerformancePart.mix` importance/trim and explicit unknown-sound
 fallbacks. Native command playback keeps its original mix. Short game phrases
@@ -45,7 +48,7 @@ explains browser synthesis, constraints, evaluation and credits. Console marks a
 self-hosted colour SVGs; see the [source manifest](apps/web/public/machines/README.md).
 
 The website is available in [English](https://chipvoice.dev) and [Japanese](https://chipvoice.dev/ja), including the composer, listening lab, accessibility labels and sharing metadata. Change language without interrupting the instrument. See [internationalization](docs/INTERNATIONALIZATION.md) for the JSON catalogues, routing and coverage checks.
-No account is required. See the [current playground spec](docs/UNIFIED-PLAYGROUND.md).
+No account is required to listen or create locally. See the [current playground spec](docs/UNIFIED-PLAYGROUND.md).
 
 ## Why
 
