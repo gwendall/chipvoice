@@ -49,12 +49,18 @@ try{
  });
  await page.waitForTimeout(150);
  await page.evaluate(()=>{window.audioBlocks=[];});
- await slider.focus();await page.keyboard.press('PageUp');await page.waitForTimeout(420);
- await number.fill('132');await number.press('Enter');await page.waitForTimeout(420);
- await slider.focus();await page.keyboard.press('End');await page.waitForTimeout(420);
+ const applied=count=>page.waitForFunction(count=>window.phaseTransitions.length>=count,count);
+ // Qualify four applied transitions, not four UI edits which a busy renderer
+ // is allowed to coalesce while a replacement is still being prepared.
+ await slider.focus();await page.keyboard.press('PageUp');await applied(1);
+ await number.fill('132');await number.press('Enter');await applied(2);
+ await slider.focus();await page.keyboard.press('End');await applied(3);
  await page.locator('.demo-page .machines').getByRole('button',{name:'Super Famicom',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.spec.id==='snes');
- await page.waitForTimeout(150);
+ await applied(4);
+ // Include captured output through the last crossfade's retirement, even if
+ // worklet port messages reach the page later than the context clock.
+ await page.waitForFunction(()=>window.audioBlocks.length>200&&window.audioBlocks.at(-1).at>=window.phaseTransitions.at(-1).at+.085);
  const results=await page.evaluate(()=>({blocks:window.audioBlocks,transitions:window.phaseTransitions}));
  assert.ok(results.blocks.length>200,'The audio-clock probe must collect real output blocks');
  let longest=0,run=0;for(const block of results.blocks){run=block.peak<.00001?run+128:0;longest=Math.max(longest,run);}
