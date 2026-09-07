@@ -19,12 +19,14 @@ import fs from 'node:fs';
  *   node scripts/build-worklet.mjs --watch   # on every change
  */
 const WORKLETS = [
-  { entry: 'src/project-worker.ts', out: 'src/project-worker-inline.ts' },
   { entry: 'src/chips/nes/worklet.ts', out: 'src/chips/nes/worklet-inline.ts' },
   { entry: 'src/chips/gb/worklet.ts', out: 'src/chips/gb/worklet-inline.ts' },
   { entry: 'src/chips/md/worklet.ts', out: 'src/chips/md/worklet-inline.ts' },
   { entry: 'src/chips/snes/worklet.ts', out: 'src/chips/snes/worklet-inline.ts' },
   { entry: 'src/chips/c64/worklet.ts', out: 'src/chips/c64/worklet-inline.ts' },
+  // The project renderer reaches chip modules, so their generated imports
+  // must exist before esbuild resolves its dependency graph on a clean clone.
+  { entry: 'src/project-worker.ts', out: 'src/project-worker-inline.ts' },
 ];
 
 const options = (entry) => ({
@@ -57,6 +59,7 @@ if (process.argv.includes('--watch')) {
       ...options(worklet.entry),
       plugins: [{ name: 'emit', setup(b) { b.onEnd((result) => { if (result.errors.length === 0) emit(worklet, result); }); } }],
     });
+    await ctx.rebuild();
     await ctx.watch();
     console.log(`watching ${worklet.entry}`);
   }
