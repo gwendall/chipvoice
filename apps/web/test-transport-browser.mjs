@@ -68,8 +68,8 @@ try{
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('return from composer');
  for(const width of [320,390,768]){await page.setViewportSize({width,height:844});await page.screenshot({path:new URL(`width-${width}.png`,out).pathname,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  // A native vertical gesture must browse parts without seeking the music.
- await page.getByRole('button',{name:'Sonic 14 parts',exact:true}).click();await ready(page);
- await page.waitForFunction(()=>document.querySelector('.screen-title h2')?.textContent.startsWith('Sonic')&&document.querySelectorAll('.score-part').length===14);
+ await page.getByRole('button',{name:'Sonic 8 parts',exact:true}).click();await ready(page);
+ await page.waitForFunction(()=>document.querySelector('.screen-title h2')?.textContent.startsWith('Sonic')&&document.querySelectorAll('.score-part').length===8);
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);
  const region=page.getByRole('region',{name:'Source score'});await region.scrollIntoViewIfNeeded();
  const bounds=await region.boundingBox(),beforeScroll=await page.getByRole('slider',{name:'Song position',exact:true}).inputValue(),cdp=await context.newCDPSession(page);

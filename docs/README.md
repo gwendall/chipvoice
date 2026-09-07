@@ -44,6 +44,7 @@ Project purpose, methods and decisions live beside the code and change with it.
 
 ## Evaluations
 
+- [Native song fidelity — 2026-09-07](evals/NATIVE-SONGS-2026-09-07.md)
 - [Complete arrangements — 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md)
 - [Creative tools and API foundations — 2026-09-06](evals/CREATIVE-2026-09-06.md)
 - [Playable demo V1 evaluation — 2026-09-05](evals/DEMO-2026-09-05.md)

@@ -5,6 +5,7 @@ import {planPerformance,renderPerformance,toWav} from '../../packages/chipvoice/
 import {measureAudio,comparePcm} from '../../packages/conform/src/listening/metrics.mjs';
 import {observeSnesMixer} from '../../packages/conform/src/listening/snes-mixer.mjs';
 import {arrangementIds,arrangementChips,loadArrangement,checkArrangements} from './check.mjs';
+import {nativeSources,loadNative} from './native-sources.mjs';
 const out='.artifacts/arrangements/evaluation';
 await mkdir(out,{recursive:true});
 const publication='apps/web/public/arrangement-data';await mkdir(publication,{recursive:true});
@@ -20,9 +21,9 @@ async function asset(id,audio){
  return {file:`/arrangement-data/${id}.flac`,sha256:hash(await readFile(`${publication}/${id}.flac`)),sourceWavSha256:hash(wav),metrics};
 }
 for(const id of arrangementIds){
- const score=await loadArrangement(id),piece={id,title:score.title,source:score.source,notices:score.notices,scoreSha256:hash(await readFile(`scores/arrangements/${id}.json`)),parts:score.parts.map(p=>({id:p.id,name:p.name,role:p.role,notes:p.notes.length,priority:p.priority})),cases:[]};
+ const score=await loadArrangement(id),nativeSpec=nativeSources[id],native=await loadNative(id),piece={id,title:score.title,source:score.source,notices:score.notices,native:{chip:nativeSpec.chip,file:`/arrangement-data/${nativeSpec.file}`,format:nativeSpec.format},scoreSha256:hash(await readFile(`scores/arrangements/${id}.json`)),parts:score.parts.map(p=>({id:p.id,name:p.name,role:p.role,notes:p.notes.length,priority:p.priority})),cases:[]};
  for(const chip of arrangementChips){
-  const plan=id==='mario'&&chip.spec.id==='2a03'?JSON.parse(await readFile('scores/arrangements/mario-native.json')):planPerformance(score,chip,{allowLoss:true});
+  const plan=chip.spec.id===nativeSpec.chip?native:planPerformance(score,chip,{allowLoss:true});
   const audio=renderPerformance(plan,chip),repeated=renderPerformance(plan,chip),repeat=comparePcm(audio,repeated,0);
   if(!repeat.ok)throw new Error(`${id}/${chip.spec.id}: nondeterministic audio`);
   let mixer;
@@ -30,18 +31,18 @@ for(const id of arrangementIds){
    const core=chip.digital();for(const block of plan.memory)core.load(block.address,block.bytes);core.schedule(plan.events);mixer=observeSnesMixer(core);core.trace(Math.round(plan.seconds*chip.spec.clockHz),()=>{});
    if(mixer.mainClampedAdditions||mixer.echoClampedAdditions)throw new Error(`${id}: internal SNES clipping: ${JSON.stringify(mixer)}`);
   }
-  const row={chip:chip.spec.id,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,mode:id==='mario'&&chip.spec.id==='2a03'?'native-commands':'adaptation',notes:id==='mario'&&chip.spec.id==='2a03'?score.parts.reduce((sum,p)=>sum+p.notes.length,0):plan.notes.length,losses:plan.losses,repeat,mixer,asset:await asset(`${id}-${chip.spec.id}`,audio)};
+  const row={chip:chip.spec.id,seconds:plan.seconds,loopStartSeconds:plan.loopStartSeconds,mode:chip.spec.id===nativeSpec.chip?'native-commands':'adaptation',notes:chip.spec.id===nativeSpec.chip?score.parts.reduce((sum,p)=>sum+p.notes.length,0):plan.notes.length,losses:plan.losses,repeat,mixer,asset:await asset(`${id}-${chip.spec.id}`,audio)};
   piece.cases.push(row);console.log(`PASS ${id}/${chip.spec.id}: ${plan.seconds.toFixed(2)}s, ${row.losses.filter(l=>l.kind==='voice-omitted').length} omitted, ${row.asset.metrics.rmsDbFS.toFixed(1)} dBFS RMS`);
  }
- if(id==='mario'){
-  const manifest=JSON.parse(await readFile('.artifacts/arrangements/native-reference.json'));
-  const evidence=JSON.parse(await readFile('scores/arrangements/references/mario.json'));
-  if(manifest.sourceSha256!==score.source.sha256||manifest.oracleRevision!==evidence.oracleRevision||manifest.track!==0||manifest.sampleRate!==44100||manifest.channels!==2||manifest.encoding!=='s16le')throw new Error('Native reference provenance differs');
-  const buffer=await readFile('.artifacts/arrangements/mario-gme.pcm'),frames=Math.round(piece.cases[0].seconds*44100),left=new Float32Array(frames),right=new Float32Array(frames);
-  if(hash(buffer)!==manifest.pcmSha256||manifest.pcmSha256!==evidence.pcmSha256||hash(await readFile('.artifacts/arrangements/gme-writes.txt'))!==manifest.traceSha256||manifest.traceSha256!==evidence.traceSha256)throw new Error('Native reference PCM/trace checksum differs');
+ if(nativeSpec){
+  const manifest=JSON.parse(await readFile(`${nativeSpec.artifacts}/native-reference.json`));
+  const evidence=JSON.parse(await readFile(`scores/arrangements/references/${id}.json`));
+  if(manifest.sourceSha256!==score.source.sha256||manifest.oracleRevision!==evidence.oracleRevision||manifest.track!==(id==='zelda'?1:0)||manifest.sampleRate!==44100||manifest.channels!==2||manifest.encoding!=='s16le')throw new Error('Native reference provenance differs');
+  const buffer=await readFile(`${nativeSpec.artifacts}/${nativeSpec.pcm}`),frames=Math.round(native.seconds*44100),left=new Float32Array(frames),right=new Float32Array(frames);
+  if(hash(buffer)!==manifest.pcmSha256||manifest.pcmSha256!==evidence.pcmSha256||hash(await readFile(`${nativeSpec.artifacts}/gme-writes.txt`))!==manifest.traceSha256||manifest.traceSha256!==evidence.traceSha256)throw new Error('Native reference PCM/trace checksum differs');
   if(buffer.length<frames*4)throw new Error('Incomplete GME reference');
   for(let i=0;i<frames;i++){left[i]=buffer.readInt16LE(i*4)/32768;right[i]=buffer.readInt16LE(i*4+2)/32768;}
-  piece.reference={kind:'independent-nsf',title:'Independent NSF emulator',evidence,manifest,asset:await asset('mario-reference',{left,right,sampleRate:44100})};
+  piece.reference={kind:nativeSpec.format==='vgm'?'independent-vgm':'independent-nsf',title:'Independent native emulator',evidence,manifest,asset:await asset(`${id}-reference`,{left,right,sampleRate:44100})};
  }
  report.pieces.push(piece);
  await writeFile(`${out}/report.json`,JSON.stringify(report,null,2)+'\n');

@@ -584,3 +584,40 @@ the old table too. The additive old tables remain, but rolling back to a writer
 that does not set user_id is not a supported steady state: use a backup/forward
 repair before relying on identity again. No production DB or email was used
 for qualification; migrations are tested against disposable legacy/fresh files.
+
+## 29. Native fidelity bypasses musical reconstruction (2026-09-07)
+
+Keep three interfaces over the same chip cores: simple scores/presets, expressive
+polyphonic performances/custom instruments, and native register plans. A chip
+can produce far more timbres than a preset catalogue contains. Emulating its
+rules does not require cataloguing each sound, and a simple API must not limit
+the low-level capabilities.
+
+On its original machine, a familiar song uses its original driver/log commands,
+including instrument automation and samples. MIDI transcription and portable
+note observation remain useful for editing and other-console arrangements, but
+cannot certify original timbres. Mario and Zelda use independently verified NES
+NSF execution; Sonic uses independently decoded VGM commands including DAC drums.
+Selecting a cartridge selects its original console. Native solo masks voices
+without changing shared bus timing; tempo/transpose edits remain adaptations.
+
+VGM timestamps describe logical register commands at 44,100 ticks per second,
+not physical bus writes. Multiple FM commands at the same sample need the
+reference's buffered-write spacing (15 internal clocks between port bytes).
+Without it, operator and pitch settings are overwritten before the YM2612
+applies them. A second core fed the same incorrect serialization also passes a
+comparison, so source-command equality and core-output equality alone are not
+a complete integration test. Test effective register state, independent audio,
+visible spectra and actual browser output as well. Report bus timing scope;
+do not call rounded/serialized VGM playback original CPU-cycle timing.
+
+The source command ledger, reviewed portable extraction, complete native artifact,
+initialization recipe, and serialized bus have separate checksums. Source files
+and independent references are pinned; rendering must not regenerate the oracle.
+Physical analog fidelity and exact cross-console timbres remain separate claims.
+
+For the requested familiar-song demo, the selected credited audio command logs
+and recordings may live in the repository, including Sonic VGM/DAC data. This
+is a scoped exception to exploratory corpus storage in CONFORMANCE.md. These
+game music assets are not covered by the library code licence; executable
+NSF/ROM files and entire downloaded archives remain local.

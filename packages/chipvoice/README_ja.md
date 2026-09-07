@@ -23,6 +23,13 @@ const wav = toWav(renderPerformance(plan, snesChip));
 
 `allowLoss`がなければ、発音数予算による省略は例外になります。テンポマップ、同時発音、ベロシティー、サステイン、ピッチベンド、音量／エクスプレッションを保持し、未対応コントローラーも保存して報告します。GM系パッチは近似で、元ゲームの楽器認証ではありません。[編曲の手順](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README_ja.md)に入力制限、原典検査、実機由来の参照、worker再生を記載します。
 
+メガドライブのネイティブ再生は `importVgm(vgmBytes)` と同じ
+`renderPerformance(plan, mdChip)` エンジンを使い、FM 音色、PSG コマンド、
+オリジナルの DAC サンプルを保持します。`isolateNativePerformance(plan, ['fm6'])`
+は共有バス時刻を維持してハードウェアの声をソロにします。上限付き VGM
+インポーターは未対応コマンドを拒否し、すべての VGM 音源やストリーム形式への
+対応は主張しません。[ネイティブ原典の手順](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README_ja.md)を参照してください。
+
 ```bash
 npm i chipvoice
 ```

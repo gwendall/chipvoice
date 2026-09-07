@@ -1,0 +1,16 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {captureNsf} from '../capture-nsf.mjs';
+import {nsfPerformance} from '../extract-nsf-performance.mjs';
+const [input,out]=process.argv.slice(2);
+if(!input||!out)throw Error('Usage: node scores/arrangements/capture-zelda.mjs source.nsf output-dir');
+const bytes=await readFile(input),source=JSON.parse(await readFile(new URL('./zelda.json',import.meta.url))).source;
+assert.equal(createHash('sha256').update(bytes).digest('hex'),source.sha256,'Reviewed NSF source required');
+const capture=captureNsf(bytes,{track:1,frames:6500});
+const signature=frame=>JSON.stringify(capture.events.slice(capture.calls[frame].first,capture.calls[frame].end).map(e=>[e.addr,e.value]));
+for(let i=0;i<1920;i++)assert.equal(signature(1881+i),signature(3801+i),`Loop repeat frame ${i}`);
+const {score,native}=nsfPerformance(capture,{title:'Zelda · Overworld',endFrame:3801,loopFrame:1881,source});
+native.musicStartCycle=capture.events[capture.calls[0].first].at;
+await mkdir(out,{recursive:true});await writeFile(`${out}/zelda.json`,JSON.stringify(score)+'\n');await writeFile(`${out}/zelda-native.json`,JSON.stringify(native)+'\n');
+console.log('PASS Zelda banked NSF: complete 1,920-frame repeat verified. Compare the independent trace before publication.');

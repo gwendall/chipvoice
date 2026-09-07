@@ -125,8 +125,12 @@ node packages/conform/src/corpus/import-vgm.mjs some.vgm --out packages/conform/
 ```
 
 Any NES VGM file - a rip of a real game, a tracker's export - is corpus material
-through `import-vgm`. A rip of a commercial game belongs on a developer's machine,
-not in this repository, which holds only what it may.
+through `import-vgm`. General-purpose commercial game rips for exploratory conformance stay on the
+developer's machine. For the explicitly requested familiar-song demo, decision
+29 permits the selected, credited native audio logs and resulting recordings
+under `scores/arrangements` and the website assets. This includes Sonic's VGM
+and its DAC sample data; these are game music assets, not MIT-licensed library
+code. Executable NSF/ROM files and downloaded archive collections stay local.
 
 - Reads each log in the corpus, runs it through chipvoice's core and through the
   oracle, and compares the **digital** output on every cycle.

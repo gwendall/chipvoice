@@ -5,7 +5,7 @@ import {fileURLToPath} from 'node:url';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 /** Compare execution traces directly. No time shifting, warping or resynthesis. */
 export function compareNativeTrace(native,trace){
- const first=native.events.findIndex(e=>e.addr===0x4017&&e.value===255);
+ const first=native.events.findIndex(e=>native.musicStartCycle!==undefined?e.at===native.musicStartCycle:e.addr===0x4017&&e.value===255);
  assert.ok(first>=0,'first musical PLAY boundary');
  const expected=native.events.slice(first),last=expected.at(-1).at;
  const events=trace.trim().split('\n').map(line=>{const [at,addr,value]=line.trim().split(/\s+/).map(Number);assert.ok(Number.isSafeInteger(at)&&Number.isInteger(addr)&&Number.isInteger(value));return {at,addr,value};});

@@ -58,7 +58,7 @@ try{
   await page.setViewportSize({width,height:900});await page.goto(base+path);await page.getByLabel('言語',{exact:true}).waitFor();
   if(path==='/ja/lab')await page.getByLabel('楽曲',{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow ${path} at ${width}`);
-  if(path==='/ja')for(const name of ['ゼルダ 4 パート','ソニック 14 パート','マリオ 4 パート']){await page.getByRole('button',{name}).click();await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
+  if(path==='/ja')for(const name of ['ゼルダ 4 パート','ソニック 8 パート','マリオ 4 パート']){await page.getByRole('button',{name}).click();await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);}
   if(width===390||width===1280)await page.screenshot({path:new URL(`${path.split('/').filter(Boolean).join('-')}-${width}.png`,out).pathname,fullPage:true});
  }
  await page.goto(base+'/ja/missing-i18n-page');await page.getByText('このページは見つかりませんでした。',{exact:false}).waitFor();

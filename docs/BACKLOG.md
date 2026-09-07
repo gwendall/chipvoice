@@ -471,3 +471,18 @@ Further musical fidelity requires checking the chosen transcription against
 original game audio and measuring acoustic pitch/articulation after the DSP.
 Full multivoice arrangements should use explicitly transcribed source voices;
 adding a generic accompaniment is no longer part of this pipeline.
+
+### Native song fidelity (2026-09-07)
+
+Mario, Zelda NES and Sonic Mega Drive now use native commands on the original
+console, with independent A/B references. NSF bank switching, bounded VGM import
+with original DAC samples, FM byte serialization and native hardware solo are
+implemented. See [the reproduction method](../scores/arrangements/README.md).
+
+Further work is deliberately separate: identify DAC drum sample boundaries/types
+for portable arrangements; recover FM envelope/release/stereo expression for
+editing; measure physical output filtering and PSG balance against real hardware.
+Native command/digital verification does not complete those fidelity claims.
+The Sonic comparison shows residual high-frequency energy near 8–10 kHz:
+isolate FM, DAC and PSG, then qualify output resampling and filtering separately
+from register/core parity. See the [comparison](evals/NATIVE-SONGS-2026-09-07.md).

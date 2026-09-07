@@ -35,6 +35,13 @@ not original-game instrument certification. The
 [arrangement method](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md)
 documents input limits, source checks, native references and worker playback.
 
+Native Mega Drive playback uses `importVgm(vgmBytes)` and the same
+`renderPerformance(plan, mdChip)` engine. It preserves FM patches, PSG commands
+and original DAC sample bytes. `isolateNativePerformance(plan, ['fm6'])` solos
+the hardware voice while retaining shared bus timing. The bounded VGM importer
+rejects unsupported commands; it does not claim every VGM chip/stream format.
+See the [native source method](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md).
+
 ```bash
 npm i chipvoice
 ```

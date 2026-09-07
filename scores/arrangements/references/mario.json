@@ -22,5 +22,8 @@
   "scope": "All music register values and absolute cycles after the first PLAY; initialization is separately specified by NSF playback. Portable 240 Hz expression is not the independent reference.",
   "pcmSha256": "650fba601ec4da0d65cabe4777ca4bf4fbd1dc7a48f963b5e06b5712de72145b",
   "performanceSha256": "2a94d51a55d8d9dec6cc00342859181ba33d0f60436b1d452b91c12a7f9f7600",
-  "traceSha256": "26f115a51bd2101db14f7fb4a81606f17df00555c8feefa9196cbecd004fcf8d"
+  "traceSha256": "26f115a51bd2101db14f7fb4a81606f17df00555c8feefa9196cbecd004fcf8d",
+  "nativeFileSha256": "0dd32c5affd40db6e3430763adada19cc17d671bcc3aff4f6e734a20258468be",
+  "initializationSha256": "da835f100775b98f870ce25926717a93894df026dce846517ef3dd3c4911fbc9",
+  "eventsSha256": "1c16aa45c1dc9c22bd40eedf47675f8095477a291735763394653b0f72c49b2b"
 }

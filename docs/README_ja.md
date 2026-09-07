@@ -48,6 +48,7 @@
 <a id="evaluations"></a>
 ## 評価報告
 
+- [ネイティブ楽曲の再現性 — 2026-09-07](evals/NATIVE-SONGS-2026-09-07_ja.md)
 - [完全アレンジ — 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06_ja.md)
 - [作曲ツールとAPI基盤 — 2026-09-06](evals/CREATIVE-2026-09-06_ja.md)
 - [遊べるデモV1評価 — 2026-09-05](evals/DEMO-2026-09-05_ja.md)
