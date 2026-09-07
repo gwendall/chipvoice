@@ -9,7 +9,7 @@
 <a id="general-automatic-mixing--priority-plan-2026-09-07"></a>
 ## 汎用自動ミックス — 優先計画（2026-09-07）
 
-音の正しさと汎用移植を npm 公開と新機能より優先します。**MIX-01〜MIX-11** は明示したハードウェア・フレーズの制約を含めて実装済みで、**MIX-12〜MIX-18** は検証中です。
+今後のリリースと機能でも、音の正しさと汎用移植を優先します。**MIX-01〜MIX-18** の自動実装・検証は、API・コーパスの明示した制約内で **0.16.1** として提供済みです（[PR #40](https://github.com/gwendall/chipvoice/pull/40)、[公開ワークフロー修正 #41](https://github.com/gwendall/chipvoice/pull/41)）。MIX-12 の人間による試聴と MIX-14 の実スマートフォン・Safari の受け入れ確認は未完了です。本番ファイルと実際の npm 利用側を検証し、[リリース証拠](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1)に最終結果を記録します。
 依存関係と合格条件は[自動ミックス](AUTOMATIC-MIXING_ja.md)にあります。テスト曲は共通ポリシーの校正と
 評価用であり、本番動作で曲の識別子による特例を設けません。[API](MIXING-API_ja.md) と[評価](evals/AUTOMATIC-MIXING-POLICY-2026-09-07_ja.md)に証拠と制約を記載します。人間による比較試聴と実機確認は未完了のまま明示します。
 

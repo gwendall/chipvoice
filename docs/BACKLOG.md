@@ -7,9 +7,8 @@
 
 ## General automatic mixing — priority plan (2026-09-07)
 
-Sound correctness and general adaptation now precede npm release and new features.
-**MIX-01–MIX-11** are implemented with the documented hardware/phrase limits;
-**MIX-12–MIX-18** are in qualification. Dependencies and acceptance criteria are
+Sound correctness and general adaptation remain the priority for subsequent releases and features.
+**MIX-01–MIX-18** have delivered their automated implementation and qualification within the documented API/corpus limits in **0.16.1** ([PR #40](https://github.com/gwendall/chipvoice/pull/40), [release workflow fix #41](https://github.com/gwendall/chipvoice/pull/41)). Human listening in MIX-12 and physical-phone/Safari acceptance in MIX-14 remain open. Production assets and the actual npm consumer are verified; [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1) records the final checks. Dependencies and acceptance criteria are
 in [Automatic mixing](AUTOMATIC-MIXING.md). Song fixtures calibrate and evaluate
 the shared policy; production behavior must never special-case their identity.
 The [API](MIXING-API.md) and [evaluation](evals/AUTOMATIC-MIXING-POLICY-2026-09-07.md) record evidence and limits. Human listening and real-device acceptance remain explicitly open.

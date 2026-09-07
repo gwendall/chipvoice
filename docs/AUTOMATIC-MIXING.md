@@ -8,9 +8,9 @@
 ## Status and objective
 
 Planned on 2026-09-07 following the user's Zelda/Mega Drive balance report.
-The implementation is on `feat/automatic-console-mixing`; qualification is in progress.
+The implementation is released in `chipvoice@0.16.1`. Automated release qualification is complete; human listening and physical-device acceptance remain open.
 See [API and limits](MIXING-API.md) and the [development evaluation](evals/AUTOMATIC-MIXING-POLICY-2026-09-07.md).
-Sound and adaptation quality take priority over the deferred npm release and new features.
+Sound and adaptation quality remain the priority for subsequent releases and features.
 
 Build a general, deterministic, local arrangement/mixing system for authored,
 imported and generated music. Familiar songs are fixtures, never song-specific
@@ -47,10 +47,21 @@ catalogue identity tests, outside the policy.
 
 ## Ordered tickets
 
-MIX-01–09 are implemented and development-tested. MIX-10/11 have the scoped
-hardware and bounded-phrase behavior documented in the API. MIX-12–18 remain
-in qualification: controlled human listening and real-device checks remain open,
-while automated holdouts, integration, publication and release proceed.
+The implementation landed in [PR #40](https://github.com/gwendall/chipvoice/pull/40); [PR #41](https://github.com/gwendall/chipvoice/pull/41) repaired release qualification. Both shipped in `chipvoice@0.16.1`.
+The [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1) records the qualified commit, production asset checks and actual registry consumer verification.
+
+| Tickets | Delivery status |
+| --- | --- |
+| MIX-01–11 | Implemented, with the hardware, calibration and bounded-phrase limits documented in the API. |
+| MIX-12 | Automated evaluator and blinded listening materials delivered; human preference observations remain open. |
+| MIX-13 | Frozen-candidate holdouts, robustness and development ablations pass within the published corpus/window scope. |
+| MIX-14 | Local benchmarks and browser qualification pass; physical-phone/Safari measurements remain open. |
+| MIX-15–16 | Shared SDK/web/game-phrase integration and English/Japanese documentation delivered. |
+| MIX-17 | Complete publication regenerated; actual production reports and all published audio files verified. |
+| MIX-18 | Version 0.16.1 published and installed from npm in an empty consumer; public API and AudioWorklet tests pass. |
+
+Human listening and physical-device evidence cannot be replaced by viewport screenshots or signal metrics. Cross-console timbre and hardware constraints remain explicit limitations, not a claim that every possible port is exact.
+
 Dependencies refer to MIX IDs. The execution order
 follows prerequisites; evaluator and device baselines begin early rather than
 being invented after the algorithm is tuned.
@@ -84,12 +95,10 @@ being invented after the algorithm is tuned.
    Validate MIX-13 and MIX-14 against frozen acceptance criteria, not the tuning set alone.
 3. Complete MIX-15–18, final bilingual documentation, publication and consumer verification.
 
-Aim for three coherent implementation PRs: diagnosis/output/source foundations;
-general calibration and mix policy; integration/qualification/release preparation.
-Group further only if independent review and evidence remain manageable. This
-planning document does not authorize marking unrun checks as done. Real-device or
-human-listening evidence must be obtained or explicitly remain open; independent
-implementation work can continue while it is pending.
+Implementation and qualification were consolidated in PR #40, followed by the
+SDK release-workflow correction in PR #41. Independent reviews and evidence are
+linked above. Real-device and human-listening evidence must be obtained or remain
+explicitly open; automated checks do not close those gates.
 
 ## Deferred directions
 
