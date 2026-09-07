@@ -1,5 +1,7 @@
 import type {ChipDefinition, NoteFrame, RegisterEvent, Role} from './chip.js';
 import type {Instrument} from './driver.js';
+import {validatePortableTimbre,type PortableTimbre} from './portable-timbre.js';
+import {mixInstrumentSignature} from './mix-calibration.js';
 import {instrumentsFor} from './score.js';
 import type {RenderResult} from './render.js';
 import {performanceInstrument} from './performance-palette.js';
@@ -37,6 +39,8 @@ export interface PerformancePart {
   notes: PerformanceNote[];
   /** Reviewed, explicit patches override the generic role palette. */
   instruments?: Record<string, Instrument>;
+  /** Measured source-patch projections, keyed like instruments (e.g. md:4). */
+  portableTimbres?: Record<string, PortableTimbre>;
 }
 export interface PerformanceNote {
   id: string;
@@ -91,6 +95,13 @@ export function validatePerformance(score: Performance): void {
     if (!part.id || ids.has(part.id) || !['lead','chord','bass','perc'].includes(part.role) || !Number.isFinite(part.priority)) throw new Error('Invalid or duplicate part');
     if(part.origin&&(typeof part.origin.chip!=='string'||typeof part.origin.voice!=='string'||part.origin.chip.length>64||part.origin.voice.length>64))throw new Error('Invalid mix origin');
     if(part.mix&&(part.mix.gainDb!==undefined&&(!Number.isFinite(part.mix.gainDb)||part.mix.gainDb< -96||part.mix.gainDb>12)||part.mix.importance!==undefined&&(!Number.isFinite(part.mix.importance)||part.mix.importance<0||part.mix.importance>1)))throw new Error('Invalid part mix');
+    if(part.portableTimbres){
+      if(Object.keys(part.portableTimbres).length>128)throw new Error('Too many portable timbres');
+      for(const [key,timbre] of Object.entries(part.portableTimbres)){
+        validatePortableTimbre(timbre);
+        if(!part.instruments?.[key]||mixInstrumentSignature(part.instruments[key])!==timbre.sourceSignature)throw new Error('Stale portable timbre source');
+      }
+    }
     ids.add(part.id); const notes = new Set<string>();
     for (const note of part.notes) {
       if (++count > 100000 || !note.id || notes.has(note.id) || !int(note.tick) || !int(note.endTick) || note.endTick <= note.tick || note.endTick > score.endTick || !Number.isFinite(note.pitch) || note.pitch < 0 || note.pitch > 127 || !Number.isInteger(note.velocity) || note.velocity < 1 || note.velocity > 127) throw new Error(`Invalid note in ${part.id}`);
@@ -152,20 +163,32 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   const loss = (part: PerformancePart, kind: string, detail: string) => {const key = `${part.id}:${kind}`; if (!warned.has(key)) {warned.add(key); losses.push({part: part.id, kind, detail});}};
   // Resolve once per part/program/drum, then carry the selected instrument
   // through allocation and encoding. Voice preference cannot discard a patch.
-  const paletteCache = new Map<PerformancePart,Map<string,{inst:Instrument;drum:typeof instruments.perc['K'];explicit:boolean}>>();
+  const paletteCache = new Map<PerformancePart,Map<string,{inst:Instrument;drum:typeof instruments.perc['K'];explicit:boolean;portable?:PortableTimbre;pitchOffset:number}>>();
   const resolveInstrument = (part:PerformancePart,note:PerformanceNote) => {
     let cache=paletteCache.get(part);if(!cache){cache=new Map();paletteCache.set(part,cache);}
     const key=`${note.program??"default"}:${note.drum??-1}`;const cached=cache.get(key);if(cached)return cached;
     const percussion=isPercussion(part,note);
     const kitKey=note.drum===35||note.drum===36?'K':note.drum===38||note.drum===40?'S':note.drum===46?'O':'H';
     const drum=instruments.perc[kitKey],explicit=part.instruments?.[`${chip.spec.id}:${note.program}`]??part.instruments?.[chip.spec.id];
-    const resolved={inst:explicit??(percussion?drum.instrument:performanceInstrument(chip.spec.id,part.role,note.program)),drum,explicit:!!explicit};
+    const sourceKey=part.origin?`${part.origin.chip}:${note.program}`:undefined;
+    const portable=!explicit&&!percussion&&sourceKey?part.portableTimbres?.[sourceKey]:undefined;
+    // Native patch IDs are local identifiers, never General MIDI programs.
+    const program=portable?.program??(part.origin?undefined:note.program);
+    if(portable&&portable.confidence<.9)loss(part,'timbre-ambiguous','Source pitch was not stable across probes; the register pitch is retained');
+    const base=explicit??(percussion?drum.instrument:performanceInstrument(chip.spec.id,part.role,program));
+    // Wide pulses retain the fundamental of measured native tones; the
+    // narrow decorative lead presets add too much unrelated high-frequency energy.
+    const pulse=portable&&part.role!=='bass'&&['2a03','dmg'].includes(chip.spec.id)?{duty:portable.program===73?2:1}:{};
+    const inst=portable?{...base,...pulse,volume:portable.envelope.map(v=>v*15),sustain:true}:base;
+    const resolved={inst,drum,explicit:!!explicit,portable,pitchOffset:portable?.pitchOffset??0};
+    if(!explicit&&part.origin?.chip==='md'&&sourceKey&&part.instruments?.[sourceKey]?.fm&&!percussion&&!portable)loss(part,'timbre-unmeasured','Native FM register pitch and timbre are unmeasured; prepare portableTimbres for faithful pitch conversion');
     cache.set(key,resolved);return resolved;
   };
   const allocated: {part: PerformancePart; note: PerformanceNote; voice: string; sound:ReturnType<typeof resolveInstrument>}[] = [];
   for (const {part, note} of queue) {
     const percussion = isPercussion(part,note);
     const preferred = chip.spec.roles[part.role],sound=resolveInstrument(part,note);
+    if(options.mix!==false&&sound.portable?.rms===0){silentNotes.push({part:part.id,id:note.id});continue;}
     const choices = performanceVoices(chip.spec,sound.inst,percussion);
     const compatible=(v:typeof choices[number])=>instrumentFitsVoice(chip.spec,v,sound.inst);
     choices.sort((a,b) => Number(compatible(b))-Number(compatible(a))||Number(b.id === preferred) - Number(a.id === preferred));
@@ -191,17 +214,17 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   for (const {part,note,voice,sound} of allocated) {
     const percussion=isPercussion(part,note);
     const at = time(note.tick), until = time(note.endTick);
-    notes.push({part: part.id, id: note.id, voice, pitch: note.pitch + (percussion ? 0 : transpose), at, until});
+    notes.push({part: part.id, id: note.id, voice, pitch: note.pitch + sound.pitchOffset + (percussion ? 0 : transpose), at, until});
     const {inst,drum}=sound;
     if (!sound.explicit) loss(part, 'palette-substitution', `Generic ${part.role} palette; original instrument is not certified`);
     if (inst.arp?.length || inst.pitch?.length || inst.slide || inst.vibrato) loss(part, 'instrument-effects-omitted', 'Palette arpeggio/vibrato/slide is omitted; only source expression is applied');
     if (percussion && ![35,36,38,40,42,44,46].includes(note.drum ?? -1)) loss(part, 'drum-substitution', 'Percussion mapped to the closest available kit sound');
     if (chip.spec.id === 'dmg' && note.expression?.some(p => p.gain !== undefined)) loss(part, 'envelope-approximation', 'Game Boy volume steps and hardware envelope constrain expression');
-    const observedGain=options.mix!==false&&!sound.explicit&&!!part.origin&&note.expression?.some(point=>point.gain!==undefined);
+    const observedGain=options.mix!==false&&!sound.explicit&&!sound.portable&&!!part.origin&&note.expression?.some(point=>point.gain!==undefined);
     const points = (note.expression ?? []).map(p => ({...p, seconds: time(p.tick)}));
     if(!percussion){
       const range=pitchRange(chip.spec,chip.spec.voices.find(v=>v.id===voice)!,inst);
-      if(range&&[0,...points.map(p=>p.pitch??0)].some(bend=>{const hz=440*2**((note.pitch+transpose+bend-69)/12);return hz<range[0]||hz>range[1];}))losses.push({part:part.id,note:note.id,kind:'pitch-range',detail:`Pitch or bend exceeds ${voice}'s register range; the hardware may clamp or silence it`});
+      if(range&&[0,...points.map(p=>p.pitch??0)].some(bend=>{const hz=440*2**((note.pitch+sound.pitchOffset+transpose+bend-69)/12);return hz<range[0]||hz>range[1];}))losses.push({part:part.id,note:note.id,kind:'pitch-range',detail:`Pitch or bend exceeds ${voice}'s register range; the hardware may clamp or silence it`});
     }
     const times = new Set<number>([at]);
     for (let frame = 1; at + frame / 60 < until; frame++) times.add(at + frame / 60);
@@ -212,11 +235,11 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
       while (p < points.length && points[p].seconds <= t + 1e-10) {const point = points[p++]; bend = point.pitch ?? bend; expressionGain = point.gain ?? expressionGain; duty = point.duty ?? duty; noisePeriod = point.noisePeriod ?? noisePeriod;}
       const frame = Math.floor((t - at) * 60 + 1e-7);
       let volume = (observedGain?15:(inst.volume[Math.min(frame, inst.volume.length - 1)] ?? 0) * (inst.sustain || frame < inst.volume.length ? 1 : 0)) * note.velocity / 127 * expressionGain;
-      frames.push({at: Math.round(t * chip.spec.clockHz), volume, freq: percussion && !inst.fm ? 0 : 440 * 2 ** ((note.pitch + (percussion?0:transpose) + bend - 69) / 12), period: noisePeriod, duty: Array.isArray(inst.duty) ? inst.duty[frame % inst.duty.length] : duty, noiseMode: inst.noiseMode ?? false, pitchOffset: 0, waveform: Array.isArray(inst.waveform) ? inst.waveform[Math.min(frame, inst.waveform.length - 1)] : inst.waveform ?? null, wave: inst.wave ?? null, fm: inst.fm ?? null, sample: inst.sample ?? null});
+      frames.push({at: Math.round(t * chip.spec.clockHz), volume, freq: percussion && !inst.fm ? 0 : 440 * 2 ** ((note.pitch + sound.pitchOffset + (percussion?0:transpose) + bend - 69) / 12), period: noisePeriod, duty: Array.isArray(inst.duty) ? inst.duty[frame % inst.duty.length] : duty, noiseMode: inst.noiseMode ?? false, pitchOffset: 0, waveform: Array.isArray(inst.waveform) ? inst.waveform[Math.min(frame, inst.waveform.length - 1)] : inst.waveform ?? null, wave: inst.wave ?? null, fm: inst.fm ?? null, sample: inst.sample ?? null});
     }
     prepared.push({part,note,voice,sound,frames,until:Math.round(until*chip.spec.clockHz)});
   }
-  const mixing=options.mix===false?null:planMix(chip,prepared.map(({part,note,voice,sound,frames,until})=>({part:part.id,role:part.role,voice,instrument:sound.inst,pitch:note.pitch+(isPercussion(part,note)?0:transpose),sourcePitch:note.pitch,start:time(note.tick),end:time(note.endTick),activity:mixActivity(frames,until,chip.spec.clockHz),origin:part.origin,referenceInstrument:referenceInstrument(part,note),mix:part.mix})),options.mix);
+  const mixing=options.mix===false?null:planMix(chip,prepared.map(({part,note,voice,sound,frames,until})=>({part:part.id,role:part.role,voice,instrument:sound.inst,pitch:note.pitch+sound.pitchOffset+(isPercussion(part,note)?0:transpose),sourcePitch:note.pitch,sourceRms:sound.portable?.rms,start:time(note.tick),end:time(note.endTick),activity:mixActivity(frames,until,chip.spec.clockHz),origin:part.origin,referenceInstrument:referenceInstrument(part,note),mix:part.mix})),options.mix);
   for(let index=0;index<prepared.length;index++){
     const {frames,voice,note,part}=prepared[index];
     for(const frame of frames){

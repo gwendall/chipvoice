@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import {extractDacPercussion} from './extract-dac-percussion.mjs';
+const kick=Array.from({length:256},(_,i)=>Math.round(128+60*Math.sin(2*Math.PI*220*i/(44100/4))));
+let seed=7;const snare=Array.from({length:256},()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return 68+seed%120;});
+const samples=[...kick,...snare],body=[0x67,0x66,0,0,2,0,0,...samples,0x52,0x2b,128];
+const seek=offset=>body.push(0xe0,offset&255,offset>>8,0,0);
+seek(0);body.push(...Array(512).fill(0x84));seek(256);body.push(...Array(256).fill(0x84));seek(0);body.push(...Array(256).fill(0x84));body.push(0x66);
+const bytes=new Uint8Array(64+body.length),v=new DataView(bytes.buffer);bytes.set([86,103,109,32]);v.setUint32(4,bytes.length-4,true);v.setUint32(8,0x150,true);v.setUint32(12,3579545,true);v.setUint32(0x2c,7670453,true);v.setUint16(0x28,9,true);bytes[0x2a]=16;v.setUint32(0x34,12,true);v.setUint32(0x18,4096,true);bytes.set(body,64);
+const result=extractDacPercussion(bytes);
+assert.deepEqual(result.notes.map(n=>n.tick),[0,1024,2048,3072],'a repeated attack splits concatenated samples even without another seek');
+assert.deepEqual(result.notes.map(n=>n.drum),[36,38,38,36],'tonal kick and broadband snare stay distinct');
+assert.deepEqual(extractDacPercussion(bytes),result,'deterministic analysis');
+console.log('PASS DAC concatenated attacks, timing, kick/snare distinction and determinism');

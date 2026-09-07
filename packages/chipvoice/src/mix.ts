@@ -15,7 +15,7 @@ export interface MixDiagnostic {part:string;kind:string;detail:string}
 export interface MixReport {version:1;calibratedNotes:number;fallbackNotes:number;diagnostics:MixDiagnostic[]}
 export interface MixNote {
   part:string;role:Role;voice:string;instrument:Instrument;pitch:number;start:number;end:number;
-  origin?:MixOrigin;referenceInstrument?:Instrument;mix?:PartMix;sourcePitch?:number;
+  origin?:MixOrigin;referenceInstrument?:Instrument;mix?:PartMix;sourcePitch?:number;sourceRms?:number;
   /** Audible control intervals, before calibration. Undefined means the full note. */
   activity?:readonly {start:number;end:number}[];
 }
@@ -73,8 +73,9 @@ export function planMix(chip:ChipDefinition,notes:MixNote[],options:MixOptions={
   const decisions=notes.map(note=>{
     const target=lookup(chip.spec.id,note.voice,note.instrument),source=note.origin&&note.referenceInstrument?lookup(note.origin.chip,note.origin.voice,note.referenceInstrument):undefined;
     if(target)report.calibratedNotes++;else{report.fallbackNotes++;warn(note.part,'mix-calibration','Instrument response is uncalibrated; conservative mix fallback');}
-    if(note.origin&&!source)warn(note.part,'mix-source','Source loudness is uncalibrated; role balance is an approximation');
-    const importance=note.mix?.importance??(source?1:prominence[note.role]);
+    if(note.sourceRms!==undefined&&(!Number.isFinite(note.sourceRms)||note.sourceRms<0||note.sourceRms>1))throw new Error('Invalid measured source level');
+    if(note.origin&&!source&&note.sourceRms===undefined)warn(note.part,'mix-source','Source loudness is uncalibrated; role balance is an approximation');
+    const importance=note.mix?.importance??(source||note.sourceRms!==undefined?1:prominence[note.role]);
     const trim=10**((note.mix?.gainDb??0)/20)*importance;
     if(chip.spec.id==='2a03'&&note.voice==='tri')warn(note.part,'mix-resolution','NES triangle has no amplitude control; requested attenuation may be unachievable');
     return {note,target,source,trim,headroomWarned:false,lastVolume:NaN,lastTarget:NaN,lastSource:NaN,lastDensity:NaN,lastLevel:0,changes:timeline.get(note.role)??[{at:note.start,count:0,from:1,target:1}]};
@@ -90,7 +91,7 @@ export function planMix(chip:ChipDefinition,notes:MixNote[],options:MixOptions={
     d.lastVolume=volume;d.lastTarget=targetPosition;d.lastSource=sourcePosition;d.lastDensity=densityGain;
     let sourceControl=volume;
     if(source?.chip==='md'&&(source.voice.startsWith('psg')||source.voice==='noise'))sourceControl=15-Math.min(15,Math.max(0,Math.round(-20*Math.log10(Math.min(1,volume/15))/2)));
-    const sourceRms=source?mixProfileLevel(source,sourcePosition,duration,false,sourceControl):.1*volume/15;
+    const sourceRms=note.sourceRms!==undefined?note.sourceRms*volume/15:source?mixProfileLevel(source,sourcePosition,duration,false,sourceControl):.1*volume/15;
     const requested=sourceRms*d.trim*densityGain;
     if(target){
       const maximum=mixProfileLevel(target,targetPosition,duration);

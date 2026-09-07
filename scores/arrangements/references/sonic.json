@@ -9,7 +9,7 @@
   "scope": "All native commands; NES absolute CPU cycles, VGM original sample timestamps. Portable note extraction is an observer, not the independent reference.",
   "pcmSha256": "b9b8adf4fcbbd3d57f0bf524b9ae5f4a3877c4e1c3e37a433f570219fc51fd35",
   "traceSha256": "2a9c4064fb63c91858b668b575b417f86fdbed9a3e1e14681b53b0ffc99ca180",
-  "performanceSha256": "5adea2e22ec71b37423d04608735011c6d0879e846afb2802719c44f6203138b",
+  "performanceSha256": "5e25fdcd6a287bf8a848235ad43898ef5db03667f8c19af31488f590f8b2b379",
   "nativeFileSha256": "70bec4f5dffe481491a705a61dcf0d3d50858cb8fa7d9ecd2a9b6f4b9033a1b9",
   "eventsSha256": "0eeb77c82cf7f1612f8c5a6471391404ad953f91d94b3634cdcbfbbdec948899",
   "digital": {

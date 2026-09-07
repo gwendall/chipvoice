@@ -235,6 +235,13 @@ lookahead is unchanged.
 
 MIDI imports infer musical roles from the notes rather than track order; the web
 player lets you review and override them. Adaptation mixing excludes source-silent
-notes from voice allocation and reserves shared SNES dry/echo headroom. Evaluation
+notes from voice allocation and reserves shared SNES dry headroom. Evaluation
 checks complete performances, dynamic contrast and calibration error; deterministic
 output is not a guarantee of original-game timbre or subjective mix quality.
+
+Native FM ports use measured patch pitch and amplitude descriptors rather than
+interpreting local patch IDs as MIDI instruments. The SNES factory palette is dry
+from 0.16.3. Sonic DAC ports distinguish observed kick/snare attacks instead of
+mapping every burst to a kick. These improve adaptations; they do not make
+cross-console timbres identical. See the measured-projection workflow in
+[the mixing API](docs/MIXING-API.md).

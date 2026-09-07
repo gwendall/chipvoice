@@ -378,3 +378,5 @@ export type {MixProfile, MixCalibrationOptions} from './mix-calibration.js';
 export type {PartMix, MixOrigin, MixOptions, MixReport, MixDiagnostic} from './mix.js';
 export {prepareMixPhrase} from './mix-phrase.js';
 export type {MixPhraseNote} from './mix-phrase.js';
+
+export type {PortableTimbre} from './portable-timbre.js';

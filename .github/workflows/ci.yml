@@ -36,6 +36,7 @@ jobs:
       - run: pnpm build
       - run: pnpm scores:check
       - run: pnpm arrangements:check
+      - run: node scores/test-portable-timbres.mjs
       - run: node scores/mixing/check-calibration.mjs
       - run: node scores/mixing/acceptance.mjs
       - run: node scores/mixing/validate-profiles.mjs

@@ -172,16 +172,15 @@ See the [ordered tickets](AUTOMATIC-MIXING.md) for those explicitly open gates.
 
 ## Cold-review corrections and acceptance
 
-The SNES factory adaptation reserves a common internal budget before both the
-dry voice sum and echo feedback. The bound uses the actual factory FIR absolute
-coefficient sum (172/128), feedback (56/128), register quantization, up to 80 ms
-of release and 12 ms of voice staggering. A 38-unit combined volume budget leaves
-rounding margin; it is deliberately conservative for correlated samples. A short
-30 ms gain ramp and budgeting across entire register holds avoid a late correction
-after clipping. Quiet contributions can fall below one hardware step; the report
-then includes `mix-bus-resolution`. Lowering final output gain cannot replace this
-protection. Native command replay and `mix:false` do not apply it. No new processing
-is added to the worklet.
+The SNES factory palette is dry from 0.16.3 onward. The automatic adaptation
+reserves a 120/128 combined voice-volume budget before the DSP's saturating sum,
+including release and staggered writes. This replaces the earlier 38-unit budget
+for an always-enabled feedback echo. Space is no longer imposed on every note.
+Native register playback still supports the complete echo/FIR hardware. Authored
+raw echo streams need their own headroom policy. The 30 ms anticipation/recovery,
+80 ms release allowance and 12 ms driver staggering remain. Quiet contributions
+can fall below a register step (`mix-bus-resolution`). `mix:false` bypasses this
+policy; lowering output gain alone cannot prevent internal saturation.
 
 MIDI roles are inferred after reading all notes, using channel, explicit names,
 program families, polyphony and pitch register, never the first track's position.
@@ -203,3 +202,41 @@ complete performances, including late sections. The held-out corpus additionally
 contains counterpoint, long-note expression, program/tempo changes and sparse
 percussion families. These tests supplement source accounting and internal
 saturation checks; they do not claim universal timbre fidelity or human preference.
+
+## Measured native FM projections
+
+Native FM patch IDs are **not** General MIDI program numbers. A register's base
+frequency also need not be the audible fundamental: operator multipliers and
+modulation change it. Unmeasured native patches use a neutral role palette and
+report `timbre-unmeasured`; the planner never silently renders a patch to guess it.
+
+Prepare reusable descriptors explicitly, outside playback:
+
+```sh
+node scores/analyze-fm-timbres.mjs source-performance.json prepared-performance.json
+```
+
+`PerformancePart.portableTimbres` maps source instrument keys such as `md:4` to
+`PortableTimbre`: source signature, measured pitch offset, a generic target GM
+family, a normalized 60 Hz amplitude envelope, source RMS and confidence. The
+planner applies it to substitute instruments, preserves source ticks and IDs,
+and reports the resulting pitch in `plan.notes`. An explicit target instrument
+wins. Source-chip patches and native command replay stay unchanged. Stale
+signatures and invalid/beyond-bound descriptors are rejected. Descriptor RMS
+provides source balance when a complete response profile is unavailable.
+
+The supplied analyzer renders each distinct FM patch at 220 and 440 Hz. It
+compares waveform periods, requires agreement and correlation >= 0.9, samples
+0.8 seconds of amplitude, and makes a coarse soft/bright family choice. It is
+bounded to 128 patches. Unstable pitch retains zero offset with a diagnostic.
+It does not solve arbitrary inharmonic FM, pitch-dependent envelopes, unbounded
+sustains or exact sample-bank reconstruction. The final envelope value holds
+past the probe. These are measured approximations, not an equivalence proof.
+
+`importVgm` optionally reports `onDacStream(sample, offset)` for PCM seek
+boundaries. `scores/extract-dac-percussion.mjs` also finds repeated 32-byte
+attacks when samples are concatenated without a seek. It estimates kick/snare
+families using waveform crossings, preserves observed timestamps, and reports
+quiet candidates below its 4/128 RMS activity floor separately. This heuristic
+is intended for DAC percussion streams, not arbitrary sampled speech/music.
+The Sonic capture command composes both preparation steps reproducibly.
