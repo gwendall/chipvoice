@@ -5,6 +5,11 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+## Creation and API review — proposed next work
+
+[The review](CREATION-API-REVIEW-2026-09-07.md) records the compact/complete publication gap, SDK playback seams, API discoverability and a proposed creation/remix product. **CREATE-01–CREATE-11 are proposed, not implemented**: document/runtime contracts first, then unified creation, publication/profiles and discovery. Sound-quality acceptance remains open; this plan does not mark it complete.
+
+
 ## General automatic mixing — priority plan (2026-09-07)
 
 Sound correctness and general adaptation remain the priority for subsequent releases and features.

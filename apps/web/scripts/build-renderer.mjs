@@ -1,5 +1,6 @@
 import { build } from '../../../packages/chipvoice/node_modules/esbuild/lib/main.js';
 import {mkdir,copyFile,readFile,writeFile} from 'node:fs/promises';
+await build({entryPoints:['src/lib/project-render-worker.ts'],outfile:'generated/project-render.cjs',bundle:true,platform:'node',target:'node22',format:'cjs',minify:true,logLevel:'warning'});
 await build({ entryPoints: ['src/lib/audio-worker.ts'], outfile: 'generated/audio-render.cjs', bundle: true, platform: 'node', target: 'node22', format: 'cjs', minify: true, logLevel: 'warning' });
 await build({entryPoints:['src/arrangements/render-worker.ts'],outfile:'public/arrangement-render.js',bundle:true,platform:'browser',format:'iife',target:'es2022',minify:true,logLevel:'warning'});
 await mkdir('public/arrangement-data',{recursive:true});

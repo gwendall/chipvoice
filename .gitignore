@@ -33,3 +33,10 @@ apps/web/public/arrangement-data/sonic-native.vgm
 __pycache__/
 
 apps/web/public/arrangement-data/*-view.json
+
+packages/chipvoice/src/project-worker-inline.ts
+
+# Local credentials never belong in source control.
+.env
+.env.*
+!.env.example

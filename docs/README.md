@@ -10,6 +10,8 @@ Project purpose, methods and decisions live beside the code and change with it.
 
 | Document | Purpose |
 | --- | --- |
+| [Projects, creation and publication](CREATION.md) | Versioned SDK, workspace, profiles, discovery, pinned audio and operating limits |
+| [Creation and API review](CREATION-API-REVIEW-2026-09-07.md) | Current gaps, unified creation/sharing contracts and proposed CREATE-01–11 tickets |
 | [Mixing API](MIXING-API.md) | Instrument calibration, automatic balance, game phrases, uncertainty and evaluation |
 | [Automatic mixing](AUTOMATIC-MIXING.md) | General adaptation/mixing contract, ordered tickets and acceptance |
 | [Roadmap](ROADMAP.md) | Roadmap and phase acceptance |

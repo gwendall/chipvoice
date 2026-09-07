@@ -8,7 +8,7 @@ const config: NextConfig = {
   // The renderer is a tight numeric loop over a million samples. It needs the
   // Node runtime, not Edge - there is no way around that and no reason to try.
   serverExternalPackages: ["@libsql/client"],
-  outputFileTracingIncludes: { '/api/audio/*/*': ['./generated/audio-render.cjs'] },
+  outputFileTracingIncludes: { '/api/v1/*': ['./generated/project-render.cjs'], '/api/audio/*/*': ['./generated/audio-render.cjs'] },
 
   /*
    * `/s/{id}.mp3` is the URL that gets shared, so it is the URL that exists.

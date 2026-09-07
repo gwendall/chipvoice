@@ -380,3 +380,14 @@ export {prepareMixPhrase} from './mix-phrase.js';
 export type {MixPhraseNote} from './mix-phrase.js';
 
 export type {PortableTimbre} from './portable-timbre.js';
+
+export {parseProject,validateProject,projectFromPerformance,projectFromScore,storePlan,ProjectValidationError,PROJECT_SCHEMA,CHIP_IDS} from './project.js';
+export type {MusicProject,StoredPlan,ProjectIssue,ProjectChip} from './project.js';
+export {renderProject,projectCapabilities,PROJECT_ENGINE_VERSION} from './project-render.js';
+export type {ProjectRender,ProjectRenderOptions} from './project-render.js';
+export {ProjectPlayer,prepareProject,importProjectMidi} from './project-player.js';
+export type {PreparedProjectAudio,PrepareProjectOptions,ProjectPlayerOptions} from './project-player.js';
+export {BufferPlayback} from './playback/BufferPlayback.js';
+export {Fade} from './playback/fade.js';
+export {outputTime} from './playback/output-clock.js';
+export {repeatPerformanceSection} from './project-edit.js';

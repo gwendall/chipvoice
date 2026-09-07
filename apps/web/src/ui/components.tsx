@@ -4,13 +4,13 @@ import type {ButtonHTMLAttributes, ReactNode} from 'react';
 import Link from '@/i18n/react';
 import {DEMO_MACHINES, type ChipId} from '../studio/document';
 
-export function SiteHeader({active = 'playground'}: {active?: 'playground' | 'lab' | 'about'}) {
+export function SiteHeader({active = 'playground'}: {active?: 'playground' | 'lab' | 'about' | 'create' | 'explore' | 'docs'}) {
  const t = useT();
-  return <header className="site-header"><Link href="/" className="wordmark" aria-label={t("chipvoice home")}><span className="brand-mark" aria-hidden="true"><i/><i/><i/><i/></span>{t("chipvoice")}</Link><span className="header-tag">{t("OLD CHIPS. NEW TRICKS.")}</span><nav aria-label={t("Project")}><Link href="/" aria-current={active === 'playground' ? 'page' : undefined}>{t("Playground")}</Link><Link href="/lab" aria-current={active === 'lab' ? 'page' : undefined}>{t("Listening lab")}</Link><Link href="/about" aria-current={active === 'about' ? 'page' : undefined}>{t("About")}</Link></nav><LanguageSelector/></header>;
+  return <header className="site-header"><Link href="/" className="wordmark" aria-label={t("chipvoice home")}><span className="brand-mark" aria-hidden="true"><i/><i/><i/><i/></span>{t("chipvoice")}</Link><span className="header-tag">{t("OLD CHIPS. NEW TRICKS.")}</span><nav aria-label={t("Project")}><Link href="/" aria-current={active === 'playground' ? 'page' : undefined}>{t("Playground")}</Link><Link href="/create" aria-current={active==='create'?'page':undefined}>{t("Create")}</Link><Link href="/explore" aria-current={active==='explore'?'page':undefined}>{t("Explore")}</Link><Link href="/docs" aria-current={active==='docs'?'page':undefined}>{t("API")}</Link></nav><LanguageSelector/></header>;
 }
 export function SiteFooter() {
  const t = useT();
-  return <footer className="site-footer"><div className="footer-credit"><a href="https://gwendall.com">{t("Made by gwendall ")}<span aria-hidden="true">↗</span></a><span>{t("chipvoice · A love letter to little sound chips.")}</span></div><nav aria-label={t("Footer")}><Link href="/lab">{t("Listening lab")}</Link><Link href="/about#credits">{t("Credits")}</Link><a href="https://github.com/gwendall/chipvoice">{t("GitHub ↗")}</a><a href="/skill.md">{t("For agents ↗")}</a></nav></footer>;
+  return <footer className="site-footer"><div className="footer-credit"><a href="https://gwendall.com">{t("Made by gwendall ")}<span aria-hidden="true">↗</span></a><span>{t("chipvoice · A love letter to little sound chips.")}</span></div><nav aria-label={t("Footer")}><Link href="/lab">{t("Listening lab")}</Link><Link href="/about">{t("About")}</Link><Link href="/about#credits">{t("Credits")}</Link><a href="https://github.com/gwendall/chipvoice">{t("GitHub ↗")}</a><a href="/skill.md">{t("For agents ↗")}</a></nav></footer>;
 }
 export function MachinePicker({value, onChange, disabled = false}: {value: ChipId; onChange: (id: ChipId) => void; disabled?: boolean}) {
  const t = useT();

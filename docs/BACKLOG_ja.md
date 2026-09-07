@@ -6,6 +6,12 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+<a id="creation-and-api-review--proposed-next-work"></a>
+## 作曲・APIレビュー — 次の作業案
+
+[レビュー](CREATION-API-REVIEW-2026-09-07_ja.md)にコンパクト形式と完全楽曲の公開ギャップ、SDK再生の境界、API導線、作曲・リミックス製品案を記録しました。**CREATE-01〜CREATE-11は提案・未実装**です。ドキュメント・実行契約、統合作曲、公開・プロフィール、作品発見の順に進めます。音質の受け入れは未完了のままであり、この計画で完了とはしません。
+
+
 <a id="general-automatic-mixing--priority-plan-2026-09-07"></a>
 ## 汎用自動ミックス — 優先計画（2026-09-07）
 
@@ -262,6 +268,7 @@ Mario、NES の Zelda、メガドライブの Sonic は、元の機種でネイ�
 
 Zelda の選曲回帰を修正しました。NSF トラック 3 を使用し、エミュレーターとの一致より先に独立した Overworld のフレーズを検証します。4 機種の移植と A/B リファレンスを再生成します。[証拠と限界](evals/ZELDA-SELECTION-2026-09-07_ja.md)を参照してください。
 
+<a id="native-timbre-follow-up-0163"></a>
 ### ネイティブ音色の追補（0.16.3）
 
 完了：SNES 標準音色のドライ化と内部音量予算 120、FM 基音と音量変化の実測、
