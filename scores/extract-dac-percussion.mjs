@@ -6,8 +6,9 @@ import {importVgm} from '../packages/chipvoice/dist/index.js';
  * recover repetitions; no song-specific offsets or drum pattern is supplied.
  * Drum *family* classification is approximate, and is reported separately. */
 export function extractDacPercussion(bytes){
- const values=[],times=[],seeks=[];
- importVgm(bytes,{onDacStream(){seeks.push(values.length);},onCommand(t,c,r,v){if(c===0x52&&r===0x2a){values.push(v);times.push(t);}}});
+ const values=[],times=[],seeks=[0];let enabled=false;
+ importVgm(bytes,{onDacStream(){seeks.push(values.length);},onCommand(t,c,r,v){if(c===0x52&&r===0x2b){const next=!!(v&128);if(next&&!enabled)seeks.push(values.length);enabled=next;}
+  if(enabled&&c===0x52&&r===0x2a){values.push(v);times.push(t);}}});
  const pcm=Buffer.from(values),prefixes=new Map(),starts=new Set(seeks);
  for(const at of seeks){
   const prefix=pcm.subarray(at,at+32);

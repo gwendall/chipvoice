@@ -11,3 +11,14 @@ assert.deepEqual(result.notes.map(n=>n.tick),[0,1024,2048,3072],'a repeated atta
 assert.deepEqual(result.notes.map(n=>n.drum),[36,38,38,36],'tonal kick and broadband snare stay distinct');
 assert.deepEqual(extractDacPercussion(bytes),result,'deterministic analysis');
 console.log('PASS DAC concatenated attacks, timing, kick/snare distinction and determinism');
+
+const disabled=bytes.slice();const enableIndex=64+7+samples.length+2;disabled[enableIndex]=0;assert.deepEqual(extractDacPercussion(disabled).notes,[],'disabled DAC writes cannot invent drums');
+const noSeek=Uint8Array.from([...bytes.slice(0,64+7+samples.length+3),...bytes.slice(64+7+samples.length+8)]);new DataView(noSeek.buffer).setUint32(4,noSeek.length-4,true);assert.deepEqual(extractDacPercussion(noSeek).notes.map(n=>n.tick),[0,1024,2048,3072],'implicit PCM cursor zero retains the first hit');
+console.log('PASS disabled DAC and implicit initial stream cursor');
+
+const bodyStart=64+7+samples.length+3+5;
+const insert=(at,values)=>{const b=Uint8Array.from([...bytes.slice(0,at),...values,...bytes.slice(at)]);new DataView(b.buffer).setUint32(4,b.length-4,true);return b;};
+const redundant=insert(bodyStart+128,[0x52,0x2b,128]);assert.deepEqual(extractDacPercussion(redundant).notes,result.notes,'redundant enable writes cannot split an attack');
+const point=bodyStart+128,interrupted=Uint8Array.from([...bytes.slice(0,point),0x52,0x2b,0,bytes[point],0x52,0x2b,128,...bytes.slice(point+1)]);new DataView(interrupted.buffer).setUint32(4,interrupted.length-4,true);
+assert.ok(extractDacPercussion(interrupted).notes.some(n=>n.tick===516),'a real reenable starts a new audible segment');
+console.log('PASS redundant enable and disable/re-enable boundaries');

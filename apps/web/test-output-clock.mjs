@@ -19,3 +19,6 @@ assert.ok(outputTime(slow,2513.2)>beforeRefresh,'The clock resumes advancing whe
 const overview=scoreOverview({endTick:200,loopStartTick:100,parts:[{id:'lead',name:'Lead',role:'lead',notes:[{tick:100,endTick:150,pitch:60}]}]},tick=>tick<=100?tick*.01:1+(tick-100)*.02);
 assert.equal(overview.seconds,3);assert.equal(overview.loopStart,1/3);assert.deepEqual(overview.parts[0].notes,[[1/3,2/3,60]]);
 console.log('PASS audible timestamp, fallback, bounds and tempo-map score projection');
+
+const fmOverview=scoreOverview({endTick:100,parts:[{id:'fm',name:'FM',role:'lead',origin:{chip:'md'},portableTimbres:{'md:4':{pitchOffset:24}},notes:[{tick:0,endTick:100,pitch:43,program:4}]}]},tick=>tick/100);
+assert.equal(fmOverview.parts[0].notes[0][2],67,'visual source pitch uses the measured FM fundamental');
