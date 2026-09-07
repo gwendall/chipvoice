@@ -107,3 +107,20 @@ Progressive rendering, extra caching and console-specific package entry points a
 measurement-driven follow-ups, not automatic prerequisites. Richer game-state
 music and more original compositions follow a qualified general adaptation system.
 No recurring remote model service is required for sound generation or mixing.
+
+## Cold-review follow-up (0.16.2)
+
+The cold review exposed gaps in MIX-09–13 despite the earlier corpus passing.
+The fixes add shared SNES dry/echo protection, source-silent allocation tracking,
+role-based audible density, shared phrase/score hardware constraints and FM drum
+handling. MIDI roles now use all source notes, expose confidence and can be
+corrected in the player. New regression tests cover silent voice stealing,
+track regrouping, oversized phrases and actual staggered volume writes during
+headroom recovery. The evaluator renders whole performances and has explicit
+acoustic gates plus structurally different validation families.
+
+The implementation and evidence are described in
+[the cold-review evaluation](evals/AUTOMATIC-MIXING-COLD-REVIEW-2026-09-07.md).
+Human listening and physical phone/Safari gates remain separate. Independently
+prepared SNES phrases with outstanding release tails need a common preparation
+window before scheduling; this API does not retroactively remix an earlier phrase.

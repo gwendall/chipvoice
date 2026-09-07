@@ -659,5 +659,7 @@
   "Shared SNES dry and echo headroom reserved before internal mixing": "SNES の内部ミックス前に、全パートとエコーの音量余裕を確保しています",
   "Instrument is incompatible with the hardware voice": "楽器がハードウェアの音声チャンネルに対応していません",
   "Some SNES levels fall below a volume step after shared headroom protection": "共有ヘッドルームの保護により、一部の SNES 音量が最小ステップ未満になります",
-  "1 note omitted.": "1 個の音符を省略。"
+  "1 note omitted.": "1 個の音符を省略。",
+  "Performance exceeds 200,000 expression points": "演奏データのエクスプレッション点数が 200,000 を超えています",
+  "Invalid MIDI program or percussion key": "MIDI プログラムまたは打楽器キーが無効です"
 }
