@@ -804,7 +804,7 @@ export default function Creator({
                         </Button>
                       </div>
                       <div className="part-tools">
-                        <label>
+                        <label className="timbre-control">
                           {t("Timbre")}
                           <select
                             aria-label={t("Timbre")}
