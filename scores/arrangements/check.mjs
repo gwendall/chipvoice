@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {validatePerformance,planPerformance,nesChip,gbChip,mdChip,snesChip} from '../../packages/chipvoice/dist/index.js';
 import {nativeSources,loadNative,vgmCommands} from './native-sources.mjs';
+import {assertZeldaOverworld} from './theme-identity.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export const arrangementChips=[nesChip,gbChip,mdChip,snesChip];
 export const arrangementIds=['mario','zelda','sonic'];
@@ -56,6 +57,7 @@ export async function checkArrangements(){
     let evidence;
     if(nativeSources[id]){
       const native=await loadNative(id);
+      if(id==='zelda')assertZeldaOverworld(native);
       assert.equal(hash(await readFile(new URL(nativeSources[id].file,import.meta.url))),reference.nativeFileSha256,'complete native artifact identity');
       evidence=compareNativeArrangement(score,native,reference);
     }else evidence=comparePerformance(score,reference);

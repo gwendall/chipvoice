@@ -12,8 +12,10 @@ are explicit adaptations. All three songs have an independent reference for A/B.
 | Piece | Native source | Verification |
 | --- | --- | --- |
 | Mario · Ground Theme | NTSC NSF; intro + 5,184-frame loop; 88.5375 s | 41,999 musical writes match Game_Music_Emu, including absolute CPU cycles |
-| Zelda · Overworld | Banked NTSC NES NSF, track 2; intro + 1,920-frame repeated cycle | 28,306 musical writes match Game_Music_Emu at the same CPU cycle; NES version, not Famicom Disk System |
+| Zelda · Overworld | Banked NTSC NES NSF, track 3; intro + 1,920-frame repeated cycle | 18,137 musical writes match Game_Music_Emu at the same CPU cycle; NES version, not Famicom Disk System |
 | Sonic · Green Hill Zone | NTSC Mega Drive VGM; 53.1993 s, loop begins at 14.7993 s | All 458,039 FM/PSG/DAC commands match GME at VGM sample timestamps; six FM voices and both DAC pins also match Nuked-OPN2 over 68,010,485 internal clocks |
+
+Zelda uses displayed track 3 (zero-based index 2). Before emulation parity is checked, a reviewed Overworld phrase from the independent MIDI reference must occur in the native pulse-register notes. This rejects the wrong subsong even if its commands match GME perfectly. The captured intro and one loop last 38.1705 seconds, with the loop beginning at 6.2231 seconds. See the [selection regression](../../docs/evals/ZELDA-SELECTION-2026-09-07.md).
 
 Sonic and Zelda previously used fan MIDI transcriptions. Those verified notes
 against the MIDI, not the original game. Sonic's MIDI adaptation omitted 291
@@ -72,7 +74,7 @@ an executable ROM. Use the credited source and exact hash in each source JSON.
 ```sh
 python3 scores/arrangements/native-oracle.py mario.nsf .artifacts/arrangements
 node scores/arrangements/capture-mario.mjs mario.nsf .artifacts/reproduced
-python3 scores/arrangements/native-oracle.py zelda.nsf .artifacts/native-songs/zelda-oracle 100 1
+python3 scores/arrangements/native-oracle.py zelda.nsf .artifacts/native-songs/zelda-overworld-oracle 120 2
 node scores/arrangements/capture-zelda.mjs zelda.nsf .artifacts/reproduced
 python3 scores/arrangements/vgm-oracle.py sonic.vgm .artifacts/native-songs/sonic-oracle 54
 node scores/arrangements/capture-sonic.mjs sonic.vgm .artifacts/reproduced

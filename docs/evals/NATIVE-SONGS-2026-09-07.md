@@ -5,6 +5,8 @@
   <a href="NATIVE-SONGS-2026-09-07_ja.md">日本語</a>
 </p>
 
+> **Correction:** PR #38 selected NSF track 2 and incorrectly labelled it Overworld. Its 28,306-command / 63.2625-second Zelda results below verify the wrong subsong, not Overworld. That identity claim is withdrawn. [The correction](ZELDA-SELECTION-2026-09-07.md) selects track 3 and adds an independent musical-identity gate. Mario and Sonic results are unaffected.
+
 ## Finding
 
 The user was right about Sonic. The previous Mega Drive adaptation substituted

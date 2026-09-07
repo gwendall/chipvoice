@@ -37,7 +37,7 @@ for(const id of arrangementIds){
  if(nativeSpec){
   const manifest=JSON.parse(await readFile(`${nativeSpec.artifacts}/native-reference.json`));
   const evidence=JSON.parse(await readFile(`scores/arrangements/references/${id}.json`));
-  if(manifest.sourceSha256!==score.source.sha256||manifest.oracleRevision!==evidence.oracleRevision||manifest.track!==(id==='zelda'?1:0)||manifest.sampleRate!==44100||manifest.channels!==2||manifest.encoding!=='s16le')throw new Error('Native reference provenance differs');
+  if(manifest.sourceSha256!==score.source.sha256||manifest.oracleRevision!==evidence.oracleRevision||manifest.track!==nativeSpec.track||manifest.sampleRate!==44100||manifest.channels!==2||manifest.encoding!=='s16le')throw new Error('Native reference provenance differs');
   const buffer=await readFile(`${nativeSpec.artifacts}/${nativeSpec.pcm}`),frames=Math.round(native.seconds*44100),left=new Float32Array(frames),right=new Float32Array(frames);
   if(hash(buffer)!==manifest.pcmSha256||manifest.pcmSha256!==evidence.pcmSha256||hash(await readFile(`${nativeSpec.artifacts}/gme-writes.txt`))!==manifest.traceSha256||manifest.traceSha256!==evidence.traceSha256)throw new Error('Native reference PCM/trace checksum differs');
   if(buffer.length<frames*4)throw new Error('Incomplete GME reference');

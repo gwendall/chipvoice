@@ -486,3 +486,6 @@ Native command/digital verification does not complete those fidelity claims.
 The Sonic comparison shows residual high-frequency energy near 8–10 kHz:
 isolate FM, DAC and PSG, then qualify output resampling and filtering separately
 from register/core parity. See the [comparison](evals/NATIVE-SONGS-2026-09-07.md).
+
+
+Zelda selection regression fixed: the catalogue now uses NSF track 3, with an independent Overworld phrase checked before emulator parity. All four ports and A/B reference are rebuilt; [evidence and limits](evals/ZELDA-SELECTION-2026-09-07.md).
