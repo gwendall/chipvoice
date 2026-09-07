@@ -5,6 +5,14 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+## General automatic mixing — priority plan (2026-09-07)
+
+Sound correctness and general adaptation now precede npm release and new features.
+All **MIX-01–MIX-18** tickets are `todo`; dependencies and acceptance criteria are
+in [Automatic mixing](AUTOMATIC-MIXING.md). Song fixtures calibrate and evaluate
+the shared policy; production behavior must never special-case their identity.
+This plan supersedes the earlier release-first ordering, without marking implementation complete.
+
 
 The [roadmap](ROADMAP.md) says where this is going. This is the list of what is
 being done about it, ticket by ticket, kept current at the start and the end of

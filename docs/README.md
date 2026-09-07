@@ -10,6 +10,7 @@ Project purpose, methods and decisions live beside the code and change with it.
 
 | Document | Purpose |
 | --- | --- |
+| [Automatic mixing](AUTOMATIC-MIXING.md) | General adaptation/mixing contract, ordered tickets and acceptance |
 | [Roadmap](ROADMAP.md) | Roadmap and phase acceptance |
 | [Playable demo](DEMO.md) | Playable demo specification |
 | [Unified playground](UNIFIED-PLAYGROUND.md) | Complete arrangements and musical transport |
