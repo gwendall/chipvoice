@@ -2,28 +2,47 @@
   "sourceSha256": "ebd279307c158b9561c254e55eaf683c3ea65736d1303144ed56ff89a92a0364",
   "oracle": "Game_Music_Emu",
   "oracleRevision": "fe8da4b6d3876d7542c2fb69d94487e19836d678",
-  "musicCommands": 28306,
-  "commandsSha256": "bf5298479802009b898cae66e46ff45b7d2a01fca5fd8149bca35a1e5ea35bc0",
+  "track": 2,
+  "musicCommands": 18137,
+  "commandsSha256": "ffea3e7c6cdcd83e89647ee6210c6dcd9cd2db3ba4bbf0687fd2544712506a21",
   "first": {
     "at": 29789,
     "addr": 16407,
     "value": 192
   },
   "last": {
-    "at": 113196269,
-    "addr": 16399,
-    "value": 0
+    "at": 68287427,
+    "addr": 16392,
+    "value": 31
   },
-  "scope": "All native commands; NES absolute CPU cycles, VGM original sample timestamps. Portable note extraction is an observer, not the independent reference.",
-  "pcmSha256": "ef14466432b00435c1d466e6b4b85beff434812ab7b4bb819aa8b128c141ddd7",
-  "traceSha256": "c220c0be1db6c7c69e40118f8232365102e877b169a19bddcdcec324c17ab2c7",
+  "scope": "NES commands match absolute CPU cycles. Overworld identity is independently checked against a reviewed musical phrase; emulator parity alone does not identify the song.",
+  "pcmSha256": "ec3d96eb69df4a9ea12a15d0c0b8fcdd5f8271a227400e97a1cc538b657d6518",
+  "traceSha256": "5732edf3148f4d858cd265b1acd613ce1a62bbb4b0754507649a79e9e0f83c24",
   "loop": {
-    "startFrame": 1881,
-    "endFrame": 3801,
+    "startFrame": 373,
+    "endFrame": 2293,
     "repeatVerifiedFrames": 1920
   },
-  "performanceSha256": "1d8a3afaae02f18c6ddff890562a6317dc1a7c06438345d02b6207012761395b",
-  "nativeFileSha256": "3b3497c596a82f9f0efdb1a9305df9cbb1d42e51fef31a5e8fb808240adb0075",
+  "themeIdentity": {
+    "source": "scores/references/zelda.json",
+    "fromBeat": 16,
+    "pitchClasses": [
+      10,
+      5,
+      10,
+      0,
+      2,
+      3,
+      5,
+      6,
+      8,
+      10,
+      8,
+      6
+    ]
+  },
+  "performanceSha256": "18b9c2a7293c20c6a5742c7179b63367fb5767d9006bd45b73f99dec4a3e8bd7",
+  "nativeFileSha256": "758a7793b91b1233e9acfaf2dfe1fa85d0934e2c1698499c309cd9cb742656ac",
   "initializationSha256": "b5ff67d0f8bdd7606c09adf686f5ca23cff2f65824a55921c389451c287839ab",
-  "eventsSha256": "cbff6290ddebd4377fe4564485b5ec0e2ba64f3a22de037a7e014e146203f95d"
+  "eventsSha256": "32ca87c4947e9166d2759ee0baeac3698ea5aa7479bb2ecc902aa1b65ee80858"
 }

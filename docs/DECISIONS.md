@@ -621,3 +621,6 @@ and recordings may live in the repository, including Sonic VGM/DAC data. This
 is a scoped exception to exploratory corpus storage in CONFORMANCE.md. These
 game music assets are not covered by the library code licence; executable
 NSF/ROM files and entire downloaded archives remain local.
+
+
+The Zelda regression also requires song identity to precede emulation parity. An emulator and a reference can agree perfectly on the wrong NSF subsong. Pin the selected track and independently check a reviewed musical phrase before source acceptance and publication. Catalogue identity, full command parity and physical audio fidelity are separate claims; [regression evidence](evals/ZELDA-SELECTION-2026-09-07.md).

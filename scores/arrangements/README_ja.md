@@ -11,8 +11,10 @@
 | 楽曲 | ネイティブ原典 | 検証 |
 | --- | --- | --- |
 | Mario · Ground Theme | NTSC NSF。イントロと 5,184 フレームのループ、88.5375 秒 | 41,999 件の演奏コマンドが絶対 CPU サイクルを含め Game_Music_Emu と一致 |
-| Zelda · Overworld | バンク切り替えを使う NTSC NES NSF、トラック 2。イントロと 1,920 フレームの反復周期 | 28,306 件の演奏コマンドが同一 CPU サイクルで Game_Music_Emu と一致。ディスクシステム版ではなく NES 版 |
+| Zelda · Overworld | バンク切り替えを使う NTSC NES NSF、トラック 3。イントロと 1,920 フレームの反復周期 | 18,137 件の演奏コマンドが同一 CPU サイクルで Game_Music_Emu と一致。ディスクシステム版ではなく NES 版 |
 | Sonic · Green Hill Zone | NTSC メガドライブ VGM。53.1993 秒、14.7993 秒からループ | FM・PSG・DAC の 458,039 コマンドが VGM のサンプル時刻で GME と一致。FM 6 声と DAC 両出力も 68,010,485 内部クロックにわたり Nuked-OPN2 と一致 |
+
+Zelda は表示上のトラック 3（0 始まりのインデックス 2）を使用します。エミュレーターとの一致を調べる前に、独立した MIDI リファレンスで確認した Overworld のフレーズがパルス音源のレジスターから得た音列に含まれることを検証します。これにより、GME と完全に一致していても曲の選択が違えば失敗します。イントロと 1 周の長さは 38.1705 秒で、ループ開始は 6.2231 秒です。[選曲の回帰修正](../../docs/evals/ZELDA-SELECTION-2026-09-07_ja.md)を参照してください。
 
 以前の Sonic と Zelda はファンによる MIDI 採譜でした。検証対象は MIDI の音符であり、元ゲームではありませんでした。Sonic の MIDI 版は 291 音を省略し、原典にある 448,596 件の DAC サンプル書き込みを含んでいませんでした。ネイティブ再生ではゲームの設定とサンプルを保持します。出典 URL、クレジット、ハッシュ、制限は原典 JSON と参照マニフェストに記録します。
 
@@ -52,7 +54,7 @@ MIDI SMF 0/1 の PPQ 読み込みは原典の tick、多声、ベロシティー
 ```sh
 python3 scores/arrangements/native-oracle.py mario.nsf .artifacts/arrangements
 node scores/arrangements/capture-mario.mjs mario.nsf .artifacts/reproduced
-python3 scores/arrangements/native-oracle.py zelda.nsf .artifacts/native-songs/zelda-oracle 100 1
+python3 scores/arrangements/native-oracle.py zelda.nsf .artifacts/native-songs/zelda-overworld-oracle 120 2
 node scores/arrangements/capture-zelda.mjs zelda.nsf .artifacts/reproduced
 python3 scores/arrangements/vgm-oracle.py sonic.vgm .artifacts/native-songs/sonic-oracle 54
 node scores/arrangements/capture-sonic.mjs sonic.vgm .artifacts/reproduced

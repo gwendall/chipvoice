@@ -7,6 +7,7 @@ const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 for(const [id,spec] of Object.entries(nativeSources)){
  const native=await loadNative(id),reference=JSON.parse(await readFile(new URL(`./references/${id}.json`,import.meta.url))),manifest=JSON.parse(await readFile(`${spec.artifacts}/native-reference.json`)),trace=await readFile(`${spec.artifacts}/gme-writes.txt`);
  for(const key of ['sourceSha256','oracleRevision','pcmSha256','traceSha256'])assert.equal(manifest[key],reference[key],`${id}: ${key}`);
+ assert.equal(manifest.track,spec.track,`${id}: selected source track`);
  assert.equal(hash(trace),manifest.traceSha256);assert.equal(hash(await readFile(`${spec.artifacts}/${spec.pcm}`)),manifest.pcmSha256);
  let result;
  if(spec.format==='vgm'){

@@ -1,9 +1,9 @@
 import {readFile} from 'node:fs/promises';
 import {importVgm} from '../../packages/chipvoice/dist/index.js';
 export const nativeSources = {
- mario: {chip:'2a03',file:'mario-native.json',format:'json',artifacts:'.artifacts/arrangements',pcm:'mario-gme.pcm'},
- zelda: {chip:'2a03',file:'zelda-native.json',format:'json',artifacts:'.artifacts/native-songs/zelda-oracle',pcm:'mario-gme.pcm'},
- sonic: {chip:'md',file:'sonic-native.vgm',format:'vgm',artifacts:'.artifacts/native-songs/sonic-oracle',pcm:'reference.pcm'},
+ mario: {chip:'2a03',file:'mario-native.json',format:'json',track:0,artifacts:'.artifacts/arrangements',pcm:'mario-gme.pcm'},
+ zelda: {chip:'2a03',file:'zelda-native.json',format:'json',track:2,artifacts:'.artifacts/native-songs/zelda-overworld-oracle',pcm:'mario-gme.pcm'},
+ sonic: {chip:'md',file:'sonic-native.vgm',format:'vgm',track:0,artifacts:'.artifacts/native-songs/sonic-oracle',pcm:'reference.pcm'},
 };
 export async function loadNative(id) {
  const spec=nativeSources[id];if(!spec)throw Error(`No native source for ${id}`);

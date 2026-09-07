@@ -38,6 +38,7 @@ export async function verifyPublication(){
   if(piece.reference){
    const reference=JSON.parse(await bytes(`scores/arrangements/references/${piece.id}.json`));
    assert.deepEqual(piece.reference.evidence,reference,'independent evidence pin');
+   assert.equal(piece.reference.manifest.track,nativeSources[piece.id].track,'selected source track');
    assert.equal(piece.reference.manifest.pcmSha256,reference.pcmSha256);assert.equal(piece.reference.manifest.traceSha256,reference.traceSha256);
    assets.push({asset:piece.reference.asset,seconds:piece.cases[0].seconds});
   }
