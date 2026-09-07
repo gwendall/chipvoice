@@ -52,9 +52,25 @@ complete SDK unit suite passed, including the unchanged non-MD golden renders.
 
 ## Acceptance still in progress
 
-The local Musha Aleste MIDI, held-out runs, browser qualification, deployment and
-published-package checks are tracked separately and must not be inferred from
-these development results. `scores/mixing/listening.mjs` prepares 15 blinded
+Candidate `8ed23aa` was frozen with the full compiled SDK and evaluation inputs.
+All 65 held-out score/console pairs pass, including Mario, with no tuning from
+those results. Five additional local Musha Aleste MIDI ports pass on the final
+engine; its 2,078 notes and seven source parts remain traceable. Twenty development
+ablations compare legacy, calibrated-only and complete-policy controls with
+identical voice allocation. `scores/mixing/qualification.json` records these
+results and the exact frozen hashes. The measured maximum planning/render ratios
+are 1.97/1.13 against the same-allocator control baseline, within the 2.0/1.25 budgets.
+
+Browser tests pass for all four visible consoles, the real MIDI import, continuous
+changes, Stop, Japanese copy and 320/390 px layouts. The MIDI has 1.875 s of
+authored initial silence: its audio check now observes a phrase in audio time
+instead of failing on a short wall-clock window. Screenshots and videos were
+captured; the new explanatory diagnostics fit in the expanded mobile panel.
+The packed SDK also passes public-API and real AudioWorklet browser tests in an
+empty consumer. Deployment and actual registry verification are still pending.
+
+![Desktop adaptation diagnostics](automatic-mixing-desktop.png)
+![Japanese mobile diagnostics](automatic-mixing-mobile-ja.png) `scores/mixing/listening.mjs` prepares 15 blinded
 RMS-matched listening pairs and exports local observations. No human preference
 observations or real-phone/Safari measurements are claimed here. RMS, spectrum
 and transient summaries are descriptive, not a universal musical-quality score.

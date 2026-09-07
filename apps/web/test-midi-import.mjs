@@ -30,7 +30,11 @@ try{
   await preparation.waitFor({state:'hidden',timeout:240000});
   await page.getByRole('link',{name:'Download audio',exact:false}).waitFor();await page.getByRole('heading',{name:title,exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);
-  const levels=[];for(let i=0;i<16;i++)levels.push(await outputRms(page));assert.ok(Math.max(...levels)>.001,`${machines[index]} must produce measured audio after completion: ${levels}`);
+  // The local Musha MIDI starts with 1.875 seconds of authored silence. Use
+  // audio time: a short wall-clock poll can miss its first note on a slow host.
+  const levels=[],audioStart=await page.evaluate(()=>window.audioBus.context.currentTime),deadline=Date.now()+30000;
+  do{levels.push(await outputRms(page));if(levels.at(-1)>.001)break;}while(Date.now()<deadline&&await page.evaluate(start=>window.audioBus.context.currentTime-start,audioStart)<8);
+  assert.ok(Math.max(...levels)>.001,`${machines[index]} must produce measured audio after a source phrase: ${levels}`);
   const labels=await page.locator('.arrangement-parts strong').allTextContents();assert.ok(!labels.some(s=>s.includes('\ufffd')),JSON.stringify(labels));if(!file)assert.ok(labels.includes('Éclaté'));
   results.push({machine:machines[index],elapsedMs:Date.now()-start,maxRms:Math.max(...levels),labels});
  }

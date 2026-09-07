@@ -80,7 +80,9 @@ const plan = planPerformance(score, mdChip, {allowLoss: true, mix: {profiles}});
 準備は最大 256 測定点、合計 64 秒の模擬音符時間に制限し、ライブの音符や音声コールバックから
 自動実行しません。これは処理量の上限で、実時間 64 秒以内の保証ではありません。
 カスタムプロファイルは指定したボイスに対応します。標準 FM と NES パルスの共有については、
-発音開始位置の差を別途測定します。未検証のサンプルレートではフォールバックします。
+発音開始位置の差を別途測定します。計画の既定値は 44.1 kHz です。別のチップ描画レートには
+`mix.sampleRate` を指定し、未検証の指定レートではフォールバックします。計画後に
+`renderPerformance` のレートを変更しても、生成済みレジスタ制御の再校正は行いません。
 48 kHz での感度実験は、48 kHz の標準プロファイルの認証ではありません。
 
 `plan.mix.calibratedNotes`、`fallbackNotes`、`diagnostics` を確認してください。診断は
@@ -130,6 +132,8 @@ node scores/mixing/check-baseline.mjs .artifacts/automatic-mixing/current/report
 node scores/mixing/validate-profiles.mjs
 node scores/mixing/evaluate.mjs
 node scores/mixing/benchmark.mjs
+node scores/mixing/ablate.mjs
+node scores/mixing/analyze.mjs
 ```
 
 標準測定の再生成には `node scores/mixing/calibrate.mjs` を使い、再ビルドしてから来歴を検証します。
@@ -137,6 +141,11 @@ node scores/mixing/benchmark.mjs
 `evaluate.mjs --held-out` の前に候補を固定します。検証結果をアルゴリズムの変更に使った場合、
 その曲は開発用になり、新しい検証曲が必要です。元のコマンド記録はポリシーから独立しています。
 派生した音符の観測は独立した参照実装ではありません。
+
+開発用の除去実験は、推定した役割の重みと同時発音数による分担の 2 箇所だけを無効にして候補をバンドルします。
+校正、作者の明示設定、ボイス割り当ては保持し、変換内容とバンドルのハッシュを別途記録します。
+SDK を変更せず、固定した検証曲で再調整もしません。`analyze.mjs` はエンベロープ相関と
+粗いスペクトル重複の指標を追加しますが、知覚的なマスキングやクリックの判定器ではありません。
 
 正しさの検査は音符の追跡、再現可能な PCM、不正値、最終出力のクリッピング、SNES 内部の加算飽和を
 対象にします。音響レポートでは RMS、ピーク、クレストファクター、ステレオ、アタックのエンベロープ要約、

@@ -9,9 +9,9 @@
 <a id="general-automatic-mixing--priority-plan-2026-09-07"></a>
 ## 汎用自動ミックス — 優先計画（2026-09-07）
 
-音の正しさと汎用移植を npm 公開と新機能より優先します。**MIX-01〜MIX-18** はすべて `todo` です。
+音の正しさと汎用移植を npm 公開と新機能より優先します。**MIX-01〜MIX-11** は明示したハードウェア・フレーズの制約を含めて実装済みで、**MIX-12〜MIX-18** は検証中です。
 依存関係と合格条件は[自動ミックス](AUTOMATIC-MIXING_ja.md)にあります。テスト曲は共通ポリシーの校正と
-評価用であり、本番動作で曲の識別子による特例を設けません。従来の公開優先順を置き換える計画であり、実装完了を意味しません。
+評価用であり、本番動作で曲の識別子による特例を設けません。[API](MIXING-API_ja.md) と[評価](evals/AUTOMATIC-MIXING-POLICY-2026-09-07_ja.md)に証拠と制約を記載します。人間による比較試聴と実機確認は未完了のまま明示します。
 
 
 [ロードマップ](ROADMAP_ja.md)が方向を示し、この文書は各チケットの実行状態を追跡します。PR開始／終了時に更新し、branchとともに*doing*、PRと学びとともに*done*へ動かします。計画を変える発見は末尾に日付付きで記録し、該当ticketも同じcommitで更新します。
@@ -32,7 +32,7 @@
 ## 完全アレンジ — 2026-09-06
 
 - done — `feat/complete-arrangements`（0.15.0）：exact-tick多声音MIDI、音符別損失報告付き決定的interval allocation、native Mario抽出／独立GME比較、Zelda／Sonic全MIDI、公開deck、local worker render。[評価とレビュー](evals/COMPLETE-ARRANGEMENTS-2026-09-06_ja.md)にatomic bus、SNES有音高8voice、有限MIDI表現、正確な参照binding、公開検査を記録。
-- todo — Zelda／Sonicの原作固有楽器をnative sourceで独立確認。完全MIDI転記はnative音色の認証ではない。
+- ネイティブ再生は done — Zelda と Sonic は元のチップコマンドを保持し、独立したエミュレーター参照で比較します。移植版の音色・表情は近似で、ネイティブコマンドの一致が移植の認証になるわけではありません。
 - todo — pan、modulation／aftertouch、SysEx bankなどMIDI表現adapterと独立review済み参照。eventは保持し未対応を明示する。
 
 <a id="phase-1-the-bench"></a>
@@ -129,7 +129,7 @@
 | P6-7 | output streamでsnes_spc比較するsheetとcorpus | done | `docs/chips/snes.md` |
 | P6-8 | 既知scriptでDSP streamまたは実機line-out capture | todo | 実機必要 |
 | P6-9 | file内driverで任意SPC playerから再生できるexport | todo | |
-| P6-10 | 複数voiceの実三和音とnoise hats | todo | 旧記録ではarpeggioのみ。現在の同時和音はP4-9／SNES-PALETTE参照、noise hatsは別残件 |
+| P6-10 | 複数ボイスの実三和音とハードウェアノイズのハット | doing | 同時三和音と内部ミキサー検査は実装・検証済みです。ハードウェアノイズのハットは別の残件で、現在のキットは BRR サンプルを使います |
 
 <a id="phase-7-c64"></a>
 ## フェーズ7. C64
@@ -255,7 +255,7 @@ recorderもcore event queueを使い、短音の休符が古い将来releaseをc
 Mario、NES の Zelda、メガドライブの Sonic は、元の機種でネイティブコマンドを再生し、独立した A/B 参照を備えます。NSF のバンク切り替え、元の DAC サンプルを保持する上限付き VGM 読み込み、FM バイトの直列化、ハードウェアのソロを実装しました。[再現手順](../scores/arrangements/README_ja.md)を参照してください。
 
 今後の作業は分けて扱います。移植用の DAC ドラムサンプルの境界・種類の識別、編集用の FM エンベロープ・余韻・ステレオ表現の復元、実機との出力フィルター・PSG 音量バランスの測定です。ネイティブコマンドとデジタル出力の検証だけで、これらの忠実度まで達成したとはしません。
-Sonic の比較では 8–10 kHz 付近に高域成分の差が残ります。FM、DAC、PSG を分離し、レジスター／コア一致とは別に出力のリサンプリングとフィルターを検証します。[比較結果](evals/NATIVE-SONGS-2026-09-07_ja.md)を参照してください。
+確認した 8–10 kHz のエイリアシングは、デシメーション前にフィルターを適用して修正しました。FM、DAC、PSG は個別に比較済みです。実機出力と DAC の不確実性は残ります。[修正の測定結果](evals/AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07_ja.md)を参照してください。
 
 
 Zelda の選曲回帰を修正しました。NSF トラック 3 を使用し、エミュレーターとの一致より先に独立した Overworld のフレーズを検証します。4 機種の移植と A/B リファレンスを再生成します。[証拠と限界](evals/ZELDA-SELECTION-2026-09-07_ja.md)を参照してください。

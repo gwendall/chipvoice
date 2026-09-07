@@ -89,8 +89,11 @@ and retains at most 64 custom entries. Preparation is capped at 256 probe points
 and 64 seconds of simulated note time, never invoked by a live note or audio
 callback. Those are work bounds, not a promise of 64 seconds of wall-clock time.
 A custom profile covers its exact voice; factory FM/NES pulse aliases have separate
-onset-offset measurements. At an unqualified sample rate the policy falls back;
-a 48 kHz sensitivity experiment is not a 48 kHz factory certification.
+onset-offset measurements. Planning defaults to 44.1 kHz. Set `mix.sampleRate`
+to the intended chip-render rate when preparing other rates; an unqualified
+requested rate uses fallback profiles. Changing `renderPerformance` sample rate
+after planning does not recalibrate the already compiled register controls. A
+48 kHz sensitivity experiment is not a 48 kHz factory certification.
 
 Inspect `plan.mix.calibratedNotes`, `fallbackNotes` and `diagnostics`, also included
 in `plan.losses`. Calibrated means a response table was found, not that the port
@@ -141,6 +144,8 @@ node scores/mixing/check-baseline.mjs .artifacts/automatic-mixing/current/report
 node scores/mixing/validate-profiles.mjs
 node scores/mixing/evaluate.mjs
 node scores/mixing/benchmark.mjs
+node scores/mixing/ablate.mjs
+node scores/mixing/analyze.mjs
 ```
 
 Regenerate changed factory measurements with `node scores/mixing/calibrate.mjs`,
@@ -149,6 +154,13 @@ are declared in `scores/mixing/contract.json`. Freeze the engine/policy before
 running `evaluate.mjs --held-out`; a holdout used to change the algorithm becomes
 development data and needs a replacement. Original source ledgers are independent
 of the policy; derived note observations are not an independent oracle.
+
+The development-only ablation bundles the candidate with exactly two documented
+changes: inferred role weights and density sharing are disabled. Calibration,
+explicit author controls and voice allocation remain, with the transformation
+and bundle hash recorded separately. It does not modify the SDK or retune the
+frozen holdout. `analyze.mjs` adds envelope correlation and coarse spectral
+overlap proxies; these are not perceptual masking/click detectors.
 
 Correctness checks cover source accounting, deterministic PCM, invalid/final
 clipped samples and internal SNES sum saturation. Acoustic reports separately
