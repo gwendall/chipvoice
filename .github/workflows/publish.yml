@@ -35,10 +35,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Web typechecking requires generated catalogue assets and belongs to
+      # full CI. Release qualification covers the package being published.
       - name: Build and typecheck
         run: |
-          pnpm typecheck
-          pnpm build --filter chipvoice
+          pnpm --filter chipvoice build
+          pnpm --filter chipvoice typecheck
 
       - name: The tag has to match the version
         working-directory: packages/chipvoice
