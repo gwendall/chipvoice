@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {arrangementIds,arrangementChips,loadArrangement,checkArrangements} from './check.mjs';
+import {nativeSources} from './native-sources.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const bytes=path=>readFile(root+path);
@@ -17,7 +18,10 @@ export function validatePublication(report){
    assert.ok(Number.isFinite(row.asset.metrics.rmsDbFS)&&row.asset.metrics.rmsDbFS>-60,'audible mix');
    if(row.chip==='snes'){assert.equal(row.mixer.mainClampedAdditions,0);assert.equal(row.mixer.echoClampedAdditions,0);}
   }
-  if(piece.id==='mario'){assert.equal(piece.reference.kind,'independent-nsf');assert.ok(piece.reference.evidence.musicCommands>0);}
+  const native=nativeSources[piece.id];
+  assert.deepEqual(piece.native,{chip:native.chip,file:`/arrangement-data/${native.file}`,format:native.format},'native solo uses the verified source and hardware');
+  assert.equal(piece.reference.kind,native.format==='vgm'?'independent-vgm':'independent-nsf');assert.ok(piece.reference.evidence.musicCommands>0);
+  assert.equal(piece.cases.find(c=>c.chip===native.chip).mode,'native-commands','original console uses native playback');
  }
 }
 export async function verifyPublication(){
@@ -50,6 +54,6 @@ export async function verifyPublication(){
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){
  const report=await verifyPublication();
- for(const change of [r=>r.pieces.pop(),r=>r.pieces[0].cases.pop(),r=>r.pieces[0].cases[0].repeat.ok=false,r=>r.pieces[0].cases[0].asset.metrics.clippedSamples++,r=>r.pieces[0].cases.find(c=>c.chip==='snes').mixer.mainClampedAdditions++]){const invalid=structuredClone(report);change(invalid);assert.throws(()=>validatePublication(invalid));}
+ for(const change of [r=>r.pieces.pop(),r=>r.pieces[0].cases.pop(),r=>r.pieces[0].cases[0].repeat.ok=false,r=>r.pieces[0].cases[0].asset.metrics.clippedSamples++,r=>r.pieces[0].cases.find(c=>c.chip==='snes').mixer.mainClampedAdditions++,r=>r.pieces[2].native.file='/arrangement-data/mario-native.json',r=>r.pieces[1].cases.find(c=>c.chip==='2a03').mode='adaptation']){const invalid=structuredClone(report);change(invalid);assert.throws(()=>validatePublication(invalid));}
  console.log('PASS complete publication, current engine/source/evidence hashes, independent reference binding, lossless FLAC and full durations');
 }

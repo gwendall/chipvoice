@@ -27,8 +27,8 @@ User specification, 2026-09-06. Supersedes the melody-only first-visit default.
   export and sharing in this page. Switching modes gives audio to one instrument
   at a time. Drafts and hash/published links retain their formats. Existing drafts
   are restored when entering the composer; a shared hash enters it directly.
-- Explain JavaScript sound-chip emulation immediately. Distinguish native Mario
-  command verification from MIDI transcription and cross-console instruments.
+- Explain JavaScript sound-chip emulation immediately. Distinguish native Mario, Zelda and Sonic
+  command verification from portable observation, MIDI transcription and cross-console instruments.
 - Local MIDI import acknowledges the file immediately, reports preparation and
   real rendering progress, preserves errors and never uploads the MIDI.
 - Evaluate the production build end to end, including real output RMS, source

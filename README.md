@@ -13,17 +13,19 @@ write music for them and hear it the way the machine played it.
 **[chipvoice.dev](https://chipvoice.dev)** to play it. `npm i chipvoice` to use it.
 
 The [playground](https://chipvoice.dev) opens with complete arrangements: Mario's
-four native Famicom voices, all four Zelda MIDI parts and all fourteen Sonic parts.
+four native Famicom voices, Zelda's native NES arrangement and Sonic's original
+Mega Drive FM/PSG/DAC performance. Selecting a song starts with its original console.
 Pick a song or Japanese console logo to start on your first interaction. Play/pause,
 restart, a full-song seek slider and a clickable score let you explore the music.
 Preset full mixes are lossless renders from these same JavaScript engines.
 The cursor follows the audio output clock; console, tempo and solo changes keep
 the musical position while the next sound is prepared. Turn Loop off to play once.
 
-Import a MIDI locally, isolate its instruments, or compare native Mario with an
-independent NSF renderer. Every port reports voice omissions and substitutions;
+Import a MIDI locally, isolate its instruments, or compare Mario, Zelda and Sonic with an
+independent native renderer. Every port reports voice omissions and substitutions;
 no extra accompaniment is invented. Imports show preparation and rendering progress.
-The reusable SDK pipeline is `importMidi → planPerformance → renderPerformance`;
+The SDK offers `importMidi → planPerformance → renderPerformance` for musical
+arrangements and `importVgm → renderPerformance` for native Mega Drive commands;
 [the method and its limits](scores/arrangements/README.md) distinguish original
 game verification from MIDI transcription and cross-console adaptation.
 

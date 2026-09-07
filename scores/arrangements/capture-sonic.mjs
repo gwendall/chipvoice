@@ -1,0 +1,12 @@
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {importVgm} from '../../packages/chipvoice/dist/index.js';
+import {vgmPerformance} from '../extract-vgm-performance.mjs';
+const [input,out]=process.argv.slice(2);
+if(!input||!out)throw Error('Usage: node scores/arrangements/capture-sonic.mjs source.vgm output-dir');
+const bytes=await readFile(input),source=JSON.parse(await readFile(new URL('./sonic.json',import.meta.url))).source;
+assert.equal(createHash('sha256').update(bytes).digest('hex'),source.sha256,'Reviewed VGM source required');
+const score=vgmPerformance(importVgm(bytes),{title:'Sonic · Green Hill Zone',source});
+await mkdir(out,{recursive:true});await writeFile(`${out}/sonic.json`,JSON.stringify(score)+'\n');await writeFile(`${out}/sonic-native.vgm`,bytes);
+console.log('Captured full VGM intro and loop, including FM patches and DAC data. Compare the independent trace before publication.');

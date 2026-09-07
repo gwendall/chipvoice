@@ -59,6 +59,7 @@ jobs:
             .artifacts/continuity
             .artifacts/composition
             .artifacts/japanese-playground
+            .artifacts/native-songs/browser
             .artifacts/arrangements/browser
             .artifacts/midi-import/e2e
             .artifacts/unified-playground

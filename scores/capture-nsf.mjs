@@ -6,11 +6,16 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (bytes.length < 128 || String.fromCharCode(...bytes.slice(0, 5)) !== 'NESM\x1a' || bytes[5] !== 1) throw new Error('Expected NSF v1');
   if (!Number.isInteger(track) || track < 0 || track >= bytes[6]) throw new Error('Invalid NSF track');
-  if (bytes.slice(112, 120).some(Boolean) || bytes[123] || (bytes[122] & 1)) throw new Error('Only unbanked NTSC 2A03 NSF is supported');
+  if (bytes[123] || (bytes[122] & 1)) throw new Error('Only NTSC 2A03 NSF is supported');
   if (!Number.isInteger(frames) || frames < 1 || frames > 20000) throw new Error('Invalid capture length');
   const ram = new Uint8Array(65536), load = view.getUint16(8, true);
-  if (load < 0x8000 || bytes.length - 128 + load > 65536) throw new Error('Unsupported NSF memory layout');
-  ram.set(bytes.subarray(128), load);
+  const banked = bytes.subarray(112, 120).some(Boolean);
+  if (load < 0x8000 || (!banked && bytes.length - 128 + load > 65536) || bytes.length > 128 + 256 * 4096) throw new Error('Unsupported NSF memory layout');
+  const banks = bytes.slice(112, 120);
+  // Bank zero starts at the load address's 4 KiB offset, not at $8000.
+  const rom = new Uint8Array(Math.ceil(((load & 0xfff) + bytes.length - 128) / 4096) * 4096);
+  rom.set(bytes.subarray(128), load & 0xfff);
+  if (!banked) ram.set(bytes.subarray(128), load);
   // Legacy $411a (16666 us) denotes the NTSC video rate in this rip and
   // Game_Music_Emu. Preserve custom rates; record this interpretation explicitly.
   const clockHz = 1789773, speed = view.getUint16(110, true);
@@ -20,11 +25,13 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
   const bus = {
     tick() {},
     read(addr) {
+      if (banked && addr >= 0x8000) return rom[banks[(addr - 0x8000) >> 12] * 4096 + (addr & 0xfff)] ?? 0;
       if (addr >= 0x2000 && addr < 0x6000) throw new Error(`NSF reads unsupported hardware $${addr.toString(16)}`);
       return ram[addr < 0x2000 ? addr & 0x7ff : addr];
     },
     write(addr, value) {
-      if (addr >= 0x4000 && addr <= 0x4017 && addr !== 0x4014 && addr !== 0x4016) events.push({at: cpu.cycles, addr, value});
+      if (banked && addr >= 0x5ff8 && addr <= 0x5fff) banks[addr - 0x5ff8] = value;
+      else if (addr >= 0x4000 && addr <= 0x4017 && addr !== 0x4014 && addr !== 0x4016) events.push({at: cpu.cycles, addr, value});
       else if (addr < 0x2000 || addr >= 0x6000 && addr < 0x8000) ram[addr < 0x2000 ? addr & 0x7ff : addr] = value;
       else throw new Error(`NSF writes unsupported hardware $${addr.toString(16)}`);
     },

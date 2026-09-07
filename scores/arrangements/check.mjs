@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {validatePerformance,planPerformance,nesChip,gbChip,mdChip,snesChip} from '../../packages/chipvoice/dist/index.js';
+import {nativeSources,loadNative,vgmCommands} from './native-sources.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export const arrangementChips=[nesChip,gbChip,mdChip,snesChip];
 export const arrangementIds=['mario','zelda','sonic'];
@@ -18,10 +19,15 @@ export function comparePerformance(score,reference){
 export function compareNativeArrangement(score,native,reference){
   assert.equal(score.source.sha256,reference.sourceSha256);
   assert.equal(hash(JSON.stringify(score)),reference.performanceSha256,'reviewed portable extraction snapshot (not an independent observer)');
-  const first=native.events.findIndex(e=>e.addr===0x4017&&e.value===255),commands=native.events.slice(first);
-  assert.equal(commands.length,reference.musicCommands);assert.equal(hash(JSON.stringify(commands)),reference.commandsSha256,'independent NSF command ledger');
+  const first=native.events.findIndex(e=>e.at===(native.musicStartCycle??reference.first?.at));
+  const commands=native.chip==='md'?vgmCommands(native):native.events.slice(first);
+  assert.ok(native.chip==='md'||first>=0,'first musical PLAY exists');
+  assert.equal(hash(JSON.stringify(native.events)),reference.eventsSha256,'reviewed serialized bus, including initialization');
+  if(native.chip!=='md')assert.equal(hash(JSON.stringify(native.events.slice(0,first))),reference.initializationSha256,'reviewed NSF initialization recipe');
+  assert.deepEqual(native.memory,[],'these native sources do not load external memory');
+  assert.equal(commands.length,reference.musicCommands);assert.equal(hash(JSON.stringify(commands)),reference.commandsSha256,'independent native command ledger');
   assert.equal(native.seconds,score.endTick/score.ticksPerBeat);assert.equal(native.loopStartSeconds,score.loopStartTick/score.ticksPerBeat);
-  return {musicCommands:commands.length,exactCycles:true,oracle:reference.oracle};
+  return {musicCommands:commands.length,timing:native.chip==='md'?'VGM samples (44100 Hz)':'absolute CPU cycles',oracle:reference.oracle};
 }
 // Decode register destinations independently of the bus serializer. The old
 // byte sort corrupted these on real arrangements despite finite/quiet PCM.
@@ -48,8 +54,9 @@ export async function checkArrangements(){
     const score=await loadArrangement(id),reference=JSON.parse(await readFile(new URL(`./references/${id}.json`,import.meta.url),'utf8'));
     validatePerformance(score);
     let evidence;
-    if(id==='mario'){
-      const native=JSON.parse(await readFile(new URL('./mario-native.json',import.meta.url),'utf8'));
+    if(nativeSources[id]){
+      const native=await loadNative(id);
+      assert.equal(hash(await readFile(new URL(nativeSources[id].file,import.meta.url))),reference.nativeFileSha256,'complete native artifact identity');
       evidence=compareNativeArrangement(score,native,reference);
     }else evidence=comparePerformance(score,reference);
     const ports={};
