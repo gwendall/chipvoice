@@ -1,6 +1,7 @@
 import { BufferPlayback } from "./playback/BufferPlayback.js";
 import { WORKLET_SOURCE } from "./project-worker-inline.js";
 import type { MusicProject, ProjectChip } from "./project.js";
+import type { MixReport } from "./mix.js";
 import type { PerformanceLoss } from "./performance.js";
 export interface PreparedProjectAudio {
   wav: ArrayBuffer;
@@ -10,6 +11,7 @@ export interface PreparedProjectAudio {
   native: boolean;
   loopStartSeconds: number;
   losses: PerformanceLoss[];
+  mix: MixReport | null;
 }
 export interface PrepareProjectOptions {
   signal?: AbortSignal;
