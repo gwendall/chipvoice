@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {installOutputProbe,outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe,outputPhraseRms} from './test/audio-probe.mjs';
 const base=process.env.SITE??'http://127.0.0.1:3074';
 if(!base.startsWith('http://127.0.0.1:'))throw Error('This test publishes only into a local disposable database.');
 const out=new URL('../../.artifacts/i18n/',import.meta.url);await mkdir(out,{recursive:true});
@@ -19,13 +19,13 @@ try{
   const response=await fetch(base+'/ja'+path);assert.equal(response.status,200);const html=await response.text();assert.match(html,/<html lang="ja"/);assert.ok(html.includes(title));assert.ok(html.includes('ja_JP'));assert.ok(html.includes('hrefLang="ja"'));checks.push(`Japanese SSR ${path||'/'}`);
  }
  await page.goto(base+'/?source=language-test');await page.getByRole('button',{name:'Play',exact:true}).click();await ready(page);
- let beforeRms=0;for(let i=0;i<30&&beforeRms<.001;i++)beforeRms=Math.max(beforeRms,await outputRms(page));checks.push({beforeRms});assert.ok(beforeRms>.001,'audio must be audible before changing language');
+ const beforeRms=await outputPhraseRms(page);checks.push({beforeRms});assert.ok(beforeRms>.001,'audio must be audible before changing language');
  const starts=await page.evaluate(()=>window.sourceStarts);const before=Number(await page.locator('.song-seek').inputValue());
  await page.getByLabel('Language',{exact:true}).selectOption('ja');await page.getByRole('button',{name:'一時停止',exact:true}).waitFor();
  assert.equal(new URL(page.url()).pathname,'/ja');assert.equal(new URL(page.url()).search,'?source=language-test');
  assert.equal(await page.evaluate(()=>window.sourceStarts),starts,'changing language must not restart an AudioBufferSource');
  assert.ok(Number(await page.locator('.song-seek').inputValue())>=before,'playback position is retained');
- let rms=0;for(let i=0;i<12;i++)rms=Math.max(rms,await outputRms(page));assert.ok(rms>.001,'real measured audio continues');
+ const rms=await outputPhraseRms(page);assert.ok(rms>.001,'real measured audio continues');
  assert.match(await page.title(),/懐かしい/);assert.equal(await page.locator('meta[property="og:locale"]').getAttribute('content'),'ja_JP');
  assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'),'https://chipvoice.dev/ja');
  await page.goBack();await page.getByRole('button',{name:'Pause',exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.sourceStarts),starts);

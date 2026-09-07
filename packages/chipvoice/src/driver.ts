@@ -31,6 +31,19 @@ import { nesChip } from "./chips/nes/index.js";
 export const FRAME_RATE = 60;
 export const FRAME_TIME = 1 / FRAME_RATE;
 
+/** The hardware frame duration shared by live preparation and playback. */
+export const noteFrameCount = (seconds: number) => Math.max(1, Math.round(seconds * FRAME_RATE));
+
+export function frameSemitones(inst: Instrument, frame: number, detune = 0): number {
+  let semis = detune;
+  if (inst.arp?.length) semis += inst.arp[inst.arpLoop !== false ? frame % inst.arp.length : Math.min(frame, inst.arp.length - 1)];
+  if (inst.slide) semis += inst.slide * frame;
+  if (inst.vibrato && frame >= (inst.vibrato.delay ?? 0)) {
+    semis += Math.sin(((frame - (inst.vibrato.delay ?? 0)) / inst.vibrato.rate) * Math.PI * 2) * inst.vibrato.depth;
+  }
+  return semis;
+}
+
 /**
  * A voice's id on the chip in use: `p1`, `p2`, `tri`, `noi` on the 2A03,
  * `ch1` to `ch4` on the Game Boy. `ChipSpec.voices` lists them.
@@ -112,6 +125,8 @@ export interface NoteSink {
 }
 
 export interface PlayNoteOptions {
+  /** Set by prepareMixPhrase: preserve calibrated FM precision until encoding. */
+  calibrated?: boolean;
   /** Note name or frequency in Hz. On a noise voice, a period index 0-15. */
   note: string | number;
   instrument: Instrument;
@@ -290,11 +305,11 @@ export class APU implements NoteSink {
     const noiseBase = isNoise ? Number(opts.note) : 0;
     if (!isNoise && !baseFreq) return [];
 
-    const frames = Math.max(1, Math.round(opts.duration * FRAME_RATE));
+    const frames = noteFrameCount(opts.duration);
     const gain = opts.gain ?? 1;
     // SNES has finer hardware volume steps; preserve shared chord gain until
     // its register encoder. Keep legacy frame quantization on other chips.
-    const fractionalVolume = this.chip.spec.id === "snes";
+    const fractionalVolume = this.chip.spec.id === "snes" || !!opts.calibrated && this.chip.spec.id === 'md' && channel.startsWith('fm');
     const detune = opts.detune ?? 0;
     const wave = inst.wave ?? null;
     const waveforms = inst.waveform === undefined ? null : Array.isArray(inst.waveform) ? inst.waveform : [inst.waveform];
@@ -316,21 +331,7 @@ export class APU implements NoteSink {
 
       // Arpeggio, slide and vibrato all act on the note, not the period, so
       // they stay musical across octaves.
-      let semis = detune;
-      if (inst.arp && inst.arp.length > 0) {
-        const loop = inst.arpLoop !== false;
-        const idx = loop ? f % inst.arp.length : Math.min(f, inst.arp.length - 1);
-        semis += inst.arp[idx];
-      }
-      if (inst.slide) semis += inst.slide * f;
-      if (inst.vibrato) {
-        const delay = inst.vibrato.delay ?? 0;
-        if (f >= delay) {
-          semis +=
-            Math.sin(((f - delay) / inst.vibrato.rate) * Math.PI * 2) *
-            inst.vibrato.depth;
-        }
-      }
+      const semis = frameSemitones(inst, f, detune);
 
       if (inst.pitch && inst.pitch.length > 0) {
         pitchAcc += inst.pitch[Math.min(f, inst.pitch.length - 1)];
@@ -357,6 +358,7 @@ export class APU implements NoteSink {
       });
     }
 
+    if (opts.calibrated && states.every(frame => frame.volume <= 0)) return [];
     states.end = this.cycleAt(start + frames * FRAME_TIME);
     return states;
   }

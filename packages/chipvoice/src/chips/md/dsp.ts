@@ -233,7 +233,9 @@ export class MdOutputStage {
 
   constructor(sampleRate: number, profile: MdOutputProfile) {
     this.profile = profile;
-    this.lpA = 1 - Math.exp((-2 * Math.PI * profile.lowPassHz) / sampleRate);
+    // The console low-pass sees multiplexed pins at the internal YM clock.
+    // Applying it after decimation would filter an already folded alias.
+    this.lpA = 1 - Math.exp((-2 * Math.PI * profile.lowPassHz) / (MASTER_HZ / YM_STEP));
     this.hpA = Math.exp((-2 * Math.PI * profile.highPassHz) / sampleRate);
   }
 
@@ -248,21 +250,21 @@ export class MdOutputStage {
     let p = 0;
     for (let i = 0; i < 4; i++) p += PSG_LEVELS[psg[i]];
     const psgLevel = p * this.profile.psgLevel;
-    this.sumL += mol + psgLevel;
-    this.sumR += mor + psgLevel;
+    this.lpL += this.lpA * ((mol + psgLevel) * this.profile.scale - this.lpL);
+    this.lpR += this.lpA * ((mor + psgLevel) * this.profile.scale - this.lpR);
+    this.sumL += this.lpL;
+    this.sumR += this.lpR;
     this.count++;
   }
 
   /** Supply caller-owned scratch storage on the audio path; omitted storage is a fresh snapshot. */
   end(gain: number, into: [number, number] = [0, 0]): [number, number] {
-    const inL = (this.count ? this.sumL / this.count : 0) * this.profile.scale;
-    const inR = (this.count ? this.sumR / this.count : 0) * this.profile.scale;
-    this.lpL += this.lpA * (inL - this.lpL);
-    this.lpR += this.lpA * (inR - this.lpR);
-    const outL = this.hpA * (this.hpL + this.lpL - this.hpInL);
-    const outR = this.hpA * (this.hpR + this.lpR - this.hpInR);
-    this.hpInL = this.lpL;
-    this.hpInR = this.lpR;
+    const inL = this.count ? this.sumL / this.count : this.lpL;
+    const inR = this.count ? this.sumR / this.count : this.lpR;
+    const outL = this.hpA * (this.hpL + inL - this.hpInL);
+    const outR = this.hpA * (this.hpR + inR - this.hpInR);
+    this.hpInL = inL;
+    this.hpInR = inR;
     this.hpL = outL;
     this.hpR = outR;
     into[0] = outL * gain;

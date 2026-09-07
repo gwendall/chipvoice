@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "scope": "Automatic adaptation; native replay is unchanged unless explicitly remixed",
+  "development": {
+    "sourceFamilies": [
+      "zelda-overworld",
+      "sonic-green-hill",
+      "musha-aleste-midi"
+    ],
+    "generatedSeeds": [
+      12,
+      27,
+      45
+    ],
+    "localMidi": {
+      "name": "Musha Aleste Theme",
+      "sha256": "2bc03baa30411344da66cdf9b3f75c55a683f8c9a97252d850c411645b7f5cfe",
+      "redistributed": false
+    }
+  },
+  "heldOut": {
+    "sourceFamilies": [
+      "mario-ground"
+    ],
+    "generatedSeeds": [
+      103,
+      211,
+      409
+    ]
+  },
+  "correctness": {
+    "inventedNotes": 0,
+    "invalidSamples": 0,
+    "clippedSamples": 0,
+    "nativeCommandChangesFromMixPolicy": 0,
+    "maximumCustomCacheEntries": 64
+  },
+  "policy": {
+    "maximumLookaheadSeconds": 2,
+    "maximumAutomaticBoostDb": 0,
+    "maximumAutomaticAttenuationDb": 24,
+    "minimumSmoothingSeconds": 0.03
+  },
+  "calibration": {
+    "pitchGrid": [
+      36,
+      48,
+      60,
+      72,
+      84
+    ],
+    "velocityGrid": [
+      32,
+      64,
+      96,
+      127
+    ],
+    "noteSeconds": [
+      0.125,
+      0.5,
+      1.5
+    ]
+  },
+  "performance": {
+    "note": "Relative CPU budgets are frozen against the same-host baseline; real-device acceptance remains separate",
+    "maximumPlanningSlowdown": 2,
+    "maximumRenderSlowdown": 1.25
+  },
+  "musicalAcceptance": "Source dynamics and intended foreground retained; blind listening and held-out acoustic diagnostics reported separately from correctness. Thresholds cannot be fitted on held-out songs.",
+  "prohibition": "No song title, ID, source hash or held-out seed in the runtime policy"
+}

@@ -40,6 +40,8 @@ try {
   }
 
   fs.copyFileSync(path.join(root, "test/fresh/index.html"), path.join(dir, "index.html"));
+  fs.copyFileSync(path.join(root, "test/fresh/api.mjs"), path.join(dir, "api.mjs"));
+  console.log(run('node api.mjs'));
 
   /*
    * The package's own `serve`, not one fetched by npx at test time.

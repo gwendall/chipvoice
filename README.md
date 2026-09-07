@@ -5,6 +5,11 @@
   <a href="README_ja.md">日本語</a>
 </p>
 
+Automatic mixing for complete adaptations uses measured instrument responses,
+with optional `PerformancePart.mix` importance/trim and explicit unknown-sound
+fallbacks. Native command playback keeps its original mix. Short game phrases
+can use the same policy. [API and qualification](https://github.com/gwendall/chipvoice/blob/main/docs/MIXING-API.md).
+
 
 Five classic sound chips, emulated to the cycle and checked against reference
 cores and hardware test ROMs, in a browser and on a server, so that people and their agents can

@@ -3,14 +3,14 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {assertZeldaOverworld} from '../../scores/arrangements/theme-identity.mjs';
 import {chromium} from 'playwright';
-import {installOutputProbe,outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe,outputPhraseRms} from './test/audio-probe.mjs';
 const base=process.env.SITE??'http://127.0.0.1:3074',out=new URL('../../.artifacts/native-songs/browser/',import.meta.url);await mkdir(out,{recursive:true});
 const browser=await chromium.launch();
 const results=[];
 const publication=JSON.parse(await readFile(new URL('./public/arrangement-data/report.json',import.meta.url),'utf8'));
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function ready(page){await page.waitForFunction(()=>{const button=document.querySelector('.arrangement-versions button');return button&&!button.disabled;},{},{timeout:240000});}
-async function audible(page){let peak=0;for(let i=0;i<32;i++){peak=Math.max(peak,await outputRms(page));if(peak>.001)return peak;}assert.fail(`No audible phrase: ${peak}`);}
+async function audible(page){const peak=await outputPhraseRms(page);assert.ok(peak>.001,`No audible phrase: ${peak}`);return peak;}
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('video/',out).pathname}}),page=await context.newPage(),errors=[];
  page.on('pageerror',e=>errors.push(e.message));await page.addInitScript(installOutputProbe);

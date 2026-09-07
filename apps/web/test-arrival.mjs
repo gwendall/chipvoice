@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {chromium, webkit} from 'playwright';
 import {mkdir, writeFile} from 'node:fs/promises';
-import {installOutputProbe, outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe, outputRms, outputPhraseRms} from './test/audio-probe.mjs';
 const base = process.env.SITE ?? 'http://127.0.0.1:3074';
 const engine = process.env.BROWSER ?? 'chromium';
 const out = new URL(`../../.artifacts/japanese-playground/${engine}/`, import.meta.url);
@@ -35,7 +35,7 @@ try {
     assert.equal(selected.title,gesture === 'tune' ? 'Zelda · Overworld' : gesture === 'keyboard' ? 'Sonic · Green Hill Zone' : saved.title);
     if(gesture === 'mute') {assert.ok(await outputRms(page)<.00001,'The first gesture honours mute before starting');await page.getByRole('button',{name:'Mute Melody',exact:true}).click();}
     if(gesture === 'tempo') assert.equal(selected.bpm,183);
-    let rms = 0;for(let i=0;i<8&&rms<.0001;i++){rms = await outputRms(page);if(rms<.0001)await page.waitForTimeout(150);}
+    const rms = await outputPhraseRms(page,.0001);
     assert.ok(rms > .0001,`${gesture} must start audible output`);
     await page.getByRole('button',{name:'Stop',exact:true}).click();
     await page.getByRole('button',{name:'Mega Drive',exact:true}).click();

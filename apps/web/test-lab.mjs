@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {installOutputProbe,outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe,outputRms,outputPhraseRms} from './test/audio-probe.mjs';
 import {chromium} from 'playwright';
 import {mkdir,writeFile} from 'node:fs/promises';
 const base=process.env.SITE??'http://127.0.0.1:3070',out=new URL('../../.artifacts/lab/',import.meta.url);await mkdir(out,{recursive:true});
@@ -18,7 +18,7 @@ try{
  await page.waitForFunction(()=>!document.querySelector('[aria-label="Listen to B"]').disabled);
  assert.ok(await outputRms(page)<.00001,'Volume zero chosen before Play must remain silent');
  await page.getByLabel('Listening volume',{exact:true}).focus();await page.keyboard.press('End');
- assert.ok(await outputRms(page)>.001,'Lossless recordings must actually produce audio');
+ assert.ok(await outputPhraseRms(page)>.001,'Lossless recordings must actually produce audio');
  await page.getByRole('button',{name:'Listen to B',exact:true}).click();
  await page.getByRole('button',{name:'Hide & shuffle',exact:true}).click();assert.equal(await page.locator('table').count(),0);
  await page.getByLabel('Listening notes',{exact:true}).fill('QA: lossless audio and uninterrupted selection.');await page.getByRole('button',{name:'Save note',exact:true}).click();

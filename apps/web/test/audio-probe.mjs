@@ -18,3 +18,14 @@ export async function outputRms(page){
   return Math.sqrt(samples.reduce((sum,value)=>sum+value*value,0)/samples.length);
  });
 }
+/** Observe a bounded phrase, including authored opening rests. Wall time is
+ * only a failure deadline: an overloaded device may advance audio slowly. */
+export async function outputPhraseRms(page, threshold=.001){
+ const start=await page.evaluate(()=>window.audioBus.context.currentTime),deadline=Date.now()+30000;
+ let peak=0;
+ do{
+  peak=Math.max(peak,await outputRms(page));
+  if(peak>threshold)break;
+ }while(Date.now()<deadline&&await page.evaluate(start=>window.audioBus.context.currentTime-start,start)<8);
+ return peak;
+}

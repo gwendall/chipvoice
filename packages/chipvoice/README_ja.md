@@ -6,6 +6,11 @@
   <a href="https://github.com/gwendall/chipvoice/blob/main/packages/chipvoice/README_ja.md">日本語</a>
 </p>
 
+完全な移植版の自動ミックスは、曲ごとの係数ではなく楽器の実測特性を使います。
+`PerformancePart.mix` で重要度とトリムを指定でき、未知の音色は明示的にフォールバックします。
+ネイティブコマンド再生は元のミックスを保持します。ゲーム用の短いフレーズも同じポリシーを使えます。
+[API と検証範囲](https://github.com/gwendall/chipvoice/blob/main/docs/MIXING-API_ja.md)。
+
 
 ブラウザーでもオフラインでも使える5つのクラシック音源チップ：**NES（2A03）、Game Boy、Mega Drive、SNES、Commodore 64**。楽譜は4つの音楽的役割を選んだハードウェアへ編曲します。効果音は音楽から物理チャンネルを借り、終了時に返します。Stopは将来の音楽の書き込みを取り消します。
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {installOutputProbe,outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe,outputPhraseRms} from './test/audio-probe.mjs';
 const base=process.env.SITE??'http://127.0.0.1:3070',out=new URL('../../.artifacts/composition/',import.meta.url);
 await mkdir(out,{recursive:true});const browser=await chromium.launch();
 try{
@@ -28,9 +28,7 @@ try{
   for(const [label,id] of chips){
    await page.locator('.demo-page .machines').getByRole('button',{name:label,exact:true}).click();
    await page.waitForFunction(id=>window.chipvoice?.playing&&window.chipvoice.spec.id===id,id);
-   // Some phrases open with a written rest; measure after their first phrase.
-   await page.waitForTimeout(title.startsWith('Sonic')?1000:150);
-   let rms=0;for(let attempt=0;attempt<5&&rms<.0001;attempt++){rms=await outputRms(page);if(rms<.0001)await page.waitForTimeout(150);}
+   const rms=await outputPhraseRms(page,.0001);
    assert.ok(rms>.0001,`${title}/${id} must produce audible output`);results.push({title,chip:id,rms});
   }
  }
@@ -44,7 +42,7 @@ try{
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:new URL('mobile.png',out).pathname,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.goto(base+'/lab');await page.getByLabel('Composition',{exact:true}).selectOption('sonic');
- await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByText('Playing continuously · levels matched for comparison.',{exact:true}).waitFor({timeout:60000});let labRms=0;for(let i=0;i<8&&labRms<.0001;i++){labRms=await outputRms(page);if(labRms<.0001)await page.waitForTimeout(150);}assert.ok(labRms>.0001);
+ await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByText('Playing continuously · levels matched for comparison.',{exact:true}).waitFor({timeout:60000});const labRms=await outputPhraseRms(page,.0001);assert.ok(labRms>.0001,`Sonic lab must play after its 0.8-second opening rest: ${labRms}`);
  for(const id of ['mario','zelda','sonic']){await page.getByLabel('Composition',{exact:true}).selectOption(id);await page.waitForTimeout(350);assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);}
  await page.getByLabel('Composition',{exact:true}).selectOption('zelda');
  await page.getByRole('heading',{name:'Zelda · Overworld',exact:true}).waitFor();

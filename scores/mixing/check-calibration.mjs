@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {calibrationEngineHash} from './provenance.mjs';
+import {MIX_FACTORY_PROFILES} from '../../packages/chipvoice/dist/mix-profiles.js';
+import {MixProfileBank} from '../../packages/chipvoice/dist/mix-calibration.js';
+const manifest=JSON.parse(await readFile(new URL('calibration-manifest.json',import.meta.url)));
+assert.equal(await calibrationEngineHash(),manifest.engineSha256,'instrument calibration matches the current engine and measurement method');
+assert.equal(createHash('sha256').update(JSON.stringify(MIX_FACTORY_PROFILES)).digest('hex'),manifest.profileSha256,'calibration profiles match the generated measurement snapshot');
+for(const p of MIX_FACTORY_PROFILES)new MixProfileBank([p]);
+assert.equal(MIX_FACTORY_PROFILES.length,manifest.profiles);
+console.log('PASS calibrated instrument response provenance',manifest.profiles);

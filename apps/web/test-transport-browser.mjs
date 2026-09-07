@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {installOutputProbe,outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe,outputRms,outputPhraseRms} from './test/audio-probe.mjs';
 const base=process.env.SITE??'http://127.0.0.1:3074';
 const out=new URL('../../.artifacts/unified-playground/',import.meta.url);await mkdir(out,{recursive:true});
 const browser=await chromium.launch(),checks=[];
 const ready=page=>page.waitForFunction(()=>!!document.querySelector('.arrangement-versions a')&&!document.querySelector('.arrangement-versions button')?.disabled,{},{timeout:120000});
-async function audible(page){let peak=0;for(let i=0;i<20;i++){peak=Math.max(peak,await outputRms(page));if(peak>.001)break;}assert.ok(peak>.001);return peak;}
+async function audible(page){const peak=await outputPhraseRms(page);assert.ok(peak>.001,`No audible phrase: ${peak}`);return peak;}
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},hasTouch:true,recordVideo:{dir:new URL('video/',out).pathname}});
  await context.addInitScript(installOutputProbe);

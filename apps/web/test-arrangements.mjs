@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
-import {installOutputProbe,outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe,outputPhraseRms as audible} from './test/audio-probe.mjs';
 const base=process.env.SITE??'http://127.0.0.1:3070',out=new URL('../../.artifacts/arrangements/browser/',import.meta.url);await mkdir(out,{recursive:true});
 const chunk=(name,bytes)=>{const b=Buffer.alloc(8+bytes.length);b.write(name);b.writeUInt32BE(bytes.length,4);Buffer.from(bytes).copy(b,8);return b;};
 const midi=Buffer.concat([chunk('MThd',[0,0,0,1,1,224]),chunk('MTrk',[0,0x90,60,100,0,64,90,0,67,80,0x8f,0,0x80,60,0,0,64,0,0,67,0,0,0xff,0x2f,0])]);
 // A complete score contains real rests; qualify audibility over a phrase window,
 // rather than assuming every individual 42 ms analyser frame contains a note.
-async function audible(page){let peak=0;for(let i=0;i<16;i++){peak=Math.max(peak,await outputRms(page));if(peak>.001)break;}return peak;}
 const browser=await chromium.launch();
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('video/',out).pathname}}),page=await context.newPage(),errors=[],requests=[];
@@ -20,8 +19,8 @@ try{
  await page.screenshot({path:new URL('desktop.png',out).pathname,fullPage:true});
  await page.locator('.arrangement-parts button').nth(1).click();
  await page.waitForFunction(()=>document.querySelector('.screen-kicker')?.textContent.includes('ISOLATED PART'),{},{timeout:60000});
- const soloLevels=[];for(let i=0;i<16;i++)soloLevels.push(await outputRms(page));
- assert.ok(Math.max(...soloLevels)>.001,`native source part can be isolated, including its rests: ${soloLevels}`);
+ const soloRms=await audible(page);
+ assert.ok(soloRms>.001,`native source part can be isolated, including its rests: ${soloRms}`);
  assert.ok(await page.getByRole('button',{name:'Independent original reference',exact:true}).isDisabled(),'edited/solo audio is not compared as native full mix');
  await page.getByRole('button',{name:'Full mix',exact:true}).click();
  await page.waitForFunction(()=>!document.querySelector('.arrangement-versions button:nth-child(2)').disabled,{},{timeout:60000});

@@ -373,3 +373,8 @@ export type {Performance, PerformancePart, PerformanceNote, PerformancePlan, Per
 
 export {importVgm} from "./vgm-import.js";
 export {isolateNativePerformance} from "./native-performance.js";
+export {calibrateMixInstrument, MixProfileBank, MIX_PROFILE_VERSION} from './mix-calibration.js';
+export type {MixProfile, MixCalibrationOptions} from './mix-calibration.js';
+export type {PartMix, MixOrigin, MixOptions, MixReport, MixDiagnostic} from './mix.js';
+export {prepareMixPhrase} from './mix-phrase.js';
+export type {MixPhraseNote} from './mix-phrase.js';

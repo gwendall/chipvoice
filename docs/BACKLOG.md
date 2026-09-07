@@ -5,6 +5,15 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+## General automatic mixing — priority plan (2026-09-07)
+
+Sound correctness and general adaptation now precede npm release and new features.
+**MIX-01–MIX-11** are implemented with the documented hardware/phrase limits;
+**MIX-12–MIX-18** are in qualification. Dependencies and acceptance criteria are
+in [Automatic mixing](AUTOMATIC-MIXING.md). Song fixtures calibrate and evaluate
+the shared policy; production behavior must never special-case their identity.
+The [API](MIXING-API.md) and [evaluation](evals/AUTOMATIC-MIXING-POLICY-2026-09-07.md) record evidence and limits. Human listening and real-device acceptance remain explicitly open.
+
 
 The [roadmap](ROADMAP.md) says where this is going. This is the list of what is
 being done about it, ticket by ticket, kept current at the start and the end of
@@ -38,8 +47,9 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
   [Evaluation and review](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md) records
   atomic bus transactions, eight SNES pitched voices, bounded MIDI expression,
   exact reference binding and publication checks.
-- todo — independently validate Zelda/Sonic game-specific instruments against
-  native sources. Complete MIDI transcription is not native timbre certification.
+- done for native replay — Zelda and Sonic now retain original chip commands
+  and have independent emulator references. Portable timbres/expression remain
+  approximations; native command parity does not certify those adaptations.
 - todo — additional MIDI expression adapters (pan, modulation/aftertouch, SysEx
   patch banks), with independently reviewed references. Events are retained and
   unsupported behavior is disclosed.
@@ -131,7 +141,7 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 | P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
 | P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit |
 | P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | |
-| P6-10 | Real triads across voices for the chord, the SNES's idiom, and the noise voice for hats | todo | the arranger arpeggiates for now |
+| P6-10 | Real triads across voices and hardware-noise hats | doing | Simultaneous triads are implemented and tested, including internal mixer checks. Hardware-noise hats remain separate; the current kit uses BRR samples |
 
 ## Phase 7. C64
 
@@ -483,9 +493,9 @@ Further work is deliberately separate: identify DAC drum sample boundaries/types
 for portable arrangements; recover FM envelope/release/stereo expression for
 editing; measure physical output filtering and PSG balance against real hardware.
 Native command/digital verification does not complete those fidelity claims.
-The Sonic comparison shows residual high-frequency energy near 8–10 kHz:
-isolate FM, DAC and PSG, then qualify output resampling and filtering separately
-from register/core parity. See the [comparison](evals/NATIVE-SONGS-2026-09-07.md).
+The identified 8–10 kHz alias mechanism is repaired by filtering before
+decimation; FM, DAC and PSG have separate comparisons. Physical output/DAC
+uncertainty remains. See [the measured repair](evals/AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07.md).
 
 
 Zelda selection regression fixed: the catalogue now uses NSF track 3, with an independent Overworld phrase checked before emulator parity. All four ports and A/B reference are rebuilt; [evidence and limits](evals/ZELDA-SELECTION-2026-09-07.md).

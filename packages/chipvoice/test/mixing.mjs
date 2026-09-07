@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+import {nesChip,mdChip,snesChip,planPerformance} from '../dist/index.js';
+import {MixProfileBank,mixInstrumentSignature,mixProfileLevel,mixProfileControl} from '../dist/mix-calibration.js';
+import {planMix} from '../dist/mix.js';
+const instrument={volume:[15],sustain:true};
+const profile={version:1,chip:'md',voice:'fm1',signature:mixInstrumentSignature(instrument),sampleRate:44100,axis:'pitch',positions:[48,72],durations:[.125,1.5],controls:[0,1,7,15],stepped:false,rms:Array.from({length:4},()=>[0,.01,.07,.15]).flat(),peaks:Array.from({length:4},()=>[0,.02,.14,.3]).flat()};
+const bank=new MixProfileBank([profile]);
+assert.equal(mixProfileLevel(profile,60,.5,false,7),.07);
+assert.ok(Math.abs(mixProfileControl(profile,60,.5,.04)-4)<1e-12);
+assert.equal(mixProfileControl(profile,60,.5,9),15);
+assert.throws(()=>mixProfileControl(profile,60,.5,NaN));
+profile.rms[2]=99;assert.equal(bank.find('md','fm1',instrument).rms[2],.07,'bank copies caller data');
+assert.throws(()=>bank.find('md','fm1',instrument).rms[2]=99,'bank responses cannot be mutated');
+for(let i=0;i<80;i++)bank.add({...profile,rms:profile.rms.map(()=>.1),signature:String(i)});
+assert.equal(bank.size,64);assert.equal(bank.find('md','fm1',instrument),undefined,'custom cache is bounded');
+assert.throws(()=>new MixProfileBank([],65));
+assert.throws(()=>new MixProfileBank([{...profile,positions:[72,48]}]));
+const circular={};circular.wave=circular;assert.throws(()=>mixInstrumentSignature(circular));
+const clean={...profile,rms:Array.from({length:4},()=>[0,.01,.07,.15]).flat()};
+const custom=new MixProfileBank([clean]);
+const n={part:'lead',role:'lead',voice:'fm1',instrument,pitch:60,start:0,end:1};
+const alone=planMix(mdChip,[n],{profiles:custom});
+const future=planMix(mdChip,[n,{...n,start:4,end:5}],{profiles:custom});
+for(const t of [0,.1,.7])assert.equal(alone.level(0,15,t),future.level(0,15,t),'unseen future music cannot alter current mix');
+const chord=planMix(mdChip,[n,{...n,voice:'fm1'},{...n,voice:'fm1'},{...n,voice:'fm1'}],{profiles:custom});
+assert.ok(Math.abs(chord.level(0,15,0)/alone.level(0,15,0)-.5)<1e-12,'four simultaneous notes share a part budget');
+const rising=planMix(mdChip,[n,{...n,start:.5,end:1}],{profiles:custom});
+assert.ok(Math.abs(rising.level(0,15,.5)-rising.level(0,15,.5-1e-8))<1e-6,'density changes do not step the held-note gain');
+assert.equal(planMix(mdChip,[{...n,mix:{importance:0}}],{profiles:custom}).level(0,15,0),0);
+const loudBass=planMix(mdChip,[{...n,role:'bass',mix:{importance:1}}],{profiles:custom});
+assert.equal(loudBass.level(0,15,0),alone.level(0,15,0),'an author can put the bass in the foreground');
+const score={version:1,title:'Anonymous',ticksPerBeat:96,endTick:96,tempos:[{tick:0,microsecondsPerBeat:500000}],notices:[],parts:[{id:'p',name:'Unlabelled',role:'lead',priority:1,notes:[{id:'n',tick:0,endTick:96,pitch:60,velocity:100}]}]};
+for(const chip of [nesChip,mdChip,snesChip]){
+ const a=planPerformance(score,chip),b=planPerformance({...score,title:'A completely unrelated title',source:{kind:'midi',name:'changed.mid',sha256:'different'}},chip);
+ assert.deepEqual(a.events,b.events,'song identity has no effect on automatic mixing');
+ const silent=planPerformance({...score,parts:score.parts.map(p=>({...p,mix:{importance:0}}))},chip);
+ assert.equal(silent.notes.length,a.notes.length,'explicit mute does not alter source notes or allocation');
+}
+console.log('PASS calibration ownership, inverse response, bounded cache, causal density, author foreground, silence and identity independence');
+
+const {prepareMixPhrase,OfflineDriver,instrumentsFor,gbChip,c64Chip}=await import('../dist/index.js');
+for(const chip of [nesChip,gbChip,mdChip,snesChip,c64Chip]){
+ const voice=chip.spec.roles.lead,inst=instrumentsFor(chip.spec.id).lead;
+ const input=[{voice,part:'p',role:'lead',at:0,note:'C4',duration:.2,instrument:inst,mix:{importance:0}}];
+ const before=JSON.stringify(input),phrase=prepareMixPhrase(chip,input);
+ assert.equal(JSON.stringify(input),before,'phrase preparation does not edit caller instruments');
+ assert.ok(phrase.notes[0].instrument.volume.every(v=>v===0));
+ const core=chip.create(8000), idle=chip.create(8000);
+ const offline=new OfflineDriver(core,chip), idleDriver=new OfflineDriver(idle,chip);
+ offline.playNote(voice,phrase.notes[0]);offline.flush();idleDriver.flush();
+ const a=new Float32Array(2400),b=new Float32Array(2400),r=new Float32Array(2400);
+ core.render(a,r,0);idle.render(b,r,0);assert.deepEqual(a,b,'silent phrase never triggers hardware');
+ // No calibrated silent attack may touch voice registers, even on chips with a DAC transient.
+ const muted=planPerformance({...score,parts:score.parts.map(p=>({...p,mix:{importance:0}}))},chip);
+ const {renderPerformance}=await import('../dist/index.js');
+ const silence=renderPerformance(muted,chip,{sampleRate:8000});
+ const untouched=renderPerformance(planPerformance({...score,parts:[]},chip),chip,{sampleRate:8000});
+ assert.deepEqual(silence.left,untouched.left,'muted source leaves only the idle chip output');
+ assert.throws(()=>prepareMixPhrase(chip,[{...input[0],duration:3}]),/phrase/);
+ assert.throws(()=>prepareMixPhrase(chip,[input[0],{...input[0]}]),/overlapping/);
+ assert.throws(()=>prepareMixPhrase(chip,[{...input[0],mix:{gainDb:NaN}}]),/mix/);
+}
+console.log('PASS bounded game phrases, source ownership, hardware silence and overlap rejection');
+const short={voice:'fm1',part:'p',role:'lead',at:0,note:'C4',duration:.026,instrument:instrumentsFor('md').lead};
+assert.throws(()=>prepareMixPhrase(mdChip,[short,{...short,at:.026}]),/overlapping/,'APU-rounded note-off cannot cut the next note');
+assert.equal(prepareMixPhrase(mdChip,[short]).notes[0].duration,2/60,'density and response use the actual frame duration');
+const nativeOrigin={...score,parts:score.parts.map(p=>({...p,origin:{chip:'2a03',voice:'p1'},notes:p.notes.map(n=>({...n,expression:[{tick:0,gain:1}]})),instruments:{'2a03':{volume:[15],sustain:true},md:{...instrumentsFor('md').lead,volume:[15,0],sustain:false}}}))};
+const heldOrigin=structuredClone(nativeOrigin);heldOrigin.parts[0].instruments.md.volume=[15];heldOrigin.parts[0].instruments.md.sustain=true;
+assert.notDeepEqual(planPerformance(nativeOrigin,mdChip).events,planPerformance(heldOrigin,mdChip).events,'explicit target envelope survives native source expression');
+console.log('PASS authored target envelope and realized phrase duration review regressions');
+const noise={voice:'noise',part:'perc',role:'perc',at:0,note:7,duration:.1,instrument:instrumentsFor('md').perc.H.instrument};
+assert.deepEqual(prepareMixPhrase(mdChip,[{...noise,detune:2}]).notes[0].instrument.volume,prepareMixPhrase(mdChip,[{...noise,note:9}]).notes[0].instrument.volume,'noise response uses the same detuned period as the APU');
