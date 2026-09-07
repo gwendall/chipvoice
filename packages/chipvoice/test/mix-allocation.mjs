@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {planPerformance,mdChip} from '../dist/index.js';
+import {performanceInstrument} from '../dist/performance-palette.js';
+const instrument=performanceInstrument('md','chord',80);
+assert.ok(instrument.fm);
+const score={version:1,title:'Custom FM harmony',ticksPerBeat:96,endTick:96,tempos:[{tick:0,microsecondsPerBeat:500000}],notices:[],parts:[{id:'harmony',name:'Harmony',role:'chord',priority:10,instruments:{md:instrument},notes:[{id:'n',tick:0,endTick:96,pitch:60,velocity:100}]}]};
+const plan=planPerformance(score,mdChip);
+assert.ok(plan.notes.every(n=>n.voice.startsWith('fm')),'an explicit FM instrument must use a free FM voice, not a PSG voice which discards its patch');
+assert.equal(plan.losses.some(l=>l.kind==='palette-substitution'),false);
+console.log('PASS instrument-compatible allocation before role preference');

@@ -15,7 +15,7 @@ export function nsfPerformance(capture, {title, endFrame, loopFrame, source}) {
   core.schedule(capture.events.filter(e=>e.at<endTick));
   const events = capture.events.filter(e=>e.at<endTick);
   let index=0, noisePeriod=0;
-  const parts = rows.map(row=>({...row,notes:[],instruments:{'2a03':{volume:[15],sustain:true}}}));
+  const parts = rows.map(row=>({...row,origin:{chip:'2a03',voice:row.id},notes:[],instruments:{'2a03':{volume:[15],sustain:true}}}));
   const active = new Map();
   // Explicit attacks, plus a fixed observer grid; no notation quantization.
   const sampleTicks = new Set([endTick]);

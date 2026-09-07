@@ -10,6 +10,7 @@ Project purpose, methods and decisions live beside the code and change with it.
 
 | Document | Purpose |
 | --- | --- |
+| [Mixing API](MIXING-API.md) | Instrument calibration, automatic balance, game phrases, uncertainty and evaluation |
 | [Automatic mixing](AUTOMATIC-MIXING.md) | General adaptation/mixing contract, ordered tickets and acceptance |
 | [Roadmap](ROADMAP.md) | Roadmap and phase acceptance |
 | [Playable demo](DEMO.md) | Playable demo specification |

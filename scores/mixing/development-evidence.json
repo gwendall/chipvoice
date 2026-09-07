@@ -1,0 +1,4624 @@
+{
+  "policySha256": "5a3357a744341c154099c1851f5df341a55a27f758f1587d4bc97e69a172f15e",
+  "profileSha256": "f787b13780c819ea9161f6d4c9be5b8b8194a02ad76e20857a68f831fb7a1b91",
+  "heldOut": false,
+  "contract": {
+    "version": 1,
+    "scope": "Automatic adaptation; native replay is unchanged unless explicitly remixed",
+    "development": {
+      "sourceFamilies": [
+        "zelda-overworld",
+        "sonic-green-hill"
+      ],
+      "generatedSeeds": [
+        12,
+        27,
+        45
+      ]
+    },
+    "heldOut": {
+      "sourceFamilies": [
+        "mario-ground"
+      ],
+      "generatedSeeds": [
+        103,
+        211,
+        409
+      ]
+    },
+    "correctness": {
+      "inventedNotes": 0,
+      "invalidSamples": 0,
+      "clippedSamples": 0,
+      "nativeCommandChangesFromMixPolicy": 0,
+      "maximumCustomCacheEntries": 64
+    },
+    "policy": {
+      "maximumLookaheadSeconds": 2,
+      "maximumAutomaticBoostDb": 0,
+      "maximumAutomaticAttenuationDb": 24,
+      "minimumSmoothingSeconds": 0.03
+    },
+    "calibration": {
+      "pitchGrid": [
+        36,
+        48,
+        60,
+        72,
+        84
+      ],
+      "velocityGrid": [
+        32,
+        64,
+        96,
+        127
+      ],
+      "noteSeconds": [
+        0.125,
+        0.5,
+        1.5
+      ]
+    },
+    "performance": {
+      "note": "Relative CPU budgets are frozen against the same-host baseline; real-device acceptance remains separate",
+      "maximumPlanningSlowdown": 2,
+      "maximumRenderSlowdown": 1.25
+    },
+    "musicalAcceptance": "Source dynamics and intended foreground retained; blind listening and held-out acoustic diagnostics reported separately from correctness. Thresholds cannot be fitted on held-out songs.",
+    "prohibition": "No song title, ID, source hash or held-out seed in the runtime policy"
+  },
+  "scope": "Deterministic correctness and descriptive acoustics; no universal musical score or human preference claim",
+  "cases": [
+    {
+      "title": "Generated 12 lead",
+      "sourceSha256": "3e49a3fc3575773b5c9e9b2098ea19bb7f686121d30eed9e19d790330fed5ca9",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 11.532999999999987,
+          "renderMs": 156.34666700000002,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.45086508165937,
+            "rmsDbFS": -25.23042126167256,
+            "crestDb": 15.779556180013191,
+            "dc": 3.924399871640021e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.20817777514457703,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 2.5238749999999754,
+          "renderMs": 138.85666599999996,
+          "events": 95,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.807191251289858,
+            "rmsDbFS": -28.385791745403715,
+            "crestDb": 14.578600494113855,
+            "dc": 4.097593096840519e-13,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1273893006145954,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 lead",
+      "sourceSha256": "3e49a3fc3575773b5c9e9b2098ea19bb7f686121d30eed9e19d790330fed5ca9",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 1.3436250000000882,
+          "renderMs": 283.15604200000007,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.986163071795355,
+            "rmsDbFS": -20.309330509591376,
+            "crestDb": 13.32316743779602,
+            "dc": -0.0010028840785163702,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2754458338022232,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 1.5793750000000273,
+          "renderMs": 274.37483399999996,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.976305194068708,
+            "rmsDbFS": -28.951525279830417,
+            "crestDb": 14.975220085761709,
+            "dc": -0.0006416195713975165,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1456284075975418,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 lead",
+      "sourceSha256": "3e49a3fc3575773b5c9e9b2098ea19bb7f686121d30eed9e19d790330fed5ca9",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 1.737250000000131,
+          "renderMs": 688.2830829999998,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.845066714719193,
+            "rmsDbFS": -17.778820324356772,
+            "crestDb": 11.933753609637577,
+            "dc": 0.000008261938641065804,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.030679311603307724,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 2.80462499999976,
+          "renderMs": 645.75675,
+          "events": 594,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.548539656352593,
+            "rmsDbFS": -27.59846586446553,
+            "crestDb": 12.049926208112936,
+            "dc": 0.000019909476220498798,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.02133698435500264,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 lead",
+      "sourceSha256": "3e49a3fc3575773b5c9e9b2098ea19bb7f686121d30eed9e19d790330fed5ca9",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 2.9753749999999854,
+          "renderMs": 80.87862500000028,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.670735037784034,
+            "rmsDbFS": -23.782123525645304,
+            "crestDb": 10.111388487861268,
+            "dc": -1.723239978562152e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.04870810965076089,
+            "stereoCosine": 0.9887505004628496
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 1.2052920000000995,
+          "renderMs": 62.787374999999884,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.896136651383308,
+            "rmsDbFS": -25.439912475303558,
+            "crestDb": 10.54377582392025,
+            "dc": -1.0575351478484332e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06250303983688354,
+            "stereoCosine": 0.9940088818020242
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 lead",
+      "sourceSha256": "3e49a3fc3575773b5c9e9b2098ea19bb7f686121d30eed9e19d790330fed5ca9",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.9722499999998035,
+          "renderMs": 174.17929200000026,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -20.174402884762785,
+            "crestDb": 15.259038922071262,
+            "dc": 0.0007993966100240021,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25633180141448975,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.681250000000091,
+          "renderMs": 155.8412500000004,
+          "events": 138,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -27.914048222128606,
+            "crestDb": 22.998684259437077,
+            "dc": 0.0007993531231719446,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25633180141448975,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 bass",
+      "sourceSha256": "7571f1415b855f5fcc1b7155f5d796988fc6e295c4350395f396f5929c3e76e1",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5957919999991645,
+          "renderMs": 136.265042,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.45086508165937,
+            "rmsDbFS": -25.23042126167256,
+            "crestDb": 15.779556180013191,
+            "dc": 3.924399871640021e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.20817777514457703,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.6653749999995853,
+          "renderMs": 133.7367920000006,
+          "events": 95,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.37634208278943,
+            "rmsDbFS": -31.611187430444332,
+            "crestDb": 16.234845347654904,
+            "dc": 1.5941786347472592e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.08395771309733391,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 bass",
+      "sourceSha256": "7571f1415b855f5fcc1b7155f5d796988fc6e295c4350395f396f5929c3e76e1",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4517919999998412,
+          "renderMs": 264.18262500000037,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.986163071795355,
+            "rmsDbFS": -20.309330509591376,
+            "crestDb": 13.32316743779602,
+            "dc": -0.0010028840785163702,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2754458338022232,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.736667000000125,
+          "renderMs": 272.0022079999999,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.456353024065034,
+            "rmsDbFS": -27.83016326592105,
+            "crestDb": 12.373810241856019,
+            "dc": -0.0006069866107696976,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.15338686108589172,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 bass",
+      "sourceSha256": "7571f1415b855f5fcc1b7155f5d796988fc6e295c4350395f396f5929c3e76e1",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.9838749999998981,
+          "renderMs": 633.0580419999997,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.845066714719193,
+            "rmsDbFS": -17.778820324356772,
+            "crestDb": 11.933753609637577,
+            "dc": 0.000008261938641065804,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.030679311603307724,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 1.441874999999527,
+          "renderMs": 567.3082919999997,
+          "events": 594,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.88533946821805,
+            "rmsDbFS": -27.430778988179448,
+            "crestDb": 11.545439519961405,
+            "dc": 0.000020470917859769677,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.019016235135495663,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 bass",
+      "sourceSha256": "7571f1415b855f5fcc1b7155f5d796988fc6e295c4350395f396f5929c3e76e1",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.7082920000002559,
+          "renderMs": 62.28112499999952,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.670735037784034,
+            "rmsDbFS": -23.782123525645304,
+            "crestDb": 10.111388487861268,
+            "dc": -1.723239978562152e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.04870810965076089,
+            "stereoCosine": 0.9887505004628496
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.9385000000002037,
+          "renderMs": 60.68404200000077,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.101158718453405,
+            "rmsDbFS": -27.494125553439616,
+            "crestDb": 12.392966834986211,
+            "dc": 2.1955873403497479e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06121170148253441,
+            "stereoCosine": 0.9905148754760444
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 bass",
+      "sourceSha256": "7571f1415b855f5fcc1b7155f5d796988fc6e295c4350395f396f5929c3e76e1",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.3297080000002097,
+          "renderMs": 131.57541700000002,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -20.174402884762785,
+            "crestDb": 15.259038922071262,
+            "dc": 0.0007993966100240021,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25633180141448975,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.4269160000003467,
+          "renderMs": 140.07591700000012,
+          "events": 138,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -28.36325393731093,
+            "crestDb": 23.447889974619404,
+            "dc": 0.0007993247378998182,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25633180141448975,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 drums",
+      "sourceSha256": "188455606d053c6934024554794b51db1725976efa558597ba87534162f51234",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.37995799999953306,
+          "renderMs": 114.37545799999953,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.45086508165937,
+            "rmsDbFS": -25.23042126167256,
+            "crestDb": 15.779556180013191,
+            "dc": 3.924399871640021e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.20817777514457703,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.4743749999997817,
+          "renderMs": 119.44212499999958,
+          "events": 107,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -11.891641762963573,
+            "rmsDbFS": -28.081094063909397,
+            "crestDb": 16.18945230094582,
+            "dc": 1.9772481644479785e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.14580799639225006,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 drums",
+      "sourceSha256": "188455606d053c6934024554794b51db1725976efa558597ba87534162f51234",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.3497079999997368,
+          "renderMs": 230.8889160000017,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.986163071795355,
+            "rmsDbFS": -20.309330509591376,
+            "crestDb": 13.32316743779602,
+            "dc": -0.0010028840785163702,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2754458338022232,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.4962500000001455,
+          "renderMs": 233.5528749999994,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.976305194068708,
+            "rmsDbFS": -28.75826758295151,
+            "crestDb": 14.781962388882803,
+            "dc": -0.000641619570536621,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1456284075975418,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 drums",
+      "sourceSha256": "188455606d053c6934024554794b51db1725976efa558597ba87534162f51234",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5095000000001164,
+          "renderMs": 566.2019999999993,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.845066714719193,
+            "rmsDbFS": -17.778820324356772,
+            "crestDb": 11.933753609637577,
+            "dc": 0.000008261938641065804,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.030679311603307724,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.8989999999994325,
+          "renderMs": 585.4932079999999,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "drums",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.786955743039009,
+            "rmsDbFS": -27.480256298108582,
+            "crestDb": 13.693300555069571,
+            "dc": 0.000019909476958070514,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.032223262125626206,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 drums",
+      "sourceSha256": "188455606d053c6934024554794b51db1725976efa558597ba87534162f51234",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5967920000002778,
+          "renderMs": 60.542999999999665,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.670735037784034,
+            "rmsDbFS": -23.782123525645304,
+            "crestDb": 10.111388487861268,
+            "dc": -1.723239978562152e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.04870810965076089,
+            "stereoCosine": 0.9887505004628496
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.8065000000005966,
+          "renderMs": 59.961083000000144,
+          "events": 612,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "drums",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.384900616389654,
+            "rmsDbFS": -25.25568902242371,
+            "crestDb": 10.870788406034055,
+            "dc": -1.0575255606096954e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06250303983688354,
+            "stereoCosine": 0.9942524910350021
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 drums",
+      "sourceSha256": "188455606d053c6934024554794b51db1725976efa558597ba87534162f51234",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.3086249999996653,
+          "renderMs": 139.35620799999924,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -20.174402884762785,
+            "crestDb": 15.259038922071262,
+            "dc": 0.0007993966100240021,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25633180141448975,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.47920800000065356,
+          "renderMs": 141.98583300000064,
+          "events": 148,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -27.856411099369435,
+            "crestDb": 22.94104713667791,
+            "dc": 0.0007993531264030044,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25633180141448975,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 solo",
+      "sourceSha256": "70ce64ed161e3d1de8fb3df59ca070423dc39c2461739f4d58ffdc6b434091e5",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.20491600000059407,
+          "renderMs": 105.67183300000033,
+          "events": 41,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.15872875111242,
+            "rmsDbFS": -26.82294451230149,
+            "crestDb": 11.664215761189071,
+            "dc": 1.3375647886094626e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.16082626022398472,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.27770799999962037,
+          "renderMs": 101.02995799999917,
+          "events": 41,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -17.63771437388613,
+            "rmsDbFS": -30.016474972242797,
+            "crestDb": 12.378760598356662,
+            "dc": 1.1212554099105935e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1208948123967275,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 solo",
+      "sourceSha256": "70ce64ed161e3d1de8fb3df59ca070423dc39c2461739f4d58ffdc6b434091e5",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.21195799999986775,
+          "renderMs": 162.58558300000004,
+          "events": 59,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.212108444380812,
+            "rmsDbFS": -23.135505235693806,
+            "crestDb": 9.923396791312992,
+            "dc": -0.000390224374414026,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.21930135414004326,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.2962919999990845,
+          "renderMs": 155.0534579999985,
+          "events": 59,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.975414291408253,
+            "rmsDbFS": -31.476923211640884,
+            "crestDb": 9.501508920232629,
+            "dc": -0.00012748702239929528,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.079915352165699,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 solo",
+      "sourceSha256": "70ce64ed161e3d1de8fb3df59ca070423dc39c2461739f4d58ffdc6b434091e5",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.2526660000003176,
+          "renderMs": 543.668291,
+          "events": 190,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.498673581413918,
+            "rmsDbFS": -22.429347361911162,
+            "crestDb": 5.930673780497245,
+            "dc": 0.000038401940872121215,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.023102944833226502,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.38625000000138243,
+          "renderMs": 540.5255419999994,
+          "events": 190,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.41640704845998,
+            "rmsDbFS": -29.646408218231983,
+            "crestDb": 8.230001169771997,
+            "dc": 0.0000402536239626256,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.010368771676439792,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 solo",
+      "sourceSha256": "70ce64ed161e3d1de8fb3df59ca070423dc39c2461739f4d58ffdc6b434091e5",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.2696249999989959,
+          "renderMs": 69.48041700000067,
+          "events": 292,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.28653185032843,
+            "rmsDbFS": -26.557206555267516,
+            "crestDb": 5.270674704939086,
+            "dc": -4.3400690328278856e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.041810015216469765,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.3888330000008864,
+          "renderMs": 65.35054200000013,
+          "events": 292,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -22.011799423579408,
+            "rmsDbFS": -27.310289662925115,
+            "crestDb": 5.2984902393457105,
+            "dc": -4.154003207237451e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03833634965121746,
+            "stereoCosine": 1
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 12 solo",
+      "sourceSha256": "70ce64ed161e3d1de8fb3df59ca070423dc39c2461739f4d58ffdc6b434091e5",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.27212499999950523,
+          "renderMs": 149.253791000001,
+          "events": 68,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.646859360847262,
+            "rmsDbFS": -21.7743294736664,
+            "crestDb": 12.12747011281914,
+            "dc": 0.0007993958682657048,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25689825788140297,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.3010420000009617,
+          "renderMs": 133.2219580000001,
+          "events": 68,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.646859360847262,
+            "rmsDbFS": -29.205040192850905,
+            "crestDb": 19.558180832003643,
+            "dc": 0.0007993530483320685,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.25689825788140297,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 lead",
+      "sourceSha256": "de695706fd61247ca4eb43fdaa68a26def6908cbbc18301201df41f64cc8851f",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5926669999989826,
+          "renderMs": 143.75404200000048,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.66909371387925,
+            "rmsDbFS": -25.04105073897509,
+            "crestDb": 14.37195702509584,
+            "dc": 2.2465754181939382e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.19530263915657997,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.5992079999996349,
+          "renderMs": 130.6489590000001,
+          "events": 95,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -12.714862625030708,
+            "rmsDbFS": -27.971582996964703,
+            "crestDb": 15.256720371933998,
+            "dc": -3.9698638499712963e-13,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1337135285139084,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 lead",
+      "sourceSha256": "de695706fd61247ca4eb43fdaa68a26def6908cbbc18301201df41f64cc8851f",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.39099999999962165,
+          "renderMs": 246.30075000000033,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.949503358448429,
+            "rmsDbFS": -20.133940021001546,
+            "crestDb": 14.184436662553114,
+            "dc": -0.0010375185599731925,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.316593449562788,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.6049579999998969,
+          "renderMs": 231.39524999999958,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.528241845821578,
+            "rmsDbFS": -28.334465173006123,
+            "crestDb": 14.806223327184547,
+            "dc": -0.0006762535231226152,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1378699392080307,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 lead",
+      "sourceSha256": "de695706fd61247ca4eb43fdaa68a26def6908cbbc18301201df41f64cc8851f",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.6966669999983424,
+          "renderMs": 618.0469580000008,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.425657127073599,
+            "rmsDbFS": -17.691483149239073,
+            "crestDb": 11.265826022165477,
+            "dc": 0.000007997155626906867,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03439941257238388,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.9398750000000291,
+          "renderMs": 666.6802499999976,
+          "events": 594,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.392204328882315,
+            "rmsDbFS": -27.423543775641118,
+            "crestDb": 11.031339446758805,
+            "dc": 0.000019581726647987896,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.02435314003378153,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 lead",
+      "sourceSha256": "de695706fd61247ca4eb43fdaa68a26def6908cbbc18301201df41f64cc8851f",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5963750000009895,
+          "renderMs": 63.10425000000032,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.830093795806008,
+            "rmsDbFS": -23.759882979136936,
+            "crestDb": 9.92978918333093,
+            "dc": -2.19090789601055e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.05349176377058029,
+            "stereoCosine": 0.9888054988207049
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 1.367792000000918,
+          "renderMs": 63.61275000000023,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.180517296986682,
+            "rmsDbFS": -25.2684802138134,
+            "crestDb": 11.087962916826717,
+            "dc": -1.4637478734522681e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06728947907686234,
+            "stereoCosine": 0.994235556195829
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 lead",
+      "sourceSha256": "de695706fd61247ca4eb43fdaa68a26def6908cbbc18301201df41f64cc8851f",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.7039580000018759,
+          "renderMs": 147.15837499999907,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.366223002144202,
+            "rmsDbFS": -19.99512992682312,
+            "crestDb": 15.628906924678919,
+            "dc": 0.000799402114048217,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3007718324661255,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.5267090000015742,
+          "renderMs": 147.82133299999987,
+          "events": 138,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.366223002144202,
+            "rmsDbFS": -27.547058304314156,
+            "crestDb": 23.180835302169953,
+            "dc": 0.0007993489403914018,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3007718324661255,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 bass",
+      "sourceSha256": "675e795f2395a9021ff8db99e79ac803c9cf18f96a1ed45a597a1e69ef85852a",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4987500000024738,
+          "renderMs": 128.89179199999853,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.66909371387925,
+            "rmsDbFS": -25.04105073897509,
+            "crestDb": 14.37195702509584,
+            "dc": 2.2465754181939382e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.19530263915657997,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.8812090000028547,
+          "renderMs": 125.73733400000128,
+          "events": 95,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.52867941875314,
+            "rmsDbFS": -31.45791554165443,
+            "crestDb": 15.929236122901287,
+            "dc": -1.6097472413462613e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.08421727921813726,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 bass",
+      "sourceSha256": "675e795f2395a9021ff8db99e79ac803c9cf18f96a1ed45a597a1e69ef85852a",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4041670000005979,
+          "renderMs": 232.34304100000008,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.949503358448429,
+            "rmsDbFS": -20.133940021001546,
+            "crestDb": 14.184436662553114,
+            "dc": -0.0010375185599731925,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.316593449562788,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.7977089999985765,
+          "renderMs": 237.78600000000006,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.471896866674342,
+            "rmsDbFS": -27.824609684876055,
+            "crestDb": 12.352712818201717,
+            "dc": -0.0006069867106473285,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.15338686108589172,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 bass",
+      "sourceSha256": "675e795f2395a9021ff8db99e79ac803c9cf18f96a1ed45a597a1e69ef85852a",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4856249999975262,
+          "renderMs": 551.7071249999972,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.425657127073599,
+            "rmsDbFS": -17.691483149239073,
+            "crestDb": 11.265826022165477,
+            "dc": 0.000007997155626906867,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03439941257238388,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.8729160000002594,
+          "renderMs": 551.3739999999998,
+          "events": 594,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.288677233122854,
+            "rmsDbFS": -27.37432765397504,
+            "crestDb": 11.085650420852184,
+            "dc": 0.000020311726121943452,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.020624157041311264,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 bass",
+      "sourceSha256": "675e795f2395a9021ff8db99e79ac803c9cf18f96a1ed45a597a1e69ef85852a",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4907080000011774,
+          "renderMs": 60.091457999998966,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.830093795806008,
+            "rmsDbFS": -23.759882979136936,
+            "crestDb": 9.92978918333093,
+            "dc": -2.19090789601055e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.05349176377058029,
+            "stereoCosine": 0.9888054988207049
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.5848330000007991,
+          "renderMs": 60.69687499999782,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.20607160814528,
+            "rmsDbFS": -27.514316203379558,
+            "crestDb": 13.308244595234278,
+            "dc": 2.0276771781906308e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06098506599664688,
+            "stereoCosine": 0.9904697375235013
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 bass",
+      "sourceSha256": "675e795f2395a9021ff8db99e79ac803c9cf18f96a1ed45a597a1e69ef85852a",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.35291700000016135,
+          "renderMs": 149.74195800000234,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.366223002144202,
+            "rmsDbFS": -19.99512992682312,
+            "crestDb": 15.628906924678919,
+            "dc": 0.000799402114048217,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3007718324661255,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.4586249999993015,
+          "renderMs": 151.26324999999997,
+          "events": 138,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.366223002144202,
+            "rmsDbFS": -28.35627435651518,
+            "crestDb": 23.990051354370973,
+            "dc": 0.0007993244776315204,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3007718324661255,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 drums",
+      "sourceSha256": "d4689512d543c6586c7ee0c82d35859a527f598ff3c924b59ace0ccd39f38c5b",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4117919999989681,
+          "renderMs": 130.49424999999974,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.66909371387925,
+            "rmsDbFS": -25.04105073897509,
+            "crestDb": 14.37195702509584,
+            "dc": 2.2465754181939382e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.19530263915657997,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.5062080000025162,
+          "renderMs": 130.94800000000032,
+          "events": 107,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -12.714862625030708,
+            "rmsDbFS": -27.700000940934785,
+            "crestDb": 14.985138315904079,
+            "dc": 1.0336967304422885e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.13797547668218613,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 drums",
+      "sourceSha256": "d4689512d543c6586c7ee0c82d35859a527f598ff3c924b59ace0ccd39f38c5b",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.367207999999664,
+          "renderMs": 240.34816599999976,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.949503358448429,
+            "rmsDbFS": -20.133940021001546,
+            "crestDb": 14.184436662553114,
+            "dc": -0.0010375185599731925,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.316593449562788,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.4635000000016589,
+          "renderMs": 230.3299999999981,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.528241845821578,
+            "rmsDbFS": -28.146641801660422,
+            "crestDb": 14.618399955838846,
+            "dc": -0.0006762535237665358,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1378699392080307,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 drums",
+      "sourceSha256": "d4689512d543c6586c7ee0c82d35859a527f598ff3c924b59ace0ccd39f38c5b",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5267080000012356,
+          "renderMs": 557.7404580000002,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.425657127073599,
+            "rmsDbFS": -17.691483149239073,
+            "crestDb": 11.265826022165477,
+            "dc": 0.000007997155626906867,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03439941257238388,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.7890840000000026,
+          "renderMs": 547.9467499999992,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "drums",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.481413339001548,
+            "rmsDbFS": -27.31820967314804,
+            "crestDb": 12.836796334146495,
+            "dc": 0.000019581727358759426,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.033519177697598934,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 drums",
+      "sourceSha256": "d4689512d543c6586c7ee0c82d35859a527f598ff3c924b59ace0ccd39f38c5b",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4492500000014843,
+          "renderMs": 59.97791700000016,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.830093795806008,
+            "rmsDbFS": -23.759882979136936,
+            "crestDb": 9.92978918333093,
+            "dc": -2.19090789601055e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.05349176377058029,
+            "stereoCosine": 0.9888054988207049
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.6720830000012938,
+          "renderMs": 60.36624999999913,
+          "events": 612,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "drums",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.180517296986682,
+            "rmsDbFS": -25.091478829620367,
+            "crestDb": 10.910961532633685,
+            "dc": -1.4637604688671278e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06768726464360952,
+            "stereoCosine": 0.9944610600543213
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 drums",
+      "sourceSha256": "d4689512d543c6586c7ee0c82d35859a527f598ff3c924b59ace0ccd39f38c5b",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.34145799999896553,
+          "renderMs": 135.99166699999842,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.366223002144202,
+            "rmsDbFS": -19.99512992682312,
+            "crestDb": 15.628906924678919,
+            "dc": 0.000799402114048217,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3007718324661255,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.3773330000003625,
+          "renderMs": 139.01237499999843,
+          "events": 148,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.366223002144202,
+            "rmsDbFS": -27.49418008554251,
+            "crestDb": 23.127957083398307,
+            "dc": 0.000799348940265163,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3007718324661255,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 solo",
+      "sourceSha256": "daeef84982726321f900778964be65e873283c4733b1b2fac305c280f3ec15be",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.15766599999915343,
+          "renderMs": 114.57587500000227,
+          "events": 41,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.491582740767717,
+            "rmsDbFS": -26.61027195097875,
+            "crestDb": 12.11868921021103,
+            "dc": -3.3916633820903023e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.17491346411406994,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.19637499999953434,
+          "renderMs": 113.75283299999865,
+          "events": 41,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.720734458733787,
+            "rmsDbFS": -29.51202561491978,
+            "crestDb": 12.791291156185993,
+            "dc": 4.154849017390136e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.13431431405479088,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 solo",
+      "sourceSha256": "daeef84982726321f900778964be65e873283c4733b1b2fac305c280f3ec15be",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.157708000002458,
+          "renderMs": 156.63529199999903,
+          "events": 59,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -12.445379968114924,
+            "rmsDbFS": -22.92670270922974,
+            "crestDb": 10.481322741114813,
+            "dc": -0.00044277290541079454,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.23972412943840027,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.25349999999889405,
+          "renderMs": 162.22850000000108,
+          "events": 59,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -19.853709441765947,
+            "rmsDbFS": -30.527305710758878,
+            "crestDb": 10.673596268992931,
+            "dc": -0.00018003501008463942,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.10169874360184394,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 solo",
+      "sourceSha256": "daeef84982726321f900778964be65e873283c4733b1b2fac305c280f3ec15be",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.17400000000270666,
+          "renderMs": 541.2349160000012,
+          "events": 190,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.396830250887803,
+            "rmsDbFS": -22.396427043274,
+            "crestDb": 5.9995967923862,
+            "dc": 0.00003813714622102559,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.02666265144944191,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.2632499999999709,
+          "renderMs": 525.0447080000013,
+          "events": 190,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -20.806950523426515,
+            "rmsDbFS": -29.47043482644137,
+            "crestDb": 8.663484303014855,
+            "dc": 0.000039925866930233826,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.011674275621771812,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 solo",
+      "sourceSha256": "daeef84982726321f900778964be65e873283c4733b1b2fac305c280f3ec15be",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.16050000000177533,
+          "renderMs": 62.932708000000275,
+          "events": 292,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -20.174675757103927,
+            "rmsDbFS": -26.29088933928543,
+            "crestDb": 6.116213582181507,
+            "dc": -4.798316119034741e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03995869355276227,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.24070800000117742,
+          "renderMs": 66.2322920000006,
+          "events": 292,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -20.817488482888898,
+            "rmsDbFS": -26.89079599697554,
+            "crestDb": 6.073307514086643,
+            "dc": -4.556028843793219e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03719823947176337,
+            "stereoCosine": 1
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 27 solo",
+      "sourceSha256": "daeef84982726321f900778964be65e873283c4733b1b2fac305c280f3ec15be",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.2038749999992433,
+          "renderMs": 154.7046249999985,
+          "events": 68,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -8.894246361913645,
+            "rmsDbFS": -21.5311338548991,
+            "crestDb": 12.636887492985455,
+            "dc": 0.0007994013719007331,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.30048261024057865,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.31304199999794946,
+          "renderMs": 151.42425000000003,
+          "events": 68,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -8.894246361913645,
+            "rmsDbFS": -28.726370006831914,
+            "crestDb": 19.83212364491827,
+            "dc": 0.0007993488649576789,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.30048261024057865,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 lead",
+      "sourceSha256": "273379b7dff1104bf5392c09a0633e1bf43b6c81f74985abd5c497978d06e258",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.469042000000627,
+          "renderMs": 158.53208300000188,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.335077763216628,
+            "rmsDbFS": -25.156178984957442,
+            "crestDb": 15.821101221740815,
+            "dc": 3.885139739117815e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.26293364353477955,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.7005829999980051,
+          "renderMs": 142.27833299999838,
+          "events": 95,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -12.792256747678072,
+            "rmsDbFS": -28.241533221548714,
+            "crestDb": 15.449276473870642,
+            "dc": -5.105934905257745e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.14193726377561688,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 lead",
+      "sourceSha256": "273379b7dff1104bf5392c09a0633e1bf43b6c81f74985abd5c497978d06e258",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5098330000000715,
+          "renderMs": 282.58737499999916,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.214212570492917,
+            "rmsDbFS": -20.146675752327454,
+            "crestDb": 13.932463181834539,
+            "dc": -0.0011067854568049935,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2605196386575699,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.6914999999971769,
+          "renderMs": 276.51129199999923,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.031393829409417,
+            "rmsDbFS": -28.75646975954811,
+            "crestDb": 15.725075930138694,
+            "dc": -0.0007108871458290959,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1301114857196808,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 lead",
+      "sourceSha256": "273379b7dff1104bf5392c09a0633e1bf43b6c81f74985abd5c497978d06e258",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 2.893832999998267,
+          "renderMs": 745.003084,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.490458011463774,
+            "rmsDbFS": -17.766142911268755,
+            "crestDb": 12.275684899804979,
+            "dc": 0.000007198963479137249,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.026736130006611347,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 1.0016660000001139,
+          "renderMs": 552.4232080000002,
+          "events": 594,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.049479352983425,
+            "rmsDbFS": -27.509547216216944,
+            "crestDb": 11.46006786323352,
+            "dc": 0.000019171054168926062,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.021337233833037317,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 lead",
+      "sourceSha256": "273379b7dff1104bf5392c09a0633e1bf43b6c81f74985abd5c497978d06e258",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.5959160000020347,
+          "renderMs": 60.70529200000237,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.245639075255625,
+            "rmsDbFS": -23.808283891683143,
+            "crestDb": 10.56264481642752,
+            "dc": 1.708420101891181e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.049747930839657784,
+            "stereoCosine": 0.9886214976724539
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.7321249999986321,
+          "renderMs": 59.41558400000213,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.827210058078784,
+            "rmsDbFS": -25.379447676728134,
+            "crestDb": 10.55223761864935,
+            "dc": 2.1367419642615846e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.0640218947082758,
+            "stereoCosine": 0.994057767075212
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 lead",
+      "sourceSha256": "273379b7dff1104bf5392c09a0633e1bf43b6c81f74985abd5c497978d06e258",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.3376250000001164,
+          "renderMs": 136.95966599999883,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -20.090483644391384,
+            "crestDb": 15.175119681699858,
+            "dc": 0.0007994021121394879,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2924768552184105,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.39549999999871943,
+          "renderMs": 137.30141600000206,
+          "events": 138,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -27.879867153964266,
+            "crestDb": 22.96450319127274,
+            "dc": 0.0007993508695781931,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.292809572070837,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 bass",
+      "sourceSha256": "382b99790ff830658d97da43b5a7fd4ea04b92a8dd253c7a900f951adf303eb5",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.34533299999748124,
+          "renderMs": 124.62166600000273,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.335077763216628,
+            "rmsDbFS": -25.156178984957442,
+            "crestDb": 15.821101221740815,
+            "dc": 3.885139739117815e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.26293364353477955,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.4546249999984866,
+          "renderMs": 125.60966700000426,
+          "events": 95,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.285221554728835,
+            "rmsDbFS": -31.660701653751964,
+            "crestDb": 16.375480099023132,
+            "dc": -3.5395941970237446e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.10042556887492537,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 bass",
+      "sourceSha256": "382b99790ff830658d97da43b5a7fd4ea04b92a8dd253c7a900f951adf303eb5",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4662499999976717,
+          "renderMs": 271.6054579999982,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.214212570492917,
+            "rmsDbFS": -20.146675752327454,
+            "crestDb": 13.932463181834539,
+            "dc": -0.0011067854568049935,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2605196386575699,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.5471249999973224,
+          "renderMs": 272.74183300000004,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.456353024065034,
+            "rmsDbFS": -27.80323212278654,
+            "crestDb": 12.346879098721502,
+            "dc": -0.0006069866256186167,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.15338686108589172,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 bass",
+      "sourceSha256": "382b99790ff830658d97da43b5a7fd4ea04b92a8dd253c7a900f951adf303eb5",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 1.879584000002069,
+          "renderMs": 644.8293750000012,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.490458011463774,
+            "rmsDbFS": -17.766142911268755,
+            "crestDb": 12.275684899804979,
+            "dc": 0.000007198963479137249,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.026736130006611347,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.8962910000045667,
+          "renderMs": 582.0003330000036,
+          "events": 594,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.887506904705244,
+            "rmsDbFS": -27.41830963737778,
+            "crestDb": 11.530802732672537,
+            "dc": 0.000020208237900243776,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.01901637203991413,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 bass",
+      "sourceSha256": "382b99790ff830658d97da43b5a7fd4ea04b92a8dd253c7a900f951adf303eb5",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.7453329999989364,
+          "renderMs": 89.5006249999933,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.245639075255625,
+            "rmsDbFS": -23.808283891683143,
+            "crestDb": 10.56264481642752,
+            "dc": 1.708420101891181e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.049747930839657784,
+            "stereoCosine": 0.9886214976724539
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 1.6991659999985131,
+          "renderMs": 95.4128750000018,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.491032905837,
+            "rmsDbFS": -27.485638290746095,
+            "crestDb": 12.994605384909095,
+            "dc": 3.690515981932044e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.06034240126609802,
+            "stereoCosine": 0.9904909579309102
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 bass",
+      "sourceSha256": "382b99790ff830658d97da43b5a7fd4ea04b92a8dd253c7a900f951adf303eb5",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.34441700000024866,
+          "renderMs": 260.6319169999988,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -20.090483644391384,
+            "crestDb": 15.175119681699858,
+            "dc": 0.0007994021121394879,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2924768552184105,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 2.348874999996042,
+          "renderMs": 252.26933300000383,
+          "events": 138,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -28.367996051207967,
+            "crestDb": 23.45263208851644,
+            "dc": 0.0007993262140128304,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2926376424729824,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 drums",
+      "sourceSha256": "4b7a1c622536715b62fb083aecfa46f2e3f92e42906660129685e0c8d6a4baea",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4395409999997355,
+          "renderMs": 248.09258299999783,
+          "events": 105,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.335077763216628,
+            "rmsDbFS": -25.156178984957442,
+            "crestDb": 15.821101221740815,
+            "dc": 3.885139739117815e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.26293364353477955,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.6418330000014976,
+          "renderMs": 162.20516599999974,
+          "events": 107,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "bass",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "bass",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -11.774001924786305,
+            "rmsDbFS": -27.94043612673714,
+            "crestDb": 16.166434201950835,
+            "dc": -2.996479417672001e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.18447601702064276,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 drums",
+      "sourceSha256": "4b7a1c622536715b62fb083aecfa46f2e3f92e42906660129685e0c8d6a4baea",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.4720420000012382,
+          "renderMs": 269.77675000000454,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.214212570492917,
+            "rmsDbFS": -20.146675752327454,
+            "crestDb": 13.932463181834539,
+            "dc": -0.0011067854568049935,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2605196386575699,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.5340419999993173,
+          "renderMs": 251.3492499999993,
+          "events": 136,
+          "notes": 18,
+          "omitted": 4,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 18,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.031393829409417,
+            "rmsDbFS": -28.576425718742247,
+            "crestDb": 15.54503188933283,
+            "dc": -0.0007108871488336199,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1301114857196808,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 drums",
+      "sourceSha256": "4b7a1c622536715b62fb083aecfa46f2e3f92e42906660129685e0c8d6a4baea",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.49324999999953434,
+          "renderMs": 560.0259170000063,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.490458011463774,
+            "rmsDbFS": -17.766142911268755,
+            "crestDb": 12.275684899804979,
+            "dc": 0.000007198963479137249,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.026736130006611347,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.7467909999977564,
+          "renderMs": 563.9592080000002,
+          "events": 592,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "drums",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.029133267977775,
+            "rmsDbFS": -27.411120650431243,
+            "crestDb": 12.38198738245347,
+            "dc": 0.000019171056332933106,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03184925485402346,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 drums",
+      "sourceSha256": "4b7a1c622536715b62fb083aecfa46f2e3f92e42906660129685e0c8d6a4baea",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.491334000005736,
+          "renderMs": 62.238250000002154,
+          "events": 644,
+          "notes": 22,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.245639075255625,
+            "rmsDbFS": -23.808283891683143,
+            "crestDb": 10.56264481642752,
+            "dc": 1.708420101891181e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.049747930839657784,
+            "stereoCosine": 0.9886214976724539
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.4363329999978305,
+          "renderMs": 63.72699999999895,
+          "events": 612,
+          "notes": 22,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 22,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "drums",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -14.715986812332913,
+            "rmsDbFS": -25.197077158941717,
+            "crestDb": 10.481090346608806,
+            "dc": 2.1367359163151628e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.0640218947082758,
+            "stereoCosine": 0.9942981777227392
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 drums",
+      "sourceSha256": "4b7a1c622536715b62fb083aecfa46f2e3f92e42906660129685e0c8d6a4baea",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.17629099999612663,
+          "renderMs": 140.3682090000002,
+          "events": 152,
+          "notes": 16,
+          "omitted": 6,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -20.090483644391384,
+            "crestDb": 15.175119681699858,
+            "dc": 0.0007994021121394879,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2924768552184105,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.26820800000132294,
+          "renderMs": 143.02391699999862,
+          "events": 148,
+          "notes": 16,
+          "omitted": 6,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 16,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.915363962691525,
+            "rmsDbFS": -27.822295399869766,
+            "crestDb": 22.90693143717824,
+            "dc": 0.000799350867191851,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.292809572070837,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 solo",
+      "sourceSha256": "50fe4450d8bcc6745cf618f47d734d34282df15bb28f998c70c187efa1cb92bd",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.12641699999949196,
+          "renderMs": 114.01695800000016,
+          "events": 41,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.167974223292182,
+            "rmsDbFS": -26.633569217797124,
+            "crestDb": 11.465594994504942,
+            "dc": 4.104510803066344e-12,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.1606052693678066,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.13941600000543986,
+          "renderMs": 123.76495799999975,
+          "events": 41,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -17.646960018520687,
+            "rmsDbFS": -29.70276432470303,
+            "crestDb": 12.05580430618234,
+            "dc": 7.372366709165588e-13,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.12072869413532317,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 solo",
+      "sourceSha256": "50fe4450d8bcc6745cf618f47d734d34282df15bb28f998c70c187efa1cb92bd",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.1098340000025928,
+          "renderMs": 160.96291599999677,
+          "events": 59,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -13.215391740640285,
+            "rmsDbFS": -23.051598212828726,
+            "crestDb": 9.836206472188437,
+            "dc": -0.0005478681631738267,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2174261510372162,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.17358300000341842,
+          "renderMs": 161.29370799999742,
+          "events": 59,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.658622577846558,
+            "rmsDbFS": -31.270937974824022,
+            "crestDb": 9.612315396977465,
+            "dc": -0.00023258278568937728,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.08261712647754393,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 solo",
+      "sourceSha256": "50fe4450d8bcc6745cf618f47d734d34282df15bb28f998c70c187efa1cb92bd",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.11291699999856064,
+          "renderMs": 541.2154590000064,
+          "events": 190,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -16.460269497212913,
+            "rmsDbFS": -22.353910086753555,
+            "crestDb": 5.893640589540637,
+            "dc": 0.000037338944697513414,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.023276306688785553,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.2227920000004815,
+          "renderMs": 617.6226250000036,
+          "events": 190,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.515159419831527,
+            "rmsDbFS": -29.47904762534328,
+            "crestDb": 7.963888205511756,
+            "dc": 0.000039515196387635866,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.010065139271318913,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 solo",
+      "sourceSha256": "50fe4450d8bcc6745cf618f47d734d34282df15bb28f998c70c187efa1cb92bd",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.13766699999541743,
+          "renderMs": 80.10575000000244,
+          "events": 292,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.128627938596253,
+            "rmsDbFS": -26.673216594054132,
+            "crestDb": 5.544588655457881,
+            "dc": -8.807333924474309e-8,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03212924534454942,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.21045800000138115,
+          "renderMs": 89.45229100000142,
+          "events": 292,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -21.849556439018336,
+            "rmsDbFS": -27.24494846705315,
+            "crestDb": 5.395392028034815,
+            "dc": -9.479412132896913e-8,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.030526261311024427,
+            "stereoCosine": 1
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Generated 45 solo",
+      "sourceSha256": "50fe4450d8bcc6745cf618f47d734d34282df15bb28f998c70c187efa1cb92bd",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 0.13741700000537094,
+          "renderMs": 261.7808329999971,
+          "events": 68,
+          "notes": 8,
+          "omitted": 0,
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.646859360847262,
+            "rmsDbFS": -21.653925277456505,
+            "crestDb": 12.007065916609246,
+            "dc": 0.0007994014087608268,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2928568236529827,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 0.48512500000651926,
+          "renderMs": 227.63354200000322,
+          "events": 68,
+          "notes": 8,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 8,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 88200,
+            "seconds": 2,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.646859360847262,
+            "rmsDbFS": -29.165529047501906,
+            "crestDb": 19.51866968665464,
+            "dc": 0.0007993507953759181,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2928568460047245,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Zelda · Overworld",
+      "sourceSha256": "296e1f43f9dbdf0ea24ce51ece12cbd2fa42a6751e7b1413bf7ec28fbf11b0b4",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 9.848292000002402,
+          "renderMs": 504.52154199999495,
+          "events": 4333,
+          "notes": 592,
+          "omitted": 0,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.002283395387629,
+            "rmsDbFS": -26.395328998264127,
+            "crestDb": 16.393045602876498,
+            "dc": 0.0000055211778450149575,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2740341126918793,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 18.12558299999364,
+          "renderMs": 511.0174580000021,
+          "events": 4329,
+          "notes": 592,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 592,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "tri",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.002283395387629,
+            "rmsDbFS": -26.502324849153574,
+            "crestDb": 16.50004145376595,
+            "dc": 0.000005521176904743551,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.2740341126918793,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Zelda · Overworld",
+      "sourceSha256": "296e1f43f9dbdf0ea24ce51ece12cbd2fa42a6751e7b1413bf7ec28fbf11b0b4",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 16.78425000000425,
+          "renderMs": 1009.7364170000001,
+          "events": 6664,
+          "notes": 592,
+          "omitted": 0,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -7.637560682713339,
+            "rmsDbFS": -20.781102217221836,
+            "crestDb": 13.143541534508497,
+            "dc": -0.00045608815876205797,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3211963623762131,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 17.70204200000444,
+          "renderMs": 947.2178750000021,
+          "events": 6352,
+          "notes": 592,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 592,
+            "fallbackNotes": 0,
+            "diagnostics": []
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -7.655516714059974,
+            "rmsDbFS": -26.463514820818176,
+            "crestDb": 18.807998106758205,
+            "dc": -0.0005084406391307155,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.20195410400629044,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Zelda · Overworld",
+      "sourceSha256": "296e1f43f9dbdf0ea24ce51ece12cbd2fa42a6751e7b1413bf7ec28fbf11b0b4",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 17.909041000006255,
+          "renderMs": 2131.409749999999,
+          "events": 14637,
+          "notes": 592,
+          "omitted": 0,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -7.8259378758263365,
+            "rmsDbFS": -20.392697091385724,
+            "crestDb": 12.566759215559385,
+            "dc": 0.000012161266860133576,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.04132084921002388,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 13.63212499999645,
+          "renderMs": 1722.0288750000036,
+          "events": 14625,
+          "notes": 592,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 592,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "noi",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.505847725571522,
+            "rmsDbFS": -26.46581413183354,
+            "crestDb": 15.959966406262021,
+            "dc": 0.000011308024453665312,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03734910488128662,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Zelda · Overworld",
+      "sourceSha256": "296e1f43f9dbdf0ea24ce51ece12cbd2fa42a6751e7b1413bf7ec28fbf11b0b4",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 8.141457999998238,
+          "renderMs": 191.96600000000035,
+          "events": 18504,
+          "notes": 592,
+          "omitted": 0,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.629478569179412,
+            "rmsDbFS": -28.23583156750518,
+            "crestDb": 12.606352998325768,
+            "dc": -0.0000018322850406382185,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03333636187016964,
+            "stereoCosine": 0.9904006737746059
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 15.901417000000947,
+          "renderMs": 194.4582089999967,
+          "events": 18008,
+          "notes": 592,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 592,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "noi",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "p2",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "p1",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "tri",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.450165497321791,
+            "rmsDbFS": -26.898439597853606,
+            "crestDb": 11.448274100531815,
+            "dc": -0.000002683722832026108,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.05204376671463251,
+            "stereoCosine": 0.9843969979611517
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Zelda · Overworld",
+      "sourceSha256": "296e1f43f9dbdf0ea24ce51ece12cbd2fa42a6751e7b1413bf7ec28fbf11b0b4",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 5.360375000003842,
+          "renderMs": 442.76679200000217,
+          "events": 7154,
+          "notes": 484,
+          "omitted": 108,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -4.91116649557224,
+            "rmsDbFS": -20.02392592045105,
+            "crestDb": 15.11275942487881,
+            "dc": 0.00047581223992696023,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.314869724214077,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 7.762290999999095,
+          "renderMs": 427.0419580000016,
+          "events": 6438,
+          "notes": 484,
+          "omitted": 108,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 467,
+            "fallbackNotes": 17,
+            "diagnostics": [
+              {
+                "part": "noi",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.264139011579869,
+            "rmsDbFS": -24.218797757973398,
+            "crestDb": 17.95465874639353,
+            "dc": 0.0003444240608706404,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.31837713718414307,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Sonic · Green Hill Zone",
+      "sourceSha256": "5adea2e22ec71b37423d04608735011c6d0879e846afb2802719c44f6203138b",
+      "chip": "2a03",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 13.251541999998153,
+          "renderMs": 480.8814580000035,
+          "events": 7023,
+          "notes": 719,
+          "omitted": 410,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -6.959300117393028,
+            "rmsDbFS": -21.562503589104676,
+            "crestDb": 14.603203471711645,
+            "dc": 0.000009463035046608137,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.39518412947654724,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 18.942833000000974,
+          "renderMs": 461.7086249999993,
+          "events": 6790,
+          "notes": 719,
+          "omitted": 410,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 719,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "fm1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-resolution",
+                "detail": "NES triangle has no amplitude control; requested attenuation may be unachievable"
+              },
+              {
+                "part": "fm6",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm5",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm5",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.31668453052953,
+            "rmsDbFS": -26.478682547811246,
+            "crestDb": 16.161998017281718,
+            "dc": 0.00000892485629424878,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.21204143296927214,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Sonic · Green Hill Zone",
+      "sourceSha256": "5adea2e22ec71b37423d04608735011c6d0879e846afb2802719c44f6203138b",
+      "chip": "dmg",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 11.42949999999837,
+          "renderMs": 776.9418749999968,
+          "events": 9167,
+          "notes": 719,
+          "omitted": 410,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -1.8938022251947388,
+            "rmsDbFS": -16.446902507937324,
+            "crestDb": 14.553100282742584,
+            "dc": -0.00046633107084416284,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.5354391783475876,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 23.277290999998513,
+          "renderMs": 739.8394170000029,
+          "events": 8061,
+          "notes": 719,
+          "omitted": 410,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 719,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "fm1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm6",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm5",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.844732699271445,
+            "rmsDbFS": -27.27963521985506,
+            "crestDb": 16.434902520583616,
+            "dc": -0.0005565169240734517,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.16081228107213974,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Sonic · Green Hill Zone",
+      "sourceSha256": "5adea2e22ec71b37423d04608735011c6d0879e846afb2802719c44f6203138b",
+      "chip": "md",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 31.641999999999825,
+          "renderMs": 1752.2177499999962,
+          "events": 26215,
+          "notes": 1129,
+          "omitted": 0,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -8.16523403571354,
+            "rmsDbFS": -21.852783895423308,
+            "crestDb": 13.687549859709765,
+            "dc": -0.000001646369606591222,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.05167723447084427,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 41.522415999999794,
+          "renderMs": 1765.1770839999954,
+          "events": 26218,
+          "notes": 1129,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 287,
+            "fallbackNotes": 842,
+            "diagnostics": [
+              {
+                "part": "fm1",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "fm1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm6",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm5",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "fm5",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg2",
+                "kind": "mix-calibration",
+                "detail": "Instrument response is uncalibrated; conservative mix fallback"
+              },
+              {
+                "part": "psg2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -15.158819185364,
+            "rmsDbFS": -30.00221283720116,
+            "crestDb": 14.843393651837161,
+            "dc": 0.000002574670544112876,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.03964991122484207,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    },
+    {
+      "title": "Sonic · Green Hill Zone",
+      "sourceSha256": "5adea2e22ec71b37423d04608735011c6d0879e846afb2802719c44f6203138b",
+      "chip": "snes",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 21.490666999990935,
+          "renderMs": 196.08212500000081,
+          "events": 33408,
+          "notes": 1129,
+          "omitted": 0,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -9.396586731834068,
+            "rmsDbFS": -25.014117997696303,
+            "crestDb": 15.617531265862233,
+            "dc": 4.0748603552253946e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.11222158372402191,
+            "stereoCosine": 0.9785189733802729
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 27.420333000001847,
+          "renderMs": 198.33299999999872,
+          "events": 34140,
+          "notes": 1129,
+          "omitted": 0,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 1129,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "fm1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm6",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm5",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm1",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm6",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "fm5",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              },
+              {
+                "part": "psg2",
+                "kind": "mix-headroom",
+                "detail": "Requested balance exceeds instrument headroom; the control is capped"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -10.526382937131093,
+            "rmsDbFS": -26.054925443122443,
+            "crestDb": 15.528542505991346,
+            "dc": 3.8182768384261004e-7,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.11900384724140167,
+            "stereoCosine": 0.9795117488921905
+          },
+          "internal": {
+            "mainClampedAdditions": 0,
+            "echoClampedAdditions": 0,
+            "mainClippedFrames": 0,
+            "echoClippedFrames": 0
+          }
+        }
+      ]
+    },
+    {
+      "title": "Sonic · Green Hill Zone",
+      "sourceSha256": "5adea2e22ec71b37423d04608735011c6d0879e846afb2802719c44f6203138b",
+      "chip": "c64",
+      "measurements": [
+        {
+          "mode": "legacy",
+          "planningMs": 9.46683399999165,
+          "renderMs": 432.6547920000012,
+          "events": 7068,
+          "notes": 549,
+          "omitted": 580,
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.792269083984264,
+            "rmsDbFS": -19.63145102563942,
+            "crestDb": 13.83918194165516,
+            "dc": 0.00026644044910323627,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3250865489244461,
+            "stereoCosine": 1
+          }
+        },
+        {
+          "mode": "automatic",
+          "planningMs": 13.626624999989872,
+          "renderMs": 487.34037499999977,
+          "events": 6578,
+          "notes": 549,
+          "omitted": 580,
+          "mix": {
+            "version": 1,
+            "calibratedNotes": 549,
+            "fallbackNotes": 0,
+            "diagnostics": [
+              {
+                "part": "fm1",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm3",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm6",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "psg2",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              },
+              {
+                "part": "fm4",
+                "kind": "mix-source",
+                "detail": "Source loudness is uncalibrated; role balance is an approximation"
+              }
+            ]
+          },
+          "metrics": {
+            "frames": 264600,
+            "seconds": 6,
+            "sampleRate": 44100,
+            "channels": 2,
+            "invalidSamples": 0,
+            "samplePeakDbFS": -5.2521816533718475,
+            "rmsDbFS": -28.1644981463957,
+            "crestDb": 22.91231649302385,
+            "dc": 0.0002664389488774212,
+            "clippedSamples": 0,
+            "maxAdjacentStep": 0.3087354972958565,
+            "stereoCosine": 1
+          }
+        }
+      ]
+    }
+  ]
+}

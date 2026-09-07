@@ -4,6 +4,7 @@ import {planPerformance,renderPerformance,isolateNativePerformance,toWav,nesChip
 import {measureAudio,spectrum} from '../../packages/conform/src/listening/metrics.mjs';
 const out=process.argv[2]??'.artifacts/automatic-mixing/before';await mkdir(out,{recursive:true});
 const score=JSON.parse(await readFile(new URL('../arrangements/zelda.json',import.meta.url))),native=JSON.parse(await readFile(new URL('../arrangements/zelda-native.json',import.meta.url)));
+for(const part of score.parts)part.origin={chip:'2a03',voice:part.id};
 const report={source:score.source.sha256,seconds:12,measurements:[]};
 for(const chip of [nesChip,mdChip])for(const part of ['mix',...score.parts.map(p=>p.id)]){
  const start=timer.now();

@@ -43,6 +43,8 @@ catalogue identity tests, outside the policy.
 - Evaluation combines hard correctness gates, useful acoustic diagnostics and
   controlled listening. It cannot certify that all possible music sounds good.
 
+Implementation update: MIX-01 contract and MIX-03 reproductions are recorded. MIX-04 has a verified pre-decimation filter repair; physical-output differences remain scoped. MIX-06/07/09/10 are in progress. No held-out musical acceptance, real-phone check, deployment or npm release is complete yet.
+
 ## Ordered tickets
 
 All tickets below are `todo`. Dependencies refer to MIX IDs. The execution order

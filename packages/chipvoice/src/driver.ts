@@ -112,6 +112,8 @@ export interface NoteSink {
 }
 
 export interface PlayNoteOptions {
+  /** Set by prepareMixPhrase: preserve calibrated FM precision until encoding. */
+  calibrated?: boolean;
   /** Note name or frequency in Hz. On a noise voice, a period index 0-15. */
   note: string | number;
   instrument: Instrument;
@@ -294,7 +296,7 @@ export class APU implements NoteSink {
     const gain = opts.gain ?? 1;
     // SNES has finer hardware volume steps; preserve shared chord gain until
     // its register encoder. Keep legacy frame quantization on other chips.
-    const fractionalVolume = this.chip.spec.id === "snes";
+    const fractionalVolume = this.chip.spec.id === "snes" || !!opts.calibrated && this.chip.spec.id === 'md' && channel.startsWith('fm');
     const detune = opts.detune ?? 0;
     const wave = inst.wave ?? null;
     const waveforms = inst.waveform === undefined ? null : Array.isArray(inst.waveform) ? inst.waveform : [inst.waveform];
@@ -357,6 +359,7 @@ export class APU implements NoteSink {
       });
     }
 
+    if (opts.calibrated && states.every(frame => frame.volume <= 0)) return [];
     states.end = this.cycleAt(start + frames * FRAME_TIME);
     return states;
   }

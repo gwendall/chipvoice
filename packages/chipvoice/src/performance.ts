@@ -5,6 +5,7 @@ import type {RenderResult} from './render.js';
 import {performanceInstrument} from './performance-palette.js';
 import {pitchRange} from './pitch-range.js';
 import {RegisterTransactions} from './register-transactions.js';
+import {planMix,type MixOrigin,type PartMix,type MixOptions,type MixReport} from './mix.js';
 
 /** Exact source ticks, independent voices, and expression. The compact tracker
  * remains useful for composition; importing an arrangement must not flatten it. */
@@ -22,6 +23,9 @@ export interface Performance {
   midi?: {format: number; events: {tick: number; track: number; order: number; status: number; data: number[]}[]};
 }
 export interface PerformancePart {
+  /** Source hardware controls, when independently identified by the importer. */
+  origin?: MixOrigin;
+  mix?: PartMix;
   id: string;
   name: string;
   role: Role;
@@ -47,6 +51,7 @@ export interface PerformanceNote {
 export interface PerformanceLoss {part: string; note?: string; kind: string; detail: string}
 export interface PlannedNote {part: string; id: string; voice: string; pitch: number; at: number; until: number}
 export interface PerformancePlan {
+  mix?: MixReport;
   chip: string;
   seconds: number;
   loopStartSeconds: number;
@@ -56,6 +61,8 @@ export interface PerformancePlan {
   losses: PerformanceLoss[];
 }
 export interface PerformanceOptions {
+  /** Automatic, calibrated part balance. false preserves legacy control levels. */
+  mix?: false | MixOptions;
   /** Preserve notes by default: callers must opt into reported voice omissions. */
   allowLoss?: boolean;
   tempoScale?: number;
@@ -77,6 +84,8 @@ export function validatePerformance(score: Performance): void {
   const ids = new Set<string>();
   for (const part of score.parts) {
     if (!part.id || ids.has(part.id) || !['lead','chord','bass','perc'].includes(part.role) || !Number.isFinite(part.priority)) throw new Error('Invalid or duplicate part');
+    if(part.origin&&(typeof part.origin.chip!=='string'||typeof part.origin.voice!=='string'||part.origin.chip.length>64||part.origin.voice.length>64))throw new Error('Invalid mix origin');
+    if(part.mix&&(part.mix.gainDb!==undefined&&(!Number.isFinite(part.mix.gainDb)||part.mix.gainDb< -96||part.mix.gainDb>12)||part.mix.importance!==undefined&&(!Number.isFinite(part.mix.importance)||part.mix.importance<0||part.mix.importance>1)))throw new Error('Invalid part mix');
     ids.add(part.id); const notes = new Set<string>();
     for (const note of part.notes) {
       if (++count > 100000 || !note.id || notes.has(note.id) || !int(note.tick) || !int(note.endTick) || note.endTick <= note.tick || note.endTick > score.endTick || !Number.isFinite(note.pitch) || note.pitch < 0 || note.pitch > 127 || !Number.isInteger(note.velocity) || note.velocity < 1 || note.velocity > 127) throw new Error(`Invalid note in ${part.id}`);
@@ -123,33 +132,57 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   };
   const warned = new Set<string>();
   const loss = (part: PerformancePart, kind: string, detail: string) => {const key = `${part.id}:${kind}`; if (!warned.has(key)) {warned.add(key); losses.push({part: part.id, kind, detail});}};
-  const allocated: {part: PerformancePart; note: PerformanceNote; voice: string}[] = [];
+  // Resolve once per part/program/drum, then carry the selected instrument
+  // through allocation and encoding. Voice preference cannot discard a patch.
+  const paletteCache = new Map<PerformancePart,Map<string,{inst:Instrument;drum:typeof instruments.perc['K'];explicit:boolean}>>();
+  const resolveInstrument = (part:PerformancePart,note:PerformanceNote) => {
+    let cache=paletteCache.get(part);if(!cache){cache=new Map();paletteCache.set(part,cache);}
+    const key=`${note.program??"default"}:${note.drum??-1}`;const cached=cache.get(key);if(cached)return cached;
+    const percussion=note.drum!==undefined||part.role==='perc';
+    const kitKey=note.drum===35||note.drum===36?'K':note.drum===38||note.drum===40?'S':note.drum===46?'O':'H';
+    const drum=instruments.perc[kitKey],explicit=part.instruments?.[`${chip.spec.id}:${note.program}`]??part.instruments?.[chip.spec.id];
+    const resolved={inst:explicit??(percussion?drum.instrument:performanceInstrument(chip.spec.id,part.role,note.program)),drum,explicit:!!explicit};
+    cache.set(key,resolved);return resolved;
+  };
+  const allocated: {part: PerformancePart; note: PerformanceNote; voice: string; sound:ReturnType<typeof resolveInstrument>}[] = [];
   for (const {part, note} of queue) {
     const percussion = note.drum !== undefined || part.role === 'perc';
-    const preferred = chip.spec.roles[part.role];
+    const preferred = chip.spec.roles[part.role],sound=resolveInstrument(part,note);
     const choices = voices.filter(v => chip.spec.id === 'snes' || (percussion ? v.notes === 'period' || chip.spec.id === 'c64' : v.notes === 'pitch'));
-    choices.sort((a,b) => Number(b.id === preferred) - Number(a.id === preferred));
+    const compatible=(v:typeof voices[number])=>chip.spec.id!=='md'||!sound.inst.fm||v.kind==='fm';
+    choices.sort((a,b) => Number(compatible(b))-Number(compatible(a))||Number(b.id === preferred) - Number(a.id === preferred));
     const voice = choices.find(v => placement(v.id,note.tick,note.endTick)>=0);
     if (!voice) {losses.push({part: part.id, note: note.id, kind: 'voice-omitted', detail: `No free ${percussion ? 'percussion' : 'pitched'} voice at tick ${note.tick}`}); continue;}
     const spans=sounding.get(voice.id)??[];
     spans.splice(placement(voice.id,note.tick,note.endTick),0,{start:note.tick,end:note.endTick});
     sounding.set(voice.id,spans);
-    allocated.push({part,note,voice:voice.id});
+    if(!compatible(voice))loss(part,'instrument-substitution','No compatible FM voice; the patch is replaced by a PSG tone');
+    allocated.push({part,note,voice:voice.id,sound});
   }
   // Drivers cache chip state, so encode in chronological order after allocation.
   allocated.sort((a,b)=>a.note.tick-b.note.tick||a.part.id.localeCompare(b.part.id)||a.note.id.localeCompare(b.note.id));
-  for (const {part,note,voice} of allocated) {
+  const referenceCache=new Map<Instrument,Map<number,Instrument>>();
+  const referenceInstrument=(part:PerformancePart,note:PerformanceNote)=>{
+    if(!part.origin)return undefined;
+    const base=part.instruments?.[`${part.origin.chip}:${note.program}`]??part.instruments?.[part.origin.chip];
+    if(!base||part.origin.chip!=='2a03')return base;
+    const duty=note.expression?.find(p=>p.duty!==undefined)?.duty??(typeof base.duty==='number'?base.duty:2);
+    let cache=referenceCache.get(base);if(!cache){cache=new Map();referenceCache.set(base,cache);}let sound=cache.get(duty);if(!sound){sound={...base,duty};cache.set(duty,sound);}return sound;
+  };
+  const mixing=options.mix===false?null:planMix(chip,allocated.map(({part,note,voice,sound})=>({part:part.id,role:part.role,voice,instrument:sound.inst,pitch:note.pitch+transpose,start:time(note.tick),end:time(note.endTick),origin:part.origin,referenceInstrument:referenceInstrument(part,note),mix:part.mix})),options.mix);
+  let allocationIndex=-1;
+  for (const {part,note,voice,sound} of allocated) {
+    allocationIndex++;
     const percussion=note.drum!==undefined||part.role==='perc';
     const at = time(note.tick), until = time(note.endTick);
     notes.push({part: part.id, id: note.id, voice, pitch: note.pitch + (percussion ? 0 : transpose), at, until});
     if (selected && !selected.has(part.id)) continue;
-    const kitKey = note.drum === 35 || note.drum === 36 ? 'K' : note.drum === 38 || note.drum === 40 ? 'S' : note.drum === 46 ? 'O' : 'H';
-    const drum = instruments.perc[kitKey];
-    const inst = part.instruments?.[`${chip.spec.id}:${note.program}`] ?? part.instruments?.[chip.spec.id] ?? (percussion ? drum.instrument : performanceInstrument(chip.spec.id,part.role,note.program));
-    if (!part.instruments?.[chip.spec.id]) loss(part, 'palette-substitution', `Generic ${part.role} palette; original instrument is not certified`);
+    const {inst,drum}=sound;
+    if (!sound.explicit) loss(part, 'palette-substitution', `Generic ${part.role} palette; original instrument is not certified`);
     if (inst.arp?.length || inst.pitch?.length || inst.slide || inst.vibrato) loss(part, 'instrument-effects-omitted', 'Palette arpeggio/vibrato/slide is omitted; only source expression is applied');
     if (percussion && ![35,36,38,40,42,44,46].includes(note.drum ?? -1)) loss(part, 'drum-substitution', 'Percussion mapped to the closest available kit sound');
     if (chip.spec.id === 'dmg' && note.expression?.some(p => p.gain !== undefined)) loss(part, 'envelope-approximation', 'Game Boy volume steps and hardware envelope constrain expression');
+    const observedGain=!!mixing&&!!part.origin&&note.expression?.some(point=>point.gain!==undefined);
     const points = (note.expression ?? []).map(p => ({...p, seconds: time(p.tick)}));
     if(!percussion){
       const range=pitchRange(chip.spec,chip.spec.voices.find(v=>v.id===voice)!,inst);
@@ -163,16 +196,20 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
     for (const t of [...times].sort((a,b) => a-b)) {
       while (p < points.length && points[p].seconds <= t + 1e-10) {const point = points[p++]; bend = point.pitch ?? bend; expressionGain = point.gain ?? expressionGain; duty = point.duty ?? duty; noisePeriod = point.noisePeriod ?? noisePeriod;}
       const frame = Math.floor((t - at) * 60 + 1e-7);
-      const volume = (inst.volume[Math.min(frame, inst.volume.length - 1)] ?? 0) * (inst.sustain || frame < inst.volume.length ? 1 : 0) * note.velocity / 127 * expressionGain;
-      frames.push({at: Math.round(t * chip.spec.clockHz), volume: chip.spec.id === 'snes' ? volume : Math.round(volume), freq: percussion ? 0 : 440 * 2 ** ((note.pitch + transpose + bend - 69) / 12), period: noisePeriod, duty: Array.isArray(inst.duty) ? inst.duty[frame % inst.duty.length] : duty, noiseMode: inst.noiseMode ?? false, pitchOffset: 0, waveform: Array.isArray(inst.waveform) ? inst.waveform[Math.min(frame, inst.waveform.length - 1)] : inst.waveform ?? null, wave: inst.wave ?? null, fm: inst.fm ?? null, sample: inst.sample ?? null});
+      let volume = (observedGain?15:(inst.volume[Math.min(frame, inst.volume.length - 1)] ?? 0) * (inst.sustain || frame < inst.volume.length ? 1 : 0)) * note.velocity / 127 * expressionGain;
+      if(mixing)volume=mixing.level(allocationIndex,volume,t,noisePeriod,note.pitch+transpose+bend);
+      frames.push({at: Math.round(t * chip.spec.clockHz), volume: chip.spec.id === 'snes' || mixing && chip.spec.id==='md' && voice.startsWith('fm') ? volume : Math.round(volume), freq: percussion ? 0 : 440 * 2 ** ((note.pitch + transpose + bend - 69) / 12), period: noisePeriod, duty: Array.isArray(inst.duty) ? inst.duty[frame % inst.duty.length] : duty, noiseMode: inst.noiseMode ?? false, pitchOffset: 0, waveform: Array.isArray(inst.waveform) ? inst.waveform[Math.min(frame, inst.waveform.length - 1)] : inst.waveform ?? null, wave: inst.wave ?? null, fm: inst.fm ?? null, sample: inst.sample ?? null});
     }
+    // An explicitly silent part must not trigger a SID/DMG attack transient.
+    if(frames.every(frame=>frame.volume<=0))continue;
     bus.add(driver.note(voice, frames));
     bus.add(driver.noteOff(voice, Math.round(until * chip.spec.clockHz)));
   }
   if (!options.allowLoss && losses.some(l => l.kind === 'voice-omitted')) throw new Error('Arrangement exceeds hardware voices; opt into allowLoss and inspect losses');
   const scheduled=bus.finish();
   if(scheduled.delayed)losses.push({part:'*',kind:'bus-timing',detail:`${scheduled.delayed} transactions serialized; maximum extra delay ${(scheduled.maxDelayCycles/chip.spec.clockHz*1000).toFixed(3)} ms`});
-  return {chip: chip.spec.id, seconds, loopStartSeconds: time(score.loopStartTick ?? 0), events:scheduled.events, memory: driver.memory?.() ?? [], notes, losses};
+  if(mixing)for(const diagnostic of mixing.report.diagnostics)losses.push(diagnostic);
+  return {...(mixing?{mix:mixing.report}:{}),chip: chip.spec.id, seconds, loopStartSeconds: time(score.loopStartTick ?? 0), events:scheduled.events, memory: driver.memory?.() ?? [], notes, losses};
 }
 
 /** Renders compiled commands, not a second interpretation of the score. */

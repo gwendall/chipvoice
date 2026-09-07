@@ -36,6 +36,7 @@ jobs:
       - run: pnpm build
       - run: pnpm scores:check
       - run: pnpm arrangements:check
+      - run: node scores/mixing/check-calibration.mjs
       - name: Score import regressions
         run: |
           python3 -m venv /tmp/chipvoice-score-tools
