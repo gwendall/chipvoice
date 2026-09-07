@@ -54,8 +54,10 @@ complete SDK unit suite passed, including the unchanged non-MD golden renders.
 
 Candidate `8ed23aa` was frozen with the full compiled SDK and evaluation inputs.
 All 65 held-out score/console pairs pass, including Mario, with no tuning from
-those results. Five additional local Musha Aleste MIDI ports pass on the final
-engine; its 2,078 notes and seven source parts remain traceable. Twenty development
+those results. Acoustic checks cover the full two-second generated scores and
+the first six seconds of Mario; planning/source accounting covers the full songs.
+Five additional local Musha Aleste MIDI ports pass six-second acoustic checks on
+the final engine; all 2,078 notes and seven source parts remain traceable. Twenty development
 ablations compare legacy, calibrated-only and complete-policy controls with
 identical voice allocation. `scores/mixing/qualification.json` records these
 results and the exact frozen hashes. The measured maximum planning/render ratios
@@ -70,7 +72,18 @@ The packed SDK also passes public-API and real AudioWorklet browser tests in an
 empty consumer. Deployment and actual registry verification are still pending.
 
 ![Desktop adaptation diagnostics](automatic-mixing-desktop.png)
-![Japanese mobile diagnostics](automatic-mixing-mobile-ja.png) `scores/mixing/listening.mjs` prepares 15 blinded
+![Japanese mobile diagnostics](automatic-mixing-mobile-ja.png)
+
+`scores/mixing/listening.mjs` prepares 15 blinded
 RMS-matched listening pairs and exports local observations. No human preference
 observations or real-phone/Safari measurements are claimed here. RMS, spectrum
 and transient summaries are descriptive, not a universal musical-quality score.
+
+Final browser qualification also reproduced a visual rollback during Mario → Zelda:
+a refreshed device timestamp trailed the previous wall-time extrapolation on the
+loaded host. A captured-timestamp regression failed before the shared output clock
+gained a per-context monotonic floor. Seeking still changes transport offsets;
+the fix neither changes PCM nor certifies physical-device latency. Buffer-player
+checks now wait on bounded audio/state deadlines instead of assuming that
+60–300 ms of wall time advances the sound by the same amount. Both independent
+review axes found no blocking issue in this correction.

@@ -145,7 +145,7 @@ node scores/mixing/validate-profiles.mjs
 node scores/mixing/evaluate.mjs
 node scores/mixing/benchmark.mjs
 node scores/mixing/ablate.mjs
-node scores/mixing/analyze.mjs
+node scores/mixing/analyze.mjs .artifacts/automatic-mixing/current/report.json
 ```
 
 Regenerate changed factory measurements with `node scores/mixing/calibrate.mjs`,

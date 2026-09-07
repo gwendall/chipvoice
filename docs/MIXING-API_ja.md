@@ -133,7 +133,7 @@ node scores/mixing/validate-profiles.mjs
 node scores/mixing/evaluate.mjs
 node scores/mixing/benchmark.mjs
 node scores/mixing/ablate.mjs
-node scores/mixing/analyze.mjs
+node scores/mixing/analyze.mjs .artifacts/automatic-mixing/current/report.json
 ```
 
 標準測定の再生成には `node scores/mixing/calibrate.mjs` を使い、再ビルドしてから来歴を検証します。

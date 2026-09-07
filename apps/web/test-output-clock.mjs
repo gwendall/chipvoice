@@ -6,6 +6,16 @@ assert.ok(Math.abs(outputTime(context,5050)-11.85)<1e-9,'Timestamp already inclu
 assert.equal(outputTime(context,6000),12,'Do not lead the render clock');
 assert.ok(Math.abs(outputTime({...context,getOutputTimestamp:undefined},5050)-11.8)<1e-9,'Fallback accounts for both reported latency stages');
 assert.equal(outputTime({...context,currentTime:0,getOutputTimestamp:()=>({contextTime:0,performanceTime:0})},5050),0);
+// On an overloaded audio device, refreshing the output timestamp can undo
+// the previous frame's wall-time extrapolation. The displayed song must not
+// switch back to its predecessor after crossing a transition once.
+let stamp={contextTime:.4682326667,performanceTime:2381.8};
+const slow={state:'running',currentTime:.512,getOutputTimestamp:()=>stamp};
+const beforeRefresh=outputTime(slow,2395.7);
+stamp={contextTime:.472428,performanceTime:2408.9};slow.currentTime=.5173333333;
+assert.ok(outputTime(slow,2413.2)>=beforeRefresh,'A refreshed device timestamp must not rewind the visible score');
+stamp={contextTime:.4945003333,performanceTime:2505.1};slow.currentTime=.5386666667;
+assert.ok(outputTime(slow,2513.2)>beforeRefresh,'The clock resumes advancing when the output catches up');
 const overview=scoreOverview({endTick:200,loopStartTick:100,parts:[{id:'lead',name:'Lead',role:'lead',notes:[{tick:100,endTick:150,pitch:60}]}]},tick=>tick<=100?tick*.01:1+(tick-100)*.02);
 assert.equal(overview.seconds,3);assert.equal(overview.loopStart,1/3);assert.deepEqual(overview.parts[0].notes,[[1/3,2/3,60]]);
 console.log('PASS audible timestamp, fallback, bounds and tempo-map score projection');
