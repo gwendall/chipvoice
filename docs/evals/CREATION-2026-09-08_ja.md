@@ -29,6 +29,8 @@
 
 再現用入口は `packages/chipvoice/test/project.mjs`、`packages/chipvoice/scripts/fresh-install-test.mjs`、`apps/web/test-projects.mjs`、`apps/web/test-creation-browser.mjs`、`apps/web/test-local.mjs`、`scores/arrangements/evaluate.mjs` です。`CREATION_MIDI` は明示提供されたローカルファイルのみ指定します。画像・動画・測定は `.artifacts/creation/e2e`、全体ログは `.artifacts/creation` にあります。
 
+esbuildの縮小済み利用側バンドルは `Chip` が316,712バイト／gzip 98,470、`importMidi` が9,980／4,280、任意の完全再生用 `ProjectPlayer` が737,446／178,257でした。後者は全機種用の独立Workerを含みますが、tree shaking済みの `Chip` 利用には増加を持ち込みません。起動速度ではなくバンドルサイズの測定です。
+
 <a id="standards-review"></a>
 ## コード基準レビュー
 
