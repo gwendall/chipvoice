@@ -5,7 +5,7 @@ import {MASTER_HZ} from './chips/md/dsp.js';
  * Preserves FM patches, automation and DAC bytes. Unknown hardware/commands
  * fail explicitly: this is not a generic player for every VGM chip or stream.
  * VGM timing is 44,100 ticks/s, not a capture of the original CPU bus cycles. */
-export function importVgm(bytes: Uint8Array, options: {onCommand?: (sample: number, command: number, register: number, value: number) => void} = {}): PerformancePlan {
+export function importVgm(bytes: Uint8Array, options: {onCommand?: (sample: number, command: number, register: number, value: number) => void; onDacStream?: (sample: number, offset: number) => void} = {}): PerformancePlan {
   if (bytes.length < 64 || bytes.length > 8 * 1024 * 1024) throw new Error('Invalid VGM size (maximum 8 MiB)');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const u32 = (at: number) => view.getUint32(at, true);
@@ -53,7 +53,7 @@ export function importVgm(bytes: Uint8Array, options: {onCommand?: (sample: numb
       if (bytes[at] !== 0x66 || bytes[at + 1] !== 0) throw new Error('Unsupported VGM data block');
       const length = u32(at + 2); at += 6; need(length);
       pcm.set(bytes.subarray(at, at + length), pcmLength); pcmLength += length; at += length;
-    } else if (op === 0xe0) { need(4); cursor = u32(at); at += 4; if (cursor > pcmLength) throw new Error('VGM PCM seek out of range'); }
+    } else if (op === 0xe0) { need(4); cursor = u32(at); at += 4; if (cursor > pcmLength) throw new Error('VGM PCM seek out of range'); options.onDacStream?.(sample,cursor); }
     else if (op >= 0x80 && op <= 0x8f) {
       if (cursor >= pcmLength) throw new Error('VGM DAC reads outside its sample bank');
       fm(0, 0x2a, pcm[cursor++]); sample += op - 0x80;

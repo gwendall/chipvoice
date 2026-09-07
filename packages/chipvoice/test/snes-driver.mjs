@@ -40,9 +40,9 @@ function regs(writes) {
   check('power-on loads the bank into RAM, directory first', loaded.length === 1 && loaded[0].address === 0x0200 && loaded[0].bytes.length > 4000, `${loaded[0]?.bytes.length} bytes at ${loaded[0]?.address.toString(16)}`);
   const power = regs(writes.filter((w) => w.at < 100000));
   const by = Object.fromEntries(power.map(([r, v]) => [r, v]));
-  check('and sets the directory, the volumes, the echo and every voice\'s envelope, with echo writes off and every voice released first', power[1][0] === 0x5c && power[1][1] === 0xff && by[0x5c] === 0x00 && by[0x6c] === 0x20 && by[0x5d] === 0x02 && by[0x0c] === 0x60 && by[0x7d] === 3 && by[0x4d] === 0xf7 && by[0x05] === 0xff && by[0x75] === 0xff, JSON.stringify(by));
+  check('and sets the directory, the volumes, the echo and every voice\'s envelope, with echo writes off and every voice released first', power[1][0] === 0x5c && power[1][1] === 0xff && by[0x5c] === 0x00 && by[0x6c] === 0x20 && by[0x5d] === 0x02 && by[0x0c] === 0x60 && by[0x7d] === 3 && by[0x4d] === 0 && by[0x05] === 0xff && by[0x75] === 0xff, JSON.stringify(by));
   const enable = regs(writes.filter((w) => w.at >= 200000 && w.at < CLOCK));
-  check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped', JSON.stringify(enable) === JSON.stringify([[0x2c,0x1c],[0x3c,0x1c],[0x6c,0]]), JSON.stringify(enable));
+  check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped', JSON.stringify(enable) === JSON.stringify([[0x2c,0],[0x3c,0],[0x6c,0]]), JSON.stringify(enable));
   const note = regs(writes.filter((w) => w.at >= CLOCK && w.at < CLOCK + CLOCK / 60));
   // A4 on the 32-sample triangle: pitch = 440 * 4096 / 1000 = 1802 = $70A.
   check('a note sets the source, the envelope, the pitch, the volumes, then keys on', note.map((p) => p[0]).join(',') === '4,5,6,2,3,0,1,76' && note[3][1] === 0x0a && note[4][1] === 0x07 && note[5][1] === 31 && note[7][1] === 0x01, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));

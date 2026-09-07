@@ -6,5 +6,5 @@ export function scoreOverview(score, secondsAt, losses=[], silentNotes=[]) {
   const seconds = secondsAt(score.endTick);
   return {seconds, loopStart: secondsAt(score.loopStartTick ?? 0) / seconds,
     parts: score.parts.filter(p => p.notes.length).map(p => ({id:p.id, name:p.name, role:p.role,
-      notes:p.notes.filter(n=>!omitted.has(`${p.id}:${n.id}`)).sort((a,b)=>a.tick-b.tick).map(n => [secondsAt(n.tick)/seconds, secondsAt(n.endTick)/seconds, n.pitch])}))};
+      notes:p.notes.filter(n=>!omitted.has(`${p.id}:${n.id}`)).sort((a,b)=>a.tick-b.tick).map(n => [secondsAt(n.tick)/seconds, secondsAt(n.endTick)/seconds, n.pitch+(p.portableTimbres?.[`${p.origin?.chip}:${n.program}`]?.pitchOffset??0)])}))};
 }

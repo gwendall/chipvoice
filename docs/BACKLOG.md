@@ -500,3 +500,16 @@ uncertainty remains. See [the measured repair](evals/AUTOMATIC-MIXING-FOUNDATION
 
 
 Zelda selection regression fixed: the catalogue now uses NSF track 3, with an independent Overworld phrase checked before emulator parity. All four ports and A/B reference are rebuilt; [evidence and limits](evals/ZELDA-SELECTION-2026-09-07.md).
+
+### Native timbre follow-up (0.16.3)
+
+Completed: dry SNES factory playback and 120-unit internal headroom; measured
+native FM fundamental/envelope projection; opaque patch IDs; repeated DAC attack
+boundaries and kick/snare family inference; updated player pitch display and six
+fresh SNES listening-lab cases. All source-chip recordings remain unchanged.
+
+Remaining musical limits: FM descriptors use two pitch probes and a finite
+amplitude window, not exact envelopes at every pitch; target factory timbres,
+release tails and stereo are approximations. DAC classification is heuristic,
+and quiet candidates are disclosed. Controlled human preference comparisons and
+physical-device acceptance remain open. See [the timbre evaluation](evals/PORTABLE-TIMBRES-2026-09-07.md).

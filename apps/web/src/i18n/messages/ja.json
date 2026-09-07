@@ -661,5 +661,11 @@
   "Some SNES levels fall below a volume step after shared headroom protection": "共有ヘッドルームの保護により、一部の SNES 音量が最小ステップ未満になります",
   "1 note omitted.": "1 個の音符を省略。",
   "Performance exceeds 200,000 expression points": "演奏データのエクスプレッション点数が 200,000 を超えています",
-  "Invalid MIDI program or percussion key": "MIDI プログラムまたは打楽器キーが無効です"
+  "Invalid MIDI program or percussion key": "MIDI プログラムまたは打楽器キーが無効です",
+  "Shared SNES dry headroom reserved before internal mixing": "SNES の内部ミックス前に、ドライ音の共通ヘッドルームを確保しています",
+  "Native FM register pitch and timbre are unmeasured; prepare portableTimbres for faithful pitch conversion": "元の FM 音色の音高と特性は未測定です。正確な音高変換には portableTimbres の事前生成が必要です",
+  "Source pitch was not stable across probes; the register pitch is retained": "測定条件によって音高が安定しなかったため、元のレジスター音高を保持しています",
+  "Portable FM intervals preserve key-on/off and register frequency changes. Measured patch projections recover harmonic pitch and amplitude shape; factory timbres, stereo and release tails remain approximations.": "移植用の FM 音符はキーオン・キーオフとレジスター周波数の変化を保持します。音色の実測から基音と音量変化を復元しますが、代替音色、ステレオ、余韻は近似です。",
+  "DAC attacks use stream seek boundaries and repeated PCM prefixes; kick/snare families are inferred from waveform activity, not original game instrument labels.": "DAC の発音開始はストリームのシーク位置と繰り返される PCM 波形から抽出します。キックとスネアの分類は波形からの推定で、原作の楽器名ではありません。",
+  "DAC bursts have not been classified; percussion uses an approximate fallback.": "DAC 波形は未分類のため、打楽器には近似音色を使用します。"
 }

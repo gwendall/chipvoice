@@ -27,7 +27,9 @@ const secondsOption=option('seconds',null);if(secondsOption!==null&&(!Number.isF
 const ffmpeg=spawnSync('ffmpeg',['-version'],{encoding:'utf8'});
 const ffmpegVersion=ffmpeg.status===0?ffmpeg.stdout.split('\n')[0]:null;
 const revision=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
-const diff=execFileSync('git',['diff','--binary','HEAD'],{cwd:root});
+// Hash evaluation inputs, not large regenerated audio artifacts in the checkout.
+const workingDiffPaths=['packages/chipvoice/src','apps/web/src/studio','apps/web/scripts/evaluate-audio.mjs','packages/conform/src/listening'];
+const diff=execFileSync('git',['diff','--binary','HEAD','--',...workingDiffPaths],{cwd:root,maxBuffer:16*1024*1024});
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function fingerprints(directory, prefix = '') {
  const files = {};
@@ -45,7 +47,7 @@ Object.assign(harnessFiles, await fingerprints(resolve(root,'apps/web/src/audio'
 harnessFiles['evaluate-audio.mjs'] = hash(await readFile(import.meta.filename));
 const baselineFile=option('baseline',null),baseline=baselineFile?JSON.parse(await readFile(resolve(root,baselineFile),'utf8')):null;
 if(baseline&&baseline.version!==1)throw new Error('Unsupported baseline report version');
-const report={version:1,baseline:baseline?{revision:baseline.revision,engineSha256:baseline.engineSha256,reportSha256:hash(await readFile(resolve(root,baselineFile)))}:null,engineSha256:hash(JSON.stringify(engineFiles)),engineFiles,harnessFiles,oracleSourceFiles,createdAt:new Date().toISOString(),revision,workingDiffSha256:hash(diff),sourceSha256:hash(built.outputFiles[0].text),ffmpegVersion,sampleRate:44100,cases:[],notes:['No authenticity score. Technical pass is not a musical endorsement.','Isolated parts may not sum to the full mix because voices and nonlinear stages interact.','SNES native reference tests our actual score/registers/RAM against native snes_spc; it is not a game soundtrack or a line-out capture.']};
+const report={version:1,baseline:baseline?{revision:baseline.revision,engineSha256:baseline.engineSha256,reportSha256:hash(await readFile(resolve(root,baselineFile)))}:null,engineSha256:hash(JSON.stringify(engineFiles)),engineFiles,harnessFiles,oracleSourceFiles,createdAt:new Date().toISOString(),revision,workingDiffSha256:hash(diff),workingDiffPaths,sourceSha256:hash(built.outputFiles[0].text),ffmpegVersion,sampleRate:44100,cases:[],notes:['No authenticity score. Technical pass is not a musical endorsement.','Isolated parts may not sum to the full mix because voices and nonlinear stages interact.','SNES native reference tests our actual score/registers/RAM against native snes_spc; it is not a game soundtrack or a line-out capture.']};
 const roles=['lead','chord','bass','perc'];
 const loudness=file=>{
  if(!ffmpegVersion)return null;

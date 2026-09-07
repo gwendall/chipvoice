@@ -3,12 +3,10 @@ import type {MixReport} from './mix.js';
 
 export interface MixFrames {frames: Pick<NoteFrame, 'at' | 'volume'>[]; until: number}
 
-/** Bound the SNES factory driver's *internal* dry and feedback buses, before
- * master/output gain. Samples can reach full scale regardless of calibration.
- * Its FIR has sum(abs(taps))/128 = 172/128 and feedback = 56/128.
- * B <= (1/FIR - feedback)*128 bounds both FIR input and feedback writes.
- * 38 register units leaves integer rounding margin below that bound (39.26).
- * Other chips have different mixer models; this is not a universal limiter.
+/** Bound the factory SNES dry bus before master/output gain. Voices can
+ * reach full-scale samples regardless of calibration. 120/128 leaves room
+ * for integer rounding below the saturating sum. Factory echo sends are off;
+ * authored raw-register echo streams require their own headroom policy.
  * Native captures and mix:false never call this preparation-only function. */
 export function balanceMixFrames(chip: ChipDefinition, notes: MixFrames[], report: MixReport): void {
   if (chip.spec.id !== 'snes') return;
@@ -32,7 +30,7 @@ export function balanceMixFrames(chip: ChipDefinition, notes: MixFrames[], repor
   const events:{at:number;target:number}[]=[];
   let previousTarget=1;
   for(const [at,delta] of [...changes].sort(([a],[b])=>a-b)){
-    const target=Math.min(1,38/Math.max(1,demand+=delta));
+    const target=Math.min(1,120/Math.max(1,demand+=delta));
     if(target!==previousTarget){events.push({at,target});previousTarget=target;}
   }
   if (!events.some(e => e.target < 1)) return;
@@ -67,5 +65,5 @@ export function balanceMixFrames(chip: ChipDefinition, notes: MixFrames[], repor
   }
   }
   if(belowResolution)report.diagnostics.push({part:'*',kind:'mix-bus-resolution',detail:'Some SNES levels fall below a volume step after shared headroom protection'});
-  report.diagnostics.push({part: '*', kind: 'mix-bus-headroom', detail: 'Shared SNES dry and echo headroom reserved before internal mixing'});
+  report.diagnostics.push({part: '*', kind: 'mix-bus-headroom', detail: 'Shared SNES dry headroom reserved before internal mixing'});
 }

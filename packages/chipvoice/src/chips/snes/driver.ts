@@ -17,7 +17,8 @@ import { FACTORY_SAMPLES, FACTORY_RAM_HEX } from "./bank-inline.js";
  * the others' state, which this one, writing notes out of time order, does
  * not have.
  *
- * The factory palette adds a short filtered echo to the pitched voices.
+ * The factory palette is dry. Space is an authored effect, not a property of
+ * every SNES sound. The DSP still supports original echo register streams.
  * This is one arrangement choice, not proof of a particular game's sound;
  * that also depends on its sample bank, envelopes, tuning and voicing.
  */
@@ -131,10 +132,10 @@ export class SnesDriver implements ChipDriver {
     // wrap into sample RAM until it expires; do not audibly play those bytes.
     reg(R_EVOLL, 0);
     reg(R_EVOLR, 0);
-    reg(R_EFB, 0x38);
+    reg(R_EFB, 0);
     reg(R_ESA, ECHO_PAGE);
     reg(R_EDL, ECHO_DELAY);
-    reg(R_EON, 0xf7); // all pitched voices, excluding the kit
+    reg(R_EON, 0); // no implicit room on portable arrangements
     // Factory low-pass FIR; signed coefficients sum to 128 (unity gain).
     [0x0c, 0x21, 0x2b, 0x2b, 0x13, 0xfe, 0xf3, 0xf9].forEach((c, i) => reg(R_FIR + i * 0x10, c));
     for (let v = 0; v < 8; v++) {
@@ -148,8 +149,8 @@ export class SnesDriver implements ChipDriver {
     reg(R_KOFF, 0x00);
     // Echo writes on, once the power-on buffer has wrapped: 240 ms of it.
     t = Math.round(0.25 * 1024000);
-    reg(R_EVOLL, 0x1c);
-    reg(R_EVOLR, 0x1c);
+    reg(R_EVOLL, 0);
+    reg(R_EVOLR, 0);
     reg(R_FLG, 0x00);
     return out;
   }

@@ -3,7 +3,7 @@ import {validatePerformance} from '../packages/chipvoice/dist/index.js';
 /** Musical observer for PORTS and the score display. Raw VGM commands, not
  * these inferred intervals, remain the native playback and verification source.
  * Supports normal six-channel FM and PSG; special FM modes fail explicitly. */
-export function vgmPerformance(plan,{title,source}) {
+export function vgmPerformance(plan,{title,source,dacPercussion}) {
  const endTick=Math.round(plan.seconds*44100),parts=Array.from({length:10},(_,i)=>({id:i<6?`fm${i+1}`:i<9?`psg${i-5}`:'noise',name:i===0?'Melody · FM 1':i===1?'Bass · FM 2':i===5?'Drums · DAC':i<6?`Harmony · FM ${i+1}`:i<9?`Harmony · PSG ${i-5}`:'PSG noise',role:i===0?'lead':i===1?'bass':i===5||i===9?'perc':'chord',priority:i===0?100:i===1?90:i===5?80:60-i,notes:[],instruments:{}}));
  const regs=new Uint8Array(512),latches=[0,0],frequency=new Uint16Array(6),active=Array(10).fill(null),period=new Uint16Array(3),attenuation=new Uint8Array(4).fill(15),patches=new Map();
  let high=0,psgLatch=0,lastDac=-Infinity;
@@ -34,7 +34,8 @@ export function vgmPerformance(plan,{title,source}) {
  }
  if(active[5])finish(5,Math.min(endTick,lastDac+1));
  for(const p of parts){p.notes=p.notes.filter(n=>n.endTick>n.tick);for(const n of p.notes)if(n.expression)n.expression=n.expression.filter(x=>x.tick<n.endTick);}
+ if(dacPercussion)parts[5].notes=dacPercussion;
  for(const part of parts)part.origin={chip:'md',voice:part.id};
- const score={version:1,title,ticksPerBeat:44100,endTick,loopStartTick:Math.round(plan.loopStartSeconds*44100),tempos:[{tick:0,microsecondsPerBeat:1000000}],parts:parts.filter(p=>p.notes.length),source,notices:['Native playback retains every FM/PSG/DAC command. The score display and cross-console ports infer notes from register activity.','Portable FM intervals preserve key-on/off and frequency changes; envelopes, stereo, release tails and DAC drum identities are not an exact transcription.']};
+ const score={version:1,title,ticksPerBeat:44100,endTick,loopStartTick:Math.round(plan.loopStartSeconds*44100),tempos:[{tick:0,microsecondsPerBeat:1000000}],parts:parts.filter(p=>p.notes.length),source,notices:['Native playback retains every FM/PSG/DAC command. The score display and cross-console ports infer notes from register activity.','Portable FM intervals preserve key-on/off and register frequency changes. Measured patch projections recover harmonic pitch and amplitude shape; factory timbres, stereo and release tails remain approximations.',dacPercussion?'DAC attacks use stream seek boundaries and repeated PCM prefixes; kick/snare families are inferred from waveform activity, not original game instrument labels.':'DAC bursts have not been classified; percussion uses an approximate fallback.']};
  validatePerformance(score);return score;
 }
