@@ -68,6 +68,7 @@ jobs:
             .artifacts/midi-import/e2e
             .artifacts/unified-playground
             .artifacts/cold-review/browser
+            .artifacts/timbre-review/browser
             .artifacts/i18n
           retention-days: 7
 
