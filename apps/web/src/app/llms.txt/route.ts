@@ -1,54 +1,38 @@
 import { endpointRows } from "@/lib/openapi";
 import { SITE } from "@/lib/songs";
-
+import catalog from "../../../generated/agent-catalog.json";
 export const runtime = "nodejs";
-
-/**
- * The short version, for agents that read one file and stop.
- *
- * Everything here is derived, so it cannot describe an API that no longer
- * exists - which is the failure mode of every hand-written summary.
- */
 export function GET() {
-  const lines = endpointRows().map((r) => `- ${r.method} ${r.path} - ${r.summary}`);
-  const body = `# chipvoice
+  return new Response(
+    `# chipvoice
 
-> Chiptune on the emulated sound chips of the old machines - the NES's 2A03,
-> the Game Boy's APU, the Mega Drive's YM2612 and PSG, the SNES's S-DSP -
-> written as four lines of text. Post a song, get a link and an MP3. Songs
-> fork like code.
+> Compose, import, arrange and publish complete multi-instrument music for emulated retro sound chips.
 
-The format is one token per sixteenth note across four channels: lead, chord,
-bass, perc. On the 2A03 they are pulse 1, pulse 2, the triangle and the noise; on
-the Game Boy (\`"chip": "dmg"\`) pulse 1, pulse 2, the wave channel and the noise; on
-the Mega Drive (\`"chip": "md"\`) FM 1, PSG 1, FM 2 and the PSG's noise; on the
-SNES (\`"chip": "snes"\`) four sample voices, everything a sample, with the echo.
-C64 (\`"chip": "c64"\`) the SID's three voices, the drums cutting the chord on the third; a triangle, a pulse or a sawtooth for the bass.
-An optional \`intent\` gives each role a word for what it should sound like
-(lead: soft, bright, round; chord: plucked, held; bass: round, hollow, bright;
-perc: tight, soft), the same words on every chip. A note is a letter A-G, an optional
-# or b, then an octave. A dot holds, an equals sign cuts.
+Use MusicProject version 1 with a Performance source for new compositions. Independent parts hold exact-tick polyphonic notes, instruments and expression. Automatic allocation/mixing respects finite machine voices and reports losses; it does not guarantee orchestral realism or original-game fidelity. Discover supported targets instead of assuming a fixed console list. Current engine: ${catalog.engineVersion}.
 
-A mistyped note is silent - it resolves to 0 Hz and is scheduled as nothing - so
-validate before storing. Every issue says whether the mistake leaves any evidence.
+## Start here
+
+- [Skill](${SITE}/skill.md): executable ensemble example, composition, adaptation, evaluation and publication instructions.
+- [Capabilities](${SITE}/api/v1/capabilities): generated voices, resource conflicts, instrument palette, pitch ranges and project JSON Schema.
+- [OpenAPI](${SITE}/.well-known/openapi.json): exact HTTP bodies, parameters, auth and responses.
+- [Composition guide](https://github.com/gwendall/chipvoice/blob/main/docs/AGENT-COMPOSITION.md): musical method and adding future consoles.
+- [SDK/API guide](${SITE}/docs): local creation/playback and publication contracts.
+- [Create](${SITE}/create): note/code editor and MIDI import.
+- [Explore](${SITE}/explore): public publications and remix sources.
+
+Local composition needs no account. POST /api/v1/validate takes the raw project. POST /api/v1/projects takes {project, visibility, parentId?}, requires authentication and an Idempotency-Key. Render jobs return pinned WAV after polling. The older /api/songs service uses four tracker lines and can publish anonymously; it is a separate compatibility path, not the default for complete performances. Never flatten imported polyphony to it.
 
 ## Endpoints
 
-${lines.join("\n")}
-
-## Full instructions
-
-- [Skill](${SITE}/skill.md): the format, the endpoints, and how to write something
-  worth hearing
-- [OpenAPI](${SITE}/.well-known/openapi.json)
-- [Editor](https://chipvoice.dev): the same songs, with a grid and a play button
-- [Library](https://www.npmjs.com/package/chipvoice): \`npm i chipvoice\` to run the
-  chip yourself
-`;
-  return new Response(body, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "public, max-age=300",
+${endpointRows()
+  .map((r) => `- ${r.method} ${r.path} — ${r.summary}`)
+  .join("\n")}
+`,
+    {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "public, max-age=300",
+      },
     },
-  });
+  );
 }

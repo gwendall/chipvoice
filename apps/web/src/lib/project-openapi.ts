@@ -1,4 +1,4 @@
-import { PROJECT_SCHEMA } from "chipvoice";
+import { PROJECT_SCHEMA, CHIP_IDS } from "chipvoice";
 const json = (schema: unknown) => ({ "application/json": { schema } });
 const id = {
   name: "id",
@@ -27,7 +27,7 @@ const response = {
   properties: {
     id: { type: "string" },
     title: { type: "string" },
-    chip: { enum: ["2a03", "dmg", "md", "snes", "c64"] },
+    chip: { enum: CHIP_IDS },
     tags: { type: "array", items: { type: "string" } },
     createdAt: { type: "integer", description: "Unix milliseconds" },
     favourites: { type: "integer" },
@@ -168,6 +168,72 @@ const operation = (
   ...extra,
 });
 export const projectPaths = {
+  "/api/v1/capabilities": {
+    get: operation(
+      "getProjectCapabilities",
+      "Discover generated machine voices, instruments and project schema",
+      {
+        description:
+          "Public, database-independent build catalogue. Discover targets dynamically; inspect resource conflicts, eligible voices and substitutions before composing.",
+        responses: {
+          "200": {
+            description: "Current generated capabilities",
+            content: json({
+              type: "object",
+              required: [
+                "version",
+                "engineVersion",
+                "contentHash",
+                "targets",
+                "projectSchema",
+              ],
+              properties: {
+                version: { const: 1 },
+                engineVersion: { type: "string" },
+                contentHash: { type: "string" },
+                semantics: { type: "object" },
+                projectSchemaVersion: { const: 1 },
+                projectSchema: { type: "object" },
+                targets: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: [
+                      "id",
+                      "voices",
+                      "voiceConflicts",
+                      "melodicPalette",
+                    ],
+                    properties: {
+                      id: { type: "string" },
+                      system: { type: "string" },
+                      voices: { type: "array", items: { type: "object" } },
+                      voiceConflicts: {
+                        type: "array",
+                        items: { type: "array", items: { type: "string" } },
+                      },
+                      melodicPalette: {
+                        type: "array",
+                        items: { type: "object" },
+                      },
+                      percussionVoices: {
+                        type: "array",
+                        items: { type: "string" },
+                      },
+                      excludedPerformanceVoices: {
+                        type: "array",
+                        items: { type: "string" },
+                      },
+                    },
+                  },
+                },
+              },
+            }),
+          },
+        },
+      },
+    ),
+  },
   "/api/v1/validate": {
     post: operation(
       "validateProject",

@@ -1,3 +1,4 @@
+import './build-agent-docs.mjs';
 import { build } from '../../../packages/chipvoice/node_modules/esbuild/lib/main.js';
 import {mkdir,copyFile,readFile,writeFile} from 'node:fs/promises';
 await build({entryPoints:['src/lib/project-render-worker.ts'],outfile:'generated/project-render.cjs',bundle:true,platform:'node',target:'node22',format:'cjs',minify:true,logLevel:'warning'});

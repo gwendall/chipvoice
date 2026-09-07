@@ -70,6 +70,7 @@ jobs:
             .artifacts/cold-review/browser
             .artifacts/timbre-review/browser
             .artifacts/creation/e2e
+            .artifacts/agent-guide
             .artifacts/i18n
           retention-days: 7
 

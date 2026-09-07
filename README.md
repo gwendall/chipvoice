@@ -248,3 +248,5 @@ from 0.16.3. Sonic DAC ports distinguish observed kick/snare attacks instead of
 mapping every burst to a kick. These improve adaptations; they do not make
 cross-console timbres identical. See the measured-projection workflow in
 [the mixing API](docs/MIXING-API.md).
+
+[Agent composition guide](docs/AGENT-COMPOSITION.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)

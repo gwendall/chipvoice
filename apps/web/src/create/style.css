@@ -583,3 +583,6 @@
 
 .published-listen h1, .community-header > div { overflow-wrap: anywhere; min-width: 0; }
 .published-listen audio { width: 480px; max-width: 100%; }
+
+.part-tools .timbre-control { max-width: 100%; flex-wrap: wrap; }
+.part-tools .timbre-control select { max-width: 100%; }

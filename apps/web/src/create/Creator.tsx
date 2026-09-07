@@ -34,6 +34,15 @@ import {
   readDraft,
   isDraftKey,
 } from "./drafts";
+const TIMBRE_PRESETS = [
+  [80, "Pulse"],
+  [81, "Saw"],
+  [0, "Piano"],
+  [24, "Pluck"],
+  [38, "Synth bass"],
+  [48, "Strings"],
+  [89, "Warm pad"],
+] as const;
 const stamp = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 export default function Creator({
@@ -183,7 +192,16 @@ export default function Creator({
     });
   };
   const setting = (settings: Partial<MusicProject["settings"]>) =>
-    edit({ ...project, settings: { ...project.settings, ...settings, ...(settings.tempoScale !== undefined ? {tempoScale: Math.max(0.1, Math.min(10, settings.tempoScale))} : {}) } });
+    edit({
+      ...project,
+      settings: {
+        ...project.settings,
+        ...settings,
+        ...(settings.tempoScale !== undefined
+          ? { tempoScale: Math.max(0.1, Math.min(10, settings.tempoScale)) }
+          : {}),
+      },
+    });
   useEffect(() => {
     alive.current = true;
     let cancelled = false;
@@ -349,7 +367,11 @@ export default function Creator({
         return;
       }
       await p.play();
-      if (!loaded.current || loaded.current.source !== project.source || loaded.current.settings !== project.settings) {
+      if (
+        !loaded.current ||
+        loaded.current.source !== project.source ||
+        loaded.current.settings !== project.settings
+      ) {
         loaded.current = project;
         await p.load(project, { parts: solo ? [solo] : undefined });
       }
@@ -513,7 +535,16 @@ export default function Creator({
     }
     positionTick = lo;
   }
-  if (!ready) return <>{!embedded && <SiteHeader active="create"/>}<main className="demo-main creation"><p role="status">{t("Opening this song…")}</p></main>{!embedded && <SiteFooter/>}</>;
+  if (!ready)
+    return (
+      <>
+        {!embedded && <SiteHeader active="create" />}
+        <main className="demo-main creation">
+          <p role="status">{t("Opening this song…")}</p>
+        </main>
+        {!embedded && <SiteFooter />}
+      </>
+    );
   return (
     <>
       {!embedded && <SiteHeader active="create" />}
@@ -597,8 +628,15 @@ export default function Creator({
               id="create-tempo"
               label={t("Tempo")}
               unit={t("BPM")}
-              min={Math.max(1, Math.min(40, Math.ceil(bpm)), Math.ceil(bpm * 0.1))}
-              max={Math.max(Math.ceil(bpm), Math.min(300, Math.floor(bpm * 10)))}
+              min={Math.max(
+                1,
+                Math.min(40, Math.ceil(bpm)),
+                Math.ceil(bpm * 0.1),
+              )}
+              max={Math.max(
+                Math.ceil(bpm),
+                Math.min(300, Math.floor(bpm * 10)),
+              )}
               value={Math.round(bpm * (project.settings.tempoScale ?? 1))}
               onChange={(value) => setting({ tempoScale: value / bpm })}
             />
@@ -766,7 +804,7 @@ export default function Creator({
                         </Button>
                       </div>
                       <div className="part-tools">
-                        <label>
+                        <label className="timbre-control">
                           {t("Timbre")}
                           <select
                             aria-label={t("Timbre")}
@@ -786,15 +824,30 @@ export default function Creator({
                               });
                             }}
                           >
-                            {[
-                              [80, "Pulse"],
-                              [81, "Saw"],
-                              [0, "Piano"],
-                              [24, "Pluck"],
-                              [38, "Synth bass"],
-                              [48, "Strings"],
-                              [89, "Warm pad"],
-                            ].map(([v, label]) => (
+                            {!TIMBRE_PRESETS.some(
+                              ([program]) =>
+                                program ===
+                                (part.program ?? part.notes[0]?.program ?? 80),
+                            ) && (
+                              <option
+                                value={
+                                  part.program ?? part.notes[0]?.program ?? 80
+                                }
+                              >
+                                {t(
+                                  part.origin
+                                    ? "Source instrument {program}"
+                                    : "GM program {program}",
+                                  {
+                                    program:
+                                      part.program ??
+                                      part.notes[0]?.program ??
+                                      80,
+                                  },
+                                )}
+                              </option>
+                            )}
+                            {TIMBRE_PRESETS.map(([v, label]) => (
                               <option key={v} value={v}>
                                 {t(String(label))}
                               </option>

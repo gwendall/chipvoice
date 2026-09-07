@@ -114,3 +114,5 @@ console.log(plan?.losses, plan?.mix);
 `packages/chipvoice/test/project.mjs` は厳密な受付、従来音声一致、3つの完全な曲の往復、正確なセクション・表現反復を検証します。`apps/web/test-projects.mjs` は使い捨て DB で並行再送、公開範囲、リミックス、検索、プロフィール、お気に入り、実 Worker の WAV 永続化、中断を検証します。`apps/web/test-creation-browser.mjs` は音声出力、シーク・ライブテンポ、seed・分離・タイムアウト、Undo、公開と再読込、EN/JA モバイルを検証します。従来の音声時計・遷移・作曲画面テストも維持し、画像と動画を `.artifacts/creation/e2e` に生成します。
 
 構造・信号の自動検証は、音楽的な試聴、実機モバイル、運用容量の監視を置き換えません。原作との忠実度は別のネイティブ参照適合テストで扱います。
+
+エージェントによる作曲、機種の検出、実行可能な評価については、[エージェントによる作曲](AGENT-COMPOSITION_ja.md)を参照してください。

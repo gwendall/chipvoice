@@ -929,5 +929,7 @@
   "Text length outside supported bounds": "文字列の長さが対応範囲外です。",
   "Array length outside supported bounds": "配列の長さが対応範囲外です。",
   "Document exceeds validation work limit": "ドキュメントが検証処理の上限を超えています。",
-  "Value does not match a supported source or value shape": "値が対応するソースまたはデータ形式に一致しません。"
+  "Value does not match a supported source or value shape": "値が対応するソースまたはデータ形式に一致しません。",
+  "GM program {program}": "GMプログラム {program}",
+  "Source instrument {program}": "ソース楽器 {program}"
 }

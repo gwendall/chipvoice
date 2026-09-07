@@ -116,3 +116,5 @@ The operator can inspect `project_reports` joined to `projects`, withdraw violat
 `packages/chipvoice/test/project.mjs` covers strict admission, legacy sample parity, all three complete repertoire round trips and exact section/expression repetition. `apps/web/test-projects.mjs` uses a disposable database for concurrent retries, privacy, remixes, filters, profiles, favourites, real worker WAV persistence and cancellation. `apps/web/test-creation-browser.mjs` covers audible creation, seek/live tempo, seeded generator isolation/timeouts, Undo, publication/reload and EN/JA mobile. Existing audio clock/transition and legacy editor tests remain in qualification. Screenshots and video are generated under `.artifacts/creation/e2e`.
 
 Automated structural and signal checks do not replace musical listening, physical mobile-device acceptance or production capacity monitoring. Original-game fidelity remains governed by the separate native/reference conformance suite.
+
+For agent composition, machine discovery and executable evaluation, see [Composing with an agent](AGENT-COMPOSITION.md).
