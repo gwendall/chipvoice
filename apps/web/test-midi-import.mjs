@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {basename} from 'node:path';
 import {chromium} from 'playwright';
-import {installOutputProbe,outputRms} from './test/audio-probe.mjs';
+import {installOutputProbe,outputRms,outputPhraseRms} from './test/audio-probe.mjs';
 const base=process.env.SITE??'http://127.0.0.1:3070',out=new URL('../../.artifacts/midi-import/e2e/',import.meta.url);await mkdir(out,{recursive:true});
 // A long synthetic SMF keeps the real asynchronous render boundary in CI.
 // The user's music is only read when MIDI_FILE is explicitly supplied locally.
@@ -32,11 +32,10 @@ try{
   assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);
   // The local Musha MIDI starts with 1.875 seconds of authored silence. Use
   // audio time: a short wall-clock poll can miss its first note on a slow host.
-  const levels=[],audioStart=await page.evaluate(()=>window.audioBus.context.currentTime),deadline=Date.now()+30000;
-  do{levels.push(await outputRms(page));if(levels.at(-1)>.001)break;}while(Date.now()<deadline&&await page.evaluate(start=>window.audioBus.context.currentTime-start,audioStart)<8);
-  assert.ok(Math.max(...levels)>.001,`${machines[index]} must produce measured audio after a source phrase: ${levels}`);
+  const maxRms=await outputPhraseRms(page);
+  assert.ok(maxRms>.001,`${machines[index]} must produce measured audio after a source phrase: ${maxRms}`);
   const labels=await page.locator('.arrangement-parts strong').allTextContents();assert.ok(!labels.some(s=>s.includes('\ufffd')),JSON.stringify(labels));if(!file)assert.ok(labels.includes('Éclaté'));
-  results.push({machine:machines[index],elapsedMs:Date.now()-start,maxRms:Math.max(...levels),labels});
+  results.push({machine:machines[index],elapsedMs:Date.now()-start,maxRms,labels});
  }
  await page.screenshot({path:new URL('ready.png',out).pathname,fullPage:true});
  // Real render still finishes after Stop; it must not restart playback.
