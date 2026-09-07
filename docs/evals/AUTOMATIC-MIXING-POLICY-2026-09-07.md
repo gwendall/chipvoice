@@ -69,7 +69,7 @@ authored initial silence: its audio check now observes a phrase in audio time
 instead of failing on a short wall-clock window. Screenshots and videos were
 captured; the new explanatory diagnostics fit in the expanded mobile panel.
 The packed SDK also passes public-API and real AudioWorklet browser tests in an
-empty consumer. Deployment and actual registry verification are still pending.
+empty consumer. Production reports, all 12 arrangement recordings and 126 lab files match the qualified local assets byte-for-byte. Production native/reference and Mega Drive playback plus Japanese mobile layout pass. The actual `chipvoice@0.16.1` registry package passes public-API and AudioWorklet tests in an empty consumer. [Release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1) records the qualified commits and final checks. The initial v0.16.0 attempt stopped before upload because the release workflow typechecked ungenerated web assets; PR #41 scoped release qualification to the SDK and preserved the failed tag unchanged.
 
 ![Desktop adaptation diagnostics](automatic-mixing-desktop.png)
 ![Japanese mobile diagnostics](automatic-mixing-mobile-ja.png)
