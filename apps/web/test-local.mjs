@@ -62,6 +62,7 @@ try {
     "test-agent-guide.mjs",
     "test-generation.mjs",
     "test-creator-journey.mjs",
+    "test-onboarding.mjs",
     "test-creation-browser.mjs",
     "test-i18n.mjs",
     "test-score-compiler.mjs",

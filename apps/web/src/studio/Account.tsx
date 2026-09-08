@@ -1,4 +1,6 @@
 'use client';
+import {SignInForm} from '@/auth/SignInForm';
+import {useSession} from '@/auth/useSession';
 import {useI18n, useT} from '@/i18n/react';
 import {localePath} from '@/i18n/core';
 import { useEffect, useState } from 'react';
@@ -11,7 +13,7 @@ export function Account() {
  const {locale} = useI18n();
   const [library,setLibrary] = useState<Library|null>(null);
   const [keys,setKeys] = useState<Key[]>([]);
-  const [email,setEmail] = useState('');
+  const session = useSession();
   const [busy,setBusy] = useState(true);
   const [message,setMessage] = useState('');
   useEffect(() => {
@@ -23,27 +25,19 @@ export function Account() {
           setLibrary(await response.json());
           const keyResponse = await fetch('/api/keys', {signal:abort.signal});
           if (keyResponse.ok) setKeys((await keyResponse.json()).keys);
-        } else if (response.status !== 401) setMessage('Accounts are unavailable right now. Your local draft is safe.');
+        } else if (response.status === 401) { setLibrary(null); setKeys([]); } else setMessage('Accounts are unavailable right now. Your local draft is safe.');
       } catch { if (!abort.signal.aborted) setMessage('Could not reach your library.'); }
       finally { if (!abort.signal.aborted) setBusy(false); }
     })();
     return () => abort.abort();
-  }, []);
-  const signin = async () => {
-    setBusy(true); setMessage('');
-    try {
-      const response = await fetch('/api/auth/signin', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,locale})});
-      setMessage(response.ok ? 'Check your inbox. The sign-in link works once, for 30 minutes.' : 'Could not send the link. Please try again later.');
-    } catch { setMessage('Could not reach the server.'); }
-    finally { setBusy(false); }
-  };
+  }, [session.status, session.email]);
   const remove = async (path: string, keyId?: string) => {
     setBusy(true);
     try {
       const response = await fetch(path, {method:'DELETE'});
       if (!response.ok) throw new Error();
       if (keyId) { setKeys(previous=>previous.filter(key=>key.id!==keyId)); setMessage('API key revoked. Your songs are still yours.'); }
-      else { setLibrary(null);setKeys([]);setMessage('Signed out. Your local draft is still here.'); }
+      else { setLibrary(null);setKeys([]);setMessage('Signed out. Your local draft is still here.');window.dispatchEvent(new Event('chipvoice-session')); }
     } catch { setMessage('Could not save that change. Please try again.'); }
     finally { setBusy(false); }
   };
@@ -53,5 +47,5 @@ export function Account() {
     <ul>{library.songs.map(song=><li key={song.id}><a href={localePath(`/s/${song.id}`,locale)}>{song.title || t('Untitled tune')} ↗</a></li>)}</ul>
     {!library.songs.length && <p>{t("Your published tunes will appear here.")}</p>}
     {keys.some(key=>!key.revoked_at) && <><p>{t("API keys")}</p><ul>{keys.filter(key=>!key.revoked_at).map(key=><li key={key.id}>{key.label || key.id} <button className="small-button" disabled={busy} onClick={()=>void remove(`/api/keys/${key.id}`,key.id)}>{t("Revoke ")}{key.label || key.id}</button></li>)}</ul></>}
-  </> : <form onSubmit={event=>{event.preventDefault();void signin();}}><p>{t("Sign in before publishing to find your tunes again and retain control of them.")}</p><label>{t("Email")}<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={event=>setEmail(event.target.value)}/></label><button className="small-button" disabled={busy}>{t("Send sign-in link")}</button></form>}<p role="status">{t(message)}</p></details>;
+  </> : <SignInForm/>}<p role="status">{t(message)}</p></details>;
 }
