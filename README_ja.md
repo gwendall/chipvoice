@@ -158,3 +158,5 @@ Sonic の DAC 移植も、すべてをキックにせず、観測したキック
 [ミキシング API](docs/MIXING-API_ja.md)。
 
 [エージェント向け作曲ガイド](docs/AGENT-COMPOSITION_ja.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)
+
+[プロンプトによる楽曲生成の計画](docs/GENERATIVE-COMPOSITION_ja.md)：仕様と実装チケット。ホスト型生成はまだ利用できません。
