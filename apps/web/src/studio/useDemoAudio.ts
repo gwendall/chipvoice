@@ -69,7 +69,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
   useEffect(() => {
     if (recording || !playback.current) return;
     // Coalesce slider/keyboard bursts before preparing an incoming engine.
-    const timer = setTimeout(() => { const arranged=musicSong(song,muted);void playback.current?.update(arranged).then(()=>{if(playback.current?.current?.songId===arranged.id)audibleTitle.current=song.title;}); }, 45);
+    const timer = setTimeout(() => { const arranged=musicSong(song,muted);void playback.current?.update(arranged).then(()=>{if(playback.current?.current?.songId===arranged.id)audibleTitle.current=song.title;}); }, 16);
     return () => clearTimeout(timer);
   }, [song, muted, recording]);
 

@@ -1,3 +1,4 @@
+import {forkState} from "../../checkpoint.js";
 import { EventQueue } from "../../event-queue.js";
 /**
  * A clock-driven emulation of the Ricoh 2A03 APU.
@@ -927,6 +928,7 @@ export class NesOutputStage {
  * sample clock and the cycle clock.
  */
 export class NesApuCore implements ChipCore {
+  fork(): NesApuCore { return forkState(this); }
   readonly sampleRate: number;
   readonly chip = new Nes2A03();
   readonly stage: NesOutputStage;

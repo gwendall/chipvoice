@@ -1,21 +1,20 @@
-import type {Publication} from '@/lib/projects';
 import {playbackSession as session, type Playback, type QueueTrack} from './session';
 
 let generation = 0;
 let request: AbortController | null = null;
 /** Only fetch the chosen publication. Long recordings stay in the browser's
  * streaming media pipeline; a catalogue never decodes dozens of WAVs. */
-export async function playPublication(item: Pick<Publication, 'id' | 'title'>, queue?: QueueTrack[]) {
+export async function playPublication(item: QueueTrack, queue?: QueueTrack[]) {
   const key = `publication:${item.id}`;
   if (session.active?.key === key && !session.pending) { session.toggle(); return; }
   const ticket = ++generation;
   request?.abort(); const abort = new AbortController(); request = abort;
   const media = new Audio(); media.preload = 'metadata'; media.volume = 0;
-  let publication: Publication | null = null, loading = true, error = '', intent = true, disposed = false;
+  let publication: QueueTrack | null = null, loading = true, error = '', intent = true, disposed = false;
   const adapter: Playback = {
     key, info: () => ({title: publication?.title ?? item.title, href: `/p/${item.id}`, chip: publication?.chip,
-      creator: publication?.profile.displayName || publication?.profile.handle || '', profileId: publication?.profile.id,
-      avatar: publication?.profile.avatar, download: publication ? media.src : undefined}),
+      creator: publication?.profile?.displayName || publication?.profile?.handle || '', profileId: publication?.profile?.id,
+      avatar: publication?.profile?.avatar, download: publication ? media.src : undefined}),
     playing: () => intent && (loading || !media.paused), loading: () => loading,
     error: () => error, duration: () => Number.isFinite(media.duration) ? media.duration : 0,
     position: () => media.currentTime, ready: () => media.readyState >= 2,
@@ -40,9 +39,12 @@ export async function playPublication(item: Pick<Publication, 'id' | 'title'>, q
     refresh();
   });
   try {
-    const response = await fetch(`/api/v1/projects/${item.id}`, {signal: abort.signal});
-    if (!response.ok) throw Error('This song could not load.');
-    publication = await response.json();
+    if (item.profile && item.renditions?.some(r => r.status === 'ready')) publication = item;
+    else {
+      const response = await fetch(`/api/v1/projects/${item.id}`, {signal: abort.signal});
+      if (!response.ok) throw Error('This song could not load.');
+      publication = await response.json();
+    }
     const rendition = publication!.renditions?.find(r => r.kind === 'full' && r.status === 'ready') ?? publication!.renditions?.find(r => r.status === 'ready');
     if (!rendition) throw Error('This song has no ready recording yet.');
     if (ticket !== generation || disposed || !intent) return;

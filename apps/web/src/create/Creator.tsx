@@ -156,9 +156,10 @@ export default function Creator({
   const sync = () => {
     if (!alive.current || !player.current) return;
     const p = player.current;
-    if(lossCount.current.prepared !== p.prepared) {
-      let count=0;for(const loss of p.prepared?.losses??[])if(loss.kind==='voice-omitted')count++;
-      lossCount.current={prepared:p.prepared,count};
+    playbackSession.refresh();
+    if(lossCount.current.prepared !== (p.previewMetadata ?? p.prepared)) {
+      let count=0;for(const loss of p.losses)if(loss.kind==='voice-omitted')count++;
+      lossCount.current={prepared:p.previewMetadata ?? p.prepared,count};
     }
     const next = {
       playing: p.playing,
@@ -173,7 +174,7 @@ export default function Creator({
   };
   const ensurePlayer = () => {
     if (!player.current) {
-      player.current = new ProjectPlayer({ onChange: sync });
+      player.current = new ProjectPlayer({preview: true, onChange: sync });
       player.current.loop = true;
       projectPlayback(player.current, () => publication ? `/p/${publication.id}` : draftKey.current ? draftHref(draftKey.current) : "/create");
     }
@@ -330,6 +331,9 @@ export default function Creator({
     }
   }, [project, ready]);
   useEffect(() => {
+    if (loaded.current?.source === project.source) player.current?.setTitle(project.title);
+  }, [project.title, project.source]);
+  useEffect(() => {
     if (!ready || !player.current) return;
     const timer = setTimeout(() => {
       const p = player.current;
@@ -337,7 +341,7 @@ export default function Creator({
         loaded.current = project;
         void p.load(project, { parts: solo ? [solo] : undefined });
       }
-    }, 180);
+    }, 16);
     return () => clearTimeout(timer);
   }, [project.source, project.settings, solo, ready]);
   useEffect(() => {
@@ -1290,7 +1294,7 @@ export default function Creator({
         <section className="create-api">
           <h2>{t("Take the music into your game.")}</h2>
           <code>npm i chipvoice</code>
-          <pre>{`import { ProjectPlayer } from 'chipvoice';\nconst player = new ProjectPlayer();\nawait player.load(project);\n// In your Play button handler:\nawait player.play();`}</pre>
+          <pre>{`import { ProjectPlayer } from 'chipvoice';\nconst player = new ProjectPlayer({preview: true});\nawait player.load(project);\n// In your Play button handler:\nawait player.play();`}</pre>
           <Link href="/docs">{t("SDK examples and HTTP API")} →</Link>
         </section>
       </main>

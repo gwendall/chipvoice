@@ -237,7 +237,7 @@ export default function Explore({
                 <span>{item.tags.join(" · ")}</span>
               </div>
               <div className="song-bottom">
-                <PublicationPlay item={item} queue={items.map(({id,title})=>({id,title}))}/>
+                <PublicationPlay item={item} queue={items}/>
                 <Link href={`/p/${item.id}`}>{t("Listen / remix")} →</Link>
                 <Button
                   disabled={item.owned}
@@ -250,7 +250,7 @@ export default function Explore({
               </div>
               {item.owned && (
                 <div className="song-bottom">
-                <PublicationPlay item={item} queue={items.map(({id,title})=>({id,title}))}/>
+                <PublicationPlay item={item} queue={items}/>
                   <span>{t(item.visibility)}</span>
                   <Button
                     onClick={() =>

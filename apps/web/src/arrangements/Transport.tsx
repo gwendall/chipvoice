@@ -3,6 +3,7 @@ import {PlayerControls} from '@/player/Player';
 import {playbackFor} from '@/player/session';
 import {useT} from '@/i18n/react';
 import {useEffect, useMemo, useRef} from 'react';
+import type {ArrangementPlayback} from '../audio/ArrangementPlayback';
 import type {BufferPlayback} from '../audio/BufferPlayback.mjs';
 
 export type Overview={seconds:number;loopStart:number;parts:{id:string;name:string;role:string;notes:number[][]}[]};
@@ -10,7 +11,7 @@ const colors=['#e8bc68','#98c9ad','#b6b2ee','#ec9c83','#99cbd8'];
 
 /** Static note raster + one moving cursor. The long MIDI never becomes tens
  * of thousands of DOM nodes or gets redrawn on each animation frame. */
-export function Transport({translateParts=true,onPlay,player,overview,seconds,part,pending,active}:{translateParts?:boolean;onPlay:()=>void;player:BufferPlayback|null;overview:Overview|null;seconds:number;part:string;pending:boolean;active:boolean}){
+export function Transport({translateParts=true,onPlay,player,overview,seconds,part,pending,active}:{translateParts?:boolean;onPlay:()=>void;player:BufferPlayback|ArrangementPlayback|null;overview:Overview|null;seconds:number;part:string;pending:boolean;active:boolean}){
  const t = useT();
  const root=useRef<HTMLDivElement>(null),canvas=useRef<HTMLCanvasElement>(null),cursor=useRef<HTMLDivElement>(null);
  const rows=useMemo(()=>overview?.parts.filter(p=>part==='mix'||p.id===part)??[],[overview,part]);

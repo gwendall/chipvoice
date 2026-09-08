@@ -79,6 +79,9 @@ export interface ChipSpec {
  * only in where the sample clock comes from.
  */
 export interface ChipCore {
+  /** Optional opaque in-process copy, including RAM, oscillators, filters and
+   * queued writes. A saved copy must remain unchanged when either fork runs. */
+  fork?(): ChipCore;
   /** Queues register writes, each stamped with the cycle it applies at. */
   schedule(events: RegisterEvent[]): void;
   /** Removes future owned writes from the scheduler, before register decoding. */

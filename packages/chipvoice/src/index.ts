@@ -391,3 +391,6 @@ export {BufferPlayback} from './playback/BufferPlayback.js';
 export {Fade} from './playback/fade.js';
 export {outputTime} from './playback/output-clock.js';
 export {repeatPerformanceSection} from './project-edit.js';
+
+export {ProgressivePlayback} from "./playback/ProgressivePlayback.js";
+export type {PreviewMetadata} from "./playback/ProgressivePlayback.js";

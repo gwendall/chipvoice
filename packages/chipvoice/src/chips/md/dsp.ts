@@ -1,3 +1,4 @@
+import {forkState} from "../../checkpoint.js";
 import { Fifo } from "../../fifo.js";
 import { EventQueue } from "../../event-queue.js";
 /**
@@ -274,6 +275,7 @@ export class MdOutputStage {
 }
 
 export class MdCore implements ChipCore {
+  fork(): MdCore { return forkState(this); }
   readonly sampleRate: number;
   readonly chip = new MdChip();
   readonly stage: MdOutputStage;

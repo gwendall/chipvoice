@@ -1,3 +1,4 @@
+import {ProgressivePlayback, type PreviewMetadata} from "./playback/ProgressivePlayback.js";
 import { BufferPlayback } from "./playback/BufferPlayback.js";
 import { WORKLET_SOURCE } from "./project-worker-inline.js";
 import type { MusicProject, ProjectChip } from "./project.js";
@@ -93,6 +94,8 @@ function runProjectWorker<T>(
   });
 }
 export interface ProjectPlayerOptions {
+  /** Stream preview PCM in bounded blocks; prepareProject remains the export API. */
+  preview?: boolean;
   context?: AudioContext;
   onChange?: () => void;
 }
@@ -100,7 +103,7 @@ export interface ProjectPlayerOptions {
 export class ProjectPlayer {
   readonly context: AudioContext;
   private readonly ownsContext: boolean;
-  private readonly transport: BufferPlayback;
+  private readonly transport: BufferPlayback | ProgressivePlayback;
   private job: AbortController | null = null;
   private generation = 0;
   private disposed = false;
@@ -109,15 +112,21 @@ export class ProjectPlayer {
   private wanted: MusicProject | null = null;
   private wantedOptions: Omit<PrepareProjectOptions, "signal"> = {};
   private changed: () => void;
-  preparing = false;
+  private loadingProject = false;
+  get preparing() {return this.loadingProject || this.transport.loading;}
+  set preparing(value: boolean) {this.loadingProject = value;}
   progress = 0;
-  error = "";
+  private failure = '';
+  get error() {return this.failure || this.transport.error;}
+  set error(value: string) {this.failure = value;}
   prepared: PreparedProjectAudio | null = null;
+  previewMetadata: PreviewMetadata | null = null;
+  get losses() { return this.previewMetadata?.losses ?? this.prepared?.losses ?? []; }
   constructor(options: ProjectPlayerOptions = {}) {
     this.ownsContext = !options.context;
     this.context = options.context ?? new AudioContext();
     this.changed = options.onChange ?? (() => {});
-    this.transport = new BufferPlayback(this.context, this.changed);
+    this.transport = options.preview ? new ProgressivePlayback(this.context, this.changed) : new BufferPlayback(this.context, this.changed);
     this.transport.setVolume(1);
   }
   get output(): AudioNode {
@@ -133,9 +142,11 @@ export class ProjectPlayer {
     );
   }
   get duration() {
+    if (this.transport instanceof ProgressivePlayback) return this.transport.duration;
     return (
       (this.transport.audibleSelection() as { seconds?: number } | null)
         ?.seconds ??
+      this.previewMetadata?.seconds ??
       this.prepared?.seconds ??
       0
     );
@@ -166,6 +177,16 @@ export class ProjectPlayer {
     this.error = "";
     this.changed();
     try {
+      if (this.transport instanceof ProgressivePlayback) {
+        const selected = await this.transport.load({project, parts: options.parts}, {
+          key: JSON.stringify([project.source, project.settings, options.parts]),
+          presentation: {project: this.wanted},
+        });
+        if (generation !== this.generation) return false;
+        this.previewMetadata = this.transport.metadata;
+        this.preparing = false; this.progress = selected ? 1 : 0;
+        this.error = this.transport.error; this.changed(); return selected;
+      }
       const prepared = await prepareProject(project, {
         ...options,
         signal: job.signal,
@@ -213,6 +234,12 @@ export class ProjectPlayer {
       }
       return false;
     }
+  }
+  /** Same-source metadata edits never touch the DSP or restart playback. */
+  setTitle(title: string) {
+    if (this.wanted) this.wanted.title = title;
+    const audible = this.audibleProject; if (audible) audible.title = title;
+    this.changed();
   }
   update(settings: Partial<MusicProject["settings"]>) {
     if (!this.wanted) throw Error("Load a project first");

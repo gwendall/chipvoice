@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {build} from '../../packages/chipvoice/node_modules/esbuild/lib/main.js';
+const built=await build({entryPoints:['src/lib/audio-range.ts'],bundle:true,platform:'node',format:'esm',write:false});
+const {audioRange,audioStream}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
+assert.deepEqual(audioRange('bytes=0-1',100),{start:0,end:1});
+assert.deepEqual(audioRange('bytes=-10',100),{start:90,end:99});
+assert.deepEqual(audioRange('bytes=90-',100),{start:90,end:99});
+assert.equal(audioRange('bytes=100-',100),'unsatisfiable');assert.equal(audioRange('bytes=-0',100),'unsatisfiable');
+assert.equal(audioRange('bytes=2-1',100),'unsatisfiable');assert.equal(audioRange('bytes=0-1,4-5',100),null);
+const source=Uint8Array.from({length:800000},(_,i)=>i%251),calls=[];
+const read=async(chunk,offset,length)=>{calls.push({chunk,offset,length});return source.slice(chunk*262144+offset,chunk*262144+offset+length);};
+const response=new Response(audioStream(262140,524300,read));assert.deepEqual(new Uint8Array(await response.arrayBuffer()),source.slice(262140,524301));
+assert.equal(calls.length,3);assert.equal(calls[0].length,4);assert.equal(calls.at(-1).length,13);
+calls.length=0;const reader=audioStream(0,source.length-1,read).getReader();await reader.read();await reader.cancel();await new Promise(r=>setTimeout(r,10));assert.equal(calls.length,1,'cancellation never fetches the rest of the asset');
+console.log('PASS audio ranges, chunk boundaries, suffixes, bounded reads and cancellation');

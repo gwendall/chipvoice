@@ -1,3 +1,4 @@
+import type {ArrangementPlayback} from '../audio/ArrangementPlayback';
 import type {ProjectPlayer} from 'chipvoice';
 import type {BufferPlayback} from '../audio/BufferPlayback.mjs';
 import type {LivePlayback} from '../audio/LivePlayback';
@@ -10,9 +11,9 @@ function gate(context: AudioContext, output: AudioNode) {
   return { volume: (value: number) => { node.gain.cancelScheduledValues(context.currentTime); node.gain.setTargetAtTime(value, context.currentTime, .008); },
     dispose: () => { node.disconnect(); } };
 }
-export function bufferedPlayback(player: BufferPlayback, key: string, info: () => TrackInfo, dispose?: () => void) {
+export function bufferedPlayback(player: BufferPlayback | ArrangementPlayback, key: string, info: () => TrackInfo, dispose?: () => void) {
   const output = gate(player.context, player.output);
-  const seconds = () => {const info = player.audibleSelection() as {seconds?:number;row?:{seconds?:number}} | null;return info?.seconds ?? info?.row?.seconds ?? player.buffers[player.side]?.duration ?? 0;};
+  const seconds = () => {const info = player.audibleSelection() as {seconds?:number;row?:{seconds?:number}} | null;return info?.seconds ?? info?.row?.seconds ?? (player.buffers[player.side] as {duration?:number} | undefined)?.duration ?? 0;};
   return registerPlayback(player, {
     key, info, playing: () => player.playing, loading: () => player.loading, error: () => player.error,
     duration: seconds, position: () => player.phase() * seconds(), ready: () => !!player.audibleSelection() || !!player.buffers.length,

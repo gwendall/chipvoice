@@ -43,7 +43,7 @@ export function PlayerControls({player, onToggle, seconds = 0, loading = false, 
     </div>
   </div>;
 }
-export function PublicationPlay({item, queue, full = false}: {item: Pick<Publication, 'id' | 'title'>; queue?: QueueTrack[]; full?: boolean}) {
+export function PublicationPlay({item, queue, full = false}: {item: QueueTrack; queue?: QueueTrack[]; full?: boolean}) {
   const state = usePlayback(), t = useT();
   const selected = [state.pending, state.active].find(p => p?.key === `publication:${item.id}`);
   const play = () => { if (selected) session.toggle(selected); else void playPublication(item, queue); };

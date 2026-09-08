@@ -114,7 +114,7 @@ export class LivePlayback {
         const next = {chip, fade, song: this.song!}; this.incoming = next;
         const previous = this.active;
         if (this.playing) {
-          const at = this.context.currentTime + .1;
+          const at = this.context.currentTime + .025;
           let phase = previous?.chip.phaseAt(at) ?? previous?.chip.phaseAt() ?? undefined;
           if (phase && previous) {
             const old = previous.song, fresh = this.song!;
@@ -128,9 +128,9 @@ export class LivePlayback {
           chip.play(this.song!, phase, at);
           // Allow the new chip's note-on to reach its DSP before releasing the
           // old signal. Both remain on the same AudioContext clock.
-          fade.toValue(1, at + .025);
-          previous?.fade.toValue(0, at + .025);
-          await this.until(at + .085);
+          fade.toValue(1, at + .01, .02);
+          previous?.fade.toValue(0, at + .01, .02);
+          await this.until(at + .04);
         }
         if (this.disposed) return null;
         if (!this.playing) fade.toValue(0);

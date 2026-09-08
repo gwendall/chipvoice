@@ -5,7 +5,7 @@ import { snesChip } from "./chips/snes/index.js";
 import { c64Chip } from "./chips/c64/index.js";
 import { arrange } from "./score.js";
 import { shapeScore } from "./composition.js";
-import { renderSong, loopSeconds, type RenderResult } from "./render.js";
+import { recordSong, loopSeconds, type RenderResult } from "./render.js";
 import {
   planPerformance,
   renderPerformance,
@@ -34,10 +34,10 @@ export interface ProjectRender {
   loopStartSeconds: number;
 }
 /** Pure preparation/rendering for Node and workers. Browser callers use ProjectPlayer. */
-export function renderProject(
+export function compileProject(
   input: MusicProject,
   options: ProjectRenderOptions = {},
-): ProjectRender {
+): {plan: PerformancePlan; native: boolean; gain: number; engineVersion: string; sourceKind: MusicProject['source']['kind']} {
   const project = parseProject(input),
     settings = project.settings,
     chip = definitions[settings.chip],
@@ -78,19 +78,12 @@ export function renderProject(
     const fullSeconds = loopSeconds(song);
     if (fullSeconds > 600) throw Error("Project exceeds ten minutes");
     const seconds = Math.min(fullSeconds, options.seconds ?? fullSeconds);
-    const audio = renderSong(song, {
-      seconds,
-      sampleRate,
-      stereo: true,
-      gain: settings.gain ?? 0.78,
-    });
-    options.onProgress?.(1);
+    const capture = recordSong(song, {seconds, sampleRate});
     return {
-      audio,
-      plan: null,
-      engineVersion: PROJECT_ENGINE_VERSION,
-      native: false,
-      loopStartSeconds: 0,
+      plan: {chip: settings.chip, seconds: Math.round(seconds * sampleRate) / sampleRate, loopStartSeconds: 0,
+        events: capture.events, memory: capture.memory, notes: [], losses: []},
+      gain: settings.gain ?? .78, sourceKind: project.source.kind,
+      engineVersion: PROJECT_ENGINE_VERSION, native: false,
     };
   }
   const native =
@@ -122,19 +115,18 @@ export function renderProject(
       Math.max(0, plan.seconds - 0.001),
     );
   }
-  const audio = renderPerformance(plan, chip, {
-    sampleRate,
-    gain: settings.gain ?? 0.6,
-    onProgress: options.onProgress,
-  });
-  return {
-    audio,
-    plan,
-    engineVersion: PROJECT_ENGINE_VERSION,
-    native,
-    loopStartSeconds: plan.loopStartSeconds,
-  };
+  return {plan, gain: settings.gain ?? .6, sourceKind: project.source.kind, native, engineVersion: PROJECT_ENGINE_VERSION};
 }
+/** Offline export and interactive preview execute the same compiled commands. */
+export function renderProject(input: MusicProject, options: ProjectRenderOptions = {}): ProjectRender {
+  const compiled = compileProject(input, options);
+  const audio = renderPerformance(compiled.plan, definitions[compiled.plan.chip as keyof typeof definitions], {
+    sampleRate: options.sampleRate, gain: compiled.gain, onProgress: options.onProgress,
+  });
+  return {audio, plan: compiled.sourceKind === 'score' ? null : compiled.plan,
+    engineVersion: compiled.engineVersion, native: compiled.native, loopStartSeconds: compiled.plan.loopStartSeconds};
+}
+
 export function projectCapabilities() {
   return Object.values(definitions).map(({ spec }) => ({
     id: spec.id,

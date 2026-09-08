@@ -9,7 +9,8 @@ import Link from '@/i18n/react';
 import type {Performance,PerformanceLoss,PerformancePlan} from 'chipvoice';
 import {SiteHeader,SiteFooter,MachinePicker,Button,DisplayPanel} from '../ui/components';
 import {RangeControl} from '../ui/RangeControl';
-import {BufferPlayback} from '../audio/BufferPlayback.mjs';
+import {LatestWorker} from '../audio/LatestWorker';
+import {ArrangementPlayback as BufferPlayback} from '../audio/ArrangementPlayback';
 import {DEMO_MACHINES,type ChipId} from '../studio/document';
 import {Transport,type Overview} from './Transport';
 import './style.css';
@@ -18,8 +19,9 @@ type Asset={file:string;sha256?:string;metrics:{rmsDbFS:number;samplePeakDbFS:nu
 type Entry=Asset&{loopStartSeconds?:number;loopFadeSeconds?:number};
 type Case={omitted?:number;chip:ChipId;seconds:number;loopStartSeconds:number;mode:string;notes:number;losses:PerformanceLoss[];asset:Asset};
 type Piece={id:string;title:string;source:NonNullable<Performance['source']>;notices:string[];parts:{id:string;name:string;role:string;notes:number}[];cases:Case[];native?:{chip:ChipId;file:string;format:'json'|'vgm'};reference?:{title:string;asset:Asset}};
-type Loaded={title:string;chip:string;part:string;pieceId:string;overview:Overview;omitted?:number;seconds:number;losses:PerformanceLoss[];entries:Entry[]};
+type Loaded={plan?:PerformancePlan;title:string;chip:string;part:string;pieceId:string;overview:Overview;omitted?:number;seconds:number;losses:PerformanceLoss[];entries:Entry[]};
 export type Report={pieces:Piece[]};
+type Prepared={overview:Overview;plan:PerformancePlan;seconds:number;loopStartSeconds:number;losses:PerformanceLoss[]};
 type Preparation={title:string;chip?:ChipId;phase:'importing'|'planning'|'rendering'|'encoding'|'decoding';startedAt:number;percent?:number;seconds?:number};
 const phaseLabels={importing:'Importing MIDI',planning:'Arranging instruments',rendering:'Rendering audio',encoding:'Encoding audio',decoding:'Preparing playback'};
 
@@ -30,12 +32,21 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
  const errorText = useErrorText();
  const [report,setReport]=useState<Report|null>(catalogue??null),[pieceId,setPieceId]=useState('mario'),[chip,setChip]=useState<ChipId>('2a03');
  const [part,setPart]=useState('mix'),[tempo,setTempo]=useState(100),[transpose,setTranspose]=useState(0),[side,setSide]=useState(0);
- const [audio,setAudio]=useState({playing:false,loading:false,error:''}),[preparing,setPreparing]=useState(false),[error,setError]=useState(''),[session,setSession]=useState(0);
+ const [audio,setAudio]=useState({playing:false,loading:false,error:''}),[preparing,setPreparing]=useState(false),[exporting,setExporting]=useState(false),[error,setError]=useState(''),[session,setSession]=useState(0);
  const [imported,setImported]=useState<Performance|null>(null),[loaded,setLoaded]=useState<Loaded|null>(null);
- const player=useRef<BufferPlayback|null>(null),worker=useRef<Worker|null>(null),generation=useRef(0),urls=useRef<string[]>([]),documents=useRef(new Map<string,Performance|PerformancePlan>());
+ const player=useRef<BufferPlayback|null>(null),worker=useRef<LatestWorker<Prepared>|null>(null),generation=useRef(0),urls=useRef<string[]>([]),documents=useRef(new Map<string,Performance|PerformancePlan>());
  const interacted=useRef(false),alive=useRef(true);
  const [overview,setOverview]=useState<Overview|null>(initialOverview??null);
  const views=useRef(new Map<string,Overview>(initialOverview?[['mario:2a03',initialOverview]]:[]));
+ const viewRequests=useRef(new Map<string,Promise<Overview>>());
+ const getView=(id:string,target:string)=>{
+  const key=`${id}:${target}`,cached=views.current.get(key);
+  if(cached)return Promise.resolve(cached);
+  let request=viewRequests.current.get(key);
+  if(!request){request=fetch(`/arrangement-data/${id}-${target}-view.json`).then(r=>{if(!r.ok)throw Error('Score view unavailable');return r.json();}).then(view=>{views.current.set(key,view);return view;}).finally(()=>viewRequests.current.delete(key));viewRequests.current.set(key,request);}
+  return request;
+ };
+ const plans=useRef(new Map<string,Prepared>()),sourceRevision=useRef(0);
  const selectionId=useRef('mario');
  const importer=useRef<Worker|null>(null),importGeneration=useRef(0);
  const [importing,setImporting]=useState(false),[importError,setImportError]=useState('');
@@ -46,31 +57,33 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
  useEffect(()=>{
   alive.current=true;const abort=new AbortController();
   if(!catalogue)fetch('/arrangement-data/report.json',{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('The arrangement collection could not load.');return r.json();}).then(setReport).catch(e=>{if(!abort.signal.aborted)setError(e.message);});
-  return()=>{alive.current=false;abort.abort();generation.current++;worker.current?.terminate();importer.current?.terminate();const p=player.current;releasePlayback(p);};
+  return()=>{alive.current=false;abort.abort();generation.current++;worker.current?.dispose();importer.current?.terminate();const p=player.current;releasePlayback(p);};
  },[]);
 
  useEffect(()=>{if(!active)return;let raf=0,last:Loaded|null=null;const tick=()=>{const next=player.current?.audibleSelection() as Loaded|null;if(next&&next!==last){last=next;setLoaded(next);setSide(player.current!.side);}raf=requestAnimationFrame(tick);};tick();return()=>cancelAnimationFrame(raf);},[active]);
- useEffect(()=>{if(views.current.has(`${pieceId}:${chip}`)){setOverview(views.current.get(`${pieceId}:${chip}`)!);return;}if(pieceId==='imported')return;const abort=new AbortController();fetch(`/arrangement-data/${pieceId}-${chip}-view.json`,{signal:abort.signal}).then(r=>{if(!r.ok)throw Error('Score view unavailable');return r.json();}).then(view=>{views.current.set(`${pieceId}:${chip}`,view);setOverview(view);}).catch(()=>{});return()=>abort.abort();},[pieceId,chip]);
+ useEffect(()=>{if(pieceId==='imported')return;let cancelled=false;void getView(pieceId,chip).then(view=>{if(!cancelled)setOverview(view);}).catch(()=>{});return()=>{cancelled=true;};},[pieceId,chip]);
  const piece=pieceId==='imported'&&imported?{id:'imported',title:imported.title,source:imported.source!,notices:imported.notices,parts:imported.parts.map(p=>({...p,notes:p.notes.length})),cases:[]} as Piece:report?.pieces.find(p=>p.id===pieceId);
  const current=piece?.cases.find(row=>row.chip===chip);
  const ensure=()=>{
-  if(!player.current){const context=new AudioContext(),transport=new BufferPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});});player.current=transport;bufferedPlayback(transport,'arrangements',()=>{const data=transport.audibleSelection() as Loaded|null;return {title:data?.title??'Full arrangements',translateTitle:data?.pieceId!=='imported',chip:data?.chip,href:'/',download:data?.entries[transport.side]?.file};},()=>{for(const url of urls.current)URL.revokeObjectURL(url);});setSession(s=>s+1);}
+  if(!player.current){const context=new AudioContext(),transport=new BufferPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});playbackSession.refresh();});player.current=transport;bufferedPlayback(transport,'arrangements',()=>{const data=transport.audibleSelection() as Loaded|null;return {title:data?.title??'Full arrangements',translateTitle:data?.pieceId!=='imported',chip:data?.chip,href:'/',download:data?.entries[transport.side]?.file||undefined};},()=>{for(const url of urls.current)URL.revokeObjectURL(url);});setSession(s=>s+1);}
   return player.current;
  };
  const interact=()=>{const transport=ensure();if(!interacted.current){interacted.current=true;playbackSession.request(playbackFor(transport)!);void transport.toggle();}};
  const toggle=()=>{interacted.current=true;const p=ensure();if(p.playing)playbackSession.pause(playbackFor(p));else {playbackSession.request(playbackFor(p)!);void p.toggle();}};
  useEffect(()=>{if(!active)return;const key=(e:KeyboardEvent)=>{if(!playbackSession.active&&!playbackSession.pending&&e.code==='Space'&&!e.repeat&&!(e.target instanceof Element&&e.target.closest('input,textarea,select,button,a,summary,[contenteditable]'))){e.preventDefault();toggle();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[active]);
  const change=(edit:()=>void)=>{
-  generation.current++;worker.current?.terminate();player.current?.cancelSelection();
+  generation.current++;worker.current?.cancel();player.current?.cancelSelection();
   importGeneration.current++;importer.current?.terminate();
   setImporting(false);setImportError('');edit();setSession(s=>s+1);
  };
  useEffect(()=>{
   if(!piece||!player.current||importing)return;
-  const ticket=++generation.current,abort=new AbortController();worker.current?.terminate();worker.current=null;
+  const ticket=++generation.current,abort=new AbortController();worker.current?.cancel();
   player.current.cancelSelection();
   setPreparing(true);setError('');setPreparation({title:piece.title,chip,phase:'planning',startedAt:Date.now()});
+  const rowReady=!!current&&part==='mix'&&tempo===100&&transpose===0;
   const timer=setTimeout(()=>{void(async()=>{
+   let previewPlan:PerformancePlan|undefined;
    let row=current,entries:Entry[],view=views.current.get(`${pieceId}:${chip}`);
    if(row&&part==='mix'&&tempo===100&&transpose===0){
     entries=[{...row.asset,loopStartSeconds:row.loopStartSeconds}];
@@ -84,40 +97,41 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
      else native=await document(`${pieceId}-native`) as PerformancePlan;
     }
     if(ticket!==generation.current)return;
-    const active=new Worker('/arrangement-render.js');worker.current=active;
-    const result=await new Promise<{overview:Overview;wav:ArrayBuffer;seconds:number;loopStartSeconds:number;losses:PerformanceLoss[];peak:number} >((resolve,reject)=>{
-     active.onerror=()=>reject(Error('The audio renderer failed. Try a shorter MIDI.'));
-     active.onmessage=({data})=>{
-      if(ticket!==generation.current)return;
-      if(data.type==='progress'){setPreparation(previous=>({...previous!,phase:data.phase,percent:data.percent,seconds:data.seconds}));return;}
-      data.error?reject(Error(data.error)):resolve(data);
-     };
-     active.postMessage({id:ticket,score,native,nativeVgm,chip,tempo,transpose,part});
-    });
-    active.terminate();if(ticket!==generation.current)return;view=result.overview;views.current.set(`${pieceId}:${chip}`,view);
-    const file=URL.createObjectURL(new Blob([result.wav],{type:'audio/wav'}));urls.current.push(file);
-    // Keep the current recording and a few recent variants; the transport has
-    // decoded older buffers already. URLs never grow with slider movements.
-    while(urls.current.length>8)URL.revokeObjectURL(urls.current.shift()!);
-    entries=[{file,loopStartSeconds:result.loopStartSeconds,metrics:{rmsDbFS:0,samplePeakDbFS:0,envelope:[]}}];
+    const key=`${pieceId}:${chip}:${part}:${tempo}:${transpose}:${sourceRevision.current}`;
+    let result=plans.current.get(key);
+    if(!result){
+     worker.current??=new LatestWorker<Prepared>('/arrangement-render.js');
+     result=await worker.current.request({id:ticket,score,native,nativeVgm,chip,tempo,transpose,part,planOnly:true});
+     plans.current.set(key,result);
+     let bytes=0;for(const item of plans.current.values())bytes+=item.plan.events.length*80+item.plan.memory.reduce((n,b)=>n+b.bytes.byteLength,0);
+     while(plans.current.size>8||bytes>24*1024*1024){const oldest=plans.current.keys().next().value!;const item=plans.current.get(oldest)!;bytes-=item.plan.events.length*80+item.plan.memory.reduce((n,b)=>n+b.bytes.byteLength,0);plans.current.delete(oldest);}
+    }
+    if(ticket!==generation.current)return;view=result.overview;
+    previewPlan=result.plan;
+    entries=[{file:'',loopStartSeconds:result.loopStartSeconds,metrics:{rmsDbFS:0,samplePeakDbFS:0,envelope:[]}}];
     row={chip,seconds:result.seconds,loopStartSeconds:result.loopStartSeconds,losses:result.losses,mode:'adaptation',notes:0,asset:entries[0]};
    }
-   if(!view){const response=await fetch(`/arrangement-data/${pieceId}-${chip}-view.json`,{signal:abort.signal});if(!response.ok)throw Error('Score view unavailable');view=await response.json();views.current.set(`${pieceId}:${chip}`,view!);}
+   const viewReady=view?Promise.resolve(view):getView(pieceId,chip);
    if(ticket!==generation.current)return;
    entries=entries.map(entry=>({...entry,loopFadeSeconds:.003}));
    setPreparation(previous=>({...previous!,phase:'decoding',percent:undefined}));
    const transport=player.current!;
-   const presentation:Loaded={title:piece.title,chip,part,pieceId,overview:view!,omitted:row!.omitted,seconds:row!.seconds,losses:row!.losses,entries};
-   if(await transport.select(entries,levels(entries),{restart:selectionId.current!==pieceId,side:0,presentation})&&ticket===generation.current){selectionId.current=pieceId;setOverview(view!);setPreparing(false);}
+   const presentation=viewReady.then(next=>{view=next;return {plan:previewPlan,title:piece.title,chip,part,pieceId,overview:next,omitted:row!.omitted,seconds:row!.seconds,losses:row!.losses,entries} satisfies Loaded;});
+   const restart=selectionId.current!==pieceId;
+   const selected=previewPlan
+    ? await transport.selectPlan(previewPlan,await presentation,`${pieceId}:${chip}:${part}:${tempo}:${transpose}:${sourceRevision.current}`,restart)
+    : await transport.select(entries,levels(entries),{restart,side:0,presentation,lazy:true});
+   if(selected&&ticket===generation.current){selectionId.current=pieceId;setOverview(view!);setPreparing(false);}
    else if(ticket===generation.current)setPreparing(false);
-  })().catch(e=>{if(ticket===generation.current&&!abort.signal.aborted){setError(e.message);setPreparing(false);}});},180);
-  return()=>{clearTimeout(timer);abort.abort();generation.current++;worker.current?.terminate();player.current?.cancelSelection();};
+  })().catch(e=>{if(ticket===generation.current&&!abort.signal.aborted){setError(e.message);setPreparing(false);}});},rowReady?0:45);
+  return()=>{clearTimeout(timer);abort.abort();generation.current++;worker.current?.cancel();player.current?.cancelSelection();};
  },[pieceId,chip,part,tempo,transpose,session,report,imported,importing]); // Source changes commit together; the old audio keeps playing during preparation.
  const upload=async(file:File)=>{
   setImportError('');
   if(file.size>8*1024*1024){setImportError('Choose a MIDI smaller than 8 MiB.');return;}
+  sourceRevision.current++;
   const ticket=++importGeneration.current;importer.current?.terminate();
-  generation.current++;worker.current?.terminate();player.current?.cancelSelection();
+  generation.current++;worker.current?.cancel();player.current?.cancelSelection();
   setImporting(true);setPreparing(true);setPreparation({title:file.name,phase:'importing',startedAt:Date.now()});interact();
   try{
    const midi=await file.arrayBuffer();if(ticket!==importGeneration.current||!alive.current)return;
@@ -127,7 +141,16 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
    change(()=>{selectionId.current='new-import';setImported(score);setPieceId('imported');setPart('mix');setTempo(100);setTranspose(0);});interact();
   }catch(e){if(ticket===importGeneration.current&&alive.current){importer.current?.terminate();setImporting(false);setPreparing(false);if(!loaded)player.current?.pause();setImportError(e instanceof Error?e.message:String(e));}}
  };
+ const downloadPreview=async()=>{
+  if(!loaded?.plan||exporting)return;setExporting(true);
+  const renderer=new Worker('/arrangement-render.js');
+  try{
+   const wav=await new Promise<ArrayBuffer>((resolve,reject)=>{renderer.onerror=()=>reject(Error('The audio renderer failed. Try a shorter MIDI.'));renderer.onmessage=({data})=>data.error?reject(Error(data.error)):resolve(data.wav);renderer.postMessage({id:1,renderPlan:loaded.plan,chip:loaded.chip});});
+   const url=URL.createObjectURL(new Blob([wav],{type:'audio/wav'})),link=document.createElement('a');link.href=url;link.download=`${loaded.title}.wav`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){setError(e instanceof Error?e.message:String(e));}finally{renderer.terminate();setExporting(false);}
+ };
  const editRole=(id:string,role:Performance['parts'][number]['role'])=>change(()=>{
+  sourceRevision.current++;
   setImported(score=>score?{...score,parts:score.parts.map(p=>p.id===id?{...p,role,priority:({lead:100,chord:50,bass:80,perc:70}[role]),roleInference:{confidence:'high',reason:'override'}}:p),notices:score.notices.filter(n=>!n.startsWith(`${id}:`))}:null);
  });
  const losses=loaded?.losses??current?.losses??[],omitted=loaded?(loaded.omitted??losses.filter(l=>l.kind==='voice-omitted').length):(current?.omitted??losses.filter(l=>l.kind==='voice-omitted').length);
@@ -137,7 +160,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
   {piece&&<section className="console arrangement-deck" aria-label={t("Complete arrangement player")}>
    <div className="console-top"><span className="micro">{t("CHIPVOICE / FULL ARRANGEMENTS")}</span></div>
    <div className="arrangement-choices" aria-label={t("Complete compositions")}>{report?.pieces.map(p=><button key={p.id} aria-pressed={pieceId===p.id} onClick={()=>{change(()=>{setPieceId(p.id);if(p.native)setChip(p.native.chip);setPart('mix');setTempo(100);setTranspose(0);});interact();}}>{t(p.title.split(' · ')[0])}<span>{p.parts.length}{t(" parts")}</span></button>)}<label className="arrangement-upload">{t("Import MIDI")}<input aria-label={t("Import MIDI")} type="file" accept=".mid,.midi,audio/midi" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.target.value='';}}/></label></div>
-   <MachinePicker value={chip} onChange={next=>{change(()=>setChip(next));interact();}}/>
+   <MachinePicker value={chip} onChange={next=>{if(next!==chip)change(()=>setChip(next));interact();}}/>
    <DisplayPanel><div className="screen-title"><div><span className="screen-kicker">{t(loaded?.chip.toUpperCase()??chip.toUpperCase())} / {(loaded?.part==='mix'||!loaded?t('FULL MIX'):t('ISOLATED PART'))}</span><h2>{(loaded?.pieceId??pieceId)==='imported'?(loaded?.title??piece.title):t(loaded?.title??piece.title)}</h2></div><span>{(loaded||current||preparation?.seconds?t("{v0} SEC",{v0:t((loaded?.seconds??current?.seconds??preparation!.seconds!).toFixed(1))}):t('AUDIO PENDING'))}</span></div>
     <Transport translateParts={(loaded?.pieceId??pieceId)!=='imported'} onPlay={toggle} player={player.current} overview={loaded?.overview??overview} seconds={loaded?.seconds??current?.seconds??overview?.seconds??0} part={loaded?.part??'mix'} pending={pending} active={active}/>
     {pending&&preparation?<section className="arrangement-preparation" aria-label={t("Audio preparation")} aria-busy="true">
@@ -149,8 +172,8 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
 
    </DisplayPanel>
    <div className="arrangement-controls"><RangeControl id="arrangement-tempo" label={t("Tempo")} unit="%" min={40} max={200} value={tempo} onChange={value=>{change(()=>setTempo(value));interact();}}/><RangeControl id="arrangement-transpose" label={t("Transpose")} unit={t("st")} min={-24} max={24} value={transpose} onChange={value=>{change(()=>setTranspose(value));interact();}}/></div>
-   <div className="arrangement-versions" aria-label={t("Compare recordings")}><Button disabled={!loaded||pending} aria-pressed={side===0} onClick={()=>{setSide(0);player.current?.setSide(0);}}>{t("Our ")}{(chip===piece?.native?.chip&&tempo===100&&transpose===0?t('native rendering'):t('adaptation'))}</Button><Button disabled={!loaded||loaded.entries.length<2||pending} aria-pressed={side===1} onClick={()=>{setSide(1);player.current?.setSide(1);}}>{t("Independent original reference")}</Button>{loaded&&<a href={loaded.entries[side]?.file} download>{t("Download audio ↓")}</a>}</div>
-   <div className="arrangement-parts" aria-label={t("Isolate instruments")}><button aria-pressed={part==='mix'} onClick={()=>{change(()=>setPart('mix'));interact();}}>{t("Full mix")}</button>{piece.parts.filter(p=>p.notes>0).map(p=><button key={p.id} aria-pressed={part===p.id} onClick={()=>{change(()=>setPart(p.id));interact();}}><strong>{pieceId==='imported'?p.name:t(p.name)}</strong><span>{(p.id.match(/-ch-(\d+)$/)?t("Ch. {v0} · ",{v0:t(p.id.match(/-ch-(\d+)$/)![1])}):t(''))}{p.notes}{t(" source notes")}</span></button>)}</div>
+   <div className="arrangement-versions" aria-label={t("Compare recordings")}><Button disabled={!loaded||pending} aria-pressed={side===0} onClick={()=>{void player.current?.selectSide(0).then(ok=>{if(ok)setSide(0);});}}>{t("Our ")}{(chip===piece?.native?.chip&&tempo===100&&transpose===0?t('native rendering'):t('adaptation'))}</Button><Button disabled={!loaded||loaded.entries.length<2||pending} aria-pressed={side===1} onClick={()=>{void player.current?.selectSide(1).then(ok=>{if(ok)setSide(1);});}}>{t("Independent original reference")}</Button>{loaded&&(loaded.plan?<Button disabled={exporting} onClick={()=>void downloadPreview()}>{t(exporting?"Rendering audio":"Download audio ↓")}</Button>:<a href={loaded.entries[side]?.file} download>{t("Download audio ↓")}</a>)}</div>
+   <div className="arrangement-parts" aria-label={t("Isolate instruments")}><button aria-pressed={part==='mix'} onClick={()=>{if(part!=='mix')change(()=>setPart('mix'));interact();}}>{t("Full mix")}</button>{piece.parts.filter(p=>p.notes>0).map(p=><button key={p.id} aria-pressed={part===p.id} onClick={()=>{if(part!==p.id)change(()=>setPart(p.id));interact();}}><strong>{pieceId==='imported'?p.name:t(p.name)}</strong><span>{(p.id.match(/-ch-(\d+)$/)?t("Ch. {v0} · ",{v0:t(p.id.match(/-ch-(\d+)$/)![1])}):t(''))}{p.notes}{t(" source notes")}</span></button>)}</div>
    {pieceId==='imported'&&imported&&<details className="import-roles"><summary>{t("Review MIDI roles")}</summary><p>{t("Roles are inferred from the notes and instruments. Change a role to adjust its sound and priority; playback continues while the new mix prepares.")}</p><div className="import-role-grid">{imported.parts.map(p=><label key={p.id}><span>{p.name}</span><select aria-label={t("Role for {part}",{part:p.name})} value={p.role} onChange={e=>editRole(p.id,e.target.value as Performance['parts'][number]['role'])}>{(['lead','chord','bass','perc'] as const).map(role=><option key={role} value={role}>{t(({lead:'Melody',chord:'Harmony',bass:'Bass',perc:'Percussion'} as const)[role])}</option>)}</select><span className="role-confidence">{p.roleInference?.reason==='override'?t('Chosen by you'):p.roleInference?.confidence==='high'?t('Strong evidence'):p.roleInference?.confidence==='medium'?t('Likely role'):t('Uncertain · please review')}</span></label>)}</div></details>}
   </section>}
   {importError&&<p className="ui-status ui-error" role="alert">{errorText(importError)}{t(" Choose another MIDI file to try again.")}</p>}

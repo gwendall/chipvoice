@@ -1,3 +1,4 @@
+import type {Publication} from "@/lib/projects";
 /** One tab, one foreground transport. Route owners may detach without destroying
  * the selected recording. An incoming source stays muted until it is ready;
  * cancellation and failures leave the previous source available. */
@@ -22,7 +23,7 @@ export type Playback = {
   volume(value: number): void;
   dispose(): void;
 };
-export type QueueTrack = {id: string; title: string};
+export type QueueTrack = Pick<Publication, 'id' | 'title'> & Partial<Pick<Publication, 'chip' | 'profile' | 'renditions'>>;
 type Entry = { player: Playback; attached: boolean };
 export class PlaybackSession {
   private entries = new Map<Playback, Entry>();
