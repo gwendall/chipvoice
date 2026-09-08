@@ -37,7 +37,7 @@ try {
     if(gesture === 'tempo') assert.equal(selected.bpm,183);
     const rms = await outputPhraseRms(page,.0001);
     assert.ok(rms > .0001,`${gesture} must start audible output`);
-    await page.getByRole('button',{name:'Stop',exact:true}).click();
+    await page.getByRole('button',{name:'Pause',exact:true}).click();
     await page.getByRole('button',{name:'Mega Drive',exact:true}).click();
     await page.getByRole('button',{name:'Load Mario · Ground Theme',exact:true}).click();
     await page.getByRole('slider',{name:'Tempo slider',exact:true}).focus();await page.keyboard.press('ArrowRight');

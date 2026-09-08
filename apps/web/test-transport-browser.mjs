@@ -55,15 +55,15 @@ try{
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.getByLabel('Tempo',{exact:true}).fill('100');await page.getByLabel('Tempo',{exact:true}).press('Tab');await ready(page);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'pause wins over render');
  await page.getByRole('button',{name:'Famicom',exact:true}).click();await ready(page);
  await page.getByRole('button',{name:'Loop on',exact:false}).click();
- await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.keyboard.press('ArrowLeft');await page.waitForFunction(()=>document.querySelector('[aria-label="Song position"]').value==='999');
- await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>{const r=window.lastRecording;return !r.source.loop&&Math.abs(r.offset/r.source.buffer.duration-.999)<1e-9;});await page.getByRole('button',{name:'Play',exact:true}).waitFor({timeout:5000});assert.equal(await page.getByLabel('Elapsed time').textContent(),'1:28','non-looping song ends');
+ await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.keyboard.press('ArrowLeft');await page.waitForFunction(()=>{const r=document.querySelector('[aria-label="Song position"]');return Number(r.max)-Number(r.value)<.1;});
+ await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>{const r=window.lastRecording;return !r.source.loop&&Math.abs(r.offset-(r.source.buffer.duration-.05))<.06;});await page.getByRole('button',{name:'Play',exact:true}).waitFor({timeout:5000});assert.equal(await page.getByLabel('Elapsed time').textContent(),'1:28','non-looping song ends');
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('replay after end');
  await page.getByRole('button',{name:'Loop off',exact:false}).click();await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.waitForTimeout(600);
- const loopPosition=Number(await page.getByRole('slider',{name:'Song position',exact:true}).inputValue());assert.ok(loopPosition>=25&&loopPosition<60,'native loop skips the introduction');
+ const loopPosition=Number(await page.getByRole('slider',{name:'Song position',exact:true}).inputValue());assert.ok(loopPosition>=2&&loopPosition<6,'native loop skips the introduction');
  await page.getByRole('button',{name:'Independent original reference',exact:true}).click();const referenceDownload=await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href');
- await page.getByRole('button',{name:'Make a loop',exact:false}).click();await page.getByRole('button',{name:'Edit loop',exact:false}).waitFor();await page.waitForTimeout(350);assert.ok(await outputRms(page)<.0001,'composer handoff pauses arrangement');
+ await page.getByRole('button',{name:'Make a loop',exact:false}).click();await page.getByRole('button',{name:'Edit loop',exact:false}).waitFor();await page.waitForTimeout(350);assert.ok(await outputPhraseRms(page)>.0001,'opening composer retains the arrangement');
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>window.chipvoice?.playing);await audible(page);
- await page.getByRole('button',{name:'Listen & explore',exact:true}).click();await page.waitForTimeout(350);assert.ok(await outputRms(page)<.0001,'return disposes composer audio');
+ await page.getByRole('button',{name:'Listen & explore',exact:true}).click();await page.waitForTimeout(350);assert.ok(await outputPhraseRms(page)>.0001,'returning retains the live composition until explicit play');
  assert.equal(await page.getByRole('button',{name:'Independent original reference',exact:true}).getAttribute('aria-pressed'),'true');assert.equal(await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href'),referenceDownload);
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('return from composer');
  for(const width of [320,390,768]){await page.setViewportSize({width,height:844});await page.screenshot({path:new URL(`width-${width}.png`,out).pathname,fullPage:true});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
@@ -71,7 +71,7 @@ try{
  await page.getByRole('button',{name:'Sonic 8 parts',exact:true}).click();await ready(page);
  await page.waitForFunction(()=>document.querySelector('.screen-title h2')?.textContent.startsWith('Sonic')&&document.querySelectorAll('.score-part').length===8);
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.setViewportSize({width:390,height:844});await page.waitForTimeout(100);
- const region=page.getByRole('region',{name:'Source score'});await region.scrollIntoViewIfNeeded();
+ const region=page.getByRole('region',{name:'Source score'});await region.evaluate(node=>node.scrollIntoView({block:'center'}));
  const bounds=await region.boundingBox(),beforeScroll=await page.getByRole('slider',{name:'Song position',exact:true}).inputValue(),cdp=await context.newCDPSession(page);
  const touchX=bounds.x+bounds.width*.5,touchY=bounds.y+bounds.height-35;
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:touchX,y:touchY}]});
@@ -85,7 +85,7 @@ try{
  await page.locator('.screen-bezel').screenshot({path:new URL('mobile-scrolled-score.png',out).pathname});
  await region.focus();await page.keyboard.press('Home');await page.waitForFunction(()=>document.querySelector('.score-overview').scrollTop===0,{},{timeout:3000});
  const top=await region.boundingBox();await page.touchscreen.tap(top.x+top.width*.25,top.y+35);
- await page.waitForFunction(()=>Math.abs(Number(document.querySelector('[aria-label="Song position"]').value)-250)<10);
+ await page.waitForFunction(()=>Math.abs(Number(document.querySelector('[aria-label="Song position"]').value)/Number(document.querySelector('[aria-label="Song position"]').max)-.25)<.01);
  for(const width of [320,390,768]){await page.setViewportSize({width,height:844});assert.ok(await page.locator('.score-part-name').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth)),'Source names stay readable');assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
  checks.push({label:'mobile parts',touchScrollKeepsPosition:true,lastPartReachable:true,tapStillSeeks:true});
  assert.deepEqual(errors,[]);await writeFile(new URL('result.json',out),JSON.stringify({pass:true,checks,errors},null,2));

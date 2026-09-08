@@ -150,10 +150,10 @@ finally:
     await page.goto(`${server.base}/p/${result.projectId}`);
     await page.getByText("Composition prompt", { exact: true }).click();
     await page.getByText(request.prompt, { exact: true }).waitFor();
-    await page.locator("audio").evaluate(async audio => { await audio.play(); });
-    await page.waitForFunction(() => document.querySelector("audio")?.currentTime > 0);
-    assert.ok(await page.locator("audio").evaluate(audio => Math.abs(audio.duration - 10) < 0.25));
-    await page.locator("audio").evaluate(audio => audio.pause());
+    await page.getByRole("button",{name:"Play",exact:true}).click();
+    await page.waitForFunction(() => Number(document.querySelector('.persistent-player input[type=range]')?.value) > 0);
+    assert.ok(await page.locator(".persistent-player input[type=range]").first().evaluate(input => Math.abs(Number(input.max) - 10) < 0.25));
+    await page.getByRole("button",{name:"Pause",exact:true}).click();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: `${out}/song-mobile.png`, fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });

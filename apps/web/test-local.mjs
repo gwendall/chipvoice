@@ -64,6 +64,8 @@ try {
     "test-generation.mjs",
     "test-creator-journey.mjs",
     "test-onboarding.mjs",
+    "test-player-session.mjs",
+    "test-player-browser.mjs",
     "test-session-cache.mjs",
     "test-session-browser.mjs",
     "test-avatar-layout.mjs",

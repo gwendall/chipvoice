@@ -40,9 +40,11 @@ User specification, 2026-09-06. Supersedes the melody-only first-visit default.
 
 The complete-arrangement engine consumes polyphonic `Performance`; the creative
 tracker keeps its four-role `SongDocument`. These are deliberately not converted
-lossily into each other. The visible mode switch owns which one can play. The
-arrangement session remains mounted (paused) while composing, retaining imports
-and playback position; the composer's local draft survives its unmount.
+lossily into each other. The application playback session owns which source is audible. Opening another
+mode keeps it playing; explicit Play hands over when the new source is ready.
+The composer's local draft survives unmount, and the live loop score can be opened
+in the full composer without converting it into a different notation. See
+[the application playback contract](CONTINUOUS-PLAYBACK-LAB.md).
 
 `BufferPlayback` owns decoding, bounded source overlap, crossfades, phase, seek,
 end and loop. A bounded history of numeric timing segments covers rapid seeks

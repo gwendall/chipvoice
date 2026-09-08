@@ -1,8 +1,11 @@
 'use client';
+import {bufferedPlayback} from '@/player/adapters';
+import {playbackSession, playbackFor, releasePlayback} from '@/player/session';
+import {PlayerControls} from '@/player/Player';
 import {useErrorText, useT} from '@/i18n/react';
 import {useEffect, useMemo, useRef, useState} from 'react';
 import Link from '@/i18n/react';
-import {SiteHeader, SiteFooter, MachinePicker, PlayButton, Button, DisplayPanel} from '../ui/components';
+import {SiteHeader, SiteFooter, MachinePicker, Button, DisplayPanel} from '../ui/components';
 import {BufferPlayback} from '../audio/BufferPlayback.mjs';
 import {listeningLevels} from '../../../../packages/conform/src/listening/levels.mjs';
 import type {ChipId} from '../studio/document';
@@ -24,10 +27,11 @@ export default function Lab() {
  const [notes,setNotes]=useState(''),[preference,setPreference]=useState('unsure'),[observations,setObservations]=useState<object[]>([]);
  const player=useRef<BufferPlayback|null>(null);
  const alive=useRef(true);
+ const blindRef=useRef(false);blindRef.current=hidden;
  useEffect(()=>{
   const abort=new AbortController();alive.current=true;
   fetch('/lab-data/report.json',{signal:abort.signal}).then(response=>{if(!response.ok)throw new Error('The listening collection could not load. Reload to try again.');return response.json();}).then(setReport).catch(error=>{if(!abort.signal.aborted)setReportError(error.message);});
-  return()=>{alive.current=false;abort.abort();const active=player.current;player.current=null;active?.dispose();void active?.context.close();};
+  return()=>{alive.current=false;abort.abort();const active=player.current;player.current=null;releasePlayback(active);};
  },[]);
  const selection=useMemo<Selection|null>(()=>{
   const row=report?.cases.find(item=>item.id===caseId)??report?.cases[0];if(!row)return null;
@@ -40,9 +44,9 @@ export default function Lab() {
  },[report,caseId,role,reference]);
  const load=async (next: Selection, transport: BufferPlayback)=>{
   const levels=listeningLevels(next.entries);
-  if(await transport.select(next.entries,levels.gains)){
+  if(await transport.select(next.entries,levels.gains,{presentation:next})){
    if(!alive.current)return;
-   setLoaded(next);setMapping([0,1]);setSide(0);setHidden(false);transport.setSide(0);
+   setLoaded(next);setMapping([0,1]);setSide(0);setHidden(false);blindRef.current=false;transport.setSide(0);
   }
  };
  useEffect(()=>{if(selection&&player.current)void load(selection,player.current);},[selection]);
@@ -51,14 +55,14 @@ export default function Lab() {
   if(!player.current){
    const context=new AudioContext();
    const transport=new BufferPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});});
-   transport.setVolume(volume);player.current=transport;void load(selection,transport);
+   transport.setVolume(volume);player.current=transport;bufferedPlayback(transport,'lab',()=>{const current=transport.audibleSelection() as Selection|null;return {title:current?.row.title??'Listening lab',translateTitle:true,chip:current?.row.chip,href:'/lab',blind:blindRef.current};});void load(selection,transport);
   }
   if(player.current.error&&!player.current.playing)void load(selection,player.current);
-  void player.current.toggle();
+  playbackSession.request(playbackFor(player.current)!);void player.current.toggle();
  };
  const display=loaded??selection;
  const switchSide=(next: number)=>{setSide(next);player.current?.setSide(mapping[next]);};
- const blind=()=>{const next=crypto.getRandomValues(new Uint8Array(1))[0]&1?[1,0]:[0,1];setMapping(next);setHidden(true);setSide(0);player.current?.setSide(next[0]);};
+ const blind=()=>{const next=crypto.getRandomValues(new Uint8Array(1))[0]&1?[1,0]:[0,1];setMapping(next);blindRef.current=true;setHidden(true);setSide(0);player.current?.setSide(next[0]);};
  const exportNotes=()=>{
   const url=URL.createObjectURL(new Blob([JSON.stringify(observations,null,2)],{type:'application/json'}));
   const link=document.createElement('a');link.href=url;link.download='chipvoice-listening-notes.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -82,7 +86,7 @@ export default function Lab() {
      <div className="lab-wave" aria-hidden="true">{!hidden&&display.entries[0].metrics.envelope.map((value,index)=><i key={index} style={{height:`${Math.max(2,value*100)}%`}}/>)}</div>
      <div className="lab-identities">{(hidden?t('Identities hidden. Listen before you reveal.'):t(mapping.slice(0,display.entries.length).map((index,i)=>`${i?'B':'A'} · ${t(display.entries[index].title)}`).join('   /   ')))}</div>
     </DisplayPanel>
-    <div className="transport-row lab-transport"><PlayButton playing={audio.playing} loading={audio.loading} onClick={toggle}/><div className="lab-sides" aria-label={t("Audible version")}><Button aria-label={t("Listen to A")} aria-pressed={side===0} onClick={()=>switchSide(0)} disabled={!loaded||pending}>{t("A")}</Button><Button aria-label={t("Listen to B")} aria-pressed={side===1} onClick={()=>switchSide(1)} disabled={!loaded||pending||display.entries.length<2}>{t("B")}</Button></div><label className="lab-volume">{t("VOLUME")}<input aria-label={t("Listening volume")} type="range" min="0" max="1" step=".01" value={volume} onChange={event=>{const next=Number(event.target.value);setVolume(next);player.current?.setVolume(next);}}/></label><Button disabled={!loaded||pending||display.entries.length<2} onClick={hidden?()=>setHidden(false):blind}>{(hidden?t('Reveal identities'):t('Hide & shuffle'))}</Button></div>
+    <div className="transport-row lab-transport"><PlayerControls player={playbackFor(player.current)} seconds={display.row.seconds} onPlay={toggle}/><div className="lab-sides" aria-label={t("Audible version")}><Button aria-label={t("Listen to A")} aria-pressed={side===0} onClick={()=>switchSide(0)} disabled={!loaded||pending}>{t("A")}</Button><Button aria-label={t("Listen to B")} aria-pressed={side===1} onClick={()=>switchSide(1)} disabled={!loaded||pending||display.entries.length<2}>{t("B")}</Button></div><label className="lab-volume">{t("VOLUME")}<input aria-label={t("Listening volume")} type="range" min="0" max="1" step=".01" value={volume} onChange={event=>{const next=Number(event.target.value);setVolume(next);player.current?.setVolume(next);}}/></label><Button disabled={!loaded||pending||display.entries.length<2} onClick={hidden?()=>setHidden(false):blind}>{(hidden?t('Reveal identities'):t('Hide & shuffle'))}</Button></div>
     <p className={`ui-status ${audio.error?'ui-error':''}`} role="status">{audio.error?errorText(audio.error):t((audio.loading?(audio.playing?'Preparing the next sound. Playback continues.':'Preparing the next sound…'):audio.playing?'Playing continuously · levels matched for comparison.':'Ready when you are. No audio starts until you press Play.'))}</p>
     {audio.error&&<Button onClick={()=>{if(player.current)void load(selection,player.current);}}>{t("Retry loading")}</Button>}
     <div className="console-bottom"><span>{t("SYNCHRONIZED A/B · LOSSLESS AUDIO")}</span><span>{t("TRUST YOUR EARS")}</span></div>

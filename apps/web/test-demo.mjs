@@ -67,7 +67,7 @@ try {
   await page.keyboard.press('3');
   await page.waitForFunction(before => window.chipvoiceMetrics.effect > before, effectsBefore);
   check('Three cartridges play and effect shortcuts work with a focused control');
-  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
   await page.waitForTimeout(400); const silent = await amplitude(page); assert.ok(silent.peak < .001, JSON.stringify(silent)); check('Stop stays silent after queued notes', silent);
   await page.locator('.demo-page .machines').getByRole('button', { name: 'Game Boy', exact: true }).click();
   await page.waitForFunction(() => window.chipvoice?.spec.id === 'dmg'); assert.equal(await page.evaluate(() => window.chipvoice.playing), false);

@@ -529,3 +529,17 @@ physical-device acceptance remain open. See [the timbre evaluation](evals/PORTAB
 Implemented: separate owned artists; scoped, expiring agent pairing without an agent mailbox; owner revocation; HTTP evaluation before publication; pinned MP3 with original-WAV conversion; console-version grouping; configurable original pixel portraits; English/Japanese UI and documentation. See [contracts and verification](ARTISTS-AND-AGENTS.md).
 
 Ownerless agent accounts, delegated per-song permissions, refresh tokens, full-song perceptual quality grading and a universal orchestral instrument library remain separate future decisions. This release does not claim those capabilities.
+
+### Persistent site player (2026-09-08)
+
+- Shared transport controls across arrangements, live loops, composition, lab and publications.
+- Application-owned playback survives client navigation; explicit ready sources take ownership.
+- Fixed mobile/desktop player with audible metadata, seek/restart/repeat/volume and source links.
+- Direct play from Explore/library/artist cards; bounded on-demand streaming and a result-list queue.
+- Published audio keeps its revision and creator; blind A/B metadata stays masked across navigation.
+- Live loop score opens in the full composer; pads and recording retain their live engine.
+- Transport progress and piano-roll highlights update locally, without rerendering the full editor.
+- English/Japanese copy, shared component catalogue and browser/audio/session regressions.
+
+Contract and verification: [continuous playback](CONTINUOUS-PLAYBACK-LAB.md).
+Reload restoration, cross-tab playback coordination and collaborative editing remain separate work.

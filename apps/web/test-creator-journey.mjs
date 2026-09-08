@@ -114,9 +114,9 @@ try {
   await listener.goto(base + '/p/' + song.id);
   await listener.getByRole('heading', { name: song.title, exact: true }).waitFor();
   assert.equal(await listener.getByText('Composition prompt', { exact: true }).count(), 0);
-  await listener.locator('audio').evaluate(audio => audio.play());
-  await listener.waitForFunction(() => document.querySelector('audio')?.currentTime > 0);
-  await listener.locator('audio').evaluate(audio => audio.pause());
+  await listener.getByRole('button',{name:'Play',exact:true}).click();
+  await listener.waitForFunction(() => Number(document.querySelector('.persistent-player input[type=range]')?.value) > 0);
+  await listener.getByRole('button',{name:'Pause',exact:true}).click();
   const mp3 = await readFile(generated.mp3);
   const decoded = await listener.evaluate(async bytes => { const ctx = new AudioContext(); try { const buffer = await ctx.decodeAudioData(Uint8Array.from(atob(bytes), c => c.charCodeAt(0)).buffer); let peak = 0, energy = 0, samples = 0; for (let c = 0; c < buffer.numberOfChannels; c++) for (const sample of buffer.getChannelData(c)) { peak = Math.max(peak, Math.abs(sample)); energy += sample * sample; samples++; } return { duration: buffer.duration, peak, rms: Math.sqrt(energy / samples) }; } finally { await ctx.close(); } }, mp3.toString('base64'));
   assert.ok(Math.abs(decoded.duration - (production ? 30 : 10)) < .25);

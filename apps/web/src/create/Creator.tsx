@@ -1,4 +1,7 @@
 "use client";
+import {projectPlayback} from "@/player/adapters";
+import {playbackSession, playbackFor, releasePlayback} from "@/player/session";
+import {PlayerControls} from "@/player/Player";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ProjectPlayer,
@@ -17,7 +20,6 @@ import {
   SiteHeader,
   SiteFooter,
   MachinePicker,
-  PlayButton,
   Button,
 } from "@/ui/components";
 import { RangeControl } from "@/ui/RangeControl";
@@ -32,6 +34,7 @@ import PianoRoll from "./PianoRoll";
 import "./style.css";
 import {
   DRAFT_ROOT as DRAFT,
+  draftHref,
   newDraftKey,
   readDraft,
   isDraftKey,
@@ -45,8 +48,6 @@ const TIMBRE_PRESETS = [
   [48, "Strings"],
   [89, "Warm pad"],
 ] as const;
-const stamp = (seconds: number) =>
-  `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
 export default function Creator({
   initial,
   publication,
@@ -73,11 +74,9 @@ export default function Creator({
       progress: 0,
       error: "",
       seconds: 0,
-      position: 0,
       losses: 0,
       project: null as MusicProject | null,
     }),
-    [loop, setLoop] = useState(true),
     [solo, setSolo] = useState<string | null>(null);
   const [code, setCode] = useState(""),
     [codeMode, setCodeMode] = useState<"json" | "javascript">("json"),
@@ -153,26 +152,30 @@ export default function Creator({
     [performance, project.settings.tempoScale],
   );
   const sourceSeconds = clock && performance ? clock(performance.endTick) : 0;
+  const lossCount = useRef({prepared:null as object|null,count:0});
   const sync = () => {
     if (!alive.current || !player.current) return;
     const p = player.current;
-    setAudio({
+    if(lossCount.current.prepared !== p.prepared) {
+      let count=0;for(const loss of p.prepared?.losses??[])if(loss.kind==='voice-omitted')count++;
+      lossCount.current={prepared:p.prepared,count};
+    }
+    const next = {
       playing: p.playing,
       project: p.audibleProject,
       preparing: p.preparing,
       progress: p.progress,
       error: p.error,
       seconds: p.duration,
-      position: p.position,
-      losses:
-        p.prepared?.losses.filter((l) => l.kind === "voice-omitted").length ??
-        0,
-    });
+      losses:lossCount.current.count,
+    };
+    setAudio(previous => previous.playing===next.playing && previous.project===next.project && previous.preparing===next.preparing && previous.progress===next.progress && previous.error===next.error && previous.seconds===next.seconds && previous.losses===next.losses ? previous : next);
   };
   const ensurePlayer = () => {
     if (!player.current) {
       player.current = new ProjectPlayer({ onChange: sync });
-      player.current.loop = loop;
+      player.current.loop = true;
+      projectPlayback(player.current, () => publication ? `/p/${publication.id}` : draftKey.current ? draftHref(draftKey.current) : "/create");
     }
     return player.current;
   };
@@ -304,7 +307,7 @@ export default function Creator({
       alive.current = false;
       importGeneration.current++;
       importJob.current?.abort();
-      player.current?.dispose();
+      releasePlayback(player.current);
       player.current = null;
     };
   }, [initial]);
@@ -337,9 +340,6 @@ export default function Creator({
     }, 180);
     return () => clearTimeout(timer);
   }, [project.source, project.settings, solo, ready]);
-  useEffect(() => {
-    if (!active) player.current?.pause();
-  }, [active]);
   useEffect(() => {
     if (!audio.playing) return;
     let frame = 0,
@@ -394,6 +394,7 @@ export default function Creator({
         p.pause();
         return;
       }
+      playbackSession.request(playbackFor(p)!);
       await p.play();
       if (
         !loaded.current ||
@@ -554,17 +555,14 @@ export default function Creator({
         )
       : clock;
   }, [audio.project, clock]);
-  let positionTick = 0;
-  if (performance && audibleClock && audio.seconds) {
-    let lo = 0,
-      hi = performance.endTick;
-    for (let i = 0; i < 40 && hi - lo > 1; i++) {
-      const mid = Math.floor((lo + hi) / 2);
-      if (audibleClock(mid) <= audio.position) lo = mid;
-      else hi = mid;
-    }
-    positionTick = lo;
-  }
+  const readPositionTick = () => {
+    const current = player.current;
+    if (!performance || !audibleClock || !current?.duration) return 0;
+    const position=current.position;
+    let lo=0, hi=performance.endTick;
+    for(let i=0;i<40 && hi-lo>1;i++) { const mid=Math.floor((lo+hi)/2);if(audibleClock(mid)<=position)lo=mid;else hi=mid; }
+    return lo;
+  };
   if (!ready)
     return (
       <>
@@ -685,44 +683,8 @@ export default function Creator({
             />
           </div>
           <div className="create-transport">
-            <div className="progress-row">
-              <input
-                aria-label={t("Song position")}
-                type="range"
-                min={0}
-                max={audio.seconds || 1}
-                step={0.05}
-                value={Math.min(audio.position, audio.seconds || 1)}
-                onChange={(e) => {
-                  player.current?.seek(Number(e.target.value));
-                  sync();
-                }}
-              />
-              <span>
-                {stamp(audio.position)} /{" "}
-                {stamp(audio.seconds || sourceSeconds)}
-              </span>
-            </div>
+            <PlayerControls player={playbackFor(player.current)} seconds={sourceSeconds} loading={audio.preparing} disabled={!ready || busy} onPlay={()=>void toggle()}/>
             <div className="transport-controls">
-              <PlayButton
-                playing={audio.playing}
-                loading={audio.preparing}
-                pause
-                disabled={!ready || busy}
-                onClick={() => void toggle()}
-              />
-              <Button onClick={() => player.current?.restart()}>
-                {t("Restart")}
-              </Button>
-              <Button
-                aria-pressed={loop}
-                onClick={() => {
-                  setLoop(!loop);
-                  if (player.current) player.current.loop = !loop;
-                }}
-              >
-                {t("Loop")}
-              </Button>
               <Button onClick={() => void exportAudio()}>
                 {t("Download WAV")}
               </Button>
@@ -1003,7 +965,7 @@ export default function Creator({
                           onClick={() =>
                             setBar(
                               Math.floor(
-                                positionTick /
+                                readPositionTick() /
                                   (performance.ticksPerBeat * 4 * barsPerPage),
                               ) * barsPerPage,
                             )
@@ -1068,7 +1030,7 @@ export default function Creator({
                         columns={barsPerPage * 16}
                         ticksPerBeat={performance.ticksPerBeat}
                         startTick={bar * 4 * performance.ticksPerBeat}
-                        positionTick={positionTick}
+                        readPosition={readPositionTick}
                         onEdit={(next) => {
                           const max = next.notes.reduce(
                             (end, n) => Math.max(end, n.endTick),

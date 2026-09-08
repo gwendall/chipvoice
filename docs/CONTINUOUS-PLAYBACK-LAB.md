@@ -91,3 +91,43 @@ Publication rejects incomplete collections and repairs corrupted cached FLAC
 files only after checking their decoded PCM against the verified source WAV.
 Browser runs save desktop/mobile screenshots, videos and measured audio results
 in `.artifacts`; CI uploads these without rendering a new evaluation corpus.
+
+## Application playback session
+
+The web layout owns a single `PlaybackSession`; pages attach audio adapters and
+release their UI ownership on unmount. The selected adapter survives navigation
+and pause. A replacement remains muted while preparing; only a ready explicit
+Play request takes ownership. The previous adapter is paused, and detached
+resources are retired after their release fade. Merely visiting an editor never
+changes the audible track. No route UI tree is kept mounted to preserve sound.
+
+`PlayerControls` is the common transport for arrangements, the listening lab,
+the live loop editor, the full composer and published revisions. The fixed bottom
+player exposes the same position, restart, repeat and volume controls, with a
+compact expandable mobile view. Seek uses seconds and reads the engine's audible
+clock. Animation updates isolated DOM nodes instead of publishing a React state
+update on every audio frame. Adapter capabilities hide unavailable controls.
+
+Three implementations remain intentional: `BufferPlayback` for prepared A/B
+recordings, `ProjectPlayer` for worker-rendered projects, and `LivePlayback` for
+pads, recording and immediate note audition. Published songs stream their saved
+revision through an HTML media element with custom controls; they are not rendered
+again in the browser. Only the chosen publication's details/audio are requested.
+Explore, library and artist cards seed a simple queue from the displayed results;
+a natural end advances once, while repeat holds the current song. A comparison
+clears the queue, and blind identity/download masking persists across routes.
+The loop editor can open its existing score in the full composer without changing
+the notes or restarting audio merely because the route changed.
+
+The session is scoped to one browser tab. Reloading/closing the tab ends it;
+playback cannot be restored automatically around browser autoplay restrictions.
+Failed incoming recordings leave the old song playing and report the error.
+The local component catalogue includes idle/loading/compact transport examples.
+
+Tests: `apps/web/test-player-session.mjs` exercises ownership, races, failures,
+resource retirement and queues through the session interface.
+`apps/web/test-player-browser.mjs` checks actual audio-context continuity across
+Next navigation, passive editor entry, published WAV playback, creator attribution,
+queue completion, desktop/mobile/Japanese layouts and blind comparison navigation.
+Existing engine and transport tests retain audio-clock, phase, pending-pause,
+recording, MIDI and canvas-touch coverage. Screenshots live under `.artifacts/player`.

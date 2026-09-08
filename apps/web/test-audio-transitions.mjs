@@ -37,7 +37,7 @@ try{
  await number.fill('');await number.press('Enter');await valueIs(number,'300');
  await number.fill('120');await number.press('Enter');
  // Earlier console gestures may already have enabled the one-time autoplay.
- if(!await page.getByRole('button',{name:'Stop',exact:true}).count())await page.getByRole('button',{name:'Play',exact:true}).click();
+ if(!await page.getByRole('button',{name:'Pause',exact:true}).count())await page.getByRole('button',{name:'Play',exact:true}).click();
  await page.waitForFunction(()=>window.chipvoice?.position()?.step>0);
  await page.evaluate(async()=>{
   const ctx=window.audioBus.context;
@@ -70,7 +70,7 @@ try{
  assert.ok(results.transitions.length>=4);
  for(const transition of results.transitions){assert.ok(transition.expected);assert.deepEqual(transition.position,transition.expected,'Incoming engine must preserve fractional musical phase');}
  await page.locator('.demo-page .machines').getByRole('button',{name:'Game Boy',exact:true}).click();
- await page.getByRole('button',{name:'Stop',exact:true}).click();
+ await page.getByRole('button',{name:'Pause',exact:true}).click();
  await page.waitForTimeout(550);
  assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'Stop wins over pending engine creation');
  assert.equal(await page.evaluate(()=>window.chipvoice.playing),false);

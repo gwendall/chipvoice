@@ -1,4 +1,5 @@
 import {Chip, type Song} from 'chipvoice';
+import {outputTime} from './output-clock.mjs';
 import {Fade} from './fade.mjs';
 
 type Engine = {chip: Chip; fade: Fade; song: Song};
@@ -16,6 +17,52 @@ export class LivePlayback {
   private song: Song | null = null;
   private running: Promise<Chip | null> | null = null;
   private disposed = false;
+  private pausedSong: Song | null = null;
+  private pausedAt = {step: 0, orderIndex: 0, progress: 0};
+  private timelineSong: Song | null = null;
+  private starts: number[] = [];
+  private totalSteps = 0;
+  private timeline() {
+    const song = this.active?.song;
+    if (!song || song === this.timelineSong) return;
+    this.timelineSong = song; this.starts = []; this.totalSteps = 0;
+    for (const index of song.order) { this.starts.push(this.totalSteps); this.totalSteps += song.patterns[index].bass.trim().split(/\s+/).length; }
+  }
+  get duration() { this.timeline(); return this.totalSteps * this.stepSeconds; }
+  get position() {
+    this.timeline();
+    const phase = this.playing ? this.current?.phaseAt(outputTime(this.context)) : this.pausedAt;
+    return phase ? ((this.starts[phase.orderIndex] ?? 0) + phase.step + (phase.progress ?? 0)) * this.stepSeconds : 0;
+  }
+  pause() {
+    const phase = this.current?.phaseAt(outputTime(this.context));
+    this.pausedSong=this.active?.song??null;
+    if (phase) this.pausedAt = { ...phase, progress: phase.progress ?? 0 };
+    this.stop();
+  }
+  async resume() {
+    if (!this.song || this.disposed) return null;
+    this.playing = true; await this.context.resume();
+    if (!this.playing || this.disposed) return null;
+    if (this.active && this.active.chip.spec.id === this.song.chip) {
+      const old = this.pausedSong??this.active.song, next = this.song;
+      const compatible = old.order.length === next.order.length && old.order.every((index,i)=>old.patterns[index].bass.trim().split(/\s+/).length/(old.stepsPerBeat??4) === next.patterns[next.order[i]].bass.trim().split(/\s+/).length/(next.stepsPerBeat??4));
+      const step = (this.pausedAt.step + this.pausedAt.progress) * (next.stepsPerBeat??4)/(old.stepsPerBeat??4);
+      const phase = compatible ? {...this.pausedAt,step:Math.floor(step),progress:step%1} : undefined;
+      this.active.chip.play(next, phase); this.active.song=next; this.active.fade.toValue(1); this.changed(); return this.active.chip;
+    }
+    return this.sync();
+  }
+  seek(seconds: number) {
+    this.pausedSong=this.active?.song??null;
+    this.timeline(); const step = Math.max(0, Math.min(seconds, Math.max(0, this.duration - .001))) / (this.stepSeconds || 1);
+    let index = this.starts.length - 1;
+    while (index > 0 && this.starts[index] > step) index--;
+    const local = step - (this.starts[index] ?? 0);
+    this.pausedAt = {orderIndex: Math.max(0,index), step: Math.floor(local), progress: local % 1};
+    if (this.playing && this.active) { this.active.chip.stop(); this.active.chip.play(this.active.song, this.pausedAt); }
+    this.changed();
+  }
   private wake: (() => void) | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   constructor(readonly context: AudioContext, private changed: () => void, private createChip: typeof Chip.create = Chip.create) {

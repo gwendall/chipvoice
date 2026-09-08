@@ -1,4 +1,5 @@
 "use client";
+import {PublicationPlay} from "@/player/Player";
 import { useEffect, useState } from "react";
 import { useT } from "@/i18n/react";
 import Link from "@/i18n/react";
@@ -177,11 +178,7 @@ export default function PublishedProject({ id }: { id: string }) {
                         : "Published audio · preserved with this revision",
                     )}
                   </p>
-                  <audio
-                    controls
-                    preload="metadata"
-                    src={`/api/v1/jobs/${(publication.renditions.find((r) => r.kind === "full" && r.status === "ready") ?? publication.renditions.find((r) => r.status === "ready"))!.id}/audio`}
-                  />
+                  <PublicationPlay item={publication} full/>
                   {rendition && (
                     <div className="project-actions">
                       <a

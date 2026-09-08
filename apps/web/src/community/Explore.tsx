@@ -1,4 +1,5 @@
 "use client";
+import {PublicationPlay} from "@/player/Player";
 import { useEffect, useState, useRef } from "react";
 import Link, { useT } from "@/i18n/react";
 import { SiteHeader, SiteFooter, Button } from "@/ui/components";
@@ -236,6 +237,7 @@ export default function Explore({
                 <span>{item.tags.join(" · ")}</span>
               </div>
               <div className="song-bottom">
+                <PublicationPlay item={item} queue={items.map(({id,title})=>({id,title}))}/>
                 <Link href={`/p/${item.id}`}>{t("Listen / remix")} →</Link>
                 <Button
                   disabled={item.owned}
@@ -248,6 +250,7 @@ export default function Explore({
               </div>
               {item.owned && (
                 <div className="song-bottom">
+                <PublicationPlay item={item} queue={items.map(({id,title})=>({id,title}))}/>
                   <span>{t(item.visibility)}</span>
                   <Button
                     onClick={() =>

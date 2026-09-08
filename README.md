@@ -43,8 +43,15 @@ game verification from MIDI transcription and cross-console adaptation.
 
 **Make a loop** opens the editor, keyboard, pads, recording, undo, code, export and
 sharing in the same page. Your saved draft is restored there; shared links still
-open their score. Switching modes pauses the previous instrument. C64 is hidden
+open their score. Opening another mode or page keeps the current music playing;
+press Play to hand over to the next instrument. Continue in composer turns the
+same loop score into a full project. C64 is hidden
 from the public selector, with SDK and saved-score support retained.
+
+A shared player stays at the bottom of the site, including on mobile. Listen
+directly from Explore, library and artist cards, follow their playback queue, or
+open a published revision while its saved audio keeps playing. See the
+[playback contract](docs/CONTINUOUS-PLAYBACK-LAB.md).
 
 The [listening lab](https://chipvoice.dev/lab) holds engine comparisons; the former
 `/lab/arrangements` URL redirects home. The [About page](https://chipvoice.dev/about)
