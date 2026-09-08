@@ -24,6 +24,8 @@ try {
   const portrait=await account.locator('svg').innerHTML();
   for(const label of ['Explore','API','Create']) {
     await page.locator('header').getByRole('link',{name:label,exact:true}).click();
+    await page.waitForURL(server.base + { Explore: '/explore', API: '/docs', Create: '/create' }[label]);
+    await page.locator('header a[aria-current=page]').filter({hasText:label}).waitFor();
     await account.locator('svg').waitFor();
     assert.equal(await account.locator('svg').innerHTML(),portrait);
   }

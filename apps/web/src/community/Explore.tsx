@@ -5,6 +5,7 @@ import { SiteHeader, SiteFooter, Button } from "@/ui/components";
 import { Account } from "@/studio/Account";
 import type { Publication, Profile } from "@/lib/projects";
 import { PixelAvatar } from "./avatar";
+import { useSession } from "@/auth/useSession";
 import "@/create/style.css";
 import { CompositionOrigin } from "./CompositionOrigin";
 import Artists from "./Artists";
@@ -27,8 +28,9 @@ export default function Explore({
     [tag, setTag] = useState(""),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(true),
-    [profile, setProfile] = useState<Profile | null>(initialProfile ?? null),
     [favourites, setFavourites] = useState(false);
+  const session = useSession();
+  const profile = mine ? session.profile : initialProfile;
   const searchGeneration = useRef(0);
   const load = async (next?: string, signal?: AbortSignal) => {
     const generation = searchGeneration.current;
@@ -72,19 +74,6 @@ export default function Explore({
       abort.abort();
     };
   }, [query, chip, sort, tag, handle, mine, favourites]);
-  useEffect(() => {
-    if (!mine) return;
-    const abort = new AbortController();
-    void fetch("/api/v1/profile", { signal: abort.signal })
-      .then(async (r) => {
-        if (r.ok) {
-          const p = await r.json();
-          setProfile(p);
-        }
-      })
-      .catch(() => {});
-    return () => abort.abort();
-  }, [mine]);
   const favourite = async (item: Publication) => {
     try {
       const r = await fetch(`/api/v1/projects/${item.id}/favourite`, {
@@ -102,8 +91,8 @@ export default function Explore({
       <SiteHeader active="explore" />
       <main className="demo-main community">
         <div className="community-header">
-          {profile && (
-            <PixelAvatar id={profile.id} avatar={profile.avatar} size={64} />
+          {(mine || handle) && (
+            <PixelAvatar id={profile?.id} avatar={profile?.avatar} size={64} />
           )}
           <div>
             <h1>
@@ -117,7 +106,7 @@ export default function Explore({
             </h1>
             <p>
               {handle
-                ? profile?.bio
+                ? initialProfile?.bio
                 : t(
                     mine
                       ? "Your profile, saved publications and next ideas."
