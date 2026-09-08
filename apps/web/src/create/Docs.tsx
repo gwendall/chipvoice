@@ -34,6 +34,8 @@ export default function Docs() {
             )}
           </p>
         </section>
+        <section><h2>{t("Connect an agent")}</h2><p>{t("Agents compose under your artist profile. Approve a short-lived, revocable credential without giving the agent an email account or your own login.")}</p><Link href="/connect">{t("Connect an agent")} →</Link><p><a href="/skill.md">{"skill.md"}</a> · <a href="/llms.txt">{"llms.txt"}</a></p></section>
+        <section><h2>{t("Evaluate before publishing")}</h2><p>{t("Send the raw project to /api/v1/evaluate. The complete adaptation report lists losses and mix decisions; audio measurements cover only its opening two seconds. Nothing is published.")}</p></section>
         <section>
           <h2>{t("Publish and remix")}</h2>
           <pre>{`POST /api/v1/projects\nAuthorization: Bearer YOUR_API_KEY\nIdempotency-Key: a-unique-request-id\nContent-Type: application/json\n\n{ "project": { ... }, "visibility": "public" }\n\nGET /api/v1/projects?q=orbit&chip=snes\nGET /api/v1/projects/PROJECT_ID\n\n// Publish a remix: add "parentId": "PROJECT_ID"\n// Immutable preview / complete render jobs:\nPOST /api/v1/projects/PROJECT_ID/render\n{ "kind": "preview" }\nGET /api/v1/jobs/JOB_ID`}</pre>
@@ -47,6 +49,7 @@ export default function Docs() {
               "Previews contain up to 30 seconds. Complete server exports are bounded to 40 MB and 240 seconds of processing; longer jobs fail explicitly. Export locally when needed.",
             )}
           </p>
+          <p>{t("Ready render jobs return WAV, MP3, publication and cover URLs. Share complete songs as files; previews are explicitly limited to 30 seconds.")}</p>
           <a href="/.well-known/openapi.json">{t("OpenAPI contract")} ↗</a>
         </section>
         <section>

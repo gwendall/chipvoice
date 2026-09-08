@@ -1,35 +1,113 @@
-import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { createServer } from 'node:net';
+import { spawn } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createServer } from "node:net";
 // Every web check owns a production server and a disposable local database.
-const directory = await mkdtemp(join(tmpdir(), 'chipvoice-web-'));
+const directory = await mkdtemp(join(tmpdir(), "chipvoice-web-"));
 const reservation = createServer();
-await new Promise(resolve => reservation.listen(0, '127.0.0.1', resolve));
+await new Promise((resolve) => reservation.listen(0, "127.0.0.1", resolve));
 const port = reservation.address().port;
-await new Promise(resolve => reservation.close(resolve));
+await new Promise((resolve) => reservation.close(resolve));
 const base = `http://127.0.0.1:${port}`;
-const env = { ...process.env, VERCEL_ENV: 'preview', TURSO_DEV_DATABASE_URL: `file:${join(directory, 'songs.db')}`, TURSO_DEV_AUTH_TOKEN: '', DOMANI_API_KEY: '', API_URL: base, URL: base, SITE: base };
-const server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '--hostname', '127.0.0.1', '--port', String(port)], { env, stdio: ['ignore', 'pipe', 'pipe'] });
-let log = ''; server.stdout.on('data', d => { log += d; }); server.stderr.on('data', d => { log += d; });
+const env = {
+  ...process.env,
+  VERCEL_ENV: "preview",
+  TURSO_DEV_DATABASE_URL: `file:${join(directory, "songs.db")}`,
+  TURSO_DEV_AUTH_TOKEN: "",
+  DOMANI_API_KEY: "",
+  API_URL: base,
+  URL: base,
+  SITE: base,
+};
+const server = spawn(
+  process.execPath,
+  [
+    "node_modules/next/dist/bin/next",
+    "start",
+    "--hostname",
+    "127.0.0.1",
+    "--port",
+    String(port),
+  ],
+  { env, stdio: ["ignore", "pipe", "pipe"] },
+);
+let log = "";
+server.stdout.on("data", (d) => {
+  log += d;
+});
+server.stderr.on("data", (d) => {
+  log += d;
+});
 try {
   let ready = false;
   for (let i = 0; i < 120; i++) {
     if (server.exitCode !== null) throw new Error(log);
-    try { if ((await fetch(base)).ok) { ready = true; break; } } catch {}
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      if ((await fetch(base)).ok) {
+        ready = true;
+        break;
+      }
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
   if (!ready) throw new Error(`Server did not start: ${log}`);
-  const scripts=['../../scores/arrangements/verify-publication.mjs', 'test-foundations.mjs', 'test-projects.mjs', 'test-agent-guide.mjs', 'test-creation-browser.mjs', 'test-i18n.mjs', 'test-score-compiler.mjs', 'test-live-playback.mjs', 'test-lab-publication.mjs', 'test-recording.mjs', 'test-creative.mjs', 'test-render-cache.mjs', 'test-api.mjs', 'test-auth-http.mjs', 'test-arrival.mjs', 'test-demo.mjs', 'test-creative-browser.mjs', 'test-audio-transitions.mjs', 'test-output-clock.mjs', 'test-buffer-playback.mjs', 'test-transport-browser.mjs', 'test-lab.mjs', 'test-arrangements.mjs', 'test-native-songs.mjs', 'test-port-timbres-browser.mjs', 'test-midi-import.mjs', 'test-midi-roles-browser.mjs', 'test-composition-browser.mjs', 'test-i18n-browser.mjs'];
-  const from=process.env.CHIPVOICE_TEST_FROM;
-  if(from&&!scripts.includes(from))throw new Error(`Unknown qualification start: ${from}`);
+  const scripts = [
+    "../../scores/arrangements/verify-publication.mjs",
+    "test-foundations.mjs",
+    "test-projects.mjs",
+    "test-artists.mjs",
+    "test-agent-guide.mjs",
+    "test-creation-browser.mjs",
+    "test-i18n.mjs",
+    "test-score-compiler.mjs",
+    "test-live-playback.mjs",
+    "test-lab-publication.mjs",
+    "test-recording.mjs",
+    "test-creative.mjs",
+    "test-render-cache.mjs",
+    "test-api.mjs",
+    "test-auth-http.mjs",
+    "test-arrival.mjs",
+    "test-demo.mjs",
+    "test-creative-browser.mjs",
+    "test-audio-transitions.mjs",
+    "test-output-clock.mjs",
+    "test-buffer-playback.mjs",
+    "test-transport-browser.mjs",
+    "test-lab.mjs",
+    "test-arrangements.mjs",
+    "test-native-songs.mjs",
+    "test-port-timbres-browser.mjs",
+    "test-midi-import.mjs",
+    "test-midi-roles-browser.mjs",
+    "test-composition-browser.mjs",
+    "test-i18n-browser.mjs",
+  ];
+  const from = process.env.CHIPVOICE_TEST_FROM;
+  if (from && !scripts.includes(from))
+    throw new Error(`Unknown qualification start: ${from}`);
   // Partial local qualification still initializes the disposable API schema.
-  if(from){const response=await fetch(`${base}/api/songs/00000000`);if(response.status!==404)throw new Error(`Test database initialization failed: ${response.status}`);}
-  for (const script of scripts.slice(from?scripts.indexOf(from):0)) {
-    const child = spawn(process.execPath, [script], { env, stdio: 'inherit' });
-    const code = await new Promise(resolve => child.on('exit', resolve));
+  if (from) {
+    const response = await fetch(`${base}/api/songs/00000000`);
+    if (response.status !== 404)
+      throw new Error(
+        `Test database initialization failed: ${response.status}`,
+      );
+  }
+  for (const script of scripts.slice(from ? scripts.indexOf(from) : 0)) {
+    const child = spawn(process.execPath, [script], { env, stdio: "inherit" });
+    const code = await new Promise((resolve) => child.on("exit", resolve));
     if (code !== 0) throw new Error(`${script} exited ${code}`);
   }
-} catch (error) { console.error(error); console.error(log); process.exitCode = 1; }
-finally { server.kill('SIGTERM'); await new Promise(resolve => server.exitCode !== null ? resolve() : server.once('exit', resolve)); await rm(directory, { recursive: true, force: true }); }
+} catch (error) {
+  console.error(error);
+  console.error(log);
+  process.exitCode = 1;
+} finally {
+  server.kill("SIGTERM");
+  await new Promise((resolve) =>
+    server.exitCode !== null ? resolve() : server.once("exit", resolve),
+  );
+  await rm(directory, { recursive: true, force: true });
+}

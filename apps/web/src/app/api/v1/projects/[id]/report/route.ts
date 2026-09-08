@@ -1,3 +1,4 @@
+import { projectViewer } from "@/lib/auth";
 import { projectRoute, readProjectBody, objectBody } from "@/lib/project-http";
 import { getProject, admitProject, ProjectHttpError } from "@/lib/projects";
 import { db } from "@/lib/db";
@@ -18,7 +19,7 @@ export async function POST(
         "invalid_reason",
         "Explain the issue in 3–500 characters",
       );
-    if (!(await getProject(id, caller.userId)))
+    if (!(await getProject(id, projectViewer(caller))))
       throw new ProjectHttpError(404, "not_found", "Publication not found");
     await admitProject(`report:${caller.userId}`, 5);
     await (

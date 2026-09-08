@@ -1,5 +1,7 @@
 # chipvoice
 
+For scoped agent authorization, separate artist profiles, HTTP evaluation before publication, MP3 sharing and grouped console versions, see [Artists and agents](docs/ARTISTS-AND-AGENTS.md).
+
 <p align="center">
   <a href="README.md">English</a> &bull;
   <a href="README_ja.md">日本語</a>

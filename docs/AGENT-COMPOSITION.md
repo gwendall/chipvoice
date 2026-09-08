@@ -1,5 +1,7 @@
 # Composing with an agent
 
+For scoped agent authorization, separate artist profiles, HTTP evaluation before publication, MP3 sharing and grouped console versions, see [Artists and agents](ARTISTS-AND-AGENTS.md).
+
 <p align="center"><a href="AGENT-COMPOSITION.md">English</a> &bull; <a href="AGENT-COMPOSITION_ja.md">日本語</a></p>
 
 Chipvoice accepts a complete arrangement, not just a melody. Use a versioned `MusicProject` with a `Performance` source for independent instruments, polyphonic chords and exact timing. [The agent skill](https://chipvoice.dev/skill.md) is the executable entry point; [llms.txt](https://chipvoice.dev/llms.txt) is its short discovery index. The compact tracker service remains a separate compatibility path.

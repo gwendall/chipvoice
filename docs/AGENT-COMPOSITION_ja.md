@@ -1,5 +1,7 @@
 <a id="composing-with-an-agent"></a>
 
+アーティスト別のエージェント認証、公開前の HTTP 評価、MP3 共有、コンソール別バージョンについては[アーティストとエージェント](ARTISTS-AND-AGENTS_ja.md)をご覧ください。
+
 # エージェントによる作曲
 
 <p align="center"><a href="AGENT-COMPOSITION.md">English</a> &bull; <a href="AGENT-COMPOSITION_ja.md">日本語</a></p>

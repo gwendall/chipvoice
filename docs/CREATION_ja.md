@@ -1,4 +1,6 @@
 <a id="projects-creation-and-publication"></a>
+
+アーティスト別のエージェント認証、公開前の HTTP 評価、MP3 共有、コンソール別バージョンについては[アーティストとエージェント](ARTISTS-AND-AGENTS_ja.md)をご覧ください。
 # プロジェクト、制作、公開
 
 <p align="center"><a href="CREATION.md">English</a> &bull; <a href="CREATION_ja.md">日本語</a></p>

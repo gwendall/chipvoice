@@ -1,4 +1,6 @@
 <a id="chipvoice"></a>
+
+アーティスト別のエージェント認証、公開前の HTTP 評価、MP3 共有、コンソール別バージョンについては[アーティストとエージェント](docs/ARTISTS-AND-AGENTS_ja.md)をご覧ください。
 # chipvoice
 
 <p align="center">

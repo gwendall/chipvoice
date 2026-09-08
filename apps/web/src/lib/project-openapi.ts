@@ -1,3 +1,4 @@
+import { artistPaths, artistSchema, artistInput } from "./artist-openapi";
 import { PROJECT_SCHEMA, CHIP_IDS } from "chipvoice";
 const json = (schema: unknown) => ({ "application/json": { schema } });
 const id = {
@@ -51,13 +52,19 @@ const response = {
     project: PROJECT_SCHEMA,
     visibility: { enum: ["public", "unlisted", "private"] },
     contentHash: { type: "string" },
-    profile: {
-      type: "object",
-      properties: {
-        id: { type: "string" },
-        handle: { type: ["string", "null"] },
-        displayName: { type: "string" },
-        bio: { type: "string" },
+    profile: artistSchema,
+    url: { type: "string" },
+    coverUrl: { type: "string" },
+    variants: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["id", "chip", "url"],
+        properties: {
+          id: { type: "string" },
+          chip: { type: "string" },
+          url: { type: "string" },
+        },
       },
     },
   },
@@ -95,6 +102,13 @@ const jobResponse = {
     bytes: { type: "integer" },
     error: { type: ["string", "null"] },
     audio: { type: ["string", "null"] },
+    wavUrl: { type: ["string", "null"] },
+    mp3Url: { type: ["string", "null"] },
+    mp3Bytes: { type: "integer" },
+    mp3Status: { enum: ["none", "queued", "ready", "failed"] },
+    mp3Error: { type: ["string", "null"] },
+    pageUrl: { type: "string" },
+    coverUrl: { type: "string" },
   },
 };
 const issues = {
@@ -136,6 +150,7 @@ const errors = {
   "400": { description: "Malformed request or cursor" },
   "409": { description: "Conflicting request key, handle or audio state" },
   "401": { description: "Sign in required" },
+  "403": { description: "Agent scope does not permit this action" },
   "404": { description: "Not found or inaccessible" },
   "413": { description: "Body exceeds 4 MB" },
   "422": {
@@ -168,6 +183,7 @@ const operation = (
   ...extra,
 });
 export const projectPaths = {
+  ...artistPaths,
   "/api/v1/capabilities": {
     get: operation(
       "getProjectCapabilities",
@@ -252,6 +268,7 @@ export const projectPaths = {
   "/api/v1/projects": {
     get: operation("listProjects", "Search public active publications", {
       parameters: [
+        "group",
         "q",
         "chip",
         "tag",
@@ -295,6 +312,11 @@ export const projectPaths = {
               default: "public",
             },
             parentId: { type: "string" },
+            profileId: {
+              type: "string",
+              description:
+                "Owned artist; defaults to the owner’s main profile or the agent’s bound profile",
+            },
           },
         }),
       },
@@ -344,36 +366,32 @@ export const projectPaths = {
     }),
   },
   "/api/v1/projects/{id}/render": {
-    post: operation(
-      "renderProject",
-      "Queue an immutable preview or complete WAV",
-      {
-        parameters: [id],
-        security: auth,
-        description:
-          "Preview: up to 30 seconds. Full: complete source, max 40 MB and 240 seconds processing. Poll the returned job; exceeding limits fails explicitly.",
-        requestBody: {
-          required: true,
-          content: json({
-            type: "object",
-            required: ["kind"],
-            additionalProperties: false,
-            properties: { kind: { enum: ["preview", "full"] } },
-          }),
-        },
-        responses: {
-          "200": {
-            description: "Existing ready rendition",
-            content: json(jobResponse),
-          },
-          "202": {
-            description: "Queued or rendering job",
-            content: json(jobResponse),
-          },
-          ...errors,
-        },
+    post: operation("renderProject", "Queue immutable WAV and MP3 audio", {
+      parameters: [id],
+      security: auth,
+      description:
+        "Preview: up to 30 seconds. Full: complete source, max 40 MB and 240 seconds processing. Poll the returned job; exceeding limits fails explicitly.",
+      requestBody: {
+        required: true,
+        content: json({
+          type: "object",
+          required: ["kind"],
+          additionalProperties: false,
+          properties: { kind: { enum: ["preview", "full"] } },
+        }),
       },
-    ),
+      responses: {
+        "200": {
+          description: "Existing ready rendition",
+          content: json(jobResponse),
+        },
+        "202": {
+          description: "Queued or rendering job",
+          content: json(jobResponse),
+        },
+        ...errors,
+      },
+    }),
   },
   "/api/v1/jobs/{id}": {
     get: operation(
@@ -390,14 +408,22 @@ export const projectPaths = {
   "/api/v1/jobs/{id}/audio": {
     get: operation(
       "downloadProjectAudio",
-      "Download ready WAV after checking publication access",
+      "Download ready WAV or MP3 after checking publication access",
       {
-        parameters: [id],
+        parameters: [
+          id,
+          {
+            name: "format",
+            in: "query",
+            schema: { enum: ["wav", "mp3"], default: "wav" },
+          },
+        ],
         responses: {
           "200": {
-            description: "Pinned WAV",
+            description: "Pinned WAV or MP3",
             content: {
               "audio/wav": { schema: { type: "string", format: "binary" } },
+              "audio/mpeg": { schema: { type: "string", format: "binary" } },
             },
           },
           ...errors,
@@ -418,16 +444,7 @@ export const projectPaths = {
         security: auth,
         requestBody: {
           required: true,
-          content: json({
-            type: "object",
-            required: ["handle", "displayName", "bio"],
-            additionalProperties: false,
-            properties: {
-              handle: { type: "string", pattern: "^[a-z][a-z0-9_]{2,23}$" },
-              displayName: { type: "string", maxLength: 60 },
-              bio: { type: "string", maxLength: 500 },
-            },
-          }),
+          content: json(artistInput),
         },
       },
     ),

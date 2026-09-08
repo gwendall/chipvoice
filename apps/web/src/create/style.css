@@ -586,3 +586,13 @@
 
 .part-tools .timbre-control { max-width: 100%; flex-wrap: wrap; }
 .part-tools .timbre-control select { max-width: 100%; }
+
+.artist-panel,.connect-panel {max-width: 900px; overflow-wrap:anywhere;}
+.artist-panel {margin:2rem 0; border-top:1px solid var(--border,#c4bda9); padding-top:1rem;}
+.artist-panel label,.connect-panel label {display:grid;gap:.4rem;min-width:0;}
+.artist-panel select,.connect-panel select,.connect-panel input {max-width:100%;font:inherit;padding:.5rem;}
+.agent-list {list-style:none;padding:0;display:grid;gap:1rem;}
+.agent-list li {display:grid;grid-template-columns:1fr auto;gap:.4rem 1rem;border-bottom:1px solid #c4bda9;padding:1rem 0;}
+.agent-list code {grid-column:1/-1;white-space:normal;font-size:1rem;}
+.connect-panel .project-actions {margin:1.25rem 0;}
+@media(max-width:600px){.agent-list li{grid-template-columns:1fr;}.connect-panel .project-actions{align-items:stretch;}.connect-panel .project-actions label{flex:1 1 100%;}.connect-panel{padding-inline:1rem;}.profile-form{max-width:100%;}}

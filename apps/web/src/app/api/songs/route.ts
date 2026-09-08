@@ -18,7 +18,10 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   if (!hasDatabase()) {
     return NextResponse.json(
-      { error: "no_database", message: "this deployment has no database configured" },
+      {
+        error: "no_database",
+        message: "this deployment has no database configured",
+      },
       { status: 503 },
     );
   }
@@ -32,7 +35,17 @@ export async function POST(request: Request) {
    * person ever will.
    */
   const caller = await identify(request);
-  const gate = allow(caller.userId ? `user:${caller.userId}` : clientKey(request), caller.userId ? "key" : "anonymous");
+  if (caller.agent)
+    return NextResponse.json(
+      { error: "agent_endpoint_required" },
+      { status: 403 },
+    );
+  if (request.headers.has("authorization") && !caller.userId)
+    return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+  const gate = allow(
+    caller.userId ? `user:${caller.userId}` : clientKey(request),
+    caller.userId ? "key" : "anonymous",
+  );
   if (!gate.ok) {
     return NextResponse.json(
       {
@@ -87,7 +100,11 @@ export async function POST(request: Request) {
   }
 
   const song = await insert(
-    { ...parsed.data, title: result.title || undefined, author: result.author || undefined },
+    {
+      ...parsed.data,
+      title: result.title || undefined,
+      author: result.author || undefined,
+    },
     null,
     caller,
   );
