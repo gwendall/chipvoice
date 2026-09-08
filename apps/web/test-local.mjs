@@ -66,6 +66,7 @@ try {
     "test-onboarding.mjs",
     "test-session-cache.mjs",
     "test-session-browser.mjs",
+    "test-avatar-layout.mjs",
     "test-creation-browser.mjs",
     "test-i18n.mjs",
     "test-score-compiler.mjs",

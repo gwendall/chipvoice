@@ -158,7 +158,6 @@ button:disabled { opacity: .35; }
  .screen-title h2 { font-size: var(--text-heading); }
  .original-tunes { margin-bottom: 16px; }
  .about-main { padding-top: 28px; }
- .site-header nav a:last-child { display: inline; }
 }
 
 .tune-heading > div { display: grid; gap: 7px; }
@@ -243,6 +242,4 @@ button:disabled { opacity: .35; }
 
 .site-header nav { align-items: center; }
 .site-header nav .account-link { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 2px; flex-shrink: 0; }
-.site-header .account-link .pixel-avatar { display: block; border: 1px solid var(--edge); border-radius: 3px; }
 .site-header .account-link:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
-.site-header .account-placeholder { width: 44px; border: 1px solid var(--edge); border-radius: 3px; background: var(--panel); }

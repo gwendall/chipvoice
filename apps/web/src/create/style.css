@@ -69,11 +69,6 @@
   gap: 8px;
   white-space: nowrap;
 }
-.pixel-avatar {
-  flex-shrink: 0;
-  image-rendering: pixelated;
-  border: 1px solid #999b88;
-}
 .creation .machines {
   margin: 8px 0 24px;
 }
