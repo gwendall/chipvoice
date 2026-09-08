@@ -190,6 +190,98 @@ try {
     5,
   );
   fresh.close();
+  // Frozen v4 publication tables exercise the real profile/data upgrade.
+  const published = createClient({
+    url: `file:${join(directory, "published-v4.db")}`,
+  });
+  await published.batch(
+    [
+      "create table schema_migrations(version integer primary key,name text not null,applied_at integer not null)",
+      ...[
+        "baseline",
+        "stable-users-and-sessions",
+        "song-grid-resolution",
+        "complete-project-publications",
+      ].map((name, i) => ({
+        sql: "insert into schema_migrations values(?,?,?)",
+        args: [i + 1, name, now],
+      })),
+      "create table profiles(id text primary key,user_id text not null unique,handle text unique collate nocase,display_name text not null default '',bio text not null default '',created_at integer not null)",
+      "create table projects(id text primary key,user_id text not null,parent_id text,root_id text not null,document text not null,content_hash text not null,title text not null,chip text not null,tags text not null,visibility text not null,created_at integer not null,deleted_at integer,request_key text,unique(user_id,request_key))",
+      "create table project_jobs(id text primary key,project_id text not null,kind text not null,status text not null,engine text not null,created_at integer not null,started_at integer,finished_at integer,error text,bytes integer,etag text,progress real not null default 0,unique(project_id,kind))",
+      "create table project_audio(job_id text not null,chunk integer not null,bytes blob not null,primary key(job_id,chunk))",
+      {
+        sql: "insert into profiles values(?,?,?,?,?,?)",
+        args: [
+          "stable-artist",
+          "stable-owner",
+          "old_artist",
+          "Original artist",
+          "Original biography",
+          now,
+        ],
+      },
+      {
+        sql: "insert into projects(id,user_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,request_key) values(?,?,?,?,?,?,?,'[]','public',?,?)",
+        args: [
+          "stable-song",
+          "stable-owner",
+          "stable-song",
+          '{"settings":{"chip":"snes"},"source":{"kind":"score","score":{"title":"Old source"}}}',
+          "unchanged-content-hash",
+          "Original song",
+          "snes",
+          now,
+          "stable-retry",
+        ],
+      },
+      {
+        sql: "insert into project_jobs(id,project_id,kind,status,engine,created_at,bytes,etag) values('stable-job','stable-song','full','ready','old-engine',?,4,'old-etag')",
+        args: [now],
+      },
+      {
+        sql: "insert into project_audio values('stable-job',0,?)",
+        args: [new Uint8Array([82, 73, 70, 70])],
+      },
+    ],
+    "write",
+  );
+  await api.migrate(published);
+  await api.migrate(published);
+  const oldArtist = (
+    await published.execute("select * from profiles where id='stable-artist'")
+  ).rows[0];
+  assert.equal(oldArtist.handle, "old_artist");
+  assert.equal(oldArtist.is_default, 1);
+  assert.equal(oldArtist.avatar, null);
+  const oldPublication = (
+    await published.execute("select * from projects where id='stable-song'")
+  ).rows[0];
+  assert.equal(oldPublication.profile_id, "stable-artist");
+  assert.equal(oldPublication.content_hash, "unchanged-content-hash");
+  assert.equal(oldPublication.request_key, "stable-retry");
+  assert.equal(
+    oldPublication.composition_hash,
+    await api.hashKey(
+      JSON.stringify(JSON.parse(oldPublication.document).source),
+    ),
+  );
+  const oldJob = (
+    await published.execute("select * from project_jobs where id='stable-job'")
+  ).rows[0];
+  assert.equal(oldJob.engine, "old-engine");
+  assert.equal(oldJob.etag, "old-etag");
+  assert.equal(oldJob.status, "ready");
+  assert.equal(oldJob.mp3_status, "none");
+  assert.deepEqual(
+    new Uint8Array(
+      (
+        await published.execute("select bytes from project_audio")
+      ).rows[0].bytes,
+    ),
+    new Uint8Array([82, 73, 70, 70]),
+  );
+  published.close();
   const broken = createClient({ url: `file:${join(directory, "broken.db")}` });
   await broken.execute("create table users (incompatible text)");
   await assert.rejects(api.migrate(broken), /already exists/);
