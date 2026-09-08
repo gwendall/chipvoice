@@ -22,6 +22,19 @@ let release;const fakeSource={meta,sampleRate:100,read:(start,frames)=>new Promi
 player.source=fakeSource;player.metadata=meta;player.playing=true;
 player.seek(.8);player.pause();player.seek(.2);release();await new Promise(r=>setTimeout(r,0));
 release();await new Promise(r=>setTimeout(r,0));assert.equal(player.phase(),.2,'latest paused seek wins');player.dispose();
+// A seek/loop edit while a different source is loading must not discard it.
+const changing=new ProgressivePlayback(context,()=>{},8000);
+const readyMeta={...meta,frames:80000};
+const settle=()=>new Promise(r=>setTimeout(r,0));
+const firstLoad=changing.load({}, {key:'a',presentation:'A'});let w=workers.at(-1);
+w.reply(w.sent.at(-1),readyMeta);await settle();let r=w.sent.at(-1);w.reply(r,chunk(r.start,r.frames));assert.equal(await firstLoad,true);
+changing.playing=true;
+const nextLoad=changing.load({}, {key:'b',presentation:'B'});w=workers.at(-1);
+changing.seek(.6);changing.setLoop(false);
+w.reply(w.sent.at(-1),readyMeta);await settle();r=w.sent.at(-1);
+assert.equal(r.start,48000);w.reply(r,chunk(r.start,r.frames));assert.equal(await nextLoad,true);
+assert.equal(changing.presentation,'B');assert.equal(changing.phase(),.6);assert.equal(changing.loop,false);
+changing.dispose();
 const fakeBackend=`export const outputTime = ctx => ctx.currentTime; export class BufferPlayback {
  playing=false;loading=false;loop=true;error='';buffers=[];output={disconnect(){},connect(){}};
  constructor() {globalThis.backends.push(this);} setVolume(){}setLoop(v){this.loop=v;}

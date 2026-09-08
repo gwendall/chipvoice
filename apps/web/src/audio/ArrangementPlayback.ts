@@ -14,6 +14,7 @@ export class ArrangementPlayback {
   private gains: Map<BufferPlayback | ProgressivePlayback, GainNode>;
   private generation = 0;
   private pending = false;
+  private requestedPhase: number | null = null;
   private failure = '';
   private timer: ReturnType<typeof setInterval>;
   playing = false;
@@ -55,7 +56,7 @@ export class ArrangementPlayback {
     // Play/Pause may have changed while the source was preparing.
     if (selected && this.playing && !target.playing) await target.toggle();
     if (ticket !== this.generation) return false;
-    this.pending = false; this.incoming = null;
+    this.pending = false; this.incoming = null; this.requestedPhase = null;
     if (!selected) {this.failure = target.error; if (target !== this.current) target.pause(); this.changed(); return false;}
     if (target !== this.current) {
       const old = this.current, at = this.context.currentTime + .025;
@@ -73,17 +74,17 @@ export class ArrangementPlayback {
   select(...args: Parameters<BufferPlayback['select']>) {
     const [entries, levels, options = {}] = args;
     return this.selectWith(this.recording, () => this.recording.select(entries, levels, {...options,
-      phase: this.current === this.recording ? undefined : () => this.current.phase(this.context.currentTime + .025)}));
+      phase: this.current === this.recording ? undefined : () => this.requestedPhase ?? this.current.phase(this.context.currentTime + .025)}));
   }
   selectPlan(plan: PerformancePlan, presentation: unknown, key: string, restart = false) {
     // Carry the normalized beat into the first selection of the other engine.
     if (this.current !== this.preview) this.preview.seek(restart ? 0 : this.phase(this.context.currentTime));
-    return this.selectWith(this.preview, () => this.preview.load({plan}, {key, presentation, restart, phase: () => this.current.phase(this.context.currentTime + .025)}));
+    return this.selectWith(this.preview, () => this.preview.load({plan}, {key, presentation, restart, phase: () => this.requestedPhase ?? this.current.phase(this.context.currentTime + .025)}));
   }
   selectSide(side: number) {return this.recording.selectSide(side);}
   setSide(side: number) {this.recording.setSide(side);}
   cancelSelection() {
-    this.generation++; this.pending = false;
+    this.generation++; this.pending = false; this.requestedPhase = null;
     if (this.incoming && this.incoming !== this.current) this.incoming.pause();
     this.incoming = null; this.recording.cancelSelection(); this.preview.cancelSelection();
   }
@@ -96,8 +97,13 @@ export class ArrangementPlayback {
     await Promise.all(starts);
   }
   pause() {this.playing = false; this.recording.pause(); this.preview.pause(); this.changed();}
-  seek(phase: number) {this.current.seek(phase);}
-  restart() {this.current.restart();}
+  seek(phase: number) {
+    if (!Number.isFinite(phase)) return;
+    if (this.pending) this.requestedPhase = Math.max(0, Math.min(1, phase));
+    this.current.seek(phase);
+    if (this.incoming && this.incoming !== this.current) this.incoming.seek(phase);
+  }
+  restart() {this.seek(0);}
   setLoop(loop: boolean) {this.recording.setLoop(loop); this.preview.setLoop(loop);}
   setVolume(value: number) {this.output.gain.setTargetAtTime(value, this.context.currentTime, .008);}
   dispose() {clearInterval(this.timer); this.recording.dispose(); this.preview.dispose(); for (const gain of this.gains.values()) gain.disconnect(); this.output.disconnect();}

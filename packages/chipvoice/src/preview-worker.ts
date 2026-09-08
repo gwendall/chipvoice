@@ -8,12 +8,16 @@ import {c64Chip} from './chips/c64/index.js';
 import type {MusicProject} from './project.js';
 import type {PerformancePlan} from './performance.js';
 const definitions = {'2a03': nesChip, dmg: gbChip, md: mdChip, snes: snesChip, c64: c64Chip};
-export type PreviewRequest = {id: number; type: 'load' | 'read'; project?: MusicProject; plan?: PerformancePlan; gain?: number;
+export type PreviewRequest = {id: number; type: 'load' | 'read' | 'cancel'; project?: MusicProject; plan?: PerformancePlan; gain?: number;
   sampleRate: number; lane?: 'foreground' | 'ahead'; parts?: string[]; start: number; frames: number};
 const scope = globalThis as unknown as {onmessage: (event: MessageEvent<PreviewRequest>) => void; postMessage: (value: unknown, transfer?: Transferable[]) => void};
 let renderer: ProgressiveRenderer | undefined, revision = 0;
 const lanes = {foreground: 0, ahead: 0};
 export async function handlePreviewMessage(data: PreviewRequest) {
+  if (data.type === 'cancel') {
+    if (data.lane) lanes[data.lane]++; else {lanes.foreground++; lanes.ahead++;}
+    return;
+  }
   const ticket = data.type === 'load' ? ++revision : revision;
   const lane = data.lane ?? 'foreground', readTicket = ++lanes[lane];
   try {

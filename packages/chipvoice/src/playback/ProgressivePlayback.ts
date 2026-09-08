@@ -16,7 +16,7 @@ class PreviewSource {
   private worker: Worker;
   private id = 0;
   private revision = 0;
-  private requests = new Map<number, {resolve: (value: any) => void; reject: (error: Error) => void}>();
+  private requests = new Map<number, {resolve: (value: any) => void; reject: (error: Error) => void; type?: string; lane?: string}>();
   private chunks = new Map<string, Chunk>();
   ready!: Promise<PreviewMetadata>;
   meta!: PreviewMetadata;
@@ -34,6 +34,7 @@ class PreviewSource {
     this.reload(input);
   }
   reload(input: Input) {
+    this.cancelReads();
     const revision = ++this.revision;
     this.chunks.clear();
     this.ready = this.request({type: 'load', ...input}).then(meta => {
@@ -45,7 +46,7 @@ class PreviewSource {
     if (this.disposed) return Promise.reject(cancelled());
     const id = ++this.id;
     return new Promise((resolve, reject) => {
-      this.requests.set(id, {resolve, reject});
+      this.requests.set(id, {resolve, reject, type: (data as {type?: string}).type, lane: (data as {lane?: string}).lane});
       try {this.worker.postMessage({id, sampleRate: this.sampleRate, ...data});}
       catch (error) {this.requests.delete(id); reject(error);}
     });
@@ -64,6 +65,13 @@ class PreviewSource {
       bytes -= value.left.byteLength + value.right.byteLength; this.chunks.delete(key);
     }
     return chunk;
+  }
+  cancelReads(lane?: 'foreground' | 'ahead') {
+    if (this.disposed) return;
+    for (const [id, request] of this.requests) if (request.type === 'read' && (!lane || request.lane === lane)) {
+      request.reject(cancelled()); this.requests.delete(id);
+    }
+    this.worker.postMessage({type: 'cancel', lane});
   }
   dispose(error: Error = cancelled()) {
     if (this.disposed) return; this.disposed = true; this.worker.terminate();
@@ -86,6 +94,9 @@ export class ProgressivePlayback {
   metadata: PreviewMetadata | null = null;
   underruns = 0;
   private source: PreviewSource | null = null;
+  private incoming: PreviewSource | null = null;
+  private selecting = false;
+  private loadPositionRevision = 0;
   private group: Group | null = null;
   private history: Clock[] = [];
   private offset = 0;
@@ -135,7 +146,10 @@ export class ProgressivePlayback {
     if (this.disposed) throw Error('Player is disposed');
     const sampleRate = options.sampleRate ?? this.sampleRate;
     if (!Number.isInteger(sampleRate) || sampleRate < 8000 || sampleRate > 96000) throw Error('Sample rate must be 8000–96000 Hz');
+    this.cancelPendingReads();
     const ticket = ++this.generation;
+    this.selecting = true; this.loadPositionRevision = this.positionRevision;
+    const positionRevision = this.positionRevision;
     this.loading = true; this.error = ''; this.changed();
     const key = `${sampleRate}:${options.key ?? JSON.stringify(input)}`;
     let source = this.sources.get(key);
@@ -152,11 +166,12 @@ export class ProgressivePlayback {
       if (this.sources.size <= 3) break;
       if (old !== this.source && old !== source) {old.dispose(); this.sources.delete(oldKey);}
     }
+    this.incoming = source;
     try {
       await source.ready;
       if (ticket !== this.generation) return false;
       const presentation = options.presentation ?? source.meta;
-      const selected = await this.selectSource(source, presentation, ticket, options.restart ? 0 : options.phase);
+      const selected = await this.selectSource(source, presentation, ticket, options.restart ? 0 : options.phase, positionRevision);
       if (selected) {this.loading = false; this.changed();}
       return selected;
     } catch (error) {
@@ -166,11 +181,13 @@ export class ProgressivePlayback {
         this.changed();
       }
       return false;
+    } finally {
+      if (ticket === this.generation) {this.selecting = false; this.incoming = null;}
     }
   }
-  private async selectSource(source: PreviewSource, presentation: unknown, ticket: number, phase?: number | (() => number)) {
+  private async selectSource(source: PreviewSource, presentation: unknown, ticket: number, phase?: number | (() => number), positionRevision = this.positionRevision) {
     const rate = source.sampleRate;
-    const meta = source.meta, positionRevision = this.positionRevision;
+    const meta = source.meta;
     const desired = () => Math.min(meta.frames - 1, Math.max(0, Math.floor((positionRevision !== this.positionRevision ? this.offset : typeof phase === 'function' ? phase() : phase ?? this.phase(this.context.currentTime + .025)) * meta.frames)));
     let chunk: Chunk, position: number;
     for (;;) {
@@ -256,7 +273,8 @@ export class ProgressivePlayback {
     }
   }
   pause() {
-    this.offset = this.phase(); this.playing = false;
+    if (!this.selecting || this.positionRevision === this.loadPositionRevision) this.offset = this.phase();
+    this.playing = false;
     const group = this.group; this.group = null;
     this.presentation = this.audibleSelection(); this.history = [];
     if (group) this.retire(group);
@@ -267,6 +285,9 @@ export class ProgressivePlayback {
     if (!Number.isFinite(phase) || this.disposed) return;
     const next = Math.max(0, Math.min(1, phase));
     this.positionRevision++; this.offset = next;
+    // Seeking changes position, not the pending musical selection. Its first
+    // block will use this latest intent once the new source is ready.
+    if (this.selecting) {this.changed(); return;}
     if (!this.playing || !this.source) {this.offset = next; this.changed(); return;}
     const ticket = ++this.generation; this.loading = true; this.changed();
     void this.selectSource(this.source, this.presentation, ticket, next).then(() => {
@@ -274,9 +295,15 @@ export class ProgressivePlayback {
     }).catch(error => {if (ticket === this.generation) {this.loading = false; this.error = error.message; this.changed();}});
   }
   restart() {this.seek(0);}
-  setLoop(loop: boolean) {if (loop === this.loop) return; this.loop = loop; if (this.playing) this.seek(this.phase(this.context.currentTime)); this.changed();}
+  setLoop(loop: boolean) {if (loop === this.loop) return; this.loop = loop; if (this.playing && !this.selecting) this.seek(this.phase(this.context.currentTime)); this.changed();}
   setVolume(volume: number) {this.output.gain.setTargetAtTime(volume, this.context.currentTime, .008);}
-  cancelSelection() {this.generation++; this.loading = false; this.changed();}
+  private cancelPendingReads() {
+    if (this.incoming) this.incoming.cancelReads(this.incoming === this.source ? 'foreground' : undefined);
+  }
+  cancelSelection() {
+    this.generation++; this.cancelPendingReads(); this.incoming = null;
+    this.selecting = false; this.loading = false; this.changed();
+  }
   dispose() {
     if (this.disposed) return; this.pause(); this.disposed = true; this.generation++; clearInterval(this.timer);
     for (const source of this.sources.values()) source.dispose(); this.sources.clear();

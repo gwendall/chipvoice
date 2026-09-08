@@ -14,7 +14,6 @@ export class LivePlayback {
   error = '';
   private active: Engine | null = null;
   private incoming: Engine | null = null;
-  private spare: Engine | null = null;
   private song: Song | null = null;
   private running: Promise<Chip | null> | null = null;
   private disposed = false;
@@ -107,16 +106,10 @@ export class LivePlayback {
       this.loading = true; this.changed();
       let chip: Chip | null = null;
       try {
-        const spare = this.spare; this.spare = null;
-        let fade: Fade;
-        if (spare && spare.chip.spec.id === song.chip) { chip = spare.chip; fade = spare.fade; }
-        else {
-          spare?.chip.dispose(); spare?.fade.disconnect();
-          chip = await this.createChip({chip: song.chip, context: this.context});
-          if (!chip) throw new Error('This browser cannot start AudioWorklet. Try a current browser over HTTPS.');
-          fade = new Fade(this.context, this.output);
-        }
-        if (this.disposed || this.song?.chip !== song.chip) { chip.dispose(); fade.disconnect(); continue; }
+        chip = await this.createChip({chip: song.chip, context: this.context});
+        if (!chip) throw new Error('This browser cannot start AudioWorklet. Try a current browser over HTTPS.');
+        if (this.disposed || this.song?.chip !== song.chip) { chip.dispose(); continue; }
+        const fade = new Fade(this.context, this.output);
         chip.output.disconnect(); chip.output.connect(fade.node);
         const next = {chip, fade, song: this.song!}; this.incoming = next;
         const previous = this.active;
@@ -142,9 +135,7 @@ export class LivePlayback {
         if (this.disposed) return null;
         if (!this.playing) fade.toValue(0);
         this.active = next; this.incoming = null; this.current = chip;
-        // Keep one reset worklet warm. The fade has completed on the render
-        // clock; queued device output is independent of the reset chip.
-        if (previous) { previous.chip.stop(); this.spare = previous; }
+        previous?.chip.dispose(); previous?.fade.disconnect();
         this.loading = false; this.error = ''; this.changed();
         if (!this.playing) return chip;
       } catch (error) {
@@ -178,8 +169,7 @@ export class LivePlayback {
     this.wake?.(); this.wake = null;
     this.active?.chip.dispose(); this.active?.fade.disconnect();
     this.incoming?.chip.dispose(); this.incoming?.fade.disconnect();
-    this.spare?.chip.dispose(); this.spare?.fade.disconnect();
-    this.active = this.incoming = this.spare = null; this.current = null;
+    this.active = this.incoming = null; this.current = null;
     this.output.disconnect();
   }
 }
