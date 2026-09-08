@@ -1033,5 +1033,20 @@
   "Keep composing without an account": "アカウントなしで作曲を続ける",
   "Checking your account…": "アカウントを確認中…",
   "Sign in to generate your song": "ログインして曲を生成",
-  "Your prompt is saved on this device. Follow the email link, then generate your music.": "プロンプトはこの端末に保存されています。メールのリンクでログインしてから、曲を生成してください。"
+  "Your prompt is saved on this device. Follow the email link, then generate your music.": "プロンプトはこの端末に保存されています。メールのリンクでログインしてから、曲を生成してください。",
+  "Composition took too long. Your prompt is saved; you can try again.": "作曲が制限時間を超えました。プロンプトは保存されています。もう一度お試しください。",
+  "The model reached its output limit before finishing. Try a simpler arrangement.": "完成する前にモデルの出力上限に達しました。編成をシンプルにしてお試しください。",
+  "The model connection ended before the score was complete. You can try again.": "楽譜が完成する前にモデルとの接続が終了しました。もう一度お試しください。",
+  "The model declined this request. Try a different musical brief.": "モデルがこのリクエストを受け付けませんでした。別の曲の説明でお試しください。",
+  "The score was saved, but its audio could not be prepared.": "楽譜は保存されましたが、音声を準備できませんでした。",
+  "Your composition authorization expired. Sign in again to continue.": "作曲の認証が期限切れになりました。再度ログインしてください。",
+  "Reconnecting to your composition…": "作曲の進捗に再接続しています…",
+  "Writing your score…": "楽譜を書いています…",
+  "Composition steps": "作曲のステップ",
+  "Compose": "作曲",
+  "Check": "確認",
+  "Save": "保存",
+  "{count} of 4 steps complete": "4 ステップ中 {count} ステップ完了",
+  "{seconds}s elapsed": "{seconds} 秒経過",
+  "The model is composing. This can take a few minutes; the duration is not known in advance.": "モデルが作曲しています。数分かかる場合があります。所要時間は事前にはわかりません。"
 }

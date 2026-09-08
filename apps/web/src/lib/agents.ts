@@ -242,7 +242,7 @@ export function authorizeAgent(request: Request, caller: Caller) {
   const path = new URL(request.url).pathname.replace(/\/$/, ""),
     method = request.method;
   let scope: AgentScope | undefined;
-  if (/^\/api\/v1\/generations(?:\/[^/]+)?$/.test(path) && ["POST", "GET", "DELETE"].includes(method)) {
+  if (/^\/api\/v1\/generations(?:\/[^/]+(?:\/events)?)?$/.test(path) && ["POST", "GET", "DELETE"].includes(method)) {
     if (!["generate", "projects:write", "render"].every(required => caller.agent!.scopes.includes(required as AgentScope)))
       error(403, "insufficient_scope", "Composition requires generate, projects:write and render permissions");
     return;

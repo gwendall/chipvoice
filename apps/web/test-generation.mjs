@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 import { compositionServer } from "./test/composition-server.mjs";
 const server = await compositionServer();
 Object.assign(process.env, server.env);
-await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
+await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from './src/lib/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
 const api = await import("./generated/test-generation.mjs");
 const out = "../../.artifacts/prompt-composition";
 await mkdir(out, { recursive: true });
@@ -73,6 +73,28 @@ try {
   assert.equal((await query(`/api/v1/generations/${id}`, { headers: { Authorization: `Bearer ${otherKey.key}` } })).status, 404);
   const publicCopy = await api.publishProject(caller.userId, { project: result.project.project, visibility: "public", requestKey: "public-copy", parentId: result.projectId });
   assert.equal((await query(`/api/v1/projects/${publicCopy.id}`)).body.generation, undefined, "private prompt is not copied into a public score");
+
+  assert.equal((await fetch(server.base + `/api/v1/generations/${id}/events`)).status, 401);
+  assert.equal((await fetch(server.base + `/api/v1/generations/${id}/events`, {headers:{Authorization:`Bearer ${otherKey.key}`}})).status,404);
+  const streamCalls=server.calls.length;
+  const streamed=await query('/api/v1/generations',post({...request,prompt:'streaming'},'streamed-request'));
+  const seen=[];
+  // Disconnect after a snapshot, then resume the same generation with no JSON polls.
+  let stream=await fetch(server.base+`/api/v1/generations/${streamed.body.id}/events`,{headers});
+  assert.match(stream.headers.get('content-type'),/text\/event-stream/);
+  for await (const frame of api.readSSE(stream.body)) {seen.push(JSON.parse(frame.data));break;}
+  while(!seen.some(event=>['ready','failed','cancelled'].includes(event.status))) {
+    stream=await fetch(server.base+`/api/v1/generations/${streamed.body.id}/events`,{headers,signal:AbortSignal.timeout(30000)});
+    for await(const frame of api.readSSE(stream.body)) {
+      assert.equal(frame.event,'progress');
+      const snapshot=JSON.parse(frame.data);seen.push(snapshot);
+      assert.equal(snapshot.request,undefined);assert.equal(snapshot.project,undefined);
+    }
+  }
+  assert.equal(seen.at(-1).status,'ready');
+  assert.ok(seen.some(event=>event.status==='composing' && event.progress.outputCharacters>0),'live output progress arrives before composition completes');
+  assert.equal(server.calls.length,streamCalls+1,'SSE reconnection never repeats paid inference');
+  assert.ok(seen.at(-1).finishedAt >= seen.at(-1).createdAt);
 
   // A busy audio worker postpones evaluation, never repeats paid composition.
   const client = await api.db();
@@ -156,6 +178,9 @@ finally:
   assert.equal(cancelled.body.status, "cancelled");
   await new Promise(resolve => setTimeout(resolve, 3500));
   assert.equal((await completed(slow.body.id)).projectId, null, "cancelled model response cannot save a song");
+  await client.execute({sql:"update generations set status='composing',active=1,started_at=? where id=?",args:[Date.now()-280000,slow.body.id]});
+  const timedOut=await completed(slow.body.id);
+  assert.equal(timedOut.status,'failed');assert.equal(timedOut.errorCode,'generation_timeout');assert.ok(timedOut.finishedAt);
   const artist = await api.ensureProfile(caller.userId);
   const grantToken = `cv_agent_${api.secret()}`;
   await client.execute({ sql: "insert into agent_grants(id,user_id,profile_id,hash,label,scopes,created_at,expires_at) values(?,?,?,?,?,?,?,?)", args: [api.newId(), caller.userId, artist.id, await api.hashKey(grantToken), "scope test", JSON.stringify(["projects:write", "render"]), Date.now(), Date.now() + 60000] });
@@ -166,7 +191,16 @@ finally:
   const revokedJob = await query("/api/v1/generations", post({ ...request, prompt: "slow" }, "revoked-model", { ...headers, Authorization: `Bearer ${revokedToken}` }));
   assert.equal(revokedJob.status, 202);
   while ((await query(`/api/v1/generations/${revokedJob.body.id}`, { headers })).body.status === "queued") await new Promise(resolve => setTimeout(resolve, 50));
-  await client.execute({ sql: "update agent_grants set revoked_at=? where id=?", args: [Date.now(), revokedId] });
+  const revokedStream = await fetch(server.base + `/api/v1/generations/${revokedJob.body.id}/events`, {headers:{Authorization:`Bearer ${revokedToken}`}});
+  let firstSnapshot = true, revocationNotice = false;
+  for await (const frame of api.readSSE(revokedStream.body)) {
+    if (firstSnapshot) {
+      assert.equal(frame.event,'progress'); firstSnapshot=false;
+      await client.execute({ sql: "update agent_grants set revoked_at=? where id=?", args: [Date.now(), revokedId] });
+    } else { assert.equal(frame.event,'unavailable'); revocationNotice=true; }
+  }
+  assert.ok(revocationNotice,'an open SSE connection stops exposing progress after revocation');
+  assert.equal((await fetch(server.base + `/api/v1/generations/${revokedJob.body.id}/events`, {headers:{Authorization:`Bearer ${revokedToken}`}})).status,401);
   const revokedResult = await completed(revokedJob.body.id);
   assert.equal(revokedResult.status, "failed");
   assert.equal(revokedResult.projectId, null);

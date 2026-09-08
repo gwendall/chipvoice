@@ -60,6 +60,7 @@ try {
     "test-projects.mjs",
     "test-artists.mjs",
     "test-agent-guide.mjs",
+    "test-generation-stream.mjs",
     "test-generation.mjs",
     "test-creator-journey.mjs",
     "test-onboarding.mjs",

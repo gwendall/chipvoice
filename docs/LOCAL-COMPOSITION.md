@@ -35,7 +35,7 @@ curl http://localhost:3010/api/v1/generations \
 
 Read supported `target` IDs from `/api/v1/capabilities`; the prompt uses the same generated capability catalogue. Duration is an integer from 10 to 90 seconds; default 60. Prompt length is 1–2000 JavaScript string units after trimming. `loop` expresses musical intent, not a verified seamless-loop guarantee. An owner may choose an owned `profileId`; agents use their authorized artist. Optional `visibility` accepts `private` (default), `unlisted` or `public`.
 
-The response contains `id` and `status`. Poll `GET /api/v1/generations/{id}` with the same credential, following `Retry-After: 2`. Status progresses through `queued`, `composing`, `validating`, `saving`, `rendering` and `ready`, or ends as `failed`/`cancelled`. Send `DELETE` to the same URL to cancel unfinished work.
+The response contains `id` and `status`. For live updates, stream `GET /api/v1/generations/{id}/events` with the same credential (`curl -N`); reconnect after its approximately 20-second closure without resubmitting the request. See [the SSE contract](GENERATIVE-COMPOSITION.md#implemented-contract). Alternatively, poll `GET /api/v1/generations/{id}` with the same credential, following `Retry-After: 2`. Status progresses through `queued`, `composing`, `validating`, `saving`, `rendering` and `ready`, or ends as `failed`/`cancelled`. Send `DELETE` to the same URL to cancel unfinished work.
 
 A ready response includes `projectId`, `renderJobId`, `project` (the normal publication), `render` (the normal audio job), `evaluation` and model `usage`. Open `/p/{projectId}` while signed in. Download audio through the existing authenticated `/api/v1/jobs/{renderJobId}/audio?format=mp3` or `format=wav` endpoints. An agent can attach downloaded bytes in its chat tool; never put credentials in a URL. Editing uses the usual project flow. Explicitly share an existing song with `PATCH /api/v1/projects/{id}` and `{"visibility":"public"}`: the author, song ID and rendered audio are retained.
 
@@ -59,7 +59,7 @@ Set `CHIPVOICE_API_KEY` in the environment first. The client waits for the compl
 
 The first version makes **one model call, without automatic repair**. It accepts structured JSON only, never executes model-written code, and compiles the complete source with `allowLoss:false`. A score exceeding compatible voice capacity fails instead of silently dropping notes. Mix adaptation uses the existing automatic mixer.
 
-Defaults allow 10 admissions per owner per UTC day, one unfinished request per owner and two concurrent composition workers globally. Failed/cancelled attempts count toward the daily limit. Output is bounded by 24,000 tokens (configurable up to 64,000), a 4 MB provider response, 20,000 notes and 90 seconds. A composition stage has a 180-second abort timer and each generation expires after 600 seconds. Existing renderer CPU/storage bounds still apply. These limits bound request counts and payloads; they are **not a monetary spending cap**. Configure the provider's account budget before enabling a shared deployment.
+Defaults allow 10 admissions per owner per UTC day, one unfinished request per owner and two concurrent composition workers globally. Failed/cancelled attempts count toward the daily limit. Output is bounded by 24,000 tokens (configurable up to 64,000), an 8 MB provider event stream, 20,000 notes and 90 seconds. The model has a 210-second deadline, its composition worker a 240-second budget, and an abandoned worker fails after 270 seconds. Each generation expires after 600 seconds. Compact model patterns expand deterministically into ordinary notes; the public project format is unchanged. Existing renderer CPU/storage bounds still apply. These limits bound request counts and payloads; they are **not a monetary spending cap**. Configure the provider's account budget before enabling a shared deployment.
 
 The existing evaluation checks the **whole allocation plan but only the first two seconds acoustically**. The existing renderer then produces the entire song. `ready` means a valid project and complete render are available; it does not certify taste, prompt fidelity, seamless loops or complete-song acoustic quality. A model may produce a poor composition or exceed a constraint; the result is not guaranteed to succeed. Wider musical qualification remains separate from this small integration.
 
@@ -70,6 +70,7 @@ Cancellation/revocation are checked before subsequent work; cancelling after a s
 ```bash
 pnpm --filter chipvoice-web build
 cd apps/web
+node test-generation-stream.mjs
 node test-generation.mjs
 ```
 
@@ -85,4 +86,4 @@ pnpm --filter chipvoice-web eval:composition
 pnpm --filter chipvoice-web eval:composition 'An original calm theme with a developed ending' 30 snes
 ```
 
-Each run makes one paid request using your configured model, saves the project and complete WAV/MP3 in `.artifacts/prompt-composition/live-*/`, measures full-duration PCM (duration, peak, RMS, clipping), decodes the MP3 and captures the private song page on mobile and desktop. It uses a temporary local database and never publishes test songs to production. The report explicitly distinguishes signal checks from listening; audition the saved audio before judging the music. CI uses only the simulated provider.
+Each run makes one paid request using your configured model, saves the project and complete WAV/MP3 in `.artifacts/prompt-composition/live-*/`, measures full-duration PCM (duration, peak, RMS, clipping and per-second activity), records SSE snapshots and latency, decodes the MP3 and captures the private song page on mobile and desktop. It uses a temporary local database and never publishes test songs to production. The report explicitly distinguishes signal checks from listening; audition the saved audio before judging the music. CI uses only the simulated provider.

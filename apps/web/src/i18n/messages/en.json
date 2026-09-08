@@ -1033,5 +1033,20 @@
   "Keep composing without an account": "Keep composing without an account",
   "Checking your account…": "Checking your account…",
   "Sign in to generate your song": "Sign in to generate your song",
-  "Your prompt is saved on this device. Follow the email link, then generate your music.": "Your prompt is saved on this device. Follow the email link, then generate your music."
+  "Your prompt is saved on this device. Follow the email link, then generate your music.": "Your prompt is saved on this device. Follow the email link, then generate your music.",
+  "Composition took too long. Your prompt is saved; you can try again.": "Composition took too long. Your prompt is saved; you can try again.",
+  "The model reached its output limit before finishing. Try a simpler arrangement.": "The model reached its output limit before finishing. Try a simpler arrangement.",
+  "The model connection ended before the score was complete. You can try again.": "The model connection ended before the score was complete. You can try again.",
+  "The model declined this request. Try a different musical brief.": "The model declined this request. Try a different musical brief.",
+  "The score was saved, but its audio could not be prepared.": "The score was saved, but its audio could not be prepared.",
+  "Your composition authorization expired. Sign in again to continue.": "Your composition authorization expired. Sign in again to continue.",
+  "Reconnecting to your composition…": "Reconnecting to your composition…",
+  "Writing your score…": "Writing your score…",
+  "Composition steps": "Composition steps",
+  "Compose": "Compose",
+  "Check": "Check",
+  "Save": "Save",
+  "{count} of 4 steps complete": "{count} of 4 steps complete",
+  "{seconds}s elapsed": "{seconds}s elapsed",
+  "The model is composing. This can take a few minutes; the duration is not known in advance.": "The model is composing. This can take a few minutes; the duration is not known in advance."
 }
