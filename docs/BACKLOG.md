@@ -5,6 +5,10 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+## Generative composition — specification (2026-09-08)
+
+The [generation specification](GENERATIVE-COMPOSITION.md) proposes prompt-to-song creation with private editable projects, complete WAV/MP3, bounded model repair, owner budgets and explicit publication. **GEN-01–GEN-13 are todo; no hosted generation endpoint is implemented.** Start with benchmark fixtures and a local prototype (GEN-01–05), then the private beta (GEN-06–10), then revisions and console variants (GEN-11–12). Public release (GEN-13) additionally requires listening and operational evidence. Model/provider, actual monetary caps and public pricing are deferred to measured gates, not guessed in advance.
+
 ## Creation and API review — implementation
 
 [The original review](CREATION-API-REVIEW-2026-09-07.md) is the historical CREATE-01–11 specification. [The implementation guide](CREATION.md) documents the versioned SDK, complete workspace, isolated code generator, immutable publications/audio, profiles, local draft library, discovery and favourites. CREATE-01–11 are implemented and locally qualified, including the production-build browser suite. Release CI runs on the associated pull request and version tag. Retro pixel avatars are generated locally from public profile IDs. Source docs/comments are English, with Japanese documentation and UI maintained alongside them.

@@ -6,6 +6,10 @@
 </p>
 
 
+## Prompt-to-song creation — proposed
+
+[Generative composition](GENERATIVE-COMPOSITION.md) specifies a hosted authoring layer over the existing editable score and emulators. First qualify original composition and complete-audio evaluation locally; then introduce private authenticated generation in `/create`. Conversational revisions and evaluated console variants follow. This is planned work, not an available endpoint; the lightweight SDK remains independent of a model provider.
+
 ## Where this is going
 
 One driver, one score, many chips. The music is written once, as text an agent or

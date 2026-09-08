@@ -6,6 +6,11 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+<a id="generative-composition--specification-2026-09-08"></a>
+## 生成による作曲 — 仕様（2026-09-08）
+
+[生成仕様](GENERATIVE-COMPOSITION_ja.md)は、プロンプトから非公開の編集可能プロジェクトと全WAV/MP3を作り、上限付き修正、所有者予算、明示公開を扱います。**GEN-01〜GEN-13はtodoで、ホスト型生成エンドポイントは未実装です。** 評価用依頼とローカルプロトタイプ（GEN-01〜05）、非公開ベータ（GEN-06〜10）、改訂と機種別（GEN-11〜12）の順に進めます。一般公開（GEN-13）には試聴と運用の証跡も必要です。モデル、金額上限、公開料金は実測段階で決めます。
+
 <a id="creation-and-api-review--implementation"></a>
 ## 制作・APIレビュー — 実装
 
