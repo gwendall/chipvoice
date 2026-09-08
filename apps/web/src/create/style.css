@@ -601,3 +601,14 @@
 .publication-bar{padding-inline:1rem;}
 .agent-permissions{grid-column:1/-1;margin:.25rem 0;font-size:1rem;line-height:1.5;}
 .agent-list li>.small-button{justify-self:start;}
+
+.prompt-composer { border: 1px solid #aaa98e; padding: 18px; margin: 20px 0; }
+.prompt-composer summary { cursor: pointer; font-weight: 650; }
+.prompt-composer label { display: grid; gap: 8px; }
+.prompt-composer textarea { width: 100%; min-height: 104px; resize: vertical; box-sizing: border-box; font: inherit; padding: 12px; color: inherit; background: #f8f6ef; border: 1px solid #aaa98e; }
+.prompt-options { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; margin: 16px 0; }
+.prompt-composer progress { width: 100%; accent-color: var(--accent); }
+.composition-origin { font-size: inherit; overflow-wrap: anywhere; }
+@media(max-width:680px) { .prompt-options { grid-template-columns: 1fr; gap: 14px; } .prompt-composer { padding: 12px; } }
+
+.prompt-options select, .publication-sharing select { min-height: 44px; max-width: 100%; padding: 8px 10px; border: 1px solid #aaa98e; background: #f8f6ef; color: inherit; font: inherit; }

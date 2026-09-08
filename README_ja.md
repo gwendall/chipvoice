@@ -159,4 +159,4 @@ Sonic の DAC 移植も、すべてをキックにせず、観測したキック
 
 [エージェント向け作曲ガイド](docs/AGENT-COMPOSITION_ja.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)
 
-[プロンプトによる楽曲生成の計画](docs/GENERATIVE-COMPOSITION_ja.md)：仕様と実装チケット。ホスト型生成はまだ利用できません。
+[プロンプト作曲](docs/LOCAL-COMPOSITION_ja.md)：`/create`または設定済みOpenAI APIから作曲し、作者と作成方法を保持して全WAV/MP3レンダーを再利用します。エージェントは認可後に`/skill/compose.mjs`をダウンロードし、プロンプトまたは自作プロジェクトから1コマンドで全MP3を取得できます。[実施計画](docs/GENERATIVE-COMPOSITION_ja.md)も参照してください。

@@ -60,6 +60,8 @@ try {
     "test-projects.mjs",
     "test-artists.mjs",
     "test-agent-guide.mjs",
+    "test-generation.mjs",
+    "test-creator-journey.mjs",
     "test-creation-browser.mjs",
     "test-i18n.mjs",
     "test-score-compiler.mjs",

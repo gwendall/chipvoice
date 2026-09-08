@@ -253,6 +253,6 @@ mapping every burst to a kick. These improve adaptations; they do not make
 cross-console timbres identical. See the measured-projection workflow in
 [the mixing API](docs/MIXING-API.md).
 
-[Planned prompt-to-song generation](docs/GENERATIVE-COMPOSITION.md): specification and implementation tickets; hosted generation is not available yet.
+[Prompt-to-song composition](docs/LOCAL-COMPOSITION.md): compose in `/create` or through the configured OpenAI API, keep the creator and creation-method credit, and reuse full WAV/MP3 rendering. Agents can download `/skill/compose.mjs` to turn a prompt or their own project into a complete MP3 with one command after authorization. See the [delivery plan](docs/GENERATIVE-COMPOSITION.md).
 
 [Agent composition guide](docs/AGENT-COMPOSITION.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)

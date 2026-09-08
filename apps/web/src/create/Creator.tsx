@@ -23,6 +23,7 @@ import {
 import { RangeControl } from "@/ui/RangeControl";
 import type { Profile } from "@/lib/projects";
 import { Account } from "@/studio/Account";
+import PromptComposer from "./PromptComposer";
 import type { Publication } from "@/lib/projects";
 import { PixelAvatar } from "@/community/avatar";
 import { starterProject, GENERATOR_EXAMPLE } from "./starter";
@@ -487,13 +488,14 @@ export default function Creator({
     setBusy(true);
     try {
       const clean = JSON.parse(JSON.stringify(project));
-      const r = await fetch("/api/v1/projects", {
-        method: "POST",
+      const reuse = published?.owned && (!artistId || artistId === published.profile.id) && JSON.stringify(clean) === JSON.stringify(published.project);
+      const r = await fetch(reuse ? `/api/v1/projects/${published!.id}` : "/api/v1/projects", {
+        method: reuse ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
           "Idempotency-Key": requestKey.current,
         },
-        body: JSON.stringify({
+        body: JSON.stringify(reuse ? { visibility } : {
           project: clean,
           ...(artistId ? { profileId: artistId } : {}),
           visibility,
@@ -508,7 +510,7 @@ export default function Creator({
       setPublished(data);
       requestKey.current = crypto.randomUUID();
       setNotice("Published. This revision preserves your source and settings.");
-      if (visibility !== "private") await startRender(data.id, "preview");
+      if (visibility !== "private" && !data.renditions?.some((r: { status: string }) => r.status === "ready")) await startRender(data.id, "preview");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not publish");
     } finally {
@@ -624,6 +626,7 @@ export default function Creator({
           <Button onClick={() => setSharing(!sharing)}>{t("Share")}</Button>
           <Link href="/explore">{t("Explore songs")} ↗</Link>
         </div>
+        <PromptComposer target={project.settings.chip} />
         <section className="creation-instrument">
           <div className="project-title">
             <input
