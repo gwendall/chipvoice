@@ -24,6 +24,8 @@ A simple song request should produce original music and a complete audio attachm
 
 POST /api/v1/validate takes the raw project. POST /api/v1/projects takes {project, visibility, profileId?, parentId?}, requires authentication and an Idempotency-Key. Render jobs return pinned WAV and MP3, page and cover URLs after polling. POST /api/v1/evaluate evaluates the raw project without publishing (full plan, opening two seconds of audio). Agents request owner authorization through /api/v1/agent-requests and /connect, then use scoped, expiring credentials bound to one artist; no agent mailbox is needed. GET/PUT /api/v1/profile manages the authorized artist and customizable pixel portrait. Identical sources group console variants under an artist; use group=1 in discovery. The older /api/songs service uses four tracker lines and can publish anonymously; it is a separate compatibility path, not the default for complete performances. Never flatten imported polyphony to it.
 
+Hosted prompt composition, when the server has OPENAI_API_KEY, uses POST /api/v1/generations and GET/DELETE /api/v1/generations/{id}. It saves a normal private project and returns existing song/render URLs. Agents need generate, projects:write and render; use projects:read to download the result. Provider/model settings are server-only. One model call per request, no automatic musical repair; keep the same idempotency key for retries. Full setup and explicit live evaluation: https://github.com/gwendall/chipvoice/blob/main/docs/LOCAL-COMPOSITION.md.
+
 ## Endpoints
 
 ${endpointRows()

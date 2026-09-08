@@ -7,7 +7,7 @@
 
 ## Generative composition — specification (2026-09-08)
 
-The [generation specification](GENERATIVE-COMPOSITION.md) proposes prompt-to-song creation with private editable projects, complete WAV/MP3, bounded model repair, owner budgets and explicit publication. **GEN-01–GEN-13 are todo; no hosted generation endpoint is implemented.** Start with benchmark fixtures and a local prototype (GEN-01–05), then the private beta (GEN-06–10), then revisions and console variants (GEN-11–12). Public release (GEN-13) additionally requires listening and operational evidence. Model/provider, actual monetary caps and public pricing are deferred to measured gates, not guessed in advance.
+The [simplified generation plan](GENERATIVE-COMPOSITION.md) now reuses ordinary song hosting. The local OpenAI adapter, private project/render connection and three control routes (GEN-02, GEN-06–08) are implemented, with configured-server agent documentation. Next: a real Astra trial with a local key and musical evaluation (GEN-01/05); full-song evaluation, repairs and prompt UI remain separate follow-ups. See [setup and E2E instructions](LOCAL-COMPOSITION.md). No production model is enabled by this change.
 
 ## Creation and API review — implementation
 

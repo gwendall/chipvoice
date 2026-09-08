@@ -1,3 +1,4 @@
+import { generationPaths } from "./composition/openapi";
 import { artistPaths, artistSchema, artistInput } from "./artist-openapi";
 import { PROJECT_SCHEMA, CHIP_IDS } from "chipvoice";
 const json = (schema: unknown) => ({ "application/json": { schema } });
@@ -34,6 +35,11 @@ const response = {
     favourites: { type: "integer" },
     favourited: { type: "boolean" },
     owned: { type: "boolean" },
+    generation: {
+      type: "object", description: "Generation provenance, returned only to the owning artist",
+      properties: { id: { type: "string" }, prompt: { type: "string" }, model: { type: "string" } },
+      required: ["id", "prompt", "model"],
+    },
     renditions: {
       type: "array",
       items: {
@@ -184,6 +190,7 @@ const operation = (
 });
 export const projectPaths = {
   ...artistPaths,
+  ...generationPaths(response),
   "/api/v1/capabilities": {
     get: operation(
       "getProjectCapabilities",

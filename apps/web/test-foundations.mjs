@@ -66,7 +66,7 @@ try {
   await api.migrate(legacy);
   assert.equal(
     (await legacy.execute("select * from schema_migrations")).rows.length,
-    5,
+    6,
   );
   assert.equal(
     Number(
@@ -187,7 +187,7 @@ try {
   await api.migrate(fresh);
   assert.equal(
     (await fresh.execute("select * from schema_migrations")).rows.length,
-    5,
+    6,
   );
   fresh.close();
   // Frozen v4 publication tables exercise the real profile/data upgrade.

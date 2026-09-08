@@ -18,7 +18,7 @@ name: chipvoice
 description: Compose, import, arrange, evaluate and publish complete multi-instrument music for emulated retro sound chips. Exact-tick projects, machine capabilities and explicit adaptation reports.
 compatibility: HTTP discovery and publication require a network client. Local composition and rendering require Node.js and the chipvoice npm package. Publishing projects requires a browser account, existing owner key or scoped agent credential.
 homepage: ${SITE}
-metadata: {"version":"0.13.0","updated":"2026-09-08","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
+metadata: {"version":"0.14.0","updated":"2026-09-08","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
 ---
 
 # Compose complete music with chipvoice
@@ -44,6 +44,16 @@ A credential grants access, not permission to publish unrelated work. Do not ask
 Finish with the actual audio attachment or accessible download, title, duration and console. For authorized publication, also return the song page and artist page. A server-local filesystem path or a promise to render later is not delivery in a remote chat. Download MP3 bytes and upload them through the chat tool when supported; a pasted URL is a link, not an attachment. Private audio URLs require credentials: attach downloaded bytes without exposing the credential. If attachments or listening tools are unavailable, say so precisely and provide the available artifact/link. Never claim to have listened based only on numeric metrics.
 
 A valid project or a deterministic render does not prove musical quality or fidelity to an original game. Generic programs are approximations, not a complete orchestral sample library.
+
+## Ask the configured model to compose
+
+If the user asks Chipvoice itself to compose from a prompt, POST /api/v1/generations with {prompt,target,durationSeconds,loop?}, an Idempotency-Key and account authentication. This saves an ordinary private project for the existing artist and reuses the existing full WAV/MP3 job. The prompt is owner-only metadata, not part of the portable musical source. Local/manual composition above still needs no hosted model.
+
+Hosted composition requires the server's OPENAI_API_KEY; 503 generation_disabled means it is not configured. Model and provider are server environment settings, not request parameters. An agent needs generate, projects:write and render scopes; projects:read is also needed for the resulting project/audio URLs. Request generate only for this paid model capability, not for an agent composing its own notes. Current default model is gpt-6-astra via the direct OpenAI Responses API.
+
+Poll GET /api/v1/generations/{id} at the returned Retry-After interval. Queued/composing/validating/saving/rendering are pending; ready/failed/cancelled are terminal. Reuse the same request key after uncertain transport failures; a failed request does not silently call the model again. DELETE cancels unfinished work. On ready, use project.url and render.wavUrl/mp3Url; attach downloaded bytes to a chat as described above. A private URL alone will not play for another user. Public sharing remains the existing explicitly authorized publication action.
+
+This first integration uses one model call, strict note allocation and the existing two-second acoustic evaluation before the complete export. It does not yet implement autonomous musical repair or certify full-song mix quality; the local live-evaluation script separately measures the complete WAV and decodes MP3. Setup and evaluation: https://github.com/gwendall/chipvoice/blob/main/docs/LOCAL-COMPOSITION.md.
 
 ## Obtain limited agent access
 

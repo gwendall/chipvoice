@@ -1,4 +1,4 @@
-import { createClient, type Client } from "@libsql/client";
+import { createClient, type Client, type InStatement, type InArgs, type TransactionMode } from "@libsql/client";
 import { migrate } from "./migrations";
 
 /**
@@ -12,6 +12,17 @@ const LOCAL_FILE = ".chipvoice-dev.db";
 
 let client: Client | null = null;
 let ready: Promise<void> | null = null;
+
+async function waitForLocalWriter<T>(operation: () => Promise<T>): Promise<T> {
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    try { return await operation(); }
+    catch (error) {
+      if ((error as { code?: string })?.code !== "SQLITE_BUSY" || Date.now() >= deadline) throw error;
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+  }
+}
 
 function target(): { url: string; token?: string } | null {
   const env = process.env.VERCEL_ENV;
@@ -42,6 +53,14 @@ export async function db(): Promise<Client> {
   if (!where) throw new Error("no database configured");
   if (!client) {
     client = createClient({ url: where.url, authToken: where.token });
+    if (where.url.startsWith("file:")) {
+      // libsql replaces its connection after transaction(), losing PRAGMA settings.
+      // Retry only explicit SQLite contention, without blocking the Node event loop.
+      const execute = client.execute.bind(client), transaction = client.transaction.bind(client);
+      client.execute = (statement: InStatement, args?: InArgs) => waitForLocalWriter(() =>
+        typeof statement === "string" ? execute(statement, args) : execute(statement));
+      client.transaction = (mode?: TransactionMode) => waitForLocalWriter(() => transaction(mode));
+    }
   }
   if (!ready) ready = migrate(client).catch(error => { ready = null; throw error; });
   await ready;

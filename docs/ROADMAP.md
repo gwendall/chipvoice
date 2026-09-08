@@ -8,7 +8,7 @@
 
 ## Prompt-to-song creation — proposed
 
-[Generative composition](GENERATIVE-COMPOSITION.md) specifies a hosted authoring layer over the existing editable score and emulators. First qualify original composition and complete-audio evaluation locally; then introduce private authenticated generation in `/create`. Conversational revisions and evaluated console variants follow. This is planned work, not an available endpoint; the lightweight SDK remains independent of a model provider.
+[Generative composition](GENERATIVE-COMPOSITION.md) adds a small server-side model adapter to existing editable songs and audio hosting. The local API integration is implemented; the next step is a real Astra trial using [local configuration](LOCAL-COMPOSITION.md). Broader musical qualification, a prompt form, revisions and console variants follow as needed. The lightweight SDK remains independent of model providers; production inference is not enabled by this change.
 
 ## Where this is going
 

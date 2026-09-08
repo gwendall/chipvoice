@@ -101,6 +101,11 @@ export default function PublishedProject({ id }: { id: string }) {
               </form>
             </details>
           </div>
+          {publication.generation && <details className="demo-main">
+            <summary>{t("Composition prompt")}</summary>
+            <p>{publication.generation.prompt}</p>
+            <p>{t("Model")}: {publication.generation.model}</p>
+          </details>}
           {!editing && (
             <section className="demo-main published-listen">
               <div className="song-author">

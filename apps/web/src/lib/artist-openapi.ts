@@ -12,6 +12,7 @@ const scopes = {
   uniqueItems: true,
   items: {
     enum: [
+      "generate",
       "projects:read",
       "projects:write",
       "render",

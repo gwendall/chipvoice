@@ -200,6 +200,21 @@ const migrations = [
       });
     },
   },
+  {
+    name: "prompt-composition",
+    async up(tx: Transaction) {
+      await tx.execute(`create table generations (
+        id text primary key, user_id text not null, profile_id text not null,
+        key_id text, agent_id text, request_key text not null, request_hash text not null,
+        request text not null, model text not null, status text not null,
+        created_at integer not null, started_at integer, active integer not null default 0,
+        document text, project_id text, render_job_id text, report text, usage text, error text,
+        unique(user_id,request_key)
+      )`);
+      await tx.execute(`create index generations_owner on generations(user_id,created_at)`);
+      await tx.execute(`create index generations_project on generations(project_id)`);
+    },
+  },
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

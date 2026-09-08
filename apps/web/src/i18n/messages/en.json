@@ -977,5 +977,8 @@
   "Send the raw project to /api/v1/evaluate. The complete adaptation report lists losses and mix decisions; audio measurements cover only its opening two seconds. Nothing is published.": "Send the raw project to /api/v1/evaluate. The complete adaptation report lists losses and mix decisions; audio measurements cover only its opening two seconds. Nothing is published.",
   "Ready render jobs return WAV, MP3, publication and cover URLs. Share complete songs as files; previews are explicitly limited to 30 seconds.": "Ready render jobs return WAV, MP3, publication and cover URLs. Share complete songs as files; previews are explicitly limited to 30 seconds.",
   "Full song · preserved with this revision": "Full song · preserved with this revision",
-  "Encoding MP3…": "Encoding MP3…"
+  "Encoding MP3…": "Encoding MP3…",
+  "Compose music with a hosted model": "Compose music with a hosted model",
+  "Composition prompt": "Composition prompt",
+  "Model": "Model"
 }

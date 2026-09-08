@@ -27,6 +27,7 @@ export interface Publication {
   url: string;
   coverUrl: string;
   variants?: { id: string; chip: string; url: string }[];
+  generation?: { id: string; prompt: string; model: string };
   parentId: string | null;
   rootId: string;
   title: string;
@@ -269,6 +270,15 @@ export async function getProject(
       chip: String(v.chip),
       url: `${SITE}/p/${v.id}`,
     }));
+  if (publication.owned) {
+    const generation = (await (await db()).execute({
+      sql: "select id,request,model from generations where project_id=? and user_id=? and profile_id=? limit 1",
+      args: [id, viewerUser(viewer), row.profile_id],
+    })).rows[0];
+    if (generation) publication.generation = {
+      id: String(generation.id), prompt: String(JSON.parse(String(generation.request)).prompt), model: String(generation.model),
+    };
+  }
   return publication;
 }
 export async function publishProject(
