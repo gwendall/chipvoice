@@ -19,7 +19,7 @@ export function fixtureScore(seconds = 10) {
 }
 
 /** A real local Next server, isolated DB and either a recorded HTTP provider or explicit live credentials. */
-export async function compositionServer({ live = false } = {}) {
+export async function compositionServer({ live = false, mailBase } = {}) {
   if (live && !process.env.OPENAI_API_KEY) throw Error("Set OPENAI_API_KEY in apps/web/.env.local before the live evaluation");
   const directory = await mkdtemp(join(tmpdir(), "chipvoice-composition-"));
   const calls = [];
@@ -52,7 +52,7 @@ export async function compositionServer({ live = false } = {}) {
   await new Promise(resolve => reservation.close(resolve));
   const base = `http://127.0.0.1:${port}`;
   const env = {
-    ...process.env, VERCEL_ENV: "preview", DOMANI_API_KEY: "",
+    ...process.env, VERCEL_ENV: "preview", DOMANI_API_KEY: mailBase ? "fixture-mail-key" : "", DOMANI_BASE_URL: mailBase ?? "https://domani.run", CHIPVOICE_MAIL_FROM: "hello@chipvoice.dev",
     TURSO_DEV_DATABASE_URL: `file:${join(directory, "data.db")}`, TURSO_DEV_AUTH_TOKEN: "",
     SITE: base, URL: base, API_URL: base,
     OPENAI_API_KEY: live ? process.env.OPENAI_API_KEY : "test-not-a-real-key",

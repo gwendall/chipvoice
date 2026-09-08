@@ -1,3 +1,4 @@
+import { Domani, DomaniError } from "domani";
 import { createTranslator, type Locale } from "@/i18n/core";
 import { getMessages } from "@/i18n/server";
 /**
@@ -12,10 +13,6 @@ import { getMessages } from "@/i18n/server";
  * Only temporary login links are sent; agent credentials never enter email.
  */
 const FROM = process.env.CHIPVOICE_MAIL_FROM ?? "hello@chipvoice.dev";
-
-/** The sending endpoint is per mailbox, not global. */
-const sendUrl = (from: string) =>
-  `https://domani.run/api/emails/${encodeURIComponent(from)}/send`;
 
 export async function sendSignInEmail(
   to: string,
@@ -43,17 +40,20 @@ async function send(
   const token = process.env.DOMANI_API_KEY;
   if (!token) return false;
   try {
-    const response = await fetch(sendUrl(FROM), {
-      method: "POST",
-      signal: AbortSignal.timeout(10_000),
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ to, subject, text }),
+    const client = new Domani({
+      apiKey: token,
+      baseUrl: process.env.DOMANI_BASE_URL,
+      fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(10_000) }),
     });
-    return response.ok;
-  } catch {
+    const result = await client.sendEmailByAddress(FROM, { to, subject, text });
+    return !!result.id || !!result.message_id;
+  } catch (error) {
+    // Never log provider bodies, addresses, credentials or the sign-in URL.
+    console.error("Sign-in mail failed", {
+      provider: "domani",
+      status: error instanceof DomaniError ? error.status : null,
+      code: error instanceof DomaniError && /^[A-Z_]{1,64}$/.test(error.code) ? error.code : "MAIL_UNAVAILABLE",
+    });
     return false;
   }
 }
