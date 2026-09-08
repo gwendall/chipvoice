@@ -100,10 +100,19 @@ try {
   await mobile.goto(jaLink);
   assert.equal(new URL(mobile.url()).pathname, '/ja/create');
   await mobile.getByRole('button', { name: "曲を生成", exact: true }).waitFor();
+  const signedOut = await context.request.delete(server.base + '/api/auth/session');
+  assert.equal(signedOut.status(), 200);
+  await page.evaluate(() => window.dispatchEvent(new Event('chipvoice-session')));
+  await page.locator('header').getByRole('link', { name: 'Sign in', exact: true }).waitFor();
+  await emailTab.locator('header').getByRole('link', { name: 'Sign in', exact: true }).waitFor();
+  await page.reload();
+  await page.locator('header').getByRole('link', { name: 'Sign in', exact: true }).waitFor();
+  assert.equal((await context.request.get(server.base + '/api/auth/session')).status(), 401);
+  assert.equal(await mobile.locator('header').getByRole('link', { name: 'ライブラリ', exact: true }).count(), 1, 'logout does not affect another browser account');
   assert.equal(server.logs().includes('DO_NOT_LOG_THIS_SECRET'), false);
   assert.equal(server.logs().includes('listener@example.test'), false);
-  await writeFile(out + '/report.json', JSON.stringify({ providerFailure: true, loading: true, receivedMail: true, newTabDraftRecovery: true, originalTabRefresh: true, privateGeneration: true, usedLinkRejected: true, japaneseReturn: true, safeRedirects: true, secretRedaction: true }, null, 2));
-  console.log('PASS human onboarding: mail failure/retry, receipt, new-tab draft recovery, generation, used links, Japanese, safe redirects and mobile');
+  await writeFile(out + '/report.json', JSON.stringify({ providerFailure: true, loading: true, receivedMail: true, newTabDraftRecovery: true, originalTabRefresh: true, crossTabLogout: true, privateGeneration: true, usedLinkRejected: true, japaneseReturn: true, safeRedirects: true, secretRedaction: true }, null, 2));
+  console.log('PASS human onboarding: mail failure/retry, receipt, new-tab draft recovery, generation, used links, Japanese, safe redirects, mobile and cross-tab logout');
 } finally {
   await browser?.close();
   await server.close();
