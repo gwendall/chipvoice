@@ -2,6 +2,8 @@
 
 For scoped agent authorization, separate artist profiles, HTTP evaluation before publication, MP3 sharing and grouped console versions, see [Artists and agents](docs/ARTISTS-AND-AGENTS.md).
 
+Ask an agent to create a song using [skill.md](https://chipvoice.dev/skill.md): it should compose original material and deliver complete audio. Local creation needs no account; a requested Chipvoice publication uses your authorized artist. The sample composition is an optional API fixture, not the default song.
+
 <p align="center">
   <a href="README.md">English</a> &bull;
   <a href="README_ja.md">日本語</a>

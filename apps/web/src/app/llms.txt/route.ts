@@ -12,7 +12,7 @@ Use MusicProject version 1 with a Performance source for new compositions. Indep
 
 ## Start here
 
-- [Skill](${SITE}/skill.md): executable ensemble example, composition, adaptation, evaluation and publication instructions.
+- [Skill](${SITE}/skill.md): original composition through full audio delivery, local rendering, evaluation and authorized publication.
 - [Capabilities](${SITE}/api/v1/capabilities): generated voices, resource conflicts, instrument palette, pitch ranges and project JSON Schema.
 - [OpenAPI](${SITE}/.well-known/openapi.json): exact HTTP bodies, parameters, auth and responses.
 - [Composition guide](https://github.com/gwendall/chipvoice/blob/main/docs/AGENT-COMPOSITION.md): musical method and adding future consoles.
@@ -20,7 +20,9 @@ Use MusicProject version 1 with a Performance source for new compositions. Indep
 - [Create](${SITE}/create): note/code editor and MIDI import.
 - [Explore](${SITE}/explore): public publications and remix sources.
 
-Local composition needs no account. POST /api/v1/validate takes the raw project. POST /api/v1/projects takes {project, visibility, profileId?, parentId?}, requires authentication and an Idempotency-Key. Render jobs return pinned WAV and MP3, page and cover URLs after polling. POST /api/v1/evaluate evaluates the raw project without publishing (full plan, opening two seconds of audio). Agents request owner authorization through /api/v1/agent-requests and /connect, then use scoped, expiring credentials bound to one artist; no agent mailbox is needed. GET/PUT /api/v1/profile manages the authorized artist and customizable pixel portrait. Identical sources group console variants under an artist; use group=1 in discovery. The older /api/songs service uses four tracker lines and can publish anonymously; it is a separate compatibility path, not the default for complete performances. Never flatten imported polyphony to it.
+A simple song request should produce original music and a complete audio attachment or accessible download, not just a plan or the reference example. Choose a suitable duration and form for the request; short loops remain valid when requested. Local composition needs no account. Publication requires user intent as well as credentials: reuse existing authorization, or offer owner pairing when a page is requested. Keep composing while pairing is pending. HTTP-only agents can evaluate without publishing, but full server rendering requires an authenticated publication. Report actual listening separately from signal measurements.
+
+POST /api/v1/validate takes the raw project. POST /api/v1/projects takes {project, visibility, profileId?, parentId?}, requires authentication and an Idempotency-Key. Render jobs return pinned WAV and MP3, page and cover URLs after polling. POST /api/v1/evaluate evaluates the raw project without publishing (full plan, opening two seconds of audio). Agents request owner authorization through /api/v1/agent-requests and /connect, then use scoped, expiring credentials bound to one artist; no agent mailbox is needed. GET/PUT /api/v1/profile manages the authorized artist and customizable pixel portrait. Identical sources group console variants under an artist; use group=1 in discovery. The older /api/songs service uses four tracker lines and can publish anonymously; it is a separate compatibility path, not the default for complete performances. Never flatten imported polyphony to it.
 
 ## Endpoints
 
