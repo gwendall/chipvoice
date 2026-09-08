@@ -22,7 +22,9 @@ export interface Profile {
   url: string | null;
   avatarUrl: string;
 }
+export interface CompositionOrigin { method: "direct" | "prompt" | "prompt-derived"; model: string | null }
 export interface Publication {
+  origin: CompositionOrigin;
   id: string;
   url: string;
   coverUrl: string;
@@ -184,6 +186,7 @@ function present(
   document = false,
 ): Publication {
   return {
+    origin: { method: row.origin === "prompt" ? "prompt" : row.origin === "prompt-derived" ? "prompt-derived" : "direct", model: row.origin_model ? String(row.origin_model) : null },
     id: String(row.id),
     url: `${SITE}/p/${row.id}`,
     coverUrl: `${SITE}/api/v1/projects/${row.id}/cover`,
@@ -247,10 +250,11 @@ export async function getProject(
   const variants = await (
     await db()
   ).execute({
-    sql: `select id,chip from projects where profile_id=? and composition_hash=? and deleted_at is null and (visibility='public' or id=? or (user_id=? and (? is null or profile_id=?))) order by created_at desc,id desc`,
+    sql: `select id,chip from projects where profile_id=? and composition_hash=? and origin=? and origin_model is ? and deleted_at is null and (visibility='public' or id=? or (user_id=? and (? is null or profile_id=?))) order by created_at desc,id desc`,
     args: [
       row.profile_id,
       row.composition_hash,
+      row.origin, row.origin_model,
       id,
       viewerUser(viewer),
       viewerProfile(viewer),
@@ -290,6 +294,7 @@ export async function publishProject(
     requestKey: string;
     profileId?: string;
     viewer?: Viewer;
+    origin?: CompositionOrigin;
   },
 ) {
   if (!["public", "unlisted", "private"].includes(input.visibility))
@@ -348,11 +353,15 @@ export async function publishProject(
       "parent_not_found",
       "Parent publication is unavailable",
     );
+  const origin = input.origin ?? (parent && parent.origin.method !== "direct" ? {
+    method: digest(canonical(project.source)) === digest(canonical(parent.project!.source)) ? parent.origin.method : "prompt-derived" as const,
+    model: parent.origin.model,
+  } : { method: "direct" as const, model: null });
   // A private source cannot be made public by somebody without access.
   const id = newId(),
     now = Date.now();
   await client.execute({
-    sql: `insert into projects(id,user_id,parent_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,request_key,profile_id,composition_hash) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(user_id,request_key) do nothing`,
+    sql: `insert into projects(id,user_id,parent_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,request_key,profile_id,composition_hash,origin,origin_model) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(user_id,request_key) do nothing`,
     args: [
       id,
       userId,
@@ -368,6 +377,7 @@ export async function publishProject(
       input.requestKey,
       artist.id,
       digest(canonical(project.source)),
+      origin.method, origin.model,
     ],
   });
   const saved = await client.execute({
@@ -488,7 +498,7 @@ export async function listProjects(
   );
   const result = await client.execute({
     sql: query.group
-      ? `select * from (select base.*,row_number() over(partition by profile_id,coalesce(composition_hash,id) order by ${popular ? "weekly_count desc," : ""}created_at desc,id desc) as variant_rank from (${select} where ${where.slice(0, filterCount).join(" and ")}) base) p where variant_rank=1${where.length > filterCount ? " and " + where.slice(filterCount).join(" and ") : ""} order by ${popular ? "weekly_count desc," : ""}p.created_at desc,p.id desc limit 25`
+      ? `select * from (select base.*,row_number() over(partition by profile_id,coalesce(composition_hash,id),origin,origin_model order by ${popular ? "weekly_count desc," : ""}created_at desc,id desc) as variant_rank from (${select} where ${where.slice(0, filterCount).join(" and ")}) base) p where variant_rank=1${where.length > filterCount ? " and " + where.slice(filterCount).join(" and ") : ""} order by ${popular ? "weekly_count desc," : ""}p.created_at desc,p.id desc limit 25`
       : select +
         " where " +
         where.join(" and ") +
@@ -634,4 +644,17 @@ export function validateAvatar(value: unknown): Profile["avatar"] {
       "Palette must be 0–3; variant must be 0–15",
     );
   return { palette: Number(v.palette), variant: Number(v.variant) };
+}
+
+/** Publishing changes visibility only; the score, author and rendered bytes stay pinned. */
+export async function setProjectVisibility(id: string, viewer: Viewer, visibility: unknown) {
+  if (!["private", "unlisted", "public"].includes(String(visibility)))
+    throw new ProjectHttpError(422, "invalid_visibility", "Choose private, unlisted or public");
+  const current = await getProject(id, viewer);
+  if (!current?.owned) throw new ProjectHttpError(404, "not_found", "Your publication was not found");
+  await (await db()).execute({
+    sql: "update projects set visibility=? where id=? and user_id=? and deleted_at is null and (? is null or profile_id=?)",
+    args: [String(visibility), id, viewerUser(viewer), viewerProfile(viewer), viewerProfile(viewer)],
+  });
+  return getProject(id, viewer);
 }

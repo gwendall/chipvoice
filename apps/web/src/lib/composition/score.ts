@@ -8,6 +8,7 @@ export const compositionRequest = z.strictObject({
   target: z.string(),
   durationSeconds: z.number().int().min(10).max(90).default(60),
   loop: z.boolean().default(false),
+  visibility: z.enum(["private", "unlisted", "public"]).default("private"),
   profileId: z.string().optional(),
 });
 export type CompositionRequest = z.infer<typeof compositionRequest>;

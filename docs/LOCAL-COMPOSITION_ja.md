@@ -3,7 +3,7 @@
 
 <p align="center"><a href="LOCAL-COMPOSITION.md">English</a> &bull; <a href="LOCAL-COMPOSITION_ja.md">日本語</a></p>
 
-プロンプトを1つのモデルに送り、音符と楽器を受け取ります。Chipvoiceは検証後、通常の非公開`MusicProject`を自分のアーティストに保存し、既存の全曲WAV/MP3レンダージョブを利用します。曲のページ、保存先、エディター、共有方法は手動作曲と共通です。プロンプトとモデル名は所有者の曲ページに表示されます。可搬の楽譜には追加されず、他のリスナーにも公開されません。
+プロンプトを1つのモデルに送り、音符と楽器を受け取ります。Chipvoiceは検証後、通常の`MusicProject`（既定は非公開）を自分のアーティストに保存し、既存の全曲WAV/MP3レンダージョブを利用します。曲のページ、保存先、エディター、共有方法は手動作曲と共通です。プロンプト本文は所有者だけが参照できます。閲覧可能な曲には作成方法とモデル名が表示されます。プロンプト生成、直接作曲、プロンプト曲からのリミックスを区別します。これはChipvoice上の操作履歴であり、外部AIを使わずに作曲した証明ではありません。
 
 <a id="configuration"></a>
 ## 設定
@@ -36,13 +36,28 @@ curl http://localhost:3010/api/v1/generations \
   -d '{"prompt":"An original space theme, a clear melody with a contrasting bridge and restrained percussion","target":"md","durationSeconds":60,"loop":false}'
 ```
 
-対応する`target`は`/api/v1/capabilities`で確認します。モデルも同じ生成済み機能カタログを参照します。長さは10〜90秒の整数で、既定は60秒です。プロンプトは前後の空白除去後、JavaScriptの文字列単位で1〜2000です。`loop`は作曲上の意図であり、継ぎ目のないループの検証保証ではありません。所有者は所有する`profileId`を選べます。エージェントは認可されたアーティストを使います。
+対応する`target`は`/api/v1/capabilities`で確認します。モデルも同じ生成済み機能カタログを参照します。長さは10〜90秒の整数で、既定は60秒です。プロンプトは前後の空白除去後、JavaScriptの文字列単位で1〜2000です。`loop`は作曲上の意図であり、継ぎ目のないループの検証保証ではありません。所有者は所有する`profileId`を選べます。エージェントは認可されたアーティストを使います。任意の`visibility`は`private`（既定）、`unlisted`、`public`です。
 
 応答の`id`を使い、同じ認証情報で`GET /api/v1/generations/{id}`を`Retry-After: 2`に従ってポーリングします。状態は`queued`、`composing`、`validating`、`saving`、`rendering`、`ready`へ進み、失敗または中止は`failed`/`cancelled`です。同じURLへ`DELETE`を送ると未完了処理を中止できます。
 
-完了応答には`projectId`、`renderJobId`、通常の公開情報`project`、既存音声ジョブ`render`、`evaluation`、モデルの`usage`が入ります。ログインして`/p/{projectId}`を開けます。音声は既存の認証付き`/api/v1/jobs/{renderJobId}/audio?format=mp3`または`format=wav`から取得します。エージェントは取得したファイルをチャット機能で添付できます。URLに認証情報を含めないでください。編集と公開共有は通常のプロジェクトの流れで明示的に行います。自動公開も別の音声保存先もありません。
+完了応答には`projectId`、`renderJobId`、通常の公開情報`project`、既存音声ジョブ`render`、`evaluation`、モデルの`usage`が入ります。ログインして`/p/{projectId}`を開けます。音声は既存の認証付き`/api/v1/jobs/{renderJobId}/audio?format=mp3`または`format=wav`から取得します。エージェントは取得したファイルをチャット機能で添付できます。URLに認証情報を含めないでください。編集は通常の流れを使います。既存曲の公開は`PATCH /api/v1/projects/{id}`へ`{"visibility":"public"}`を送ります。作者、曲ID、レンダリング済み音声を保持します。
 
 同じ入力と冪等キーで再送すると、失敗済みを含む既存ジョブが返り、モデルは再実行されません。同じキーで入力を変えると409です。意図的な再試行は新しいキーを使います。処理は既存のサーバーコールバックと認証付きポーリングで進みます。クライアントを閉じると後続処理が再ポーリングまで遅れる場合があります。独立した永続スケジューラーではありません。
+
+<a id="browser-and-one-command-agent-flow"></a>
+## ブラウザーと1コマンドのエージェント操作
+
+`/create`で「プロンプトから作曲」を開き、アーティストと長さを選んで生成します。再読み込み後も進行状況を復元でき、中止と保存曲・ライブラリーへのリンクは同じAPIを利用します。編集中の下書きは維持されます。共有するときは曲ページで公開範囲を変更します。
+
+`/skill.md`の所有者認可後、依存パッケージ不要のクライアントを取得します。
+
+```bash
+curl -fsS https://chipvoice.dev/skill/compose.mjs -o compose.mjs
+node compose.mjs --prompt "An original space theme with restrained percussion" --target md --seconds 60 --visibility public --out space-theme
+# または: node compose.mjs --project project.json --visibility public --out my-score
+```
+
+先に環境変数`CHIPVOICE_API_KEY`を設定します。クライアントは全曲レンダリングを待ち、`song.mp3`、`project.json`、`result.json`を保存します。そのMP3をチャットツールで添付できます。同じ出力ディレクトリーなら安全に再試行できます。意図的に別の曲を作る場合は別ディレクトリーを指定します。公開共有には名前付きアーティストが必要です。
 
 <a id="bounds-and-honest-evaluation"></a>
 ## 制限と評価の範囲

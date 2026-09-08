@@ -66,7 +66,7 @@ try {
   await api.migrate(legacy);
   assert.equal(
     (await legacy.execute("select * from schema_migrations")).rows.length,
-    6,
+    7,
   );
   assert.equal(
     Number(
@@ -187,7 +187,7 @@ try {
   await api.migrate(fresh);
   assert.equal(
     (await fresh.execute("select * from schema_migrations")).rows.length,
-    6,
+    7,
   );
   fresh.close();
   // Frozen v4 publication tables exercise the real profile/data upgrade.
@@ -281,6 +281,23 @@ try {
     ),
     new Uint8Array([82, 73, 70, 70]),
   );
+  // Freeze the populated database at v6, then verify prompt lineage backfill.
+  await published.batch([
+    "delete from schema_migrations where version=7",
+    "alter table projects drop column origin",
+    "alter table projects drop column origin_model",
+    "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at,project_id) values('old-generation','stable-owner','stable-artist','old-generation','hash','{}','recorded-model','ready',0,'stable-song')",
+    ...[['same-source', 'stable-song', oldPublication.composition_hash], ['changed-source', 'same-source', 'changed-hash'], ['derived-copy', 'changed-source', 'changed-hash']].map(([id, parent, hash]) => ({
+      sql: "insert into projects(id,user_id,parent_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,profile_id,composition_hash) values(?,'stable-owner',?,'stable-song','{}','hash','Test','md','[]','public',0,'stable-artist',?)",
+      args: [id, parent, hash],
+    })),
+  ], 'write');
+  await api.migrate(published);
+  const origins = (await published.execute("select id,origin,origin_model from projects")).rows;
+  for (const [id, method] of [['stable-song','prompt'], ['same-source','prompt'], ['changed-source','prompt-derived'], ['derived-copy','prompt-derived']]) {
+    const row = origins.find(row => row.id === id);
+    assert.equal(row.origin, method); assert.equal(row.origin_model, 'recorded-model');
+  }
   published.close();
   const broken = createClient({ url: `file:${join(directory, "broken.db")}` });
   await broken.execute("create table users (incompatible text)");

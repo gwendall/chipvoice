@@ -7,7 +7,7 @@
 
 ## Generative composition — specification (2026-09-08)
 
-The [simplified generation plan](GENERATIVE-COMPOSITION.md) now reuses ordinary song hosting. The local OpenAI adapter, private project/render connection and three control routes (GEN-02, GEN-06–08) are implemented, with configured-server agent documentation. Next: a real Astra trial with a local key and musical evaluation (GEN-01/05); full-song evaluation, repairs and prompt UI remain separate follow-ups. See [setup and E2E instructions](LOCAL-COMPOSITION.md). No production model is enabled by this change.
+The [generation plan](GENERATIVE-COMPOSITION.md) reuses ordinary song hosting. The OpenAI adapter, private/public song creation, owner attribution, origin-preserving remixes, visibility changes without rerendering, prompt UI and downloadable agent client are implemented (GEN-02, GEN-06–10). A real local Astra trial produced complete audio. The [creator journey evaluation](evals/CREATOR-JOURNEY-2026-09-08.md) covers agent discovery through MP3 retrieval and the corresponding UI. Wider musical benchmarks, full-song diagnostics and repair remain separate follow-ups.
 
 ## Creation and API review — implementation
 

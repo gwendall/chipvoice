@@ -65,9 +65,11 @@ export async function getGeneration(id: string, caller: Caller) {
   if (row.project_id && !publication) error(404, "not_found", "The generated song was withdrawn");
   const job = row.render_job_id ? await getProjectJob(String(row.render_job_id), projectViewer(caller)) : null;
   if (row.status === "rendering" && job && ["ready", "failed", "cancelled"].includes(job.status)) {
-    const status = job.status === "ready" && job.mp3Status !== "ready" ? "rendering" : job.status;
-    await client.execute({ sql: "update generations set status=?,error=? where id=? and status='rendering'", args: [status, job.error, id] });
-    row.status = status; row.error = job.error;
+    const mp3Failed = job.status === "ready" && ["failed", "cancelled"].includes(job.mp3Status);
+    const status = mp3Failed ? "failed" : job.status === "ready" && job.mp3Status !== "ready" ? "rendering" : job.status;
+    const failure = mp3Failed ? "The complete MP3 could not be prepared" : job.error;
+    await client.execute({ sql: "update generations set status=?,error=? where id=? and status='rendering'", args: [status, failure, id] });
+    row.status = status; row.error = failure;
   }
   return {
     id: String(row.id), status: String(row.status), model: String(row.model),
@@ -121,7 +123,7 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
       if (await stopped()) return;
       project = compositionProject(result.value, request);
       await client.execute({ sql: "update generations set document=?,model=?,usage=?,status='validating' where id=? and status='composing'", args: [canonical(project), result.model, JSON.stringify(result.usage), id] });
-      row.status = "validating";
+      row.status = "validating"; row.model = result.model;
     }
     if (!project || await stopped()) return;
     if (!await authorized(row)) error(403, "authorization_expired", "Composition authorization expired or was revoked");
@@ -132,7 +134,7 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
     }
     if (await stopped()) return;
     if (!await authorized(row)) error(403, "authorization_expired", "Composition authorization expired or was revoked");
-    const publication = await publishProject(String(row.user_id), { project, visibility: "private", profileId: String(row.profile_id), viewer: viewer(row), requestKey: `generation-${id}` });
+    const publication = await publishProject(String(row.user_id), { project, visibility: request.visibility, origin: { method: "prompt", model: String(row.model) }, profileId: String(row.profile_id), viewer: viewer(row), requestKey: `generation-${id}` });
     await client.execute({ sql: "update generations set project_id=? where id=?", args: [publication.id, id] });
     if (await stopped()) return;
     const job = await createProjectJob(publication.id, viewer(row), "full");

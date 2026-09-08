@@ -25,6 +25,7 @@ const response = {
     "favourites",
     "favourited",
     "owned",
+    "origin",
   ],
   properties: {
     id: { type: "string" },
@@ -35,6 +36,7 @@ const response = {
     favourites: { type: "integer" },
     favourited: { type: "boolean" },
     owned: { type: "boolean" },
+    origin: { type: "object", required: ["method", "model"], properties: { method: { enum: ["direct", "prompt", "prompt-derived"] }, model: { type: ["string", "null"] } }, description: "Observed creation path on Chipvoice; external AI use cannot be verified. Parent prompt provenance is inherited." },
     generation: {
       type: "object", description: "Generation provenance, returned only to the owning artist",
       properties: { id: { type: "string" }, prompt: { type: "string" }, model: { type: "string" } },
@@ -339,6 +341,10 @@ export const projectPaths = {
   "/api/v1/projects/{id}": {
     get: operation("getProject", "Fetch an accessible complete publication", {
       parameters: [id],
+    }),
+    patch: operation("setProjectVisibility", "Publish or hide an existing song without copying or rerendering", {
+      parameters: [id], security: auth,
+      requestBody: { required: true, content: json({ type: "object", additionalProperties: false, required: ["visibility"], properties: { visibility: { enum: ["private", "unlisted", "public"] } } }) },
     }),
     delete: operation("withdrawProject", "Withdraw your publication", {
       parameters: [id],

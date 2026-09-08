@@ -2,7 +2,7 @@
 
 <p align="center"><a href="LOCAL-COMPOSITION.md">English</a> &bull; <a href="LOCAL-COMPOSITION_ja.md">日本語</a></p>
 
-A prompt goes to one model, which returns notes and instruments. Chipvoice validates those notes, saves an ordinary private `MusicProject` under your artist, and uses the existing full-song WAV/MP3 render job. The song page, storage, editor and sharing flow are the same as for manually composed songs. The prompt and model appear on the owner's song page; they are not added to the portable score or exposed to other listeners.
+A prompt goes to one model, which returns notes and instruments. Chipvoice validates those notes, saves an ordinary `MusicProject` (private by default) under your artist, and uses the existing full-song WAV/MP3 render job. The song page, storage, editor and sharing flow are the same as for manually composed songs. The raw prompt stays owner-only. Accessible songs show their creation method and model: prompt-generated, direct composition, or a remix derived from prompt music. This records the Chipvoice workflow, not proof that an uploaded score was written without external AI.
 
 ## Configuration
 
@@ -33,13 +33,27 @@ curl http://localhost:3010/api/v1/generations \
   -d '{"prompt":"An original space theme, a clear melody with a contrasting bridge and restrained percussion","target":"md","durationSeconds":60,"loop":false}'
 ```
 
-Read supported `target` IDs from `/api/v1/capabilities`; the prompt uses the same generated capability catalogue. Duration is an integer from 10 to 90 seconds; default 60. Prompt length is 1–2000 JavaScript string units after trimming. `loop` expresses musical intent, not a verified seamless-loop guarantee. An owner may choose an owned `profileId`; agents use their authorized artist.
+Read supported `target` IDs from `/api/v1/capabilities`; the prompt uses the same generated capability catalogue. Duration is an integer from 10 to 90 seconds; default 60. Prompt length is 1–2000 JavaScript string units after trimming. `loop` expresses musical intent, not a verified seamless-loop guarantee. An owner may choose an owned `profileId`; agents use their authorized artist. Optional `visibility` accepts `private` (default), `unlisted` or `public`.
 
 The response contains `id` and `status`. Poll `GET /api/v1/generations/{id}` with the same credential, following `Retry-After: 2`. Status progresses through `queued`, `composing`, `validating`, `saving`, `rendering` and `ready`, or ends as `failed`/`cancelled`. Send `DELETE` to the same URL to cancel unfinished work.
 
-A ready response includes `projectId`, `renderJobId`, `project` (the normal publication), `render` (the normal audio job), `evaluation` and model `usage`. Open `/p/{projectId}` while signed in. Download audio through the existing authenticated `/api/v1/jobs/{renderJobId}/audio?format=mp3` or `format=wav` endpoints. An agent can attach downloaded bytes in its chat tool; never put credentials in a URL. Editing and public sharing use the usual project flow, with an explicit publication decision. No automatic public post or extra audio store is created.
+A ready response includes `projectId`, `renderJobId`, `project` (the normal publication), `render` (the normal audio job), `evaluation` and model `usage`. Open `/p/{projectId}` while signed in. Download audio through the existing authenticated `/api/v1/jobs/{renderJobId}/audio?format=mp3` or `format=wav` endpoints. An agent can attach downloaded bytes in its chat tool; never put credentials in a URL. Editing uses the usual project flow. Explicitly share an existing song with `PATCH /api/v1/projects/{id}` and `{"visibility":"public"}`: the author, song ID and rendered audio are retained.
 
 Retrying identical input with the same idempotency key returns the existing job, including a failed job, without another model call. Changed input with that key returns 409. A deliberate new attempt needs a new key. Execution uses existing server callbacks and authorized polling; closing the client may delay later stages until polling resumes. This is not an independent durable scheduler.
+
+## Browser and one-command agent flow
+
+Open `/create`, expand **Compose from a prompt**, choose the artist and duration, then generate. Progress survives a page reload; cancellation and links to the saved song/library use the same API. The current editor draft remains intact. Change visibility on the song page when it is ready to share.
+
+After owner authorization through `/skill.md`, download the dependency-free client:
+
+```bash
+curl -fsS https://chipvoice.dev/skill/compose.mjs -o compose.mjs
+node compose.mjs --prompt "An original space theme with restrained percussion" --target md --seconds 60 --visibility public --out space-theme
+# Alternatively: node compose.mjs --project project.json --visibility public --out my-score
+```
+
+Set `CHIPVOICE_API_KEY` in the environment first. The client waits for the complete render and writes `song.mp3`, `project.json` and `result.json`; attach that MP3 using the chat tool. Keep the output directory to retry the same request safely. An intentional new composition uses another directory. Public sharing requires a named artist.
 
 ## Bounds and honest evaluation
 

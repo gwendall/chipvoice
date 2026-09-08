@@ -18,7 +18,7 @@ async function waitForLocalWriter<T>(operation: () => Promise<T>): Promise<T> {
   for (;;) {
     try { return await operation(); }
     catch (error) {
-      if ((error as { code?: string })?.code !== "SQLITE_BUSY" || Date.now() >= deadline) throw error;
+      if (!["SQLITE_BUSY", "SQLITE_BUSY_SNAPSHOT"].includes((error as { code?: string })?.code ?? "") || Date.now() >= deadline) throw error;
       await new Promise(resolve => setTimeout(resolve, 25));
     }
   }
@@ -57,12 +57,29 @@ export async function db(): Promise<Client> {
       // libsql replaces its connection after transaction(), losing PRAGMA settings.
       // Retry only explicit SQLite contention, without blocking the Node event loop.
       const execute = client.execute.bind(client), transaction = client.transaction.bind(client);
-      client.execute = (statement: InStatement, args?: InArgs) => waitForLocalWriter(() =>
-        typeof statement === "string" ? execute(statement, args) : execute(statement));
-      client.transaction = (mode?: TransactionMode) => waitForLocalWriter(() => transaction(mode));
+      client.execute = (statement: InStatement, args?: InArgs) => waitForLocalWriter(async () => {
+        try { return await (typeof statement === "string" ? execute(statement, args) : execute(statement)); }
+        catch (error) {
+          // A failed local statement can retain a read snapshot in libsql's connection.
+          // Drop only that standalone connection; explicit transactions own separate ones.
+          if (["SQLITE_BUSY", "SQLITE_BUSY_SNAPSHOT"].includes((error as { code?: string })?.code ?? "")) await client!.reconnect();
+          throw error;
+        }
+      });
+      client.transaction = async (mode?: TransactionMode) => {
+        const tx = await waitForLocalWriter(() => transaction(mode));
+        // COMMIT can also meet a short-lived reader on another connection.
+        const commit = tx.commit.bind(tx);
+        tx.commit = () => waitForLocalWriter(commit);
+        return tx;
+      };
     }
   }
-  if (!ready) ready = migrate(client).catch(error => { ready = null; throw error; });
+  if (!ready) ready = (async () => {
+    // WAL persists across replacement connections and lets readers coexist with a commit.
+    if (where.url.startsWith("file:")) await client!.execute("pragma journal_mode=wal");
+    await migrate(client!);
+  })().catch(error => { ready = null; throw error; });
   await ready;
   return client;
 }

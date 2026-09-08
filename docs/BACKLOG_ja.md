@@ -9,7 +9,7 @@
 <a id="generative-composition--specification-2026-09-08"></a>
 ## 生成による作曲 — 仕様（2026-09-08）
 
-[簡略化した生成計画](GENERATIVE-COMPOSITION_ja.md)は通常の曲ホスティングを再利用します。ローカルOpenAIアダプター、非公開保存とレンダー接続、3つの制御ルート（GEN-02、GEN-06〜08）、設定済みサーバー向けエージェント文書は実装済みです。次はローカルキーによる実Astra試行と音楽評価（GEN-01/05）です。全曲評価、修正、プロンプトUIは後続です。[設定とE2E](LOCAL-COMPOSITION_ja.md)を参照してください。この変更で本番モデルは有効になりません。
+[生成計画](GENERATIVE-COMPOSITION_ja.md)は通常の曲ホスティングを再利用します。OpenAIアダプター、非公開・公開作成、作者情報、由来を保持するリミックス、再レンダー不要の公開範囲変更、プロンプトUI、取得可能なエージェントクライアントを実装しました（GEN-02、GEN-06〜10）。ローカルの実Astra試行で全音声を生成しました。[作成者の一連評価](evals/CREATOR-JOURNEY-2026-09-08_ja.md)は発見からMP3取得、対応UIまで扱います。広い音楽ベンチマーク、全曲診断、修正は後続です。
 
 <a id="creation-and-api-review--implementation"></a>
 ## 制作・APIレビュー — 実装

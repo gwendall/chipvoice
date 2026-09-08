@@ -215,6 +215,21 @@ const migrations = [
       await tx.execute(`create index generations_project on generations(project_id)`);
     },
   },
+  {
+    name: "public-composition-origin",
+    async up(tx: Transaction) {
+      await addColumns(tx, "projects", {
+        origin: "text not null default 'direct'",
+        origin_model: "text",
+      });
+      await tx.execute(`update projects set origin='prompt',origin_model=(select model from generations g where g.project_id=projects.id limit 1) where exists(select 1 from generations g where g.project_id=projects.id)`);
+      await tx.execute(`with recursive lineage(id,method,model,hash) as (
+        select id,origin,origin_model,composition_hash from projects where origin='prompt'
+        union all
+        select p.id,case when p.composition_hash=l.hash then l.method else 'prompt-derived' end,l.model,p.composition_hash from projects p join lineage l on p.parent_id=l.id where p.origin='direct'
+      ) update projects set origin=(select method from lineage where id=projects.id limit 1),origin_model=(select model from lineage where id=projects.id limit 1) where id in (select id from lineage)`);
+    },
+  },
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

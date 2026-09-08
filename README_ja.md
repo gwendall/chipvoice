@@ -159,4 +159,4 @@ Sonic の DAC 移植も、すべてをキックにせず、観測したキック
 
 [エージェント向け作曲ガイド](docs/AGENT-COMPOSITION_ja.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)
 
-[プロンプト作曲](docs/LOCAL-COMPOSITION_ja.md)：サーバー設定の小さなOpenAIアダプターで通常の非公開曲を保存し、既存の全WAV/MP3レンダーを再利用します。ローカル統合は実装済み、実モデル評価は未完了です。[実施計画](docs/GENERATIVE-COMPOSITION_ja.md)も参照してください。
+[プロンプト作曲](docs/LOCAL-COMPOSITION_ja.md)：`/create`または設定済みOpenAI APIから作曲し、作者と作成方法を保持して全WAV/MP3レンダーを再利用します。エージェントは認可後に`/skill/compose.mjs`をダウンロードし、プロンプトまたは自作プロジェクトから1コマンドで全MP3を取得できます。[実施計画](docs/GENERATIVE-COMPOSITION_ja.md)も参照してください。

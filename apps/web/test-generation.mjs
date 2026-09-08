@@ -155,6 +155,11 @@ try {
   const callsBeforeLimit = server.calls.length;
   assert.equal((await query("/api/v1/generations", post(request, "over-day-limit"))).status, 429);
   assert.equal(server.calls.length, callsBeforeLimit);
+  // A terminal encoder error must not leave generation spinning until its deadline.
+  const heldJob = (await completed(held.body.id)).renderJobId;
+  await client.execute({ sql: "update project_jobs set mp3_status='failed' where id=?", args: [heldJob] });
+  await client.execute({ sql: "update generations set status='rendering' where id=?", args: [held.body.id] });
+  assert.equal((await completed(held.body.id)).status, "failed");
   await api.withdrawProject(result.projectId, caller.userId);
   assert.equal((await query(`/api/v1/generations/${id}`, { headers })).status, 404);
   await writeFile(`${out}/report.json`, JSON.stringify({ model: result.model, providerCalls: server.calls.length, evaluation: result.evaluation, privateSong: true, promptOwnerOnly: true, completeWavMp3: true }, null, 2));

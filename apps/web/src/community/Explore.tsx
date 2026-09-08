@@ -6,6 +6,7 @@ import { Account } from "@/studio/Account";
 import type { Publication, Profile } from "@/lib/projects";
 import { PixelAvatar } from "./avatar";
 import "@/create/style.css";
+import { CompositionOrigin } from "./CompositionOrigin";
 import Artists from "./Artists";
 import LocalDrafts from "./LocalDrafts";
 export default function Explore({
@@ -228,6 +229,7 @@ export default function Explore({
               <h2>
                 <Link href={`/p/${item.id}`}>{item.title}</Link>
               </h2>
+              <CompositionOrigin origin={item.origin} />
               <div className="song-meta">
                 <span>
                   {

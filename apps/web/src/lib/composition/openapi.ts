@@ -22,8 +22,8 @@ export function generationPaths(publication: unknown) {
   const errors = Object.fromEntries([401, 403, 404, 409, 422, 429, 503].map(status => [String(status), { description: "Explicit authentication, input, admission or availability error" }]));
   return {
     "/api/v1/generations": { post: {
-      operationId: "generateComposition", summary: "Compose with the configured model and save a normal private song",
-      description: "Requires server OPENAI_API_KEY; agents need generate, projects:write and render. Defaults to GPT-6 Astra. The prompt stays owner-only. Poll the generation, then use the existing project and audio URLs. No duplicate storage or automatic public posting.",
+      operationId: "generateComposition", summary: "Compose with the configured model and save a normal song",
+      description: "Requires server OPENAI_API_KEY; agents need generate, projects:write and render. Defaults to GPT-6 Astra. Visibility defaults private; explicitly request public or unlisted for sharing. The origin method/model is public; the prompt stays owner-only. Poll the generation, then use the existing project and audio URLs. No duplicate storage or automatic public posting.",
       security: auth,
       parameters: [{ name: "Idempotency-Key", in: "header", required: true, schema: { type: "string", minLength: 8, maxLength: 80 } }],
       requestBody: { required: true, content: json(request) },

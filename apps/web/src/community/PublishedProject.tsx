@@ -6,6 +6,7 @@ import { SiteHeader, SiteFooter, Button } from "@/ui/components";
 import type { Publication } from "@/lib/projects";
 import { DEMO_MACHINES } from "@/studio/document";
 import { PixelAvatar } from "./avatar";
+import { CompositionOrigin } from "./CompositionOrigin";
 import Creator from "@/create/Creator";
 export default function PublishedProject({ id }: { id: string }) {
   const t = useT(),
@@ -13,18 +14,24 @@ export default function PublishedProject({ id }: { id: string }) {
     [message, setMessage] = useState("Opening this song…"),
     [editing, setEditing] = useState(false);
   useEffect(() => {
-    const abort = new AbortController();
-    void fetch(`/api/v1/projects/${id}`, { signal: abort.signal })
-      .then(async (r) => {
-        const p = await r.json();
-        if (!r.ok) throw Error(p.message ?? "Publication not found");
-        setPublication(p);
-        setMessage("");
-      })
-      .catch((e) => {
-        if (!abort.signal.aborted) setMessage(e.message);
-      });
-    return () => abort.abort();
+    const abort = new AbortController(), started = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
+    async function refresh() {
+      try {
+        const response = await fetch(`/api/v1/projects/${id}`, { signal: abort.signal });
+        const p = await response.json();
+        if (!response.ok) throw Error(p.message ?? "Publication not found");
+        if (abort.signal.aborted) return;
+        setPublication(p); setMessage("");
+        const pending = p.renditions?.filter((r: { status: string }) => ["queued", "rendering", "cancelling"].includes(r.status)) ?? [];
+        if (Date.now() - started < 600000 && (pending.length || !p.renditions?.length && p.origin?.method === "prompt" && Date.now() - started < 15000)) {
+          if (p.owned) for (const job of pending) await fetch(`/api/v1/jobs/${job.id}`, { signal: abort.signal });
+          timer = setTimeout(refresh, 2000);
+        }
+      } catch (e) { if (!abort.signal.aborted) setMessage(e instanceof Error ? e.message : "Publication not found"); }
+    }
+    void refresh();
+    return () => { abort.abort(); clearTimeout(timer); };
   }, [id]);
   const rendition =
     publication?.renditions?.find(
@@ -106,6 +113,17 @@ export default function PublishedProject({ id }: { id: string }) {
             <p>{publication.generation.prompt}</p>
             <p>{t("Model")}: {publication.generation.model}</p>
           </details>}
+          {publication.owned && <div className="demo-main project-actions publication-sharing">
+            <label>{t("Song visibility")} <select aria-label={t("Song visibility")} value={publication.visibility} onChange={async e => {
+              const visibility = e.target.value;
+              try {
+                const response = await fetch(`/api/v1/projects/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ visibility }) });
+                if (!response.ok) throw Error("visibility");
+                setPublication(await response.json()); setMessage(visibility === "public" ? "Your song is public and appears on your artist page." : "Song visibility updated.");
+              } catch { setMessage("Could not update song visibility."); }
+            }}><option value="private">{t("private")}</option><option value="unlisted">{t("unlisted")}</option><option value="public">{t("public")}</option></select></label>
+            <Link href="/library">{t("Your library")} →</Link>
+          </div>}
           {!editing && (
             <section className="demo-main published-listen">
               <div className="song-author">
@@ -121,6 +139,7 @@ export default function PublishedProject({ id }: { id: string }) {
                 )}
               </div>
               <h1>{publication.title}</h1>
+              <p><CompositionOrigin origin={publication.origin} /></p>
               {!!publication.variants?.length && (
                 <nav
                   className="project-actions"
@@ -160,7 +179,7 @@ export default function PublishedProject({ id }: { id: string }) {
                   </p>
                   <audio
                     controls
-                    preload="none"
+                    preload="metadata"
                     src={`/api/v1/jobs/${(publication.renditions.find((r) => r.kind === "full" && r.status === "ready") ?? publication.renditions.find((r) => r.status === "ready"))!.id}/audio`}
                   />
                   {rendition && (
@@ -194,7 +213,7 @@ export default function PublishedProject({ id }: { id: string }) {
                 </>
               ) : (
                 <p>
-                  {t("Open the project to prepare and hear the complete song.")}
+                  {t(publication.renditions?.some(r => ["queued", "rendering"].includes(r.status)) ? "Rendering the complete audio…" : "Open the project to prepare and hear the complete song.")}
                 </p>
               )}
               <Button onClick={() => setEditing(true)}>

@@ -260,7 +260,7 @@ export function authorizeAgent(request: Request, caller: Caller) {
     scope =
       method === "GET"
         ? "projects:read"
-        : ["POST", "DELETE"].includes(method)
+        : ["POST", "PATCH", "DELETE"].includes(method)
           ? "projects:write"
           : undefined;
   else if (
