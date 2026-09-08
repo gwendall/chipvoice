@@ -74,6 +74,7 @@ jobs:
             .artifacts/agent-guide
             .artifacts/prompt-composition
             .artifacts/onboarding
+            .artifacts/session
             .artifacts/creator-journey
             .artifacts/i18n
           retention-days: 7

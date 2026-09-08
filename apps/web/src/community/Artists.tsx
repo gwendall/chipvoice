@@ -217,9 +217,10 @@ export default function Artists() {
         <ArtistEditor
           key={current.id}
           profile={current}
-          onSaved={(p) =>
-            setProfiles(profiles.map((v) => (v.id === p.id ? p : v)))
-          }
+          onSaved={(p) => {
+            setProfiles(profiles.map((v) => (v.id === p.id ? p : v)));
+            window.dispatchEvent(new Event("chipvoice-session"));
+          }}
         />
       </details>
       <Link href="/connect">{t("Connect an agent")} →</Link>

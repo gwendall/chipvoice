@@ -388,6 +388,16 @@ export function openApiSpec() {
         },
       },
       "/api/auth/session": {
+        get: {
+          operationId: "browserIdentity",
+          summary: "Read browser identity and default avatar without loading songs",
+          tags: ["identity"],
+          responses: {
+            "200": { description: "Private, no-store identity metadata; revision is a presentation marker, never a credential" },
+            "401": { description: "No valid owner session; agent credentials are not accepted" },
+            "503": { description: "Identity service unavailable" },
+          },
+        },
         delete: {
           operationId: "signOut",
           summary: "Revoke the current browser session",

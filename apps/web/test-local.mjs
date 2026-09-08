@@ -64,6 +64,8 @@ try {
     "test-generation.mjs",
     "test-creator-journey.mjs",
     "test-onboarding.mjs",
+    "test-session-cache.mjs",
+    "test-session-browser.mjs",
     "test-creation-browser.mjs",
     "test-i18n.mjs",
     "test-score-compiler.mjs",

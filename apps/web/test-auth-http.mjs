@@ -22,6 +22,20 @@ try {
   const setCookie=redeemed.headers.get('set-cookie'); assert.match(setCookie,/HttpOnly/i); assert.match(setCookie,/SameSite=lax/i);
   assert.equal(redeemed.headers.get('cache-control'),'no-store');
   let cookie=setCookie.split(';')[0];
+  const revisionCookie=redeemed.headers.getSetCookie().find(value=>value.startsWith('chipvoice_session_revision='));
+  assert.ok(revisionCookie, 'successful login rotates the presentation marker');
+  assert.doesNotMatch(revisionCookie,/HttpOnly/i,'presentation marker is readable, unlike the credential');
+  const revision=revisionCookie.split(';')[0];
+  const identity=await fetch(`${base}/api/auth/session`,{headers:{cookie:cookie+'; '+revision}});
+  assert.equal(identity.status,200);
+  assert.equal(identity.headers.get('cache-control'),'private, no-store');
+  assert.equal(identity.headers.get('set-cookie'),null,'read-only checks cannot overwrite a newer login marker');
+  const identityBody=await identity.json();
+  assert.equal(identityBody.email,'browser@example.test');
+  assert.equal(identityBody.revision,revision.slice(revision.indexOf('=')+1));
+  assert.equal(typeof identityBody.profile.id,'string');
+  assert.equal('songs' in identityBody,false,'header identity does not load the library');
+  assert.equal((await fetch(`${base}/api/auth/session`,{headers:{cookie:revision}})).status,401,'display marker cannot authenticate');
   assert.equal((await fetch(`${base}/api/auth/redeem?token=${token}`,{redirect:'manual'})).headers.get('set-cookie'),null);
   const me=await fetch(`${base}/api/me`,{headers:{cookie}}); assert.equal(me.status,200); assert.equal((await me.json()).email,'browser@example.test');
   const score={title:'Owned tune',chip:'2a03',bpm:144,order:[0],patterns:[{lead:'C4 . . .',chord:'C3 . . .',bass:'C2 . . .',perc:'K . H .',chordShape:[[0,4,7]]}]};
@@ -74,5 +88,7 @@ try {
   assert.equal((await fetch(audioURL)).status,404,'cached bytes never resurrect a deleted publication');
   const logout=await fetch(`${base}/api/auth/session`,{method:'DELETE',headers:{cookie}}); assert.equal(logout.status,200); assert.match(logout.headers.get('set-cookie'),/Max-Age=0/i);
   assert.equal((await fetch(`${base}/api/me`,{headers:{cookie}})).status,401);
+  assert.equal((await fetch(`${base}/api/auth/session`,{headers:{cookie:cookie+'; '+revision}})).status,401,'cached metadata cannot revive a revoked session');
+  assert.ok(logout.headers.getSetCookie().some(value=>value.startsWith('chipvoice_session_revision=') && /Max-Age=0/.test(value)));
   console.log('PASS HTTP session cookies, account ownership, key revocation, conditional audio GET, limits and deletion');
 } finally {db.close();}

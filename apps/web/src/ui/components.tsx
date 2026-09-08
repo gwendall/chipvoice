@@ -1,13 +1,13 @@
 'use client';
-import {useSession} from '@/auth/useSession';
+import {AccountLink} from '@/auth/AccountLink';
 import {LanguageSelector, useT} from '@/i18n/react';
 import type {ButtonHTMLAttributes, ReactNode} from 'react';
 import Link from '@/i18n/react';
 import {DEMO_MACHINES, type ChipId} from '../studio/document';
 
 export function SiteHeader({active = 'playground'}: {active?: 'playground' | 'lab' | 'about' | 'create' | 'explore' | 'docs' | 'signin'}) {
- const t = useT(), { status: session } = useSession();
-  return <header className="site-header"><Link href="/" className="wordmark" aria-label={t("chipvoice home")}><span className="brand-mark" aria-hidden="true"><i/><i/><i/><i/></span>{t("chipvoice")}</Link><span className="header-tag">{t("OLD CHIPS. NEW TRICKS.")}</span><nav aria-label={t("Project")}><Link href="/" aria-current={active === 'playground' ? 'page' : undefined}>{t("Playground")}</Link><Link href="/create" aria-current={active==='create'?'page':undefined}>{t("Create")}</Link><Link href="/explore" aria-current={active==='explore'?'page':undefined}>{t("Explore")}</Link><Link href="/docs" aria-current={active==='docs'?'page':undefined}>{t("API")}</Link><Link href={session === "signed-in" ? "/library" : active === "create" ? "/signin?next=%2Fcreate%3Fcompose%3D1%23prompt" : "/signin"} aria-current={active === "signin" ? "page" : undefined}>{t(session === "signed-in" ? "Your library" : "Sign in")}</Link></nav><LanguageSelector/></header>;
+ const t = useT();
+  return <header className="site-header"><Link href="/" className="wordmark" aria-label={t("chipvoice home")}><span className="brand-mark" aria-hidden="true"><i/><i/><i/><i/></span>{t("chipvoice")}</Link><span className="header-tag">{t("OLD CHIPS. NEW TRICKS.")}</span><nav aria-label={t("Project")}><Link href="/" aria-current={active === 'playground' ? 'page' : undefined}>{t("Playground")}</Link><Link href="/create" aria-current={active==='create'?'page':undefined}>{t("Create")}</Link><Link href="/explore" aria-current={active==='explore'?'page':undefined}>{t("Explore")}</Link><Link href="/docs" aria-current={active==='docs'?'page':undefined}>{t("API")}</Link><AccountLink signInActive={active === "signin"} signInHref={active === "create" ? "/signin?next=%2Fcreate%3Fcompose%3D1%23prompt" : "/signin"}/></nav><LanguageSelector/></header>;
 }
 export function SiteFooter() {
  const t = useT();

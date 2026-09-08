@@ -240,3 +240,9 @@ button:disabled { opacity: .35; }
  .signin-page { margin: 24px auto; padding: 16px; }
  .signin-fields button { width: 100%; }
 }
+
+.site-header nav { align-items: center; }
+.site-header nav .account-link { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 2px; flex-shrink: 0; }
+.site-header .account-link .pixel-avatar { display: block; border: 1px solid var(--edge); border-radius: 3px; }
+.site-header .account-link:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+.site-header .account-placeholder { width: 44px; border: 1px solid var(--edge); border-radius: 3px; background: var(--panel); }
