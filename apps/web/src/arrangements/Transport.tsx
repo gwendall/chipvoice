@@ -34,7 +34,7 @@ export function Transport({translateParts=true,onPlay,player,overview,seconds,pa
  },[player,seconds,activity,active,t]);
  const seek=(phase:number)=>{player?.seek(phase);};
  return <div ref={root} className="song-transport">
-  <PlayerControls player={playbackFor(player)} seconds={seconds} loading={pending} onPlay={onPlay}/>
+  <PlayerControls player={playbackFor(player)} seconds={seconds} loading={pending} onToggle={onPlay}/>
   <div className="score-overview" role="region" tabIndex={0} aria-label={t("Source score")}>
    <div className="score-labels">{rows.map((row,i)=><div key={row.id} className="score-part" style={{borderColor:colors[i%colors.length]}} title={translateParts?t(row.name):row.name}><span className="score-part-name">{translateParts?t(row.name):row.name}</span></div>)}</div>
    <div className="score-notes" onClick={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>

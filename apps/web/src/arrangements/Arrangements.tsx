@@ -58,7 +58,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
   return player.current;
  };
  const interact=()=>{const transport=ensure();if(!interacted.current){interacted.current=true;playbackSession.request(playbackFor(transport)!);void transport.toggle();}};
- const toggle=()=>{interacted.current=true;const p=ensure();playbackSession.request(playbackFor(p)!);void p.toggle();};
+ const toggle=()=>{interacted.current=true;const p=ensure();if(p.playing)playbackSession.pause(playbackFor(p));else {playbackSession.request(playbackFor(p)!);void p.toggle();}};
  useEffect(()=>{if(!active)return;const key=(e:KeyboardEvent)=>{if(!playbackSession.active&&!playbackSession.pending&&e.code==='Space'&&!e.repeat&&!(e.target instanceof Element&&e.target.closest('input,textarea,select,button,a,summary,[contenteditable]'))){e.preventDefault();toggle();}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);},[active]);
  const change=(edit:()=>void)=>{
   generation.current++;worker.current?.terminate();player.current?.cancelSelection();

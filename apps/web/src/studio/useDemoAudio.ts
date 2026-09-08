@@ -62,7 +62,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     if (!interacted.current) void start(nextSong, nextMuted);
   }, [start]);
   const toggle = useCallback(async () => {
-    if (playback.current?.playing) playback.current.pause();
+    if (playback.current?.playing) playbackSession.pause(playbackFor(playback.current));
     else if(playback.current?.current) { playbackSession.request(playbackFor(playback.current)!);await playback.current.resume(); }
     else await start();
   }, [start]);

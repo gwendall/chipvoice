@@ -391,7 +391,7 @@ export default function Creator({
     try {
       const p = ensurePlayer();
       if (p.playing) {
-        p.pause();
+        playbackSession.pause(playbackFor(p));
         return;
       }
       playbackSession.request(playbackFor(p)!);
@@ -683,7 +683,7 @@ export default function Creator({
             />
           </div>
           <div className="create-transport">
-            <PlayerControls player={playbackFor(player.current)} seconds={sourceSeconds} loading={audio.preparing} disabled={!ready || busy} onPlay={()=>void toggle()}/>
+            <PlayerControls player={playbackFor(player.current)} seconds={sourceSeconds} loading={audio.preparing} disabled={!ready || busy} onToggle={()=>void toggle()}/>
             <div className="transport-controls">
               <Button onClick={() => void exportAudio()}>
                 {t("Download WAV")}

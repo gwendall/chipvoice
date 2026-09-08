@@ -12,8 +12,8 @@ import './style.css';
 export function usePlayback() { useSyncExternalStore(session.subscribe, session.snapshot, session.serverSnapshot); return session; }
 const stamp = (seconds: number) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
 /** The audio clock updates only these DOM nodes, never the editor or app tree. */
-export function PlayerControls({player, onPlay, seconds = 0, loading = false, disabled = false, compact = false}: {
-  player?: Playback | null; onPlay?: () => void; seconds?: number; loading?: boolean; disabled?: boolean; compact?: boolean;
+export function PlayerControls({player, onToggle, seconds = 0, loading = false, disabled = false, compact = false, playing = player?.playing() ?? false}: {
+  player?: Playback | null; onToggle?: () => void; seconds?: number; loading?: boolean; disabled?: boolean; compact?: boolean; playing?: boolean;
 }) {
   const t = useT(); usePlayback();
   const range = useRef<HTMLInputElement>(null), elapsed = useRef<HTMLOutputElement>(null), duration = useRef<HTMLSpanElement>(null);
@@ -37,7 +37,7 @@ export function PlayerControls({player, onPlay, seconds = 0, loading = false, di
     <div className={compact ? "player-time" : "song-time"}><output ref={elapsed} aria-label={compact ? t('Playback time') : t('Elapsed time')}>0:00</output><span ref={duration}>{stamp(player?.duration() || seconds)}</span></div>
     <input ref={range} className={compact ? "player-seek" : "song-seek"} aria-label={compact ? t('Playback position') : t('Song position')} type="range" min={0} max={player?.duration() || seconds || 1} step={.05} defaultValue={0} disabled={!player?.seek || !player.ready()} onPointerDown={() => { dragging.current = true; }} onPointerUp={() => { dragging.current = false; }} onPointerCancel={() => { dragging.current = false; }} onBlur={() => { dragging.current = false; }} onChange={e => player?.seek?.(Number(e.target.value))}/>
     <div className="transport-actions">
-      <PlayButton aria-label={compact ? (player?.playing() ? t('Pause playback') : t('Start playback')) : undefined} pause playing={player?.playing() ?? false} loading={loading || player?.loading()} disabled={disabled} onClick={() => player?.playing() ? session.pause(player) : onPlay ? onPlay() : session.toggle(player)}/>
+      <PlayButton aria-label={compact ? (playing ? t('Pause playback') : t('Start playback')) : undefined} pause playing={playing} loading={loading || player?.loading()} disabled={disabled} onClick={() => onToggle ? onToggle() : session.toggle(player)}/>
       <Button className="player-restart" disabled={!player?.ready()} aria-label={compact ? t('Back to beginning') : t('Restart')} onClick={() => player?.restart()}><span aria-hidden="true">↤</span><span>{t('Restart')}</span></Button>
       {player?.setLoop && <Button aria-label={compact ? t('Repeat playback') : undefined} aria-pressed={player.loop?.()} onClick={() => { player.setLoop?.(!player.loop?.()); session.refresh(); }}>{t('↻ Loop ')}{player.loop?.() ? t('on') : t('off')}</Button>}
     </div>
@@ -47,7 +47,7 @@ export function PublicationPlay({item, queue, full = false}: {item: Pick<Publica
   const state = usePlayback(), t = useT();
   const selected = [state.pending, state.active].find(p => p?.key === `publication:${item.id}`);
   const play = () => { if (selected) session.toggle(selected); else void playPublication(item, queue); };
-  return full ? <PlayerControls player={selected} onPlay={play}/> : <Button className="publication-play" aria-label={t('Play {title}', {title: item.title})} aria-pressed={!!selected?.playing()} onClick={play}>{selected?.loading() ? t('Loading…') : selected?.playing() ? t('Pause') : t('Play')}</Button>;
+  return full ? <PlayerControls player={selected} onToggle={play}/> : <Button className="publication-play" aria-label={t('Play {title}', {title: item.title})} aria-pressed={!!selected?.playing()} onClick={play}>{selected?.loading() ? t('Loading…') : selected?.playing() ? t('Pause') : t('Play')}</Button>;
 }
 /** Mounted once beside route children. Keeping the audio owner here allows
  * normal Next navigation without keeping any hidden editor trees alive. */
@@ -74,7 +74,7 @@ export function PersistentPlayer() {
       {info.profileId && !info.blind ? <PixelAvatar id={info.profileId} avatar={info.avatar} size={40}/> : <Thumbnail width={40} className="player-artwork">{!info.blind && <span aria-hidden="true">♫</span>}</Thumbnail>}
       <div><Link href={info.href}>{info.blind ? t('Blind comparison') : info.translateTitle ? t.source(info.title) : info.title}</Link><span>{info.blind ? t('Identities hidden') : [info.creator, info.chip ? t(DEMO_MACHINES.find(m => m.id === info.chip)?.name ?? info.chip) : null].filter(Boolean).join(' · ')}</span></div>
     </div>
-    <PlayerControls player={player} compact loading={!!state.pending} onPlay={() => session.toggle()}/>
+    <PlayerControls player={player} compact playing={(state.pending??player).playing()} loading={!!state.pending} onToggle={() => session.toggle()}/>
     <button className="player-expand small-button" aria-label={expanded ? t('Collapse player') : t('Expand player')} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? '⌄' : '⌃'}</button>
     <div className="player-extras">
       {state.queue.length > 1 && <><Button aria-label={t('Previous song')} disabled={state.queueIndex < 1} onClick={() => state.next(-1)}>〈</Button><Button aria-label={t('Next song')} disabled={state.queueIndex >= state.queue.length - 1} onClick={() => state.next()}>〉</Button><Button aria-expanded={queueOpen} onClick={() => setQueueOpen(!queueOpen)}>{t('Queue')} · {state.queueIndex + 1}/{state.queue.length}</Button></>}

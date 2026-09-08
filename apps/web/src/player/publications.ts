@@ -49,7 +49,8 @@ export async function playPublication(item: Pick<Publication, 'id' | 'title'>, q
     media.src = `/api/v1/jobs/${rendition.id}/audio${rendition.mp3Bytes > 0 ? '?format=mp3' : ''}`;
     await media.play(); loading = false; session.refresh();
   } catch (e) {
-    if (!abort.signal.aborted) { error = e instanceof Error ? e.message : 'Audio unavailable. Try again.'; loading = false; session.refresh(); }
+    loading = false;
+    if (!abort.signal.aborted && intent && !disposed) { error = e instanceof Error ? e.message : 'Audio unavailable. Try again.'; loading = false; session.refresh(); }
   } finally {
     // Once promoted, keep only the active asset. An unsuccessful/cancelled
     // selection is disposed; its error stays visible on the shared player.

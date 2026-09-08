@@ -51,10 +51,15 @@ try {
  await page.route('**/api/v1/projects?*',route=>route.fulfill({json:{items,nextCursor:null}}));
  await page.route('**/api/v1/projects/first001',route=>route.fulfill({json:items[0]}));
  await page.route('**/api/v1/projects/second02',route=>route.fulfill({json:items[1]}));
- await page.route('**/api/v1/jobs/job-*/audio',route=>route.fulfill({body:wav,contentType:'audio/wav'}));
+ let requests=0;await page.route('**/api/v1/jobs/job-*/audio',async route=>{if(++requests===1)await new Promise(r=>setTimeout(r,1500));await route.fulfill({body:wav,contentType:'audio/wav'}).catch(()=>{});});
  // Client navigation reloads the list without destroying the current player.
  await page.locator('header').getByRole('link',{name:'Create',exact:true}).click();await page.waitForURL('**/create');
  await page.locator('header').getByRole('link',{name:'Explore',exact:true}).click();await page.waitForURL('**/explore');
+ const incoming=page.waitForRequest('**/api/v1/jobs/job-first001/audio');
+ await button('Play Player fixture 1').click();await incoming;await button('Pause playback').click();await page.waitForTimeout(1800);
+ assert.equal(await dock().locator('.player-status').count(),0,'intentional pause is not a media load error');
+ assert.ok(await button('Start playback').isVisible(),'pause cancels the incoming file and pauses the old song');
+ evidence.push({cancellation:'Pause wins while a publication streams; no late start or false error'});
  await button('Play Player fixture 1').click();await dock().getByRole('link',{name:'Player fixture 1',exact:true}).waitFor();
  assert.match(await dock().textContent(),/Player evaluation/);
  await page.screenshot({path:resolve(out,'explore-playing.png'),fullPage:true});
