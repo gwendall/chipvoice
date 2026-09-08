@@ -263,3 +263,19 @@ cross-console timbres identical. See the measured-projection workflow in
 [Prompt-to-song composition](docs/LOCAL-COMPOSITION.md): compose in `/create` or through the configured OpenAI API, keep the creator and creation-method credit, and reuse full WAV/MP3 rendering. Agents can download `/skill/compose.mjs` to turn a prompt or their own project into a complete MP3 with one command after authorization. See the [delivery plan](docs/GENERATIVE-COMPOSITION.md).
 
 [Agent composition guide](docs/AGENT-COMPOSITION.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)
+
+## Progressive interactive playback
+
+The web composer uses `new ProjectPlayer({preview: true})`. This opt-in SDK mode compiles the same project and renders the same chip cores as offline export, but schedules bounded PCM blocks as they become available. It does not encode/decode a complete WAV before playing. `previewMetadata` exposes duration, native status and mix results; `losses` works in both playback modes. `prepared` remains `null` in preview mode. Use `prepareProject()` or `renderProject()` explicitly when you need a downloadable file.
+
+```js
+const player = new ProjectPlayer({preview: true});
+// Call play from a user gesture to unlock browser audio.
+void player.play();
+await player.load(project);
+await player.update({tempoScale: 1.25});
+player.setTitle('New title'); // Metadata only; no audio preparation.
+```
+
+The player keeps the current sound during preparation, preserves Play/Pause intent and follows the audio output clock. A warm worker and bounded variant/PCM/checkpoint caches accelerate repeated edits and seeks. Cold mid-song changes still need to reconstruct DSP history: an emulator's envelopes, samples, filters and echo cannot be restored from note positions alone. Browser audio unlock, uncached network assets and device latency remain real costs. Default `ProjectPlayer()` keeps the existing whole-buffer behavior for compatibility.
+

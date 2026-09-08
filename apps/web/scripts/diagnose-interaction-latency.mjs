@@ -26,10 +26,18 @@ await page.addInitScript(() => {
       return b;
     });
   };
+  const groups = new WeakSet();
   const create = AudioContext.prototype.createBufferSource;
   AudioContext.prototype.createBufferSource = function() {
     const source = create.call(this), start = source.start.bind(source), context = this;
+    let group;
+    const connect = source.connect.bind(source);
+    source.connect = (...args) => { group = args[0]; return connect(...args); };
     source.start = (at = 0, ...args) => {
+      // Streaming schedules many chunks into one group. Only a new group is
+      // a selection, so old ahead-rendering cannot satisfy an edit trial.
+      if (group && groups.has(group)) return start(at, ...args);
+      if (group) groups.add(group);
       window.starts++;
       log("audio-start", { at, contextTime: context.currentTime, scheduleMs: (at - context.currentTime) * 1e3, outputLatency: context.outputLatency, seconds: source.buffer?.duration });
       return start(at, ...args);

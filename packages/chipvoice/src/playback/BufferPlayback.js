@@ -112,6 +112,7 @@ export class BufferPlayback {
       this.side = Math.min(side, buffers.length - 1);
       this.presentation = resolvedPresentation;
       if (restart) this.offset = 0;
+      else if (!this.playing && options.phase) this.offset = Math.max(0, Math.min(1, options.phase()));
       if (this.playing) this.swap(restart ? 0 : options.phase?.());
       this.loading = false;
       this.changed();
@@ -355,7 +356,7 @@ export class BufferPlayback {
   }
   /** Load an optional comparison only when requested; current audio continues. */
   async selectSide(side) {
-    if (this.buffers[side]) { this.setSide(side); return true; }
+    if (this.buffers[side]) { this.cancelSelection(); this.setSide(side); return true; }
     if (!this.entries[side]) return false;
     return this.select(this.entries, this.levels, {side, presentation: this.presentation, lazy: true});
   }

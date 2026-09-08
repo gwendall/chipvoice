@@ -110,6 +110,7 @@ export class ProjectPlayer {
   private playGeneration = 0;
   private url: string | null = null;
   private wanted: MusicProject | null = null;
+  private wantedSourceKey = '';
   private wantedOptions: Omit<PrepareProjectOptions, "signal"> = {};
   private changed: () => void;
   private loadingProject = false;
@@ -171,6 +172,7 @@ export class ProjectPlayer {
     const job = new AbortController();
     this.job = job;
     this.wanted = structuredClone(project);
+    this.wantedSourceKey = JSON.stringify(project.source);
     this.wantedOptions = { ...options, parts: options.parts?.slice() };
     this.preparing = true;
     this.progress = 0;
@@ -178,14 +180,16 @@ export class ProjectPlayer {
     this.changed();
     try {
       if (this.transport instanceof ProgressivePlayback) {
+        options.onProgress?.(0);
         const selected = await this.transport.load({project, parts: options.parts}, {
-          key: JSON.stringify([project.source, project.settings, options.parts]),
-          presentation: {project: this.wanted},
+          sampleRate: options.sampleRate,
+          key: `${this.wantedSourceKey}:${JSON.stringify([project.settings, options.parts])}`,
+          presentation: {project: this.wanted, sourceKey: this.wantedSourceKey},
         });
         if (generation !== this.generation) return false;
         this.previewMetadata = this.transport.metadata;
         this.preparing = false; this.progress = selected ? 1 : 0;
-        this.error = this.transport.error; this.changed(); return selected;
+        this.error = this.transport.error; if (selected) options.onProgress?.(1); this.changed(); return selected;
       }
       const prepared = await prepareProject(project, {
         ...options,
@@ -209,7 +213,7 @@ export class ProjectPlayer {
           },
         ],
         [1],
-        { presentation: { seconds: prepared.seconds, project: this.wanted } },
+        { presentation: { seconds: prepared.seconds, project: this.wanted, sourceKey: this.wantedSourceKey } },
       );
       if (!selected || generation !== this.generation) {
         URL.revokeObjectURL(url);
@@ -238,7 +242,8 @@ export class ProjectPlayer {
   /** Same-source metadata edits never touch the DSP or restart playback. */
   setTitle(title: string) {
     if (this.wanted) this.wanted.title = title;
-    const audible = this.audibleProject; if (audible) audible.title = title;
+    const audible = this.transport.audibleSelection() as {project?: MusicProject; sourceKey?: string} | null;
+    if (audible?.project && audible.sourceKey === this.wantedSourceKey) audible.project.title = title;
     this.changed();
   }
   update(settings: Partial<MusicProject["settings"]>) {

@@ -13,7 +13,7 @@ export type PreviewRequest = {id: number; type: 'load' | 'read'; project?: Music
 const scope = globalThis as unknown as {onmessage: (event: MessageEvent<PreviewRequest>) => void; postMessage: (value: unknown, transfer?: Transferable[]) => void};
 let renderer: ProgressiveRenderer | undefined, revision = 0;
 const lanes = {foreground: 0, ahead: 0};
-export async function handlePreviewMessage({data}: MessageEvent<PreviewRequest>) {
+export async function handlePreviewMessage(data: PreviewRequest) {
   const ticket = data.type === 'load' ? ++revision : revision;
   const lane = data.lane ?? 'foreground', readTicket = ++lanes[lane];
   try {

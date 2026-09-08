@@ -13,13 +13,13 @@ const scope = globalThis as unknown as {
       midi?: Uint8Array;
       title?: string;
       chip?: ProjectChip;
-    }>,
+    } | PreviewRequest>,
   ) => void;
   postMessage: (value: unknown, transfer?: Transferable[]) => void;
 };
 scope.onmessage = ({ data }) => {
-  if ('type' in data && (data.type === 'load' || data.type === 'read')) {
-    void handlePreviewMessage({data} as MessageEvent<PreviewRequest>); return;
+  if ('type' in data) {
+    void handlePreviewMessage(data); return;
   }
   try {
     if (data.midi) {

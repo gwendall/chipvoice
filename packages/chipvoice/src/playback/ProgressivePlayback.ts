@@ -15,6 +15,7 @@ const cancelled = () => new DOMException('Preparation cancelled', 'AbortError');
 class PreviewSource {
   private worker: Worker;
   private id = 0;
+  private revision = 0;
   private requests = new Map<number, {resolve: (value: any) => void; reject: (error: Error) => void}>();
   private chunks = new Map<string, Chunk>();
   ready!: Promise<PreviewMetadata>;
@@ -33,8 +34,12 @@ class PreviewSource {
     this.reload(input);
   }
   reload(input: Input) {
+    const revision = ++this.revision;
     this.chunks.clear();
-    this.ready = this.request({type: 'load', ...input}).then(meta => this.meta = meta);
+    this.ready = this.request({type: 'load', ...input}).then(meta => {
+      if (revision !== this.revision) throw cancelled();
+      return this.meta = meta;
+    });
   }
   private request(data: object): Promise<any> {
     if (this.disposed) return Promise.reject(cancelled());
@@ -48,7 +53,9 @@ class PreviewSource {
   async read(start: number, frames: number, lane: 'foreground' | 'ahead' = 'foreground'): Promise<Chunk> {
     const key = `${start}:${frames}`, cached = this.chunks.get(key);
     if (cached) {this.chunks.delete(key); this.chunks.set(key, cached); return cached;}
+    const revision = this.revision;
     const chunk = await this.request({type: 'read', start, frames, lane}) as Chunk;
+    if (revision !== this.revision) throw cancelled();
     this.chunks.set(key, chunk);
     // At most three seconds of Float32 stereo PCM plus the tiny first block.
     let bytes = 0; for (const value of this.chunks.values()) bytes += value.left.byteLength + value.right.byteLength;
@@ -83,6 +90,7 @@ export class ProgressivePlayback {
   private history: Clock[] = [];
   private offset = 0;
   private generation = 0;
+  private positionRevision = 0;
   private disposed = false;
   private sources = new Map<string, PreviewSource>();
   private timer: ReturnType<typeof setInterval>;
@@ -123,16 +131,18 @@ export class ProgressivePlayback {
       ? clock.loopStart + (seconds - clock.loopStart) % (clock.duration - clock.loopStart) : clock.duration;
     return seconds / clock.duration;
   }
-  async load(input: Input, options: {key?: string; restart?: boolean; presentation?: unknown; phase?: () => number} = {}) {
+  async load(input: Input, options: {sampleRate?: number; key?: string; restart?: boolean; presentation?: unknown; phase?: () => number} = {}) {
     if (this.disposed) throw Error('Player is disposed');
+    const sampleRate = options.sampleRate ?? this.sampleRate;
+    if (!Number.isInteger(sampleRate) || sampleRate < 8000 || sampleRate > 96000) throw Error('Sample rate must be 8000–96000 Hz');
     const ticket = ++this.generation;
     this.loading = true; this.error = ''; this.changed();
-    const key = options.key ?? JSON.stringify(input);
+    const key = `${sampleRate}:${options.key ?? JSON.stringify(input)}`;
     let source = this.sources.get(key);
     if (!source || source.disposed) {
-      const spare = this.sources.size >= 3 ? [...this.sources].find(([, value]) => value !== this.source && !value.disposed) : undefined;
+      const spare = this.sources.size >= 3 ? [...this.sources].find(([, value]) => value !== this.source && value.sampleRate === sampleRate && !value.disposed) : undefined;
       if (spare) {this.sources.delete(spare[0]); source = spare[1]; source.reload(input);}
-      else source = new PreviewSource(input, this.sampleRate);
+      else source = new PreviewSource(input, sampleRate);
       this.sources.set(key, source);
     }
     else {this.sources.delete(key); this.sources.set(key, source);}
@@ -159,15 +169,16 @@ export class ProgressivePlayback {
     }
   }
   private async selectSource(source: PreviewSource, presentation: unknown, ticket: number, phase?: number | (() => number)) {
-    const meta = source.meta;
-    const desired = () => Math.min(meta.frames - 1, Math.max(0, Math.floor((typeof phase === 'function' ? phase() : phase ?? this.phase(this.context.currentTime + .025)) * meta.frames)));
+    const rate = source.sampleRate;
+    const meta = source.meta, positionRevision = this.positionRevision;
+    const desired = () => Math.min(meta.frames - 1, Math.max(0, Math.floor((positionRevision !== this.positionRevision ? this.offset : typeof phase === 'function' ? phase() : phase ?? this.phase(this.context.currentTime + .025)) * meta.frames)));
     let chunk: Chunk, position: number;
     for (;;) {
       position = desired();
-      const start = this.playing && (this.group || typeof phase === 'function') ? Math.floor(position / this.sampleRate) * this.sampleRate : position;
+      const start = this.playing && (this.group || typeof phase === 'function') ? Math.floor(position / rate) * rate : position;
       // Initial playback gets a short prefix. A moving handoff includes enough
       // future audio to keep the beat while a cold target is catching up.
-      const size = this.playing && (this.group || typeof phase === 'function') ? this.sampleRate * 2 : Math.round(this.sampleRate * .25);
+      const size = this.playing && (this.group || typeof phase === 'function') ? rate * 2 : Math.round(rate * .25);
       chunk = await source.read(start, Math.min(size, meta.frames - start));
       if (ticket !== this.generation || this.disposed) return false;
       position = desired();
@@ -177,20 +188,20 @@ export class ProgressivePlayback {
     this.source = source; this.metadata = meta; this.presentation = presentation;
     if (!this.playing) {this.offset = position / meta.frames; this.history = []; return true;}
     const at = this.context.currentTime + .025, previous = this.group;
-    const group: Group = {at, offset: position / this.sampleRate, duration: meta.seconds, loopStart: meta.loopStartSeconds,
+    const group: Group = {at, offset: position / rate, duration: meta.seconds, loopStart: meta.loopStartSeconds,
       loop: this.loop, presentation, source, fade: new Fade(this.context, this.output), nodes: new Set(),
-      nextFrame: chunk.start + chunk.left.length, nextAt: at + (chunk.start + chunk.left.length - position) / this.sampleRate, pumping: false};
+      nextFrame: chunk.start + chunk.left.length, nextAt: at + (chunk.start + chunk.left.length - position) / rate, pumping: false};
     this.group = group; this.remember(group);
-    this.schedule(group, chunk, at, (position - chunk.start) / this.sampleRate);
+    this.schedule(group, chunk, at, (position - chunk.start) / rate);
     group.fade.toValue(1, at, .015);
     if (previous) this.retire(previous, at);
     void this.pump(group);
     return true;
   }
   private schedule(group: Group, chunk: Chunk, at: number, offset = 0) {
-    const buffer = this.context.createBuffer(2, chunk.left.length, this.sampleRate);
+    const buffer = this.context.createBuffer(2, chunk.left.length, group.source.sampleRate);
     buffer.copyToChannel(chunk.left as Float32Array<ArrayBuffer>, 0); buffer.copyToChannel(chunk.right as Float32Array<ArrayBuffer>, 1);
-    const fade = Math.round(.003 * this.sampleRate), loopStart = Math.round(group.loopStart * this.sampleRate), end = group.source.meta.frames;
+    const fade = Math.round(.003 * group.source.sampleRate), loopStart = Math.round(group.loopStart * group.source.sampleRate), end = group.source.meta.frames;
     for (let channel = 0; channel < 2; channel++) {
       const data = buffer.getChannelData(channel);
       for (let i = Math.max(0, loopStart - chunk.start); i < Math.min(data.length, loopStart + fade - chunk.start); i++) data[i] *= (chunk.start + i - loopStart) / (fade - 1);
@@ -207,17 +218,17 @@ export class ProgressivePlayback {
       while (group === this.group && this.playing && group.nextAt < this.context.currentTime + 1.5) {
         if (group.nextFrame >= group.source.meta.frames) {
           if (!group.loop) break;
-          group.nextFrame = Math.min(group.source.meta.frames - 1, Math.round(group.loopStart * this.sampleRate));
+          group.nextFrame = Math.min(group.source.meta.frames - 1, Math.round(group.loopStart * group.source.sampleRate));
         }
-        const chunk = await group.source.read(group.nextFrame, Math.min(Math.round(this.sampleRate * .5), group.source.meta.frames - group.nextFrame), 'ahead');
+        const chunk = await group.source.read(group.nextFrame, Math.min(Math.round(group.source.sampleRate * .5), group.source.meta.frames - group.nextFrame), 'ahead');
         if (group !== this.group || !this.playing || this.disposed) break;
         if (group.nextAt < this.context.currentTime) {
           this.underruns++;
           group.nextAt = this.context.currentTime + .025;
-          group.at = group.nextAt; group.offset = group.nextFrame / this.sampleRate; this.remember(group);
+          group.at = group.nextAt; group.offset = group.nextFrame / group.source.sampleRate; this.remember(group);
         }
         this.schedule(group, chunk, group.nextAt);
-        group.nextFrame += chunk.left.length; group.nextAt += chunk.left.length / this.sampleRate;
+        group.nextFrame += chunk.left.length; group.nextAt += chunk.left.length / group.source.sampleRate;
       }
     } catch (error) {
       if (group === this.group && !this.disposed && !(error instanceof DOMException && error.name === 'AbortError')) {
@@ -255,6 +266,7 @@ export class ProgressivePlayback {
   seek(phase: number) {
     if (!Number.isFinite(phase) || this.disposed) return;
     const next = Math.max(0, Math.min(1, phase));
+    this.positionRevision++; this.offset = next;
     if (!this.playing || !this.source) {this.offset = next; this.changed(); return;}
     const ticket = ++this.generation; this.loading = true; this.changed();
     void this.selectSource(this.source, this.presentation, ticket, next).then(() => {

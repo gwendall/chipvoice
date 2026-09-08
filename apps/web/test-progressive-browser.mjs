@@ -28,6 +28,14 @@ try{
  await page.evaluate(()=>{window.engine.restart();window.engine.loop=false;void window.engine.play();});await page.waitForFunction(()=>!window.engine.preparing,null,{timeout:30000});
  await page.evaluate(()=>window.engine.seek(window.engine.duration-.15));await page.waitForFunction(()=>!window.engine.playing,null,{timeout:30000});assert.equal(await page.evaluate(()=>window.engine.position),await page.evaluate(()=>window.engine.duration));
  await page.evaluate(()=>window.engine.play());await page.waitForFunction(()=>window.engine.playing&&window.engine.position<3&&!window.engine.preparing,null,{timeout:30000});
+ await page.evaluate(async()=>{
+  window.engine.pause();window.engine.restart();window.progressValues=[];
+  await window.engine.load(window.project,{sampleRate:16000,onProgress:p=>window.progressValues.push(p)});
+ });
+ assert.deepEqual(await page.evaluate(()=>window.progressValues),[0,1]);
+ assert.equal(await page.evaluate(()=>window.engine.transport.source.sampleRate),16000);
+ await page.evaluate(()=>window.engine.play());await page.waitForFunction(()=>!window.engine.preparing);
+ checks.push({sampleRate:16000,rms:await outputPhraseRms(page)});
  await page.evaluate(()=>window.engine.dispose());assert.equal(await page.evaluate(()=>window.engine.context.state),'closed');
  assert.deepEqual(errors,[]);for(const check of checks)if(check.rms!==undefined)assert.ok(check.rms>.001,JSON.stringify(check));
  await mkdir('../../.artifacts/progressive',{recursive:true});await writeFile('../../.artifacts/progressive/browser.json',JSON.stringify({checks,errors},null,2));console.log('PASS progressive playback, edits, seeks, pause, end/replay and disposal',checks);

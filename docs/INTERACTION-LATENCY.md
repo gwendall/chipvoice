@@ -2,7 +2,7 @@
 
 [日本語](INTERACTION-LATENCY_ja.md)
 
-2026-09-08. Audited production revision `2cdf7b3` (PR #55). This is an investigation and a preparation prototype, **not a shipped realtime-player replacement**.
+2026-09-08. Audited production revision `2cdf7b3` (PR #55). The measurements below describe the baseline; the implementation section records the subsequent changes.
 
 ## Measurements
 
@@ -80,4 +80,20 @@ PLAYWRIGHT_BROWSERS_PATH=../../.artifacts/playwright MODE=lab node scripts/diagn
 PLAYWRIGHT_BROWSERS_PATH=../../.artifacts/playwright node scripts/diagnose-progressive-preview.mjs
 ```
 
-`SITE` overrides production. `WARM_ONLY=1` skips the expensive edited-song trials. `ENFORCE_WARM=1` makes the landing diagnostic fail when a warmed selection exceeds 100 ms; it is expected to fail on the audited revision. The preview probe asserts exact equality on the tested prefix. The scripts listen and edit disposable browser-local drafts; they do not publish or send email. Run performance probes sequentially. No frontend/runtime change or deployment was made for this audit.
+`SITE` overrides production. `WARM_ONLY=1` skips the expensive edited-song trials. `ENFORCE_WARM=1` makes the landing diagnostic fail when a warmed selection exceeds 100 ms; it is expected to fail on the audited revision. The preview probe asserts exact equality on the tested prefix. The scripts listen and edit disposable browser-local drafts; they do not publish or send email. Run performance probes sequentially. The baseline audit made no deployment. The implementation described below is qualified separately.
+
+## Implementation and qualification
+
+The landing now starts view/audio requests concurrently, deduplicates score views, removes the 180 ms delay for prepared selections and fetches the independent reference only on explicit comparison. Decoded recordings have both an eight-entry and 96 MiB cache limit. Compiled landing plans have eight-entry/24 MiB limits. Repeated equivalent selections avoid preparation; title-only edits update metadata separately.
+
+Project preview and edited arrangements use `ProgressivePlayback`: compile the existing project/plan, generate an initial prefix, and schedule PCM ahead in bounded chunks. WAV generation is an explicit export operation. Three worker-backed variants are retained; each caches at most roughly three seconds of stereo Float32 PCM. The worker compiler is shared with offline export. Obsolete compilation is coalesced to the newest input; a running obsolete task gets 100 ms before replacement. Pending worker replies carry revisions so a reused worker cannot inject an older project's sound.
+
+Optional `ChipCore.fork()` supports complete in-process DSP checkpoints. All five built-in cores opt in. New cores without a checkpoint implementation still work by replaying from their initial state; cores with closures/private/native resources must provide their own fork. Checkpoints preserve class prototypes, typed-array aliases and nested DSP state. Each variant retains at most 25 coarse checkpoints and four recent ones; no persistent snapshot format is introduced.
+
+The loop editor coalesces edits for one frame, schedules 25 ms ahead and reuses at most two worklets through short overlapping fades. This is bounded engine reuse, **not** an in-place retiming API: changed music is still rescheduled. Direct retiming of arbitrary native register captures would change emulator history and needs a separate fidelity contract. Current progressive updates preserve the established offline semantics, including nonlinear shared mixes.
+
+Publication playback reuses available descriptors. Audio GET/HEAD supports byte ranges, pulls database chunks on demand and stops reads on cancellation. Visibility checks and private/no-store headers remain in force. No catalogue-wide prefetch or object-storage migration is needed for these gains.
+
+Qualification includes exact block/seek PCM equality on all five chips and on native Mario, Zelda and Sonic captures; delayed-worker races; paused and playing handoffs; lazy reference cancellation; byte ranges with real private-job authorization; browser playback/edits/end/replay/disposal and measured output. Test artifacts are in `.artifacts/progressive`, `.artifacts/interaction-latency`, `.artifacts/unified-playground` and `.artifacts/continuity`.
+
+Remaining boundary: a never-prepared mid-song variant must render its history to reach the requested phase. Preparation preserves the previous audio. Network/device latency and a browser suspended by the operating system cannot be reduced to a universal zero-delay guarantee. In-place musical retiming and storage migration are follow-up design options, not prerequisites for progressive playback.

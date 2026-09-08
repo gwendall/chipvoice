@@ -86,8 +86,15 @@ try{
   transport.seek(0);await transport.toggle();await until(()=>!!transport.group&&!transport.retiring,'zero seek settles');
   transport.seek(1);transport.seek(0);await until(()=>!!transport.group&&!transport.retiring&&transport.group.offset===0,'restart past end wins');
   const restartPastEndWins=transport.playing&&transport.group?.offset===0;
-  transport.dispose();await ctx.close();return {initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,resumeOffset,lastSeekOffset,frozen,stillFrozen,ended,replayed,lastSeek,traversalPreserved,endedBeforeAudible,endPauseResumed,oldScoreUntilAudible,newScoreWhenAudible,exactEndWithoutEvent,restartPastEndWins,emptyEndPauseResumed};
+  transport.pause();await until(()=>!transport.retiring,'lazy comparison starts paused');
+  await transport.select(entry('lazy'),[.5,.5],{lazy:true,phase:()=>.37});
+  const crossPausedPhase=transport.phase(),referenceIsLazy=transport.buffers[1]===null;
+  transport.entries[1]={file:'/probe-slow-reference.wav'};
+  const optional=transport.selectSide(1);await wait(30);await transport.selectSide(0);
+  const staleSide=await optional;const latestSide=transport.side;
+  transport.dispose();await ctx.close();return {crossPausedPhase,referenceIsLazy,staleSide,latestSide,initial,duringLoad,failed,afterFailure,keptPlaying,lastWins,silent,stopped,maxSources:max,cancelled,cancellationKeptCurrent,pausedSeek,resumed,resumeOffset,lastSeekOffset,frozen,stillFrozen,ended,replayed,lastSeek,traversalPreserved,endedBeforeAudible,endPauseResumed,oldScoreUntilAudible,newScoreWhenAudible,exactEndWithoutEvent,restartPastEndWins,emptyEndPauseResumed};
  });
+ assert.equal(result.crossPausedPhase,.37);assert.ok(result.referenceIsLazy);assert.equal(result.staleSide,false);assert.equal(result.latestSide,0);
  assert.ok(result.initial>.05&&result.duringLoad>.05&&result.afterFailure>.05,JSON.stringify(result));
  assert.equal(result.failed,false);assert.equal(result.cancelled,false);assert.ok(result.cancellationKeptCurrent);assert.ok(result.keptPlaying&&result.lastWins&&result.stopped);assert.ok(result.silent<.0001);assert.ok(result.maxSources<=4,'Only two synchronized pairs may overlap');
  assert.ok(result.emptyEndPauseResumed,'Pause before the output deadline releases a source that started at its end');

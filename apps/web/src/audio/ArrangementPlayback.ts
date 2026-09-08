@@ -9,6 +9,7 @@ export class ArrangementPlayback {
   private recording: BufferPlayback;
   private preview: ProgressivePlayback;
   private current: BufferPlayback | ProgressivePlayback;
+  private incoming: BufferPlayback | ProgressivePlayback | null = null;
   private previous: {player: BufferPlayback | ProgressivePlayback; at: number} | null = null;
   private gains: Map<BufferPlayback | ProgressivePlayback, GainNode>;
   private generation = 0;
@@ -45,12 +46,16 @@ export class ArrangementPlayback {
   phase(at?: number) {return this.audible().phase(at);}
   audibleSelection() {return this.audible().audibleSelection();}
   private async selectWith(target: BufferPlayback | ProgressivePlayback, load: () => Promise<boolean>) {
-    const ticket = ++this.generation; this.pending = true; this.failure = ''; this.changed();
+    if (this.incoming && this.incoming !== this.current && this.incoming !== target) this.incoming.pause();
+    const ticket = ++this.generation; this.incoming = target; this.pending = true; this.failure = ''; this.changed();
     target.setLoop(this.current.loop);
     if (target !== this.current && this.playing && !target.playing) void target.toggle();
     const selected = await load();
     if (ticket !== this.generation) return false;
-    this.pending = false;
+    // Play/Pause may have changed while the source was preparing.
+    if (selected && this.playing && !target.playing) await target.toggle();
+    if (ticket !== this.generation) return false;
+    this.pending = false; this.incoming = null;
     if (!selected) {this.failure = target.error; if (target !== this.current) target.pause(); this.changed(); return false;}
     if (target !== this.current) {
       const old = this.current, at = this.context.currentTime + .025;
@@ -77,16 +82,23 @@ export class ArrangementPlayback {
   }
   selectSide(side: number) {return this.recording.selectSide(side);}
   setSide(side: number) {this.recording.setSide(side);}
-  cancelSelection() {this.generation++; this.pending = false; this.recording.cancelSelection(); this.preview.cancelSelection();}
+  cancelSelection() {
+    this.generation++; this.pending = false;
+    if (this.incoming && this.incoming !== this.current) this.incoming.pause();
+    this.incoming = null; this.recording.cancelSelection(); this.preview.cancelSelection();
+  }
   async toggle() {
     if (this.playing) {this.pause(); return;}
     this.playing = true; this.changed();
-    if (!this.current.playing) await this.current.toggle();
+    const starts: Promise<void>[] = [];
+    if (!this.current.playing) starts.push(this.current.toggle());
+    if (this.incoming && this.incoming !== this.current && !this.incoming.playing) starts.push(this.incoming.toggle());
+    await Promise.all(starts);
   }
   pause() {this.playing = false; this.recording.pause(); this.preview.pause(); this.changed();}
   seek(phase: number) {this.current.seek(phase);}
   restart() {this.current.restart();}
-  setLoop(loop: boolean) {this.current.setLoop(loop);}
+  setLoop(loop: boolean) {this.recording.setLoop(loop); this.preview.setLoop(loop);}
   setVolume(value: number) {this.output.gain.setTargetAtTime(value, this.context.currentTime, .008);}
   dispose() {clearInterval(this.timer); this.recording.dispose(); this.preview.dispose(); for (const gain of this.gains.values()) gain.disconnect(); this.output.disconnect();}
 }

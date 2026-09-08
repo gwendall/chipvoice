@@ -10,7 +10,7 @@ import type {Performance,PerformanceLoss,PerformancePlan} from 'chipvoice';
 import {SiteHeader,SiteFooter,MachinePicker,Button,DisplayPanel} from '../ui/components';
 import {RangeControl} from '../ui/RangeControl';
 import {LatestWorker} from '../audio/LatestWorker';
-import {ArrangementPlayback as BufferPlayback} from '../audio/ArrangementPlayback';
+import {ArrangementPlayback} from '../audio/ArrangementPlayback';
 import {DEMO_MACHINES,type ChipId} from '../studio/document';
 import {Transport,type Overview} from './Transport';
 import './style.css';
@@ -34,7 +34,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
  const [part,setPart]=useState('mix'),[tempo,setTempo]=useState(100),[transpose,setTranspose]=useState(0),[side,setSide]=useState(0);
  const [audio,setAudio]=useState({playing:false,loading:false,error:''}),[preparing,setPreparing]=useState(false),[exporting,setExporting]=useState(false),[error,setError]=useState(''),[session,setSession]=useState(0);
  const [imported,setImported]=useState<Performance|null>(null),[loaded,setLoaded]=useState<Loaded|null>(null);
- const player=useRef<BufferPlayback|null>(null),worker=useRef<LatestWorker<Prepared>|null>(null),generation=useRef(0),urls=useRef<string[]>([]),documents=useRef(new Map<string,Performance|PerformancePlan>());
+ const player=useRef<ArrangementPlayback|null>(null),worker=useRef<LatestWorker<Prepared>|null>(null),generation=useRef(0),urls=useRef<string[]>([]),documents=useRef(new Map<string,Performance|PerformancePlan>());
  const interacted=useRef(false),alive=useRef(true);
  const [overview,setOverview]=useState<Overview|null>(initialOverview??null);
  const views=useRef(new Map<string,Overview>(initialOverview?[['mario:2a03',initialOverview]]:[]));
@@ -65,7 +65,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
  const piece=pieceId==='imported'&&imported?{id:'imported',title:imported.title,source:imported.source!,notices:imported.notices,parts:imported.parts.map(p=>({...p,notes:p.notes.length})),cases:[]} as Piece:report?.pieces.find(p=>p.id===pieceId);
  const current=piece?.cases.find(row=>row.chip===chip);
  const ensure=()=>{
-  if(!player.current){const context=new AudioContext(),transport=new BufferPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});playbackSession.refresh();});player.current=transport;bufferedPlayback(transport,'arrangements',()=>{const data=transport.audibleSelection() as Loaded|null;return {title:data?.title??'Full arrangements',translateTitle:data?.pieceId!=='imported',chip:data?.chip,href:'/',download:data?.entries[transport.side]?.file||undefined};},()=>{for(const url of urls.current)URL.revokeObjectURL(url);});setSession(s=>s+1);}
+  if(!player.current){const context=new AudioContext(),transport=new ArrangementPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});playbackSession.refresh();});player.current=transport;bufferedPlayback(transport,'arrangements',()=>{const data=transport.audibleSelection() as Loaded|null;return {title:data?.title??'Full arrangements',translateTitle:data?.pieceId!=='imported',chip:data?.chip,href:'/',download:data?.entries[transport.side]?.file||undefined};},()=>{for(const url of urls.current)URL.revokeObjectURL(url);});setSession(s=>s+1);}
   return player.current;
  };
  const interact=()=>{const transport=ensure();if(!interacted.current){interacted.current=true;playbackSession.request(playbackFor(transport)!);void transport.toggle();}};
@@ -159,7 +159,7 @@ export default function Arrangements({catalogue,initialOverview,active=true,embe
   {!piece&&!error&&<p role="status">{t("Loading complete arrangements…")}</p>}
   {piece&&<section className="console arrangement-deck" aria-label={t("Complete arrangement player")}>
    <div className="console-top"><span className="micro">{t("CHIPVOICE / FULL ARRANGEMENTS")}</span></div>
-   <div className="arrangement-choices" aria-label={t("Complete compositions")}>{report?.pieces.map(p=><button key={p.id} aria-pressed={pieceId===p.id} onClick={()=>{change(()=>{setPieceId(p.id);if(p.native)setChip(p.native.chip);setPart('mix');setTempo(100);setTranspose(0);});interact();}}>{t(p.title.split(' · ')[0])}<span>{p.parts.length}{t(" parts")}</span></button>)}<label className="arrangement-upload">{t("Import MIDI")}<input aria-label={t("Import MIDI")} type="file" accept=".mid,.midi,audio/midi" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.target.value='';}}/></label></div>
+   <div className="arrangement-choices" aria-label={t("Complete compositions")}>{report?.pieces.map(p=><button key={p.id} aria-pressed={pieceId===p.id} onClick={()=>{if(pieceId===p.id&&(!p.native||chip===p.native.chip)&&part==='mix'&&tempo===100&&transpose===0){interact();return;}change(()=>{setPieceId(p.id);if(p.native)setChip(p.native.chip);setPart('mix');setTempo(100);setTranspose(0);});interact();}}>{t(p.title.split(' · ')[0])}<span>{p.parts.length}{t(" parts")}</span></button>)}<label className="arrangement-upload">{t("Import MIDI")}<input aria-label={t("Import MIDI")} type="file" accept=".mid,.midi,audio/midi" onChange={e=>{const file=e.target.files?.[0];if(file)void upload(file);e.target.value='';}}/></label></div>
    <MachinePicker value={chip} onChange={next=>{if(next!==chip)change(()=>setChip(next));interact();}}/>
    <DisplayPanel><div className="screen-title"><div><span className="screen-kicker">{t(loaded?.chip.toUpperCase()??chip.toUpperCase())} / {(loaded?.part==='mix'||!loaded?t('FULL MIX'):t('ISOLATED PART'))}</span><h2>{(loaded?.pieceId??pieceId)==='imported'?(loaded?.title??piece.title):t(loaded?.title??piece.title)}</h2></div><span>{(loaded||current||preparation?.seconds?t("{v0} SEC",{v0:t((loaded?.seconds??current?.seconds??preparation!.seconds!).toFixed(1))}):t('AUDIO PENDING'))}</span></div>
     <Transport translateParts={(loaded?.pieceId??pieceId)!=='imported'} onPlay={toggle} player={player.current} overview={loaded?.overview??overview} seconds={loaded?.seconds??current?.seconds??overview?.seconds??0} part={loaded?.part??'mix'} pending={pending} active={active}/>

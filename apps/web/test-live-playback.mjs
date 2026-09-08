@@ -16,7 +16,7 @@ const player=new LivePlayback(context,()=>{},factory);
 await player.start({...form,id:'original',chip:'2a03'});
 const stale=player.update({...form,bpm:240,id:'obsolete',chip:'snes'});assert.equal(player.stepSeconds,.125,'Display timing belongs to the audible engine during a pending tempo change');const latest=player.update({...form,id:'latest',chip:'dmg'});
 rejectStale(new Error('Stale worklet failed'));await Promise.all([stale,latest]);
-assert.deepEqual(calls,['2a03','snes','dmg']);assert.equal(player.current.spec.id,'dmg');assert.equal(player.current.songId,'latest');assert.equal(player.error,'');assert.ok(player.playing);assert.equal(alive,1);assert.ok(maxAlive<=2);
+assert.deepEqual(calls,['2a03','snes','dmg']);assert.equal(player.current.spec.id,'dmg');assert.equal(player.current.songId,'latest');assert.equal(player.error,'');assert.ok(player.playing);assert.equal(alive,2);assert.ok(maxAlive<=2);
 assert.deepEqual(positions.at(-1),phase,'An unchanged grid preserves fractional phase exactly');
 player.stop();await player.start({...form,id:'restart',chip:'dmg'});assert.equal(calls.length,3,'A stopped compatible engine is reused');
 const failed=player.update({...form,id:'failed',chip:'snes'});rejectStale(new Error('SNES load failed'));await failed;
@@ -32,5 +32,6 @@ player.pause();const paused=player.position;assert.ok(paused>0);assert.equal(pla
 await player.resume();assert.equal(player.playing,true);assert.equal(positions.at(-1).step,phase.step,'Pause/resume retains the exact tracker step');
 player.pause();player.seek(.125);assert.ok(Math.abs(player.position-.125)<1e-9,'Paused seek uses seconds');
 await player.resume();assert.ok(positions.at(-1).progress>=0);
+const beforeWarm=calls.length;await player.update({...form,id:'warm-a',chip:'md'});await player.update({...form,id:'warm-b',chip:'md'});assert.equal(calls.length,beforeWarm,'Compatible edits reuse the two warm worklets');
 assert.ok(maxAlive<=2);player.dispose();assert.equal(alive,0);
 console.log('PASS stale failed chip creation preserves the latest request; overlap bounded to two engines; stopped engine reused and disposal complete');

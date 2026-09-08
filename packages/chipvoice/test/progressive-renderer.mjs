@@ -13,3 +13,17 @@ for(const chip of [nesChip,gbChip,mdChip,snesChip,c64Chip]){
  }
 }
 console.log('PASS progressive blocks, cached/backward/cold seeks preserve full offline PCM on five chips');
+const {loadNative}=await import('../../../scores/arrangements/native-sources.mjs');
+const {renderPerformance}=await import('../dist/index.js');
+for(const id of ['mario','zelda','sonic']) {
+ const capture=await loadNative(id),chip=capture.chip==='md'?mdChip:nesChip;
+ const plan={...capture,seconds:8,memory:capture.memory.map(block=>({...block,bytes:new Uint8Array(block.bytes)}))};
+ const expected=renderPerformance(plan,chip,{sampleRate:44100,gain:.6});
+ const renderer=new ProgressiveRenderer(plan,chip,44100,.6);
+ for(const [start,frames] of [[0,4096],[220000,22050],[45000,32768],[280000,12000]]) {
+  const branch=renderer.branch(),iterator=branch.read(start,frames);let next;do{next=iterator.next();}while(!next.done);renderer.adopt(branch);
+  assert.deepEqual(next.value.left,expected.left.slice(start,start+frames),`${id}: native checkpoint left at ${start}`);
+  assert.deepEqual(next.value.right,expected.right.slice(start,start+frames),`${id}: native checkpoint right at ${start}`);
+ }
+}
+console.log('PASS native Mario, Zelda and Sonic captures retain exact PCM through branched seeks');

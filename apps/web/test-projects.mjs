@@ -12,7 +12,7 @@ const file = resolve("generated/test-projects.mjs");
 await build({
   stdin: {
     contents:
-      "export * from './src/lib/utility-worker';export * from './src/lib/project-jobs';export * from './src/lib/auth';export * from './src/lib/projects';export * from './src/lib/db';export * from './src/create/starter';",
+      "export * from './src/lib/utility-worker';export * from './src/lib/project-jobs';export * from './src/lib/auth';export * from './src/lib/projects';export * from './src/lib/db';export * from './src/create/starter';export {GET as audioGet} from './src/app/api/v1/jobs/[id]/audio/route';",
     resolveDir: process.cwd(),
   },
   outfile: file,
@@ -176,6 +176,17 @@ try {
   const wav = Buffer.concat(chunks.rows.map((r) => Buffer.from(r.bytes)));
   assert.equal(wav.toString("ascii", 0, 4), "RIFF");
   assert.equal(wav.length, ready.bytes);
+  const token = await api.createKey("bob@example.test", null);
+  const audio = (headers = {}, method = 'GET') => api.audioGet(new Request(`https://chipvoice.test/api/v1/jobs/${job.id}/audio`, {method, headers:{authorization:`Bearer ${token.key}`, ...headers}}), {params:Promise.resolve({id:job.id})});
+  for (const range of ['bytes=0-43', `bytes=${wav.length-50}-`, 'bytes=-50']) {
+    const response = await audio({range});assert.equal(response.status,206);
+    const [start,end] = response.headers.get('content-range').match(/bytes (\d+)-(\d+)/).slice(1).map(Number);
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()),wav.subarray(start,end+1));
+  }
+  const head=await audio({},'HEAD');assert.equal(head.status,200);assert.equal(head.headers.get('content-length'),String(wav.length));assert.equal((await head.arrayBuffer()).byteLength,0);
+  assert.equal((await audio({range:`bytes=${wav.length}-`})).status,416);
+  const anonymous=await api.audioGet(new Request(`https://chipvoice.test/api/v1/jobs/${job.id}/audio`,{headers:{range:'bytes=0-43'}}),{params:Promise.resolve({id:job.id})});assert.equal(anonymous.status,404,'range never bypasses private ownership');
+
   await client.execute({
     sql: "update project_jobs set engine='older-engine' where id=?",
     args: [job.id],
