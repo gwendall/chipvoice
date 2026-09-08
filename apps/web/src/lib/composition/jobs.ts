@@ -52,29 +52,33 @@ export async function createGeneration(value: unknown, requestKey: string, calle
   return getGeneration(id, caller);
 }
 
-export async function getGeneration(id: string, caller: Caller) {
+export async function getGeneration(id: string, caller: Caller, summary = false) {
   const client = await db();
-  let row = (await client.execute({ sql: "select * from generations where id=? and user_id=?", args: [id, caller.userId!] })).rows[0];
+  let row = (await client.execute({ sql: `select ${summary ? "id,user_id,profile_id,status,model,request,created_at,started_at,active,project_id,render_job_id,error,error_code,output_characters,progress_at,finished_at" : "*"} from generations where id=? and user_id=?`, args: [id, caller.userId!] })).rows[0];
   if (!row || (caller.agent && row.profile_id !== caller.agent.profileId)) error(404, "not_found", "Generation not found");
-  if (!["ready", "failed", "cancelled"].includes(String(row.status)) && (Date.now() - Number(row.created_at) > 600000 || (row.active && Date.now() - Number(row.started_at) > 210000))) {
-    await client.execute({ sql: "update generations set status='failed',error='Generation interrupted or timed out; start a new request',active=0 where id=? and status not in ('ready','failed','cancelled')", args: [id] });
+  if (!["ready", "failed", "cancelled"].includes(String(row.status)) && (Date.now() - Number(row.created_at) > 600000 || (row.active && Date.now() - Number(row.started_at) > 270000))) {
+    await client.execute({ sql: "update generations set status='failed',error='Generation interrupted or timed out; start a new request',error_code='generation_timeout',finished_at=?,active=0 where id=? and status not in ('ready','failed','cancelled')", args: [Date.now(), id] });
     if (row.render_job_id) await client.execute({ sql: "update project_jobs set status=case when status='rendering' then 'cancelling' else 'cancelled' end where id=? and status in ('queued','rendering')", args: [String(row.render_job_id)] });
     row = (await client.execute({ sql: "select * from generations where id=?", args: [id] })).rows[0];
   }
-  const publication = row.project_id ? await getProject(String(row.project_id), projectViewer(caller)) : null;
-  if (row.project_id && !publication) error(404, "not_found", "The generated song was withdrawn");
+  const publication = !summary && row.project_id ? await getProject(String(row.project_id), projectViewer(caller)) : null;
+  if (summary && row.project_id && !(await client.execute({ sql: "select id from projects where id=? and user_id=? and deleted_at is null", args: [String(row.project_id), caller.userId!] })).rows.length) error(404, "not_found", "The generated song was withdrawn");
+  if (!summary && row.project_id && !publication) error(404, "not_found", "The generated song was withdrawn");
   const job = row.render_job_id ? await getProjectJob(String(row.render_job_id), projectViewer(caller)) : null;
   if (row.status === "rendering" && job && ["ready", "failed", "cancelled"].includes(job.status)) {
     const mp3Failed = job.status === "ready" && ["failed", "cancelled"].includes(job.mp3Status);
     const status = mp3Failed ? "failed" : job.status === "ready" && job.mp3Status !== "ready" ? "rendering" : job.status;
     const failure = mp3Failed ? "The complete MP3 could not be prepared" : job.error;
-    await client.execute({ sql: "update generations set status=?,error=? where id=? and status='rendering'", args: [status, failure, id] });
-    row.status = status; row.error = failure;
+    await client.execute({ sql: "update generations set status=?,error=?,error_code=?,finished_at=? where id=? and status='rendering'", args: [status, failure, status === "failed" ? "render_failed" : null, status === "rendering" ? null : Date.now(), id] });
+    row.status = status; row.error = failure; row.error_code = status === "failed" ? "render_failed" : null; row.finished_at = status === "rendering" ? null : Date.now();
   }
   return {
     id: String(row.id), status: String(row.status), model: String(row.model),
     request: JSON.parse(String(row.request)), createdAt: Number(row.created_at),
     error: row.error ? String(row.error) : null,
+    errorCode: row.error_code ? String(row.error_code) : null,
+    finishedAt: row.finished_at ? Number(row.finished_at) : null,
+    progress: { outputCharacters: Number(row.output_characters), updatedAt: Number(row.progress_at ?? row.created_at), render: job?.progress ?? 0 },
     projectId: row.project_id ? String(row.project_id) : null,
     renderJobId: row.render_job_id ? String(row.render_job_id) : null,
     project: publication, render: job,
@@ -99,18 +103,25 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
   const client = await db(), now = Date.now();
   const row = (await client.execute({
     sql: "update generations set active=1,started_at=? where id=? and active=0 and status in ('queued','validating','saving') and created_at>? and (select count(*) from generations where active=1 and started_at>?)<2 returning *",
-    args: [now, id, now - 600000, now - 210000],
+    args: [now, id, now - 600000, now - 270000],
   })).rows[0];
   if (!row) return;
   const controller = new AbortController();
   const stopped = async () => !(await client.execute({ sql: "select id from generations where id=? and status not in ('cancelled','failed')", args: [id] })).rows.length;
-  const timer = setTimeout(() => controller.abort(), Math.min(180000, Number(row.created_at) + 600000 - Date.now()));
-  let polling = false;
+  const timer = setTimeout(() => controller.abort(new DOMException("Generation deadline", "TimeoutError")), Math.min(240000, Number(row.created_at) + 600000 - Date.now()));
+  let polling = false, outputCharacters = Number(row.output_characters), persistedCharacters = outputCharacters;
   const cancellation = setInterval(async () => {
     if (polling) return;
     polling = true;
-    try { if (await stopped()) controller.abort(); } catch { controller.abort(); } finally { polling = false; }
-  }, 500);
+    try {
+      if (await stopped()) controller.abort();
+      else if (outputCharacters !== persistedCharacters) {
+        const current = outputCharacters;
+        await client.execute({ sql: "update generations set output_characters=?,progress_at=? where id=? and status='composing'", args: [current, Date.now(), id] });
+        persistedCharacters = current;
+      }
+    } catch { controller.abort(); } finally { polling = false; }
+  }, 1000);
   try {
     if (!await authorized(row)) error(403, "authorization_expired", "Composition authorization expired or was revoked");
     const request = compositionRequest.parse(JSON.parse(String(row.request)));
@@ -119,10 +130,10 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
       await client.execute({ sql: "update generations set status='composing' where id=? and active=1 and status='queued'", args: [id] });
       if (await stopped()) return;
       const model = suppliedModel ?? openAIModel({ ...compositionConfig(), model: String(row.model) });
-      const result = await model.generate({ instructions: compositionInstructions(request), prompt: request.prompt, schema: compositionSchema, signal: controller.signal });
+      const result = await model.generate({ instructions: compositionInstructions(request), prompt: request.prompt, schema: compositionSchema, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(210000)]), onProgress: progress => { outputCharacters = progress.outputCharacters; } });
       if (await stopped()) return;
       project = compositionProject(result.value, request);
-      await client.execute({ sql: "update generations set document=?,model=?,usage=?,status='validating' where id=? and status='composing'", args: [canonical(project), result.model, JSON.stringify(result.usage), id] });
+      await client.execute({ sql: "update generations set document=?,model=?,usage=?,output_characters=?,progress_at=?,status='validating' where id=? and status='composing'", args: [canonical(project), result.model, JSON.stringify(result.usage), outputCharacters, Date.now(), id] });
       row.status = "validating"; row.model = result.model;
     }
     if (!project || await stopped()) return;
@@ -143,8 +154,10 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
     // Rendering is advanced separately by normal job polling, within its own deadline.
   } catch (e) {
     if (e instanceof ProjectHttpError && e.status === 429) return;
-    const message = e instanceof ProjectHttpError ? e.message : "Composition failed or was interrupted; try a simpler request";
-    await client.execute({ sql: "update generations set status='failed',error=? where id=? and status not in ('cancelled','failed')", args: [message, id] });
+    const timedOut = controller.signal.reason?.name === "TimeoutError" || (e instanceof Error && e.name === "TimeoutError");
+    const code = timedOut ? "generation_timeout" : e instanceof ProjectHttpError ? e.code : "composition_failed";
+    const message = timedOut ? "The composition exceeded its time limit. No new request was started automatically." : e instanceof ProjectHttpError ? e.message : "The composition could not be completed. Please try another request.";
+    await client.execute({ sql: "update generations set status='failed',error=?,error_code=?,finished_at=? where id=? and status not in ('cancelled','failed')", args: [message, code, Date.now(), id] });
   } finally {
     clearTimeout(timer); clearInterval(cancellation);
     await client.execute({ sql: "update generations set active=0 where id=?", args: [id] });
@@ -155,7 +168,7 @@ export async function cancelGeneration(id: string, caller: Caller) {
   const generation = await getGeneration(id, caller);
   if (["ready", "failed"].includes(generation.status)) error(409, "already_finished", "This composition has already finished");
   const client = await db();
-  await client.execute({ sql: "update generations set status='cancelled' where id=? and status not in ('ready','failed')", args: [id] });
+  await client.execute({ sql: "update generations set status='cancelled',finished_at=? where id=? and status not in ('ready','failed')", args: [Date.now(), id] });
   if (generation.renderJobId) await client.execute({ sql: "update project_jobs set status=case when status='rendering' then 'cancelling' else 'cancelled' end where id=? and status in ('queued','rendering')", args: [generation.renderJobId] });
   return getGeneration(id, caller);
 }

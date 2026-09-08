@@ -38,7 +38,7 @@ curl http://localhost:3010/api/v1/generations \
 
 対応する`target`は`/api/v1/capabilities`で確認します。モデルも同じ生成済み機能カタログを参照します。長さは10〜90秒の整数で、既定は60秒です。プロンプトは前後の空白除去後、JavaScriptの文字列単位で1〜2000です。`loop`は作曲上の意図であり、継ぎ目のないループの検証保証ではありません。所有者は所有する`profileId`を選べます。エージェントは認可されたアーティストを使います。任意の`visibility`は`private`（既定）、`unlisted`、`public`です。
 
-応答の`id`を使い、同じ認証情報で`GET /api/v1/generations/{id}`を`Retry-After: 2`に従ってポーリングします。状態は`queued`、`composing`、`validating`、`saving`、`rendering`、`ready`へ進み、失敗または中止は`failed`/`cancelled`です。同じURLへ`DELETE`を送ると未完了処理を中止できます。
+ライブ更新には同じ認証情報で`GET /api/v1/generations/{id}/events`をストリーム受信します（`curl -N`）。約20秒で閉じたら同じURLに再接続し、作曲リクエストは再送しません。[SSEの契約](GENERATIVE-COMPOSITION_ja.md#implemented-contract)を参照してください。従来どおり、応答の`id`を使い、同じ認証情報で`GET /api/v1/generations/{id}`を`Retry-After: 2`に従ってポーリングします。状態は`queued`、`composing`、`validating`、`saving`、`rendering`、`ready`へ進み、失敗または中止は`failed`/`cancelled`です。同じURLへ`DELETE`を送ると未完了処理を中止できます。
 
 完了応答には`projectId`、`renderJobId`、通常の公開情報`project`、既存音声ジョブ`render`、`evaluation`、モデルの`usage`が入ります。ログインして`/p/{projectId}`を開けます。音声は既存の認証付き`/api/v1/jobs/{renderJobId}/audio?format=mp3`または`format=wav`から取得します。エージェントは取得したファイルをチャット機能で添付できます。URLに認証情報を含めないでください。編集は通常の流れを使います。既存曲の公開は`PATCH /api/v1/projects/{id}`へ`{"visibility":"public"}`を送ります。作者、曲ID、レンダリング済み音声を保持します。
 
@@ -64,7 +64,7 @@ node compose.mjs --prompt "An original space theme with restrained percussion" -
 
 初版は**モデル呼び出し1回、自動修正なし**です。構造化JSONだけを受け取り、生成コードを実行しません。全楽譜を`allowLoss:false`でコンパイルし、対応ボイスを超える曲は音符を黙って落とさず失敗します。ミックスには既存の自動調整を使います。
 
-既定の受付上限は所有者ごとにUTCで1日10件、未完了1件、全体の同時作曲ワーカー2件です。失敗・中止も日次上限に数えます。出力は24,000トークン（最大64,000まで設定可）、応答4 MB、音符20,000個、90秒が上限です。作曲ステージの中断タイマーは180秒、生成全体は600秒で期限切れになります。既存レンダラーのCPU・保存制限も適用します。これらは件数やサイズの制限であり、**金額上限ではありません**。共有環境で有効にする前にプロバイダー側の予算を設定してください。
+既定の受付上限は所有者ごとにUTCで1日10件、未完了1件、全体の同時作曲ワーカー2件です。失敗・中止も日次上限に数えます。出力は24,000トークン（最大64,000まで設定可）、イベントストリーム8 MB、音符20,000個、90秒が上限です。モデルの期限は210秒、作曲ワーカーは240秒、放棄されたワーカーの失敗判定は270秒です。生成全体は600秒で期限切れになります。コンパクトなモデルのパターンを決定的に通常の音符へ展開し、公開プロジェクト形式は変更しません。既存レンダラーのCPU・保存制限も適用します。これらは件数やサイズの制限であり、**金額上限ではありません**。共有環境で有効にする前にプロバイダー側の予算を設定してください。
 
 既存評価は**割り当て全体を検証しますが、音響評価は冒頭2秒のみ**です。その後、既存レンダラーが全曲を生成します。`ready`は有効なプロジェクトと全曲の出力があることを示し、趣味、依頼への適合、ループの継ぎ目、全曲の音響品質を認証するものではありません。モデルの作曲が良くない場合や制約を超える場合があり、成功保証はありません。広い音楽評価はこの小さな統合とは別に行います。
 
@@ -76,6 +76,7 @@ node compose.mjs --prompt "An original space theme with restrained percussion" -
 ```bash
 pnpm --filter chipvoice-web build
 cd apps/web
+node test-generation-stream.mjs
 node test-generation.mjs
 ```
 
@@ -91,4 +92,4 @@ pnpm --filter chipvoice-web eval:composition
 pnpm --filter chipvoice-web eval:composition 'An original calm theme with a developed ending' 30 snes
 ```
 
-各実行は設定済みモデルへ有料リクエストを1回送り、プロジェクトと全WAV/MP3を`.artifacts/prompt-composition/live-*/`へ保存します。全PCMの長さ・ピーク・RMS・クリッピング、MP3の復号、モバイルとデスクトップの非公開曲ページを検証します。使い捨てローカルDBを使い、本番へテスト曲を公開しません。信号検証と試聴はレポート上も区別されます。音楽の判断には保存した音声を試聴してください。CIは模擬プロバイダーだけを使います。
+各実行は設定済みモデルへ有料リクエストを1回送り、プロジェクトと全WAV/MP3を`.artifacts/prompt-composition/live-*/`へ保存します。全PCMの長さ・ピーク・RMS・クリッピング・毎秒の音声活動、SSEの進捗と遅延、MP3の復号、モバイルとデスクトップの非公開曲ページを検証します。使い捨てローカルDBを使い、本番へテスト曲を公開しません。信号検証と試聴はレポート上も区別されます。音楽の判断には保存した音声を試聴してください。CIは模擬プロバイダーだけを使います。

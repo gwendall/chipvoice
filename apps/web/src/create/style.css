@@ -612,3 +612,11 @@
 @media(max-width:680px) { .prompt-options { grid-template-columns: 1fr; gap: 14px; } .prompt-composer { padding: 12px; } }
 
 .prompt-options select, .publication-sharing select { min-height: 44px; max-width: 100%; padding: 8px 10px; border: 1px solid #aaa98e; background: #f8f6ef; color: inherit; font: inherit; }
+
+.composition-progress { max-width: 42rem; margin-block: 1rem; }
+.composition-progress ol { display: flex; list-style: none; padding: 0; gap: .5rem; }
+.composition-progress li { flex: 1; padding-block: .5rem; border-bottom: 2px solid currentColor; opacity: .5; text-align: center; }
+.composition-progress li[aria-current], .composition-progress li[data-complete="true"] { opacity: 1; font-weight: 700; }
+.composition-progress progress { width: 100%; accent-color: #ed783b; height: .65rem; }
+.composition-progress p { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: space-between; }
+.composition-progress p span { font-variant-numeric: tabular-nums; }

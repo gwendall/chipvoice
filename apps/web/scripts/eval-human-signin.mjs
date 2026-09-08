@@ -1,5 +1,5 @@
 // Explicit production smoke test: send only to the app-owned mailbox, redeem
-// the newly received email, generate one private 10s song and withdraw it.
+// the newly received email, generate one private song and withdraw it.
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -8,6 +8,8 @@ import { Domani } from 'domani';
 assert.equal(process.env.CHIPVOICE_EVAL_PRODUCTION, '1', 'Explicit production evaluation opt-in required');
 assert.ok(process.env.DOMANI_API_KEY, 'Load the mailbox-scoped key from .env.local');
 const base = 'https://chipvoice.dev', mailbox = 'hello@chipvoice.dev';
+const seconds = Number(process.env.CHIPVOICE_EVAL_SECONDS ?? 10);
+assert.ok(Number.isInteger(seconds) && seconds >= 10 && seconds <= 90);
 const mail = new Domani({ apiKey: process.env.DOMANI_API_KEY });
 const configResponse = await fetch('https://domani.run/api/emails/' + encodeURIComponent(mailbox), { headers: { Authorization: 'Bearer ' + process.env.DOMANI_API_KEY } });
 assert.equal(configResponse.status, 200);
@@ -23,9 +25,9 @@ try {
   const page = await context.newPage();
   await page.goto(base + '/create?compose=1#prompt');
   const form = page.locator('.prompt-composer');
-  const prompt = 'A short original arcade fanfare: a singable rising melody, soft bass and sparse percussion, ending on the tonic. This private song tests the human sign-in journey.';
+  const prompt = seconds > 10 ? 'An original space arcade theme with a developed melody, answering phrases, arpeggiated harmony, gentle bass, restrained drums, a contrasting bridge and a resolved ending. This private song tests the complete human generation journey.' : 'A short original arcade fanfare: a singable rising melody, soft bass and sparse percussion, ending on the tonic. This private song tests the human sign-in journey.';
   await form.getByLabel('Music prompt').fill(prompt);
-  await form.getByLabel('Song duration', { exact: true }).fill('10');
+  await form.getByLabel('Song duration', { exact: true }).fill(String(seconds));
   await form.getByLabel('Email', { exact: true }).fill(mailbox);
   const since = new Date().toISOString();
   const sendResponse = page.waitForResponse(r => r.url() === base + '/api/auth/signin' && r.request().method() === 'POST');
@@ -51,18 +53,26 @@ try {
   assert.equal((await me.json()).email, mailbox); signedIn = true;
   await emailTab.getByRole('button', { name: 'Generate music', exact: true }).waitFor();
   assert.equal(await emailTab.getByLabel('Music prompt').inputValue(), prompt);
-  assert.equal(await emailTab.getByLabel('Song duration', { exact: true }).inputValue(), '10');
+  assert.equal(await emailTab.getByLabel('Song duration', { exact: true }).inputValue(), String(seconds));
   await emailTab.locator('.prompt-composer').screenshot({ path: out + '/authenticated-draft.png' });
   const again = await context.request.get(link, { maxRedirects: 0 });
   assert.match(again.headers().location, /signin=expired/);
   console.log('New inbound email received and redeemed; draft restored. Generating the private test song.');
+  let submissions = 0, streams = 0;
+  emailTab.on('request', request => { if (request.method() === 'POST' && request.url().endsWith('/api/v1/generations')) submissions++; });
+  emailTab.on('response', response => { if (response.url().endsWith('/events') && response.status() === 200 && response.headers()['content-type']?.includes('text/event-stream')) streams++; });
   const generationResponse = emailTab.waitForResponse(r => r.url() === base + '/api/v1/generations' && r.request().method() === 'POST');
   await emailTab.getByRole('button', { name: 'Generate music', exact: true }).click();
   const accepted = await generationResponse;
   assert.equal(accepted.status(), 202);
   generationId = (await accepted.json()).id;
+  await emailTab.getByText('Writing your score…', {exact:true}).waitFor({timeout:210000});
+  await emailTab.locator('.prompt-composer').screenshot({path:out+'/generation-progress.png'});
+  await emailTab.reload();
   const ready = emailTab.getByRole('link', { name: 'Open your generated song' });
   await ready.waitFor({ timeout: 240000 });
+  assert.equal(submissions,1,'reloading progress never submits another paid request');
+  assert.ok(streams>=2,'production SSE connects and resumes after reload');
   created = (await ready.getAttribute('href')).split('/').at(-1);
   const songResponse = await context.request.get(base + '/api/v1/projects/' + created);
   assert.equal(songResponse.status(), 200);
@@ -84,12 +94,13 @@ try {
       return { duration: decoded.duration, peak, rms: Math.sqrt(energy / count) };
     } finally { await ctx.close(); }
   }, bytes.toString('base64'));
-  assert.ok(measured.duration >= 9.5 && measured.peak > 0.001 && measured.peak <= 1);
+  assert.ok(Math.abs(measured.duration - seconds) < 0.25 && measured.peak > 0.001 && measured.peak <= 1);
   await writeFile(out + '/song.mp3', bytes);
   await emailTab.goto(base + '/library');
   await emailTab.getByText(song.title, { exact: true }).first().waitFor();
+  await emailTab.locator('header').getByRole('link',{name:'Your library',exact:true}).waitFor();
   await emailTab.screenshot({ path: out + '/library.png', fullPage: true });
-  await writeFile(out + '/report.json', JSON.stringify({ receivedRealEmail: true, redeemedOnce: true, newTabPromptRestored: true, durationRestored: true, privateSong: created, creatorId: song.profile.id, title: song.title, origin: song.origin.method, libraryEntry: true, audio: measured, cleanup: 'Only this test publication and session are removed below' }, null, 2));
+  await writeFile(out + '/report.json', JSON.stringify({ receivedRealEmail: true, redeemedOnce: true, newTabPromptRestored: true, durationRestored: true, requestedSeconds: seconds, sseConnections: streams, generationSubmissions: submissions, privateSong: created, creatorId: song.profile.id, title: song.title, origin: song.origin.method, libraryEntry: true, audio: measured, cleanup: 'Only this test publication and session are removed below' }, null, 2));
   console.log('PASS production human sign-in: inbox receipt, single-use login, saved prompt, private generation, library and decoded MP3.');
 } finally {
   try {

@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { db, newId } from "./db";
 import {
   viewerUser,
+  viewerProfile,
   type Viewer,
   getProject,
   admitProject,
@@ -93,7 +94,11 @@ function jobView(row: Record<string, unknown>) {
 export async function getProjectJob(id: string, viewer: Viewer) {
   const result = await (
     await db()
-  ).execute({ sql: "select * from project_jobs where id=?", args: [id] });
+  ).execute({
+    // A progress read needs authorization, not the entire project JSON and report.
+    sql: "select j.* from project_jobs j join projects p on p.id=j.project_id where j.id=? and p.deleted_at is null and (p.visibility<>'private' or (p.user_id=? and (? is null or p.profile_id=?)))",
+    args: [id, viewerUser(viewer), viewerProfile(viewer), viewerProfile(viewer)],
+  });
   const row = result.rows[0];
   if (
     ["rendering", "cancelling"].includes(String(row?.status)) &&
@@ -108,7 +113,7 @@ export async function getProjectJob(id: string, viewer: Viewer) {
     row.status = "failed";
     row.error = "Render interrupted; publish a new revision to retry";
   }
-  if (!row || !(await getProject(String(row.project_id), viewer)))
+  if (!row)
     throw new ProjectHttpError(404, "not_found", "Render not found");
   return jobView(row);
 }

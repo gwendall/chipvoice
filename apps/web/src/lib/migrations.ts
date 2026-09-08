@@ -230,6 +230,17 @@ const migrations = [
       ) update projects set origin=(select method from lineage where id=projects.id limit 1),origin_model=(select model from lineage where id=projects.id limit 1) where id in (select id from lineage)`);
     },
   },
+  {
+    name: "generation-progress",
+    async up(tx: Transaction) {
+      await addColumns(tx, "generations", {
+        output_characters: "integer not null default 0",
+        progress_at: "integer",
+        finished_at: "integer",
+        error_code: "text",
+      });
+    },
+  },
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

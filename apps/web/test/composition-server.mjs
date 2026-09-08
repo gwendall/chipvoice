@@ -38,12 +38,14 @@ export async function compositionServer({ live = false, mailBase } = {}) {
     const seconds = Number(body.instructions.match(/Duration is exactly (\d+)/)[1]);
     const score = fixtureScore(seconds);
     if (prompt === "invalid") score.parts[0].notes[0].endTick = -1;
-    response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({
+    response.writeHead(200, { "Content-Type": "text/event-stream" });
+    response.write(`data: ${JSON.stringify({type:"response.output_text.delta",delta:JSON.stringify(score)})}\n\n`);
+    if (prompt === "streaming") await new Promise(resolve => setTimeout(resolve, 3500));
+    response.end(`data: ${JSON.stringify({type: prompt === "incomplete" ? "response.incomplete" : "response.completed", response: {
       status: prompt === "incomplete" ? "incomplete" : "completed", model: body.model,
       usage: { input_tokens: 100, output_tokens: 200, total_tokens: 300 },
       output: [{ type: "message", content: prompt === "refuse" ? [{ type: "refusal", refusal: "No" }] : [{ type: "output_text", text: JSON.stringify(score) }] }],
-    }));
+    }})}\n\n`);
   });
   if (provider) await new Promise(resolve => provider.listen(0, "127.0.0.1", resolve));
   const reservation = netServer();
