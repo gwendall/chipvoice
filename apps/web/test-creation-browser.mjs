@@ -80,7 +80,7 @@ try {
     .getByRole("slider", { name: "Song position", exact: true })
     .fill("8");
   await page.waitForFunction(
-    () => document.querySelector(".progress-row")?.textContent.includes("0:08"),
+    () => document.querySelector(".create-transport .song-time")?.textContent.includes("0:08"),
     null,
     { timeout: 10000 },
   );
@@ -225,7 +225,7 @@ try {
     waitUntil: "networkidle",
     timeout: 120000,
   });
-  await visitor.locator("audio").waitFor();
+  await visitor.getByRole("button",{name:"Play",exact:true}).waitFor();
   assert.equal(
     await visitor.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,

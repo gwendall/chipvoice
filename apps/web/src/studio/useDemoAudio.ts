@@ -1,13 +1,16 @@
 'use client';
+import {livePlayback} from '@/player/adapters';
+import {playbackSession, playbackFor, releasePlayback} from '@/player/session';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Chip, instrumentsFor, type Role } from 'chipvoice';
 import { effectFor, type EffectId } from './effects';
 import { musicSong, type SongDocument } from './document';
 import { measure } from './metrics';
 import { LivePlayback } from '../audio/LivePlayback';
+import {PRESETS} from './presets';
 import {AudibleSteps} from '../audio/AudibleSteps';
 
-export function useDemoAudio(song: SongDocument, muted: Role[], recording = false) {
+export function useDemoAudio(song: SongDocument, muted: Role[], recording = false, sourceHref='/?mode=compose') {
   const interacted = useRef(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const current = useRef<Chip | null>(null);
@@ -15,6 +18,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
   const latest = useRef({ song, muted, recording });
   latest.current = { song, muted, recording };
   const mounted = useRef(true);
+  const audibleTitle = useRef(song.title);
   const [playing, setPlaying] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -30,14 +34,15 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
         setPlaying(player.playing); setLoading(player.loading); setError(player.error);
         (window as unknown as { chipvoice?: Chip }).chipvoice = player.current ?? undefined;
       });
-      playback.current = player; setOutput(player.output);
+      playback.current = player; livePlayback(player,()=>({title:audibleTitle.current??'Your loop',translateTitle:!audibleTitle.current||PRESETS.some(p=>p.title===audibleTitle.current),chip:player.current?.spec.id,href:sourceHref}));setOutput(player.output);
     }
     return playback.current;
   }, []);
   const ensure = useCallback(async () => {
-    const player = session(); await player.context.resume();
+    const player = session(), adapter=playbackFor(player)!;const intent=playbackSession.request(adapter);await player.context.resume();
     if (latest.current.recording && player.current) return player.current;
     const chip = await player.update(musicSong(latest.current.song, latest.current.muted));
+    if(!mounted.current || !playbackSession.audition(adapter,intent)) return null;
     player.audition(); return chip;
   }, [session]);
   const start = useCallback(async (nextSong = latest.current.song, nextMuted = latest.current.muted) => {
@@ -45,7 +50,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     try {
       // AudioContext creation/resume stays in the trusted gesture. A selection
       // supplies its new score explicitly, before React commits the document.
-      const chip = await session().start(musicSong(nextSong, nextMuted));
+      const p=session();playbackSession.request(playbackFor(p)!);const arranged=musicSong(nextSong,nextMuted);const chip = await p.start(arranged);if(chip?.songId===arranged.id)audibleTitle.current=nextSong.title;
       measure('play'); return chip;
     } catch (error) {
       playback.current?.stop();
@@ -57,13 +62,14 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     if (!interacted.current) void start(nextSong, nextMuted);
   }, [start]);
   const toggle = useCallback(async () => {
-    if (playback.current?.playing) playback.current.stop();
+    if (playback.current?.playing) playbackSession.pause(playbackFor(playback.current));
+    else if(playback.current?.current) { playbackSession.request(playbackFor(playback.current)!);await playback.current.resume(); }
     else await start();
   }, [start]);
   useEffect(() => {
     if (recording || !playback.current) return;
     // Coalesce slider/keyboard bursts before preparing an incoming engine.
-    const timer = setTimeout(() => { void playback.current?.update(musicSong(song, muted)); }, 45);
+    const timer = setTimeout(() => { const arranged=musicSong(song,muted);void playback.current?.update(arranged).then(()=>{if(playback.current?.current?.songId===arranged.id)audibleTitle.current=song.title;}); }, 45);
     return () => clearTimeout(timer);
   }, [song, muted, recording]);
 
@@ -91,7 +97,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     return () => {
       mounted.current = false;
       const player = playback.current; playback.current = null; current.current = null;
-      player?.dispose(); void player?.context.close();
+      releasePlayback(player);
     };
   }, []);
 
@@ -126,5 +132,5 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [output]);
-  return { hasInteracted, startOnInteraction, playing, loading, error, position, stolen, output, effect, toggle, start, fire, preview, recordingPosition };
+  return { player: playbackFor(playback.current), hasInteracted, startOnInteraction, playing, loading, error, position, stolen, output, effect, toggle, start, fire, preview, recordingPosition };
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PerformancePart } from "chipvoice";
 import { useT } from "@/i18n/react";
 const names = ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"];
@@ -7,14 +7,14 @@ export default function PianoRoll({
   part,
   ticksPerBeat,
   startTick,
-  positionTick,
+  readPosition,
   columns,
   onEdit,
 }: {
   part: PerformancePart;
   ticksPerBeat: number;
   startTick: number;
-  positionTick: number;
+  readPosition: () => number;
   columns: number;
   onEdit: (part: PerformancePart) => void;
 }) {
@@ -36,12 +36,26 @@ export default function PianoRoll({
   );
   const [length, setLength] = useState(1),
     [velocity, setVelocity] = useState(90);
+  const grid = useRef<HTMLDivElement>(null);
   const low = octave * 12,
     step = ticksPerBeat / 4,
     endTick = startTick + step * columns;
   const rows = drums
     ? [42, 38, 36]
     : Array.from({ length: 25 }, (_, i) => Math.min(127, low + 24 - i));
+  useEffect(()=>{
+    let frame=0,last=-2;
+    const tick=()=>{
+      const column=Math.floor((readPosition()-startTick)/step);
+      if(column!==last) {
+        last=column;
+        grid.current?.querySelectorAll('.now').forEach(node=>node.classList.remove('now'));
+        if(column>=0 && column<columns) grid.current?.querySelectorAll(`[data-column="${column}"]`).forEach(node=>node.classList.add('now'));
+      }
+      frame=requestAnimationFrame(tick);
+    };
+    tick();return()=>cancelAnimationFrame(frame);
+  },[readPosition,startTick,step,columns,part,octave]);
   const cells = useMemo(() => {
     const result = new Set<string>();
     for (const note of part.notes) {
@@ -133,6 +147,7 @@ export default function PianoRoll({
       </div>
       <div className="piano-scroll">
         <div
+          ref={grid}
           className="piano-roll"
           role="group"
           aria-label={t("Edit notes")}
@@ -148,13 +163,12 @@ export default function PianoRoll({
                   : names[pitch % 12] + (Math.floor(pitch / 12) - 1)}
               </span>
               {Array.from({ length: columns }, (_, column) => {
-                const tick = startTick + column * step,
-                  note = cells.has(`${pitch}:${column}`),
-                  current = positionTick >= tick && positionTick < tick + step;
+                const note = cells.has(`${pitch}:${column}`);
                 return (
                   <button
                     key={column}
-                    className={`${note ? "note-on " : ""}${column % 4 === 0 ? "beat " : ""}${current ? "now" : ""}`}
+                    data-column={column}
+                    className={`${note ? "note-on " : ""}${column % 4 === 0 ? "beat " : ""}`}
                     aria-label={`${drums ? t(pitch === 36 ? "Kick" : pitch === 38 ? "Snare" : "Hat") : names[pitch % 12] + (Math.floor(pitch / 12) - 1)} · ${t("Step")} ${column + 1}`}
                     aria-pressed={!!note}
                     onClick={() => toggle(pitch, column)}

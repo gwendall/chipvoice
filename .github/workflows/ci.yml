@@ -58,6 +58,7 @@ jobs:
         with:
           name: demo-evaluation
           path: |
+            .artifacts/player
             .artifacts/demo
             .artifacts/lab
             .artifacts/continuity

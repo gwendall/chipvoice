@@ -28,14 +28,14 @@ try{
  for(const name of ['Famicom','Game Boy','Mega Drive','Super Famicom']){
   await page.locator('.machines').getByRole('button',{name,exact:true}).click();
   await page.waitForFunction(()=>!document.querySelector('[aria-label="Listen to A"]').disabled);
-  assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1,`Play retained for ${name}`);
+  assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1,`Play retained for ${name}`);
  }
  await page.getByLabel('Part',{exact:true}).selectOption('bass');await page.getByLabel('Composition',{exact:true}).selectOption('boss');
  await page.waitForFunction(()=>!document.querySelector('[aria-label="Listen to A"]').disabled);
- assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);
+ assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);
  // Delay a real new recording load, then stop while it is pending.
  await page.route('**/*.flac',async route=>{await new Promise(resolve=>setTimeout(resolve,250));await route.continue();});
- await page.getByLabel('Part',{exact:true}).selectOption('chord');await page.getByRole('button',{name:'Stop',exact:true}).click();await page.waitForTimeout(600);
+ await page.getByLabel('Part',{exact:true}).selectOption('chord');await page.getByRole('button',{name:'Pause',exact:true}).click();await page.waitForTimeout(600);
  assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'Stop wins over pending recording load');
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:new URL('mobile.png',out).pathname,fullPage:true});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);

@@ -1,3 +1,4 @@
+import {PersistentPlayer} from '@/player/Player';
 import type {ReactNode} from 'react';
 import {notFound} from 'next/navigation';
 import {isLocale,locales} from '@/i18n/core';
@@ -10,5 +11,5 @@ import '@/studio/style.css';
 export function generateStaticParams(){return locales.map(locale=>({locale}));}
 export default async function RootLayout({children,params}:{children:ReactNode;params:Promise<{locale:string}>}){
  const {locale}=await params;if(!isLocale(locale))notFound();
- return <html lang={locale}><body><I18nProvider locale={locale} messages={await getMessages(locale)}>{children}</I18nProvider></body></html>;
+ return <html lang={locale}><body><I18nProvider locale={locale} messages={await getMessages(locale)}>{children}<PersistentPlayer/></I18nProvider></body></html>;
 }

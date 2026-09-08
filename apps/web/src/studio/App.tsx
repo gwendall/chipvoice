@@ -1,4 +1,9 @@
 'use client';
+import {projectFromScore} from 'chipvoice';
+import {useRouter} from 'next/navigation';
+import {openProjectDraft, draftHref} from '@/create/drafts';
+import {PlayerControls} from '@/player/Player';
+import {playbackSession} from '@/player/session';
 import {useErrorText, useI18n, useT} from '@/i18n/react';
 import type {CSSProperties} from 'react';
 import Link from '@/i18n/react';
@@ -21,11 +26,12 @@ import { publicationBody } from './publication';
 import { Account } from './Account';
 import { MidiInput } from './MidiInput';
 import {RangeControl} from '../ui/RangeControl';
-import {SiteHeader, SiteFooter, MachinePicker, PlayButton} from '../ui/components';
+import {SiteHeader, SiteFooter, MachinePicker} from '../ui/components';
 import '../arrangements/style.css';
 
 export default function App({ initial, initialId, embedded=false }: { initial?: SongDocument; initialId?: string; embedded?:boolean }) {
  const t = useT();
+ const router = useRouter();
  const errorText = useErrorText();
  const {locale} = useI18n();
   const doc = useSongDocument(initial, initialId);
@@ -39,7 +45,7 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
   const backingSong = useRef<SongDocument | null>(null);
   const recordLocked = recording || recordStarting;
   const recordRequest = useRef(0);
-  const audio = useDemoAudio(doc.song, effectiveMuted, recording);
+  const audio = useDemoAudio(doc.song, effectiveMuted, recording, initialId ? `/s/${initialId}` : '/?mode=compose');
   const [editing, setEditing] = useState(false);
   const [code, setCode] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -85,6 +91,7 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
     }
     void audio.preview(voice, note);
   }, [audio.preview, audio.recordingPosition, doc.edit]);
+  useEffect(()=>{if(recording && !audio.playing) finishTake();},[recording,audio.playing,finishTake]);
   const togglePlayback = useCallback(() => { finishTake(); void audio.toggle(); }, [finishTake, audio.toggle]);
   const undo = useCallback(() => { finishTake(); doc.undo(); }, [finishTake, doc.undo]);
   const redo = useCallback(() => { finishTake(); doc.redo(); }, [finishTake, doc.redo]);
@@ -99,7 +106,7 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
       if (event.target instanceof HTMLElement && (event.target.isContentEditable || /INPUT|TEXTAREA|SELECT/.test(event.target.tagName))) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') { event.preventDefault(); if (event.shiftKey) redo(); else undo(); return; }
       if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-      if (event.code === 'Space') { if (event.target instanceof HTMLButtonElement) return; event.preventDefault(); togglePlayback(); return; }
+      if (event.code === 'Space' && !playbackSession.active && !playbackSession.pending) { if (event.target instanceof HTMLButtonElement) return; event.preventDefault(); togglePlayback(); return; }
       const fx = EFFECTS.find(f => f.key === event.key);
       if (fx) { event.preventDefault(); void audio.fire(fx.id); return; }
       const index = keyboard.indexOf(event.key.toLowerCase());
@@ -140,10 +147,11 @@ export default function App({ initial, initialId, embedded=false }: { initial?: 
         <div><span className="micro">{t("OPEN-SOURCE SOUND-CHIP EMULATION")}</span><h1 id="intro-title">{t("Old consoles.")}<br/><span>{t("New JavaScript.")}</span></h1></div>
         <div className="intro-copy"><p>{t("We rebuilt their sound chips in JavaScript. Hear familiar melodies come alive on different consoles, with every note generated in your browser.")}</p><Link href="/about">{t("How it works ")}<span aria-hidden="true">↗</span></Link></div>
       </section>
+      <div className="project-actions"><button className="small-button" onClick={()=>{const key=openProjectDraft(projectFromScore({...doc.song,id:doc.song.title??'loop'},{title:doc.song.title,author:doc.song.author}));router.push(localePath(draftHref(key),locale));}}>{t('Continue in composer')} →</button><span>{t('Turn this loop into a full song.')}</span></div>
       <section className="console" aria-label={t("Chipvoice musical console")} onClick={event => {
         if (doc.ready && !(event.target instanceof Element && event.target.closest('a, input[type="number"], textarea, select'))) audio.startOnInteraction();
       }}>
-        <div className="tune-heading"><div><span className="micro">{t("01 / PICK A MELODY")}</span><span className="start-hint">{(audio.playing?t('Switch sounds. Keep the melody going.'):(audio.hasInteracted?t('Press Play when you’re ready.'):t('Tap a melody or console to start the sound.')))}</span></div><PlayButton playing={audio.playing} loading={audio.loading} shortcut onClick={togglePlayback}/></div>
+        <div className="tune-heading"><div><span className="micro">{t("01 / PICK A MELODY")}</span><span className="start-hint">{(audio.playing?t('Switch sounds. Keep the melody going.'):(audio.hasInteracted?t('Press Play when you’re ready.'):t('Tap a melody or console to start the sound.')))}</span></div></div><PlayerControls player={audio.player} onToggle={togglePlayback} loading={audio.loading}/>
         <div className="familiar-tunes" aria-label={t("Familiar melodies")}>{CLASSIC_PRESETS.map(preset => <button key={preset.id} className={`familiar-tune ${preset.id}`} disabled={recordLocked || !doc.ready} style={{'--tune-color':preset.color} as CSSProperties} aria-label={t("Load {v0}",{v0:t(preset.title)})} aria-pressed={doc.song.title === preset.song.title} onClick={() => loadPreset(preset)}><span className="tune-icon" aria-hidden="true">{(preset.id === 'mario'?t('M'):(preset.id === 'zelda'?t('Z'):t('S')))}</span><span><strong>{(preset.id === 'mario'?t('Mario'):(preset.id === 'zelda'?t('Zelda'):t('Sonic')))}</strong><small>{(preset.id === 'mario'?t('Ground Theme'):(preset.id === 'zelda'?t('Overworld'):t('Green Hill Zone')))}</small></span><span className="tune-play" aria-hidden="true">{(doc.song.title === preset.song.title?t('●'):t('▶'))}</span></button>)}</div>
         <details className="original-tunes"><summary>{t("More to play · original loops")}</summary><div className="cartridge-list">{ORIGINAL_PRESETS.map(preset => <button key={preset.id} disabled={recordLocked || !doc.ready} className={`cartridge ${preset.id}`} aria-pressed={doc.song.title === preset.song.title} aria-label={t("Load {v0}",{v0:t(preset.title)})} onClick={() => loadPreset(preset)}><span className="cartridge-copy"><strong>{t(preset.title)}</strong><span>{t(preset.mood)}</span></span></button>)}</div></details>
         <div className="console-top"><span className="micro">{t("02 / CHANGE THE SOUND")}</span><span className="micro hardware-label">{t("FOUR CONSOLES / ONE MELODY")}</span></div>

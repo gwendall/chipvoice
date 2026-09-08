@@ -44,7 +44,7 @@ try {
   assert.equal(await page.evaluate(()=>window.midiClosed),1);
   await page.getByRole('button',{name:'Finish take',exact:true}).click();
   await page.getByRole('button',{name:'Undo',exact:true}).click();assert.deepEqual(await score(),original);
-  await page.getByRole('button',{name:'Stop',exact:true}).click();
+  await page.getByRole('button',{name:'Pause',exact:true}).click();
   // Cancel an expensive export, then successfully start a different one.
   await page.getByRole('button',{name:'Download five machines ZIP',exact:true}).click();
   await page.evaluate(()=>{const callback=window.exportWorker.onerror;window.delayedExportError=()=>callback(new Event('error'));});

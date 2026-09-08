@@ -16,7 +16,7 @@ try{
   const details=page.locator('.import-roles');await details.locator('summary').click();
   const selects=details.locator('select');await selects.first().waitFor();
   assert.deepEqual(await selects.evaluateAll(nodes=>nodes.map(n=>n.value)),['chord','lead']);
-  const download=page.locator('a[download][href^="blob:"]');await download.waitFor({timeout:120000});const old=await download.getAttribute('href');
+  const download=page.locator('.arrangement-versions a[download][href^="blob:"]');await download.waitFor({timeout:120000});const old=await download.getAttribute('href');
   await selects.first().selectOption('bass');
   await page.waitForFunction(previous=>document.querySelector('a[download][href^="blob:"]')?.getAttribute('href')!==previous,old,{timeout:120000});
   assert.equal(await selects.first().inputValue(),'bass');

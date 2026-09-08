@@ -504,18 +504,11 @@ try {
   );
   await page.goto(`${base}/p/${song.id}`);
   await page.getByRole("link", { name: "Download MP3", exact: true }).waitFor();
-  await page.evaluate(() => {
-    const a = document.querySelector("audio");
-    a.src += "?format=mp3";
-    a.preload = "auto";
-    a.load();
-  });
-  await page.waitForFunction(
-    () => document.querySelector("audio")?.duration > 0,
-  );
+  await page.getByRole("button", {name:"Play",exact:true}).click();
+  await page.waitForFunction(()=>Number(document.querySelector('.persistent-player input[type=range]')?.value)>0);
   const decoded = await page.evaluate(async () => {
     const bytes = await (
-      await fetch(document.querySelector("audio").src)
+      await fetch(document.querySelector('a[aria-label="Download current recording"]').href)
     ).arrayBuffer();
     const context = new OfflineAudioContext(2, 1, 44100),
       audio = await context.decodeAudioData(bytes);

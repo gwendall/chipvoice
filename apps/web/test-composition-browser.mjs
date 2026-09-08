@@ -23,7 +23,7 @@ try{
  for(const title of ['Mario · Ground Theme','Zelda · Overworld','Sonic · Green Hill Zone']){
   const before=await page.evaluate(()=>window.chipvoice?.songId??null);
   await page.getByRole('button',{name:`Load ${title}`,exact:true}).click();
-  if(!await page.getByRole('button',{name:'Stop',exact:true}).count())await page.getByRole('button',{name:'Play',exact:true}).click();
+  if(!await page.getByRole('button',{name:'Pause',exact:true}).count())await page.getByRole('button',{name:'Play',exact:true}).click();
   await page.waitForFunction(id=>window.chipvoice?.playing&&window.chipvoice.songId!==id,before);
   for(const [label,id] of chips){
    await page.locator('.demo-page .machines').getByRole('button',{name:label,exact:true}).click();
@@ -36,14 +36,14 @@ try{
  assert.ok(await page.getByRole('link',{name:'View the source transcription ↗'}).getAttribute('href'));
  await number('Transpose').fill('3');await number('Transpose').press('Enter');
  assert.ok(await number('Drum activity').isDisabled());await page.getByText('Edited version · source checks apply to the original cartridge.',{exact:true}).waitFor();await page.waitForTimeout(350);
- assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);
+ assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);
  const edited=await draft();await page.screenshot({path:new URL('desktop.png',out).pathname,fullPage:true});
  await page.reload();await page.waitForFunction(()=>document.getElementById('tempo-slider')&&!document.getElementById('tempo-slider').disabled);assert.deepEqual((await draft()).patterns,edited.patterns);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1);
  await page.setViewportSize({width:390,height:844});await page.screenshot({path:new URL('mobile.png',out).pathname,fullPage:true});
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  await page.goto(base+'/lab');await page.getByLabel('Composition',{exact:true}).selectOption('sonic');
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByText('Playing continuously · levels matched for comparison.',{exact:true}).waitFor({timeout:60000});const labRms=await outputPhraseRms(page,.0001);assert.ok(labRms>.0001,`Sonic lab must play after its 0.8-second opening rest: ${labRms}`);
- for(const id of ['mario','zelda','sonic']){await page.getByLabel('Composition',{exact:true}).selectOption(id);await page.waitForTimeout(350);assert.equal(await page.getByRole('button',{name:'Stop',exact:true}).count(),1);}
+ for(const id of ['mario','zelda','sonic']){await page.getByLabel('Composition',{exact:true}).selectOption(id);await page.waitForTimeout(350);assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);}
  await page.getByLabel('Composition',{exact:true}).selectOption('zelda');
  await page.getByRole('heading',{name:'Zelda · Overworld',exact:true}).waitFor();
  await page.getByText('About this arrangement · credits & source',{exact:true}).click();
