@@ -58,6 +58,8 @@ jobs:
         with:
           name: demo-evaluation
           path: |
+            .artifacts/progressive
+            .artifacts/interaction-latency
             .artifacts/player
             .artifacts/demo
             .artifacts/lab

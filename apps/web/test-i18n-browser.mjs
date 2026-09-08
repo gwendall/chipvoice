@@ -6,7 +6,7 @@ const base=process.env.SITE??'http://127.0.0.1:3074';
 if(!base.startsWith('http://127.0.0.1:'))throw Error('This test publishes only into a local disposable database.');
 const out=new URL('../../.artifacts/i18n/',import.meta.url);await mkdir(out,{recursive:true});
 const browser=await chromium.launch(),errors=[],checks=[];
-const ready=page=>page.waitForFunction(()=>!!document.querySelector('.arrangement-versions a')&&!document.querySelector('.arrangement-versions button')?.disabled,{},{timeout:120000});
+const ready=page=>page.waitForFunction(()=>!!document.querySelector('.arrangement-versions a, .arrangement-versions button:nth-child(3)')&&!document.querySelector('.arrangement-versions button')?.disabled,{},{timeout:120000});
 const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('video/',out).pathname}});
 await context.addInitScript(installOutputProbe);
 await context.addInitScript(()=>{const create=AudioContext.prototype.createBufferSource;window.sourceStarts=0;AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source);source.start=(...args)=>{window.sourceStarts++;window.activeSource=source;return start(...args);};return source;};});
@@ -75,7 +75,7 @@ try{
  const card=await fetch(base+`/ja/s/${id}/card`);assert.equal(card.status,200);assert.match(card.headers.get('content-type'),/image\/png/);await writeFile(new URL('share-ja.png',out),Buffer.from(await card.arrayBuffer()));
  assert.match((await fetch(base+'/api/auth/redeem?locale=ja&token=invalid',{redirect:'manual'})).headers.get('location'),/^\/ja\?signin=expired$/);
  const failureContext=await browser.newContext();const failurePage=await failureContext.newPage();
- await failurePage.addInitScript(()=>{window.starts=0;const create=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){const s=create.call(this),start=s.start.bind(s);s.start=(...args)=>{window.starts++;return start(...args);};return s;};});
+ await failurePage.addInitScript(()=>{window.starts=0;const groups=new WeakSet(),create=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source),connect=source.connect.bind(source);let group;source.connect=(...args)=>{group=args[0];return connect(...args);};source.start=(...args)=>{if(group&&!groups.has(group)){groups.add(group);window.starts++;}return start(...args);};return source;};});
  await failurePage.goto(base);await failurePage.getByLabel('Import MIDI',{exact:true}).setInputFiles({name:'Play.mid',mimeType:'audio/midi',buffer:midi});await ready(failurePage);await failurePage.getByRole('heading',{name:'Play',exact:true}).waitFor();
  const beforeFailure=await failurePage.evaluate(()=>window.starts);
  await failurePage.route('**/_next/static/chunks/*.js',route=>route.abort());await failurePage.getByLabel('Language',{exact:true}).selectOption('ja');

@@ -1,3 +1,4 @@
+import {forkState} from "../../checkpoint.js";
 import { Fifo } from "../../fifo.js";
 import { EventQueue } from "../../event-queue.js";
 /**
@@ -218,7 +219,7 @@ const PSG_LEVELS = new Float32Array(16);
 for (let i = 0; i < 16; i++) PSG_LEVELS[i] = i === 0 ? 0 : Math.pow(10, (-2 * (15 - i)) / 20);
 
 export class MdOutputStage {
-  private readonly profile: MdOutputProfile;
+  readonly profile: MdOutputProfile;
   private sumL = 0;
   private sumR = 0;
   private count = 0;
@@ -274,6 +275,7 @@ export class MdOutputStage {
 }
 
 export class MdCore implements ChipCore {
+  fork(): MdCore { return forkState(this, () => new MdCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new MdChip();
   readonly stage: MdOutputStage;

@@ -162,3 +162,21 @@ Sonic の DAC 移植も、すべてをキックにせず、観測したキック
 [エージェント向け作曲ガイド](docs/AGENT-COMPOSITION_ja.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)
 
 [プロンプト作曲](docs/LOCAL-COMPOSITION_ja.md)：`/create`または設定済みOpenAI APIから作曲し、作者と作成方法を保持して全WAV/MP3レンダーを再利用します。エージェントは認可後に`/skill/compose.mjs`をダウンロードし、プロンプトまたは自作プロジェクトから1コマンドで全MP3を取得できます。[実施計画](docs/GENERATIVE-COMPOSITION_ja.md)も参照してください。
+
+## 対話操作向けの逐次再生
+
+SDK 0.18.0 以降、Web の作曲画面は `new ProjectPlayer({preview: true})` を使用します。この SDK のオプションは、オフライン書き出しと同じプロジェクトコンパイラと音源コアを使い、生成できた PCM ブロックから順に再生します。再生前に曲全体を WAV に変換してデコードする必要はありません。`previewMetadata` は長さ・ネイティブ再生の状態・ミックス結果を公開し、`losses` は両方の再生モードで使用できます。プレビューモードの `prepared` は `null` のままです。ファイルが必要な場合は `prepareProject()` または `renderProject()` を明示的に呼び出します。
+
+```js
+import {ProjectPlayer} from 'chipvoice';
+
+const player = new ProjectPlayer({preview: true});
+// Call play from a user gesture to unlock browser audio.
+void player.play();
+await player.load(project);
+await player.update({tempoScale: 1.25});
+player.setTitle('New title'); // Metadata only; no audio preparation.
+```
+
+準備中も現在の音を維持し、再生・一時停止の最新の操作を尊重します。表示は音声出力クロックに従います。ワーカーを再利用し、バリエーション・PCM・DSP 状態のキャッシュには上限があります。ただし、未準備の設定へ曲の途中で変更するときは DSP の履歴を再構築する必要があります。音符の位置だけではエンベロープ、サンプル位置、フィルタ、エコーを復元できません。ブラウザの音声解除、未取得のデータ、出力機器の遅延も残ります。既存の `ProjectPlayer()` の既定動作は互換性のため全体バッファ方式を維持します。
+

@@ -29,6 +29,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
   const session = useCallback(() => {
     if (!playback.current) {
       const player = new LivePlayback(new AudioContext(), () => {
+        playbackSession.refresh();
         if (!mounted.current) return;
         current.current = player.current;
         setPlaying(player.playing); setLoading(player.loading); setError(player.error);
@@ -50,7 +51,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
     try {
       // AudioContext creation/resume stays in the trusted gesture. A selection
       // supplies its new score explicitly, before React commits the document.
-      const p=session();playbackSession.request(playbackFor(p)!);const arranged=musicSong(nextSong,nextMuted);const chip = await p.start(arranged);if(chip?.songId===arranged.id)audibleTitle.current=nextSong.title;
+      const p=session();playbackSession.request(playbackFor(p)!);const arranged=musicSong(nextSong,nextMuted);const chip = await p.start(arranged);if(chip?.songId===arranged.id)audibleTitle.current=nextSong.title;playbackSession.refresh();
       measure('play'); return chip;
     } catch (error) {
       playback.current?.stop();
@@ -69,7 +70,7 @@ export function useDemoAudio(song: SongDocument, muted: Role[], recording = fals
   useEffect(() => {
     if (recording || !playback.current) return;
     // Coalesce slider/keyboard bursts before preparing an incoming engine.
-    const timer = setTimeout(() => { const arranged=musicSong(song,muted);void playback.current?.update(arranged).then(()=>{if(playback.current?.current?.songId===arranged.id)audibleTitle.current=song.title;}); }, 45);
+    const timer = setTimeout(() => { const arranged=musicSong(song,muted);void playback.current?.update(arranged).then(()=>{if(playback.current?.current?.songId===arranged.id)audibleTitle.current=song.title;playbackSession.refresh();}); }, 16);
     return () => clearTimeout(timer);
   }, [song, muted, recording]);
 

@@ -1,3 +1,4 @@
+import {forkState} from "../../checkpoint.js";
 import { EventQueue } from "../../event-queue.js";
 /**
  * The SNES's sound: the S-DSP and its 64 KB, on the SPC700's clock.
@@ -115,7 +116,7 @@ export const SNES_PROFILE: SnesOutputProfile = {
 };
 
 export class SnesOutputStage {
-  private readonly profile: SnesOutputProfile;
+  readonly profile: SnesOutputProfile;
   private heldL = 0;
   private heldR = 0;
   private lpL = 0;
@@ -159,6 +160,7 @@ export class SnesOutputStage {
 }
 
 export class SnesCore implements ChipCore {
+  fork(): SnesCore { return forkState(this, () => new SnesCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new SnesChip();
   readonly stage: SnesOutputStage;

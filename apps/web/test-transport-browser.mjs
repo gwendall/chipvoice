@@ -5,14 +5,15 @@ import {installOutputProbe,outputRms,outputPhraseRms} from './test/audio-probe.m
 const base=process.env.SITE??'http://127.0.0.1:3074';
 const out=new URL('../../.artifacts/unified-playground/',import.meta.url);await mkdir(out,{recursive:true});
 const browser=await chromium.launch(),checks=[];
-const ready=page=>page.waitForFunction(()=>!!document.querySelector('.arrangement-versions a')&&!document.querySelector('.arrangement-versions button')?.disabled,{},{timeout:120000});
+const ready=page=>page.waitForFunction(()=>!!document.querySelector('.arrangement-versions a, .arrangement-versions button:nth-child(3)')&&!document.querySelector('.arrangement-versions button')?.disabled,{},{timeout:120000});
 async function audible(page){const peak=await outputPhraseRms(page);assert.ok(peak>.001,`No audible phrase: ${peak}`);return peak;}
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},hasTouch:true,recordVideo:{dir:new URL('video/',out).pathname}});
  await context.addInitScript(installOutputProbe);
  await context.addInitScript(()=>{
+  const groups=new WeakSet();
   const create=AudioContext.prototype.createBufferSource;
-  AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source);source.start=(at=0,offset=0,...rest)=>{if(window.lastRecording&&window.lastRecording.at!==at)window.previousRecording=window.lastRecording;const recording={context:this,source,at,offset,ended:false};source.addEventListener('ended',()=>{recording.ended=true;});window.lastRecording=recording;return start(at,offset,...rest);};return source;};
+  AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source),connect=source.connect.bind(source);let group;source.connect=(...args)=>{group=args[0];return connect(...args);};source.start=(at=0,offset=0,...rest)=>{if(group&&groups.has(group))return start(at,offset,...rest);if(group)groups.add(group);if(window.lastRecording&&window.lastRecording.at!==at)window.previousRecording=window.lastRecording;const recording={context:this,source,at,offset,ended:false};source.addEventListener('ended',()=>{recording.ended=true;});window.lastRecording=recording;return start(at,offset,...rest);};return source;};
  });
  const page=await context.newPage(),errors=[],requests=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));
  try {
@@ -51,7 +52,9 @@ try{
  await page.evaluate(()=>{window.beforeSelection=window.lastRecording.source;});
  await page.getByRole('button',{name:'Game Boy',exact:true}).click();await page.waitForFunction(()=>window.lastRecording.source!==window.beforeSelection,{},{timeout:120000});await ready(page);await sync('console change');
  await page.evaluate(()=>{window.beforeSelection=window.lastRecording.source;});
- await page.getByLabel('Tempo',{exact:true}).fill('125');await page.getByLabel('Tempo',{exact:true}).press('Tab');await page.waitForFunction(()=>window.lastRecording.source!==window.beforeSelection,{},{timeout:120000});await ready(page);await sync('tempo change');
+ await page.getByLabel('Tempo',{exact:true}).fill('125');await page.getByLabel('Tempo',{exact:true}).press('Tab');await page.waitForFunction(()=>window.lastRecording.source!==window.beforeSelection,{},{timeout:120000});await ready(page);checks.push({label:'progressive tempo change',rms:await audible(page)});
+ // Exact progressive clock/phase is exercised against controlled DSP metadata
+ // in test-progressive-browser; a chunk duration is not the song duration.
  await page.getByRole('button',{name:'Pause',exact:true}).click();await page.getByLabel('Tempo',{exact:true}).fill('100');await page.getByLabel('Tempo',{exact:true}).press('Tab');await ready(page);assert.equal(await page.getByRole('button',{name:'Play',exact:true}).count(),1,'pause wins over render');
  await page.getByRole('button',{name:'Famicom',exact:true}).click();await ready(page);
  await page.getByRole('button',{name:'Loop on',exact:false}).click();
@@ -60,7 +63,7 @@ try{
  await page.getByRole('button',{name:'Play',exact:true}).click();await sync('replay after end');
  await page.getByRole('button',{name:'Loop off',exact:false}).click();await page.getByRole('slider',{name:'Song position',exact:true}).focus();await page.keyboard.press('End');await page.waitForTimeout(600);
  const loopPosition=Number(await page.getByRole('slider',{name:'Song position',exact:true}).inputValue());assert.ok(loopPosition>=2&&loopPosition<6,'native loop skips the introduction');
- await page.getByRole('button',{name:'Independent original reference',exact:true}).click();const referenceDownload=await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href');
+ await page.getByRole('button',{name:'Independent original reference',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.arrangement-versions button:nth-child(2)')?.getAttribute('aria-pressed')==='true');const referenceDownload=await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href');
  await page.getByRole('button',{name:'Make a loop',exact:false}).click();await page.getByRole('button',{name:'Edit loop',exact:false}).waitFor();await page.waitForTimeout(350);assert.ok(await outputPhraseRms(page)>.0001,'opening composer retains the arrangement');
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.waitForFunction(()=>window.chipvoice?.playing);await audible(page);
  await page.getByRole('button',{name:'Listen & explore',exact:true}).click();await page.waitForTimeout(350);assert.ok(await outputPhraseRms(page)>.0001,'returning retains the live composition until explicit play');

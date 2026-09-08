@@ -32,10 +32,10 @@ export class BufferPlayback {
   /**
    * @param {Array<{file:string,loopStartSeconds?:number,loopFadeSeconds?:number}>} entries
    * @param {number[]} levels
-   * @param {{restart?:boolean,side?:number,presentation?:unknown}} options
+   * @param {{restart?:boolean,side?:number,presentation?:unknown,lazy?:boolean,phase?:()=>number}} options
    */
   async select(entries, levels, options = {}) {
-    const { restart = false, side = this.side, presentation = null } = options;
+    const { restart = false, side = this.side, presentation = null, lazy = false } = options;
     const ticket = ++this.generation;
     this.abort?.abort();
     const abort = new AbortController();
@@ -44,8 +44,9 @@ export class BufferPlayback {
     this.error = "";
     this.changed();
     try {
-      const buffers = await Promise.all(
-        entries.map(async (entry) => {
+      const [buffers, resolvedPresentation] = await Promise.all([Promise.all(
+        entries.map(async (entry, index) => {
+          if (lazy && index !== 0 && index !== side) return null;
           const key = entry.loopFadeSeconds
             ? `${entry.file}|${entry.loopStartSeconds ?? 0}|${entry.loopFadeSeconds}`
             : entry.file;
@@ -92,20 +93,27 @@ export class BufferPlayback {
           }
           if (ticket !== this.generation) return buffer;
           this.cache.set(key, buffer);
-          while (this.cache.size > 8)
-            this.cache.delete(this.cache.keys().next().value);
+          let bytes = 0;
+          for (const value of this.cache.values()) bytes += value.length * value.numberOfChannels * 4;
+          while (this.cache.size > 8 || bytes > 96 * 1024 * 1024) {
+            const oldest = this.cache.keys().next().value;
+            const value = this.cache.get(oldest);
+            bytes -= value.length * value.numberOfChannels * 4;
+            this.cache.delete(oldest);
+          }
           return buffer;
         }),
-      );
+      ), Promise.resolve(presentation)]);
       while (this.retiring) await this.transition;
       if (ticket !== this.generation || this.disposed) return false;
       this.entries = entries;
       this.buffers = buffers;
       this.levels = levels;
       this.side = Math.min(side, buffers.length - 1);
-      this.presentation = presentation;
+      this.presentation = resolvedPresentation;
       if (restart) this.offset = 0;
-      if (this.playing) this.swap(restart ? 0 : undefined);
+      else if (!this.playing && options.phase) this.offset = Math.max(0, Math.min(1, options.phase()));
+      if (this.playing) this.swap(restart ? 0 : options.phase?.());
       this.loading = false;
       this.changed();
       return true;
@@ -206,13 +214,14 @@ export class BufferPlayback {
     const at = this.context.currentTime + 0.025;
     const phase = requestedPhase ?? this.phase(at),
       previous = this.group;
-    const duration = Math.min(...this.buffers.map((buffer) => buffer.duration));
+    const duration = Math.min(...this.buffers.filter(Boolean).map((buffer) => buffer.duration));
     const loopStart = Math.max(
       0,
       Math.min(duration - 0.001, this.entries[0]?.loopStartSeconds ?? 0),
     );
     const fade = new Fade(this.context, this.output);
-    const parts = this.buffers.map((buffer, index) => {
+    const parts = this.buffers.flatMap((buffer, index) => {
+      if (!buffer) return [];
       const source = this.context.createBufferSource();
       const level = new Fade(
         this.context,
@@ -225,7 +234,7 @@ export class BufferPlayback {
       source.loopEnd = duration;
       source.connect(level.node);
       source.start(at, phase * duration);
-      return { source, level };
+      return [{ source, level, index }];
     });
     const group = {
       parts,
@@ -345,12 +354,18 @@ export class BufferPlayback {
     this.retiring?.fade.toValue(0, this.context.currentTime, 0.025);
     this.changed();
   }
+  /** Load an optional comparison only when requested; current audio continues. */
+  async selectSide(side) {
+    if (this.buffers[side]) { this.cancelSelection(); this.setSide(side); return true; }
+    if (!this.entries[side]) return false;
+    return this.select(this.entries, this.levels, {side, presentation: this.presentation, lazy: true});
+  }
   setSide(side) {
     side = Math.max(0, Math.min(side, this.buffers.length - 1));
     this.side = side;
-    for (const [index, part] of (this.group?.parts ?? []).entries())
+    for (const part of (this.group?.parts ?? []))
       part.level.toValue(
-        index === side ? this.levels[index] * this.volume : 0,
+        part.index === side ? this.levels[part.index] * this.volume : 0,
         this.context.currentTime,
         0.015,
       );

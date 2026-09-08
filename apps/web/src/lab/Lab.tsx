@@ -55,7 +55,7 @@ export default function Lab() {
   if(player.current?.playing){playbackSession.pause(playbackFor(player.current));return;}
   if(!player.current){
    const context=new AudioContext();
-   const transport=new BufferPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});});
+   const transport=new BufferPlayback(context,()=>{if(alive.current)setAudio({playing:transport.playing,loading:transport.loading,error:transport.error});playbackSession.refresh();});
    transport.setVolume(volume);player.current=transport;bufferedPlayback(transport,'lab',()=>{const current=transport.audibleSelection() as Selection|null;return {title:current?.row.title??'Listening lab',translateTitle:true,chip:current?.row.chip,href:'/lab',blind:blindRef.current};});void load(selection,transport);
   }
   if(player.current.error&&!player.current.playing)void load(selection,player.current);

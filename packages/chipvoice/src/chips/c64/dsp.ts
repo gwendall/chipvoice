@@ -1,3 +1,4 @@
+import {forkState} from "../../checkpoint.js";
 /**
  * The 6581 after the digital part: two DACs per voice, the filter, the
  * output stage, and the sample clock.
@@ -215,6 +216,7 @@ export class SidOutputStage {
 
 /** The chip and its output stage behind `ChipCore`. */
 export class SidCore implements ChipCore {
+  fork(): SidCore { return forkState(this, () => new SidCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new Sid();
   readonly stage: SidOutputStage;

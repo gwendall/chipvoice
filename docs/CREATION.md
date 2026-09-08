@@ -120,3 +120,21 @@ The operator can inspect `project_reports` joined to `projects`, withdraw violat
 Automated structural and signal checks do not replace musical listening, physical mobile-device acceptance or production capacity monitoring. Original-game fidelity remains governed by the separate native/reference conformance suite.
 
 For agent composition, machine discovery and executable evaluation, see [Composing with an agent](AGENT-COMPOSITION.md).
+
+## Progressive interactive playback
+
+Since SDK 0.18.0, the web composer uses `new ProjectPlayer({preview: true})`. This opt-in SDK mode compiles the same project and renders the same chip cores as offline export, but schedules bounded PCM blocks as they become available. It does not encode/decode a complete WAV before playing. `previewMetadata` exposes duration, native status and mix results; `losses` works in both playback modes. `prepared` remains `null` in preview mode. Use `prepareProject()` or `renderProject()` explicitly when you need a downloadable file.
+
+```js
+import {ProjectPlayer} from 'chipvoice';
+
+const player = new ProjectPlayer({preview: true});
+// Call play from a user gesture to unlock browser audio.
+void player.play();
+await player.load(project);
+await player.update({tempoScale: 1.25});
+player.setTitle('New title'); // Metadata only; no audio preparation.
+```
+
+The player keeps the current sound during preparation, preserves Play/Pause intent and follows the audio output clock. A warm worker and bounded variant/PCM/checkpoint caches accelerate repeated edits and seeks. Cold mid-song changes still need to reconstruct DSP history: an emulator's envelopes, samples, filters and echo cannot be restored from note positions alone. Browser audio unlock, uncached network assets and device latency remain real costs. Default `ProjectPlayer()` keeps the existing whole-buffer behavior for compatibility.
+

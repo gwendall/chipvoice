@@ -1,3 +1,4 @@
+import {audioRange, audioStream} from "@/lib/audio-range";
 import { projectViewer } from "@/lib/auth";
 import { projectRoute } from "@/lib/project-http";
 import { getProjectJob } from "@/lib/project-jobs";
@@ -19,22 +20,26 @@ export async function GET(r: Request, c: { params: Promise<{ id: string }> }) {
         "mp3_unavailable",
         "This older rendition has only WAV; export MP3 locally or publish a new revision",
       );
-    const result = await (
-      await db()
-    ).execute({
-      sql: `select bytes from ${format === "mp3" ? "project_mp3" : "project_audio"} where job_id=? order by chunk`,
-      args: [id],
+    const size = format === 'mp3' ? job.mp3Bytes : job.bytes;
+    // Authorization remains live even when the rendition bytes are immutable.
+    const range = audioRange(request.headers.has('if-range') ? null : request.headers.get('range'), size);
+    const headers: Record<string,string> = {
+      'Content-Type': format === 'mp3' ? 'audio/mpeg' : 'audio/wav',
+      'Accept-Ranges': 'bytes', 'Cache-Control': 'private, no-store',
+      'Content-Disposition': `attachment; filename="chipvoice-${id}.${format}"`,
+    };
+    if (range === 'unsatisfiable') return new Response(null, {status: 416, headers: {...headers, 'Content-Range': `bytes */${size}`}});
+    const start = range?.start ?? 0, end = range?.end ?? size - 1;
+    headers['Content-Length'] = String(Math.max(0,end - start + 1));
+    if (range) headers['Content-Range'] = `bytes ${start}-${end}/${size}`;
+    const body = request.method === 'HEAD' ? null : audioStream(start, end, async (chunk, offset, length) => {
+      const result = await (await db()).execute({
+        sql: `select substr(bytes,?,?) as bytes from ${format === 'mp3' ? 'project_mp3' : 'project_audio'} where job_id=? and chunk=?`,
+        args: [offset + 1, length, id, chunk],
+      });
+      return new Uint8Array(result.rows[0]?.bytes as ArrayBuffer ?? new ArrayBuffer(0));
     });
-    const bytes = Buffer.concat(
-      result.rows.map((row) => Buffer.from(row.bytes as ArrayBuffer)),
-    );
-    return new Response(bytes, {
-      headers: {
-        "Content-Type": format === "mp3" ? "audio/mpeg" : "audio/wav",
-        "Content-Length": String(bytes.length),
-        "Content-Disposition": `attachment; filename="chipvoice-${id}.${format}"`,
-        "Cache-Control": "private, no-store",
-      },
-    });
+    return new Response(body, {status: range ? 206 : 200, headers});
   })(r);
 }
+export const HEAD = GET;

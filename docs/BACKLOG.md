@@ -543,3 +543,18 @@ Ownerless agent accounts, delegated per-song permissions, refresh tokens, full-s
 
 Contract and verification: [continuous playback](CONTINUOUS-PLAYBACK-LAB.md).
 Reload restoration, cross-tab playback coordination and collaborative editing remain separate work.
+
+
+## Interactive audio latency — audit, 2026-09-08
+
+Status: implemented and locally qualified; release qualification runs in CI. See [measurements, prototype and acceptance criteria](INTERACTION-LATENCY.md).
+
+- [x] LAT-1 — Immediate prepared selections, deduplicated score loading, independent metadata updates.
+- [x] LAT-2 — Lazy reference audio and bounded caches keyed by musical settings.
+- [x] LAT-3 — Progressive project preview using the existing compiler and DSP, separate from WAV export.
+- [x] LAT-4 — Bounded progressive musical updates, reuse of unchanged/stopped compatible engines and readiness notifications.
+- [x] LAT-5 — Stateful mid-song switching and seeking with per-chip checkpoint capabilities.
+- [x] LAT-6 — Reusable publication descriptors and audio range delivery with bounded server reads.
+- [x] LAT-7 — Cold/warm latency measurements, sustained rendering, desktop/mobile and sonic continuity regression tests.
+
+Preview and offline rendering share the compiler and DSP. Complete DSP checkpoints and latest-input cancellation preserve the native-reference and continuous-playback contracts. An in-place retiming API for arbitrary register histories is deliberately outside this change; inactive spare worklets are disposed rather than consuming CPU behind a mute. Cold history reconstruction and device/network latency remain explicit limits.

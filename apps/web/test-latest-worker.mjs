@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {build} from '../../packages/chipvoice/node_modules/esbuild/lib/main.js';
+const built=await build({entryPoints:['src/audio/LatestWorker.ts'],bundle:true,platform:'node',format:'esm',write:false});
+const {LatestWorker}=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
+const workers=[];globalThis.Worker=class{sent=[];constructor(){workers.push(this);}postMessage(data){this.sent.push(data);}terminate(){this.dead=true;}};
+const queue=new LatestWorker('/test');const cancelled=[];
+const first=queue.request({id:1}).catch(e=>cancelled.push(e.name));const second=queue.request({id:2}).catch(e=>cancelled.push(e.name));const third=queue.request({id:3});
+assert.deepEqual(workers[0].sent,[{id:1}],'intermediate edits never enter the worker queue');
+workers[0].onmessage({data:{id:1}});assert.deepEqual(workers[0].sent,[{id:1},{id:3}]);workers[0].onmessage({data:{id:3}});assert.deepEqual(await third,{id:3});await Promise.all([first,second]);assert.deepEqual(cancelled,['AbortError','AbortError']);
+const slow=queue.request({id:4}).catch(e=>e.name);const fresh=queue.request({id:5});await new Promise(r=>setTimeout(r,130));assert.equal(workers[0].dead,true);assert.equal(workers.length,2);
+workers[0].onmessage({data:{id:4}});workers[1].onmessage({data:{id:5}});assert.deepEqual(await fresh,{id:5});assert.equal(await slow,'AbortError');queue.dispose();
+console.log('PASS warm worker reuse, latest-only queue, bounded obsolete work and stale message isolation');

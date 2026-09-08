@@ -1,3 +1,4 @@
+import {forkState} from "../../checkpoint.js";
 import { EventQueue } from "../../event-queue.js";
 /**
  * The Game Boy's sound, the DMG's APU, at the T-cycle.
@@ -777,6 +778,7 @@ export class GbOutputStage {
 
 /** The chip and its output stage behind `ChipCore`. */
 export class GbApuCore implements ChipCore {
+  fork(): GbApuCore { return forkState(this, () => new GbApuCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new GbApu();
   readonly stage: GbOutputStage;

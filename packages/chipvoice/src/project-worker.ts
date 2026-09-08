@@ -1,3 +1,4 @@
+import {handlePreviewMessage, type PreviewRequest} from "./preview-worker.js";
 import { renderProject, type ProjectRenderOptions } from "./project-render.js";
 import type { MusicProject } from "./project.js";
 import { toWav } from "./render.js";
@@ -12,11 +13,14 @@ const scope = globalThis as unknown as {
       midi?: Uint8Array;
       title?: string;
       chip?: ProjectChip;
-    }>,
+    } | PreviewRequest>,
   ) => void;
   postMessage: (value: unknown, transfer?: Transferable[]) => void;
 };
 scope.onmessage = ({ data }) => {
+  if ('type' in data) {
+    void handlePreviewMessage(data); return;
+  }
   try {
     if (data.midi) {
       scope.postMessage({ progress: 0 });
