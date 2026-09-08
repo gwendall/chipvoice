@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { build } from "../../packages/chipvoice/node_modules/esbuild/lib/main.js";
 import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { compositionServer } from "./test/composition-server.mjs";
 const server = await compositionServer();
 Object.assign(process.env, server.env);
@@ -86,13 +87,33 @@ try {
   }
   assert.equal(server.calls.length, countBeforeLease + 1);
   // Hold a real cross-process SQLite writer briefly as the server resumes work.
-  const release = await client.transaction("write");
+  // Use SQLite's native writer as the fault injector. The libsql binding can leave
+  // its own COMMIT statement pending after contention, which tests the injector
+  // instead of the server's ability to resume a concurrent paid request.
+  const release = spawn("python3", ["-u", "-c", `
+import sqlite3,sys
+connection=sqlite3.connect(sys.argv[1],timeout=5)
+try:
+ connection.execute("begin immediate")
+ connection.execute("delete from evaluation_lease where id='test-composition-busy'")
+ print("locked",flush=True)
+ sys.stdin.readline()
+ connection.commit()
+finally:
+ connection.close()
+`, server.env.TURSO_DEV_DATABASE_URL.slice(5)], { env: { PATH: process.env.PATH }, stdio: ["pipe", "pipe", "pipe"] });
+  let writerError = "";
+  release.stderr.on("data", data => { writerError += data; });
+  const released = new Promise((resolve, reject) => { release.once("error", reject); release.once("exit", code => resolve(code)); });
   try {
-    await release.execute("delete from evaluation_lease where id='test-composition-busy'");
+    await Promise.race([
+      new Promise(resolve => release.stdout.once("data", resolve)),
+      released.then(() => { throw Error("Writer stopped before holding the lock: " + writerError); }),
+    ]);
     await query(`/api/v1/generations/${held.body.id}`, { headers });
     await new Promise(resolve => setTimeout(resolve, 200));
-    await release.commit();
-  } finally { release.close(); }
+  } finally { release.stdin.end("commit\n"); }
+  assert.equal(await released, 0, writerError);
   assert.equal((await completed(held.body.id)).status, "ready");
   assert.equal(server.calls.length, countBeforeLease + 1);
 
