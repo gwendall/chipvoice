@@ -1,6 +1,9 @@
 <a id="chipvoice"></a>
 
 アーティスト別のエージェント認証、公開前の HTTP 評価、MP3 共有、コンソール別バージョンについては[アーティストとエージェント](docs/ARTISTS-AND-AGENTS_ja.md)をご覧ください。
+
+[skill.md](https://chipvoice.dev/skill.md)を使って曲を作るようエージェントに依頼すると、オリジナルの作曲から音声全体の納品まで進められます。ローカル作成にアカウントは不要です。Chipvoiceへの公開を依頼した場合は、承認したアーティストを使います。参考曲は任意のAPI例であり、標準の納品曲ではありません。
+
 # chipvoice
 
 <p align="center">

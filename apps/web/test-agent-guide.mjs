@@ -107,7 +107,12 @@ try {
     ].schema.properties.chip.enum,
     capabilities.targets.map((target) => target.id),
   );
-  const source = skill.match(/```js\n([\s\S]*?)\n```/)[1];
+  const fixtureResponse = await fetch(base + "/skill/example.mjs");
+  assert.equal(fixtureResponse.status, 200);
+  const source = await fixtureResponse.text();
+  assert.equal(source, await readFile("../../docs/examples/compose-project.mjs", "utf8"));
+  const renderer = skill.match(/```js\n([\s\S]*?)\n```/)[1];
+  await writeFile(join(directory, "render-project.mjs"), renderer);
   await writeFile(join(directory, "compose.mjs"), source);
   await symlink(
     resolve("node_modules"),
@@ -143,6 +148,17 @@ try {
       422,
     );
     const wav = await readFile(join(directory, "preview.wav"));
+    const fullRender = spawnSync(process.execPath, ["render-project.mjs", "project.json"], {
+      cwd: directory,
+      encoding: "utf8",
+      timeout: 120000,
+    });
+    assert.equal(fullRender.status, 0, fullRender.stderr);
+    assert.equal(hash(await readFile(join(directory, "song.wav"))), hash(wav));
+    const measurement = JSON.parse(await readFile(join(directory, "evaluation.json"), "utf8"));
+    assert.equal(measurement.measuredSeconds, 16);
+    assert.ok(measurement.rms > 0.001);
+    assert.equal(measurement.clippedSamples, 0);
     const { audio, plan } = renderProject(project, { sampleRate: 44100 });
     assert.equal(
       hash(wav),
@@ -226,10 +242,40 @@ try {
     "structural validity is not playability",
   );
   assert.throws(() => renderProject(overload), /exceeds hardware voices/);
+  await writeFile(join(directory, "strict.json"), JSON.stringify(overload));
+  const rejected = spawnSync(process.execPath, ["render-project.mjs", "strict.json"], {
+    cwd: directory, encoding: "utf8", timeout: 120000,
+  });
+  assert.notEqual(rejected.status, 0, "helper preserves strict allocation policy");
+  assert.match(rejected.stderr, /exceeds hardware voices/);
   overload.settings.allowLoss = true;
   assert.ok(
     renderProject(overload).plan.losses.some((l) => l.kind === "voice-omitted"),
   );
+
+  // Technical duration fixture: cross the server preview's 30-second boundary.
+  const longer = structuredClone(reduced);
+  const sectionTicks = longer.source.performance.endTick;
+  longer.source.performance.endTick *= 3;
+  for (const part of longer.source.performance.parts) {
+    const phrase = part.notes;
+    part.notes = Array.from({ length: 3 }, (_, section) => phrase.map((note) => ({
+      ...note,
+      id: `${note.id}-${section}`,
+      tick: note.tick + section * sectionTicks,
+      endTick: note.endTick + section * sectionTicks,
+    }))).flat();
+  }
+  await writeFile(join(directory, "longer.json"), JSON.stringify(longer));
+  const complete = spawnSync(process.execPath, ["render-project.mjs", "longer.json"], {
+    cwd: directory, encoding: "utf8", timeout: 120000,
+  });
+  assert.equal(complete.status, 0, complete.stderr);
+  const completeWav = await readFile(join(directory, "song.wav"));
+  const completeReport = JSON.parse(await readFile(join(directory, "evaluation.json"), "utf8"));
+  assert.equal(completeReport.measuredSeconds, 48);
+  assert.equal(hash(completeWav), hash(toWav(renderProject(longer, { sampleRate: 44100 }).audio)));
+  await writeFile(join(out, "complete-48s.wav"), completeWav);
 
   // Same HTTP shapes and lifecycle as the skill; key provision is local only.
   await build({

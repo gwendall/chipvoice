@@ -6,6 +6,16 @@ For scoped agent authorization, separate artist profiles, HTTP evaluation before
 
 Chipvoice accepts a complete arrangement, not just a melody. Use a versioned `MusicProject` with a `Performance` source for independent instruments, polyphonic chords and exact timing. [The agent skill](https://chipvoice.dev/skill.md) is the executable entry point; [llms.txt](https://chipvoice.dev/llms.txt) is its short discovery index. The compact tracker service remains a separate compatibility path.
 
+## Deliver the requested song
+
+For a simple “create me a song” request, choose a musical direction and suitable target, compose original material, and deliver complete audio. An unspecified song can reasonably start around 45–90 seconds with a developed motif, contrasting sections and an intentional ending. This is a starting point, not a minimum: honour requested loops, jingles, styles and durations. Do not pad a fragment with identical repetitions or impose the example's six-part instrumentation.
+
+Creation and chat delivery need no account when local rendering is available. Attach the full WAV, or an MP3 encoded with an available tool. The served skill includes [render-project.mjs](examples/render-project.mjs), a helper that renders your own `project.json` to `song.wav` and measures the complete signal. It neither composes nor publishes. A filesystem path on the agent's server is not a downloadable attachment for a remote chat user.
+
+Publish when the user requests a Chipvoice page/publication or has already authorized that workflow. Reuse an appropriate credential; otherwise send the owner pairing link and continue composing while approval is pending. Use unlisted for requested link sharing unless a different visibility is specified. A credential alone is not publication intent. Offer a page alongside local delivery when publication was not requested. HTTP-only agents can author and evaluate JSON without publishing, but full server audio requires an authenticated publication; explain this before requesting authorization.
+
+Deliver the title, actual duration, target and audio. For publication, include the song and artist page links. Download the MP3 and attach its bytes when the chat supports uploads; links alone are not attachments. Private download URLs require credentials, so deliver bytes without exposing the token. State whether you actually listened or only measured the signal, and identify unfinished authorization or unavailable tools precisely.
+
 ## Discover the actual engine
 
 Fetch [capabilities](https://chipvoice.dev/api/v1/capabilities) before selecting a target. The catalogue contains the engine version, project schema, voices, allocator conflicts, unavailable Performance voices, and generic melodic programs grouped by identical instrument behaviour. General MIDI programs are **zero-based**, from 0 to 127. A group is an approximation, not a claim to reproduce a game's original patch bank or a realistic orchestra.
@@ -26,7 +36,7 @@ On a small machine, explicitly reduce redundant doublings, alternate fills with 
 
 ## Run an original ensemble
 
-Install `chipvoice` in a new directory, copy [compose-project.mjs](examples/compose-project.mjs), and run `node compose-project.mjs TARGET`, using a target ID from the catalogue. The same executable source appears in the skill. It writes an original eight-bar, six-part chamber theme to `project.json`, renders `preview.wav`, and records `evaluation.json`. The title describes an orchestral texture; the generic palette is deliberately synthetic.
+Install `chipvoice` in a new directory, copy [compose-project.mjs](examples/compose-project.mjs), and run `node compose-project.mjs TARGET`, using a target ID from the catalogue. The skill links this optional fixture at [/skill/example.mjs](https://chipvoice.dev/skill/example.mjs); its main executable helper renders your own source instead. It writes an original eight-bar, six-part chamber theme to `project.json`, renders `preview.wav`, and records `evaluation.json`. This existing piece demonstrates syntax and allocation; do not present its notes, title or form as newly composed work unless the user requests the example. The title describes an orchestral texture; the generic palette is deliberately synthetic.
 
 The example uses 480 ticks per quarter note and 500000 microseconds per beat (120 BPM). Each note has an exclusive end tick. The source has melody, three-note strings, brass accents, a later countermelody, bass and percussion. Dynamics, phrase changes and rests are authored explicitly. It publishes nothing.
 
@@ -49,7 +59,7 @@ The HTTP job response contains status, progress and the pinned audio URL; it doe
 
 The [OpenAPI document](https://chipvoice.dev/.well-known/openapi.json) describes exact requests/responses. The historical `/.well-known/mcp.json` URL is an **HTTP tool-discovery manifest**, not an implemented JSON-RPC MCP server. Manifest version 0.2.0 separates `path`, `query`, `headers` and `body`, preserving the complete body schema. An adapter must bind these locations and configure auth separately. This prevents an idempotency header becoming a project field or a project wrapper being sent to validation.
 
-Only the legacy `/api/songs` path permits anonymous publication and returns MP3 links. Complete project publication requires an account and pins ready WAV bytes. Keep secrets outside files committed to Git, never execute another author's stored generator and do not treat the software licence as permission to republish imported music.
+Only the legacy `/api/songs` path permits anonymous publication. Complete project publication requires an account and pins ready WAV and MP3 bytes. Do not switch to the legacy service to bypass authorization. Keep secrets outside files committed to Git, never execute another author's stored generator and do not treat the software licence as permission to republish imported music.
 
 ## Adding another console
 
@@ -57,4 +67,4 @@ First implement and qualify the engine, driver, palette/resource rules and proje
 
 Once a target enters that list, the catalogue, skill voice table, discovery endpoint and evaluation target loop include it automatically. Unknown pitch ranges remain explicitly unknown. Extend the engine's resource/palette helpers if the hardware needs new rules; do not hide exceptions in documentation. Add oracle/audio qualification and musical fixtures for its unique behaviour. `test-agent-guide.mjs` includes a synthetic additional target to check documentation discovery, not to certify an unimplemented emulator.
 
-Changing examples or instructions reruns the executable-document test. It extracts the JavaScript from the served skill, executes it without accessing implementation internals, follows the HTTP requests against a disposable database and checks published/pinned playback. Separate adversarial cases verify overload reporting and an explicit reduction. This is a deterministic agent-workflow rehearsal, not an independent language-model benchmark or proof of subjective musical quality.
+Changing examples or instructions reruns the executable-document test. It fetches the optional fixture and extracts the rendering helper from the served skill, executes both without accessing implementation internals, follows the HTTP requests against a disposable database and checks published/pinned playback. Separate adversarial cases verify overload reporting and an explicit reduction. This is a deterministic agent-workflow rehearsal, not an independent language-model benchmark or proof of subjective musical quality.

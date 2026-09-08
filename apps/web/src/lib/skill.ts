@@ -1,7 +1,7 @@
 import { endpointRows } from "./openapi";
 import { SITE } from "./songs";
 import catalog from "../../generated/agent-catalog.json";
-import example from "../../generated/agent-example.json";
+import renderExample from "../../generated/agent-render-example.json";
 
 export function skillMarkdown(): string {
   const endpoints = endpointRows()
@@ -18,14 +18,32 @@ name: chipvoice
 description: Compose, import, arrange, evaluate and publish complete multi-instrument music for emulated retro sound chips. Exact-tick projects, machine capabilities and explicit adaptation reports.
 compatibility: HTTP discovery and publication require a network client. Local composition and rendering require Node.js and the chipvoice npm package. Publishing projects requires a browser account, existing owner key or scoped agent credential.
 homepage: ${SITE}
-metadata: {"version":"0.12.0","updated":"2026-09-08","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
+metadata: {"version":"0.13.0","updated":"2026-09-08","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
 ---
 
 # Compose complete music with chipvoice
 
 Use **MusicProject version 1 with a Performance source** for new multi-instrument music and MIDI imports. Parts are independent musical lines; roles (lead, chord, bass, perc) describe their purpose, not a four-part limit. Each part can contain overlapping notes. Physical voices are limited by the selected chip.
 
-Create locally without an account. Publish only when asked, with an authenticated account. A valid project or a deterministic render does not prove musical quality or fidelity to an original game. Generic programs are approximations, not a complete orchestral sample library.
+## From a request to a listenable song
+
+When someone asks "create me a song using Chipvoice", compose and deliver an original, complete audio file. Choose a musical direction and a suitable discovered target when unspecified; state those choices briefly and start working. Around 45–90 seconds is a useful starting point for an unspecified song, not a requirement for a requested loop, jingle or other duration. Develop a motif across contrasting sections with an intentional ending or loop. Repeating a short fragment to reach a duration is not musical development. Choose the parts the idea needs; there is no mandatory six-instrument ensemble.
+
+The reference composition linked below teaches API syntax. Do not copy its musical material and present it as a new composition unless the user asks for that example; its length, title and ensemble are not defaults. The rendering helper operates on your own project.json and contains no musical material.
+
+Choose the delivery path from the user's request and existing authorization:
+
+| Request / environment | Next action |
+| --- | --- |
+| Create a song; no publication requested | Compose and render locally without an account; attach the full WAV (or MP3 if an encoder is available) using the chat's file tool. Offer a Chipvoice page with the delivered result. |
+| Publish, provide a Chipvoice page, or use an already agreed publishing workflow | Reuse an authorized credential with the necessary scopes. If missing, send the owner the pairing link below; continue composing while authorization is pending. Use unlisted when link sharing is requested without public discovery; honour an explicit visibility choice. |
+| HTTP tools only, no local Node/rendering | Author project JSON and evaluate it over HTTP. Full server audio requires an authenticated publication. Explain that requirement and request publication if not already authorized; never publish silently just to obtain audio. |
+
+A credential grants access, not permission to publish unrelated work. Do not ask again when publication is already authorized. Do not use legacy anonymous publishing to bypass this flow. If authorization is pending, deliver a local file when possible and identify publication as pending; do not abandon composition at the login step.
+
+Finish with the actual audio attachment or accessible download, title, duration and console. For authorized publication, also return the song page and artist page. A server-local filesystem path or a promise to render later is not delivery in a remote chat. Download MP3 bytes and upload them through the chat tool when supported; a pasted URL is a link, not an attachment. Private audio URLs require credentials: attach downloaded bytes without exposing the credential. If attachments or listening tools are unavailable, say so precisely and provide the available artifact/link. Never claim to have listened based only on numeric metrics.
+
+A valid project or a deterministic render does not prove musical quality or fidelity to an original game. Generic programs are approximations, not a complete orchestral sample library.
 
 ## Obtain limited agent access
 
@@ -73,15 +91,15 @@ Each part needs id, name, role, priority and notes. Set part.program for its def
 
 Project settings select chip, mix ('auto' or 'authored'), allowLoss, tempoScale, transpose and gain. Full contracts and limits: https://github.com/gwendall/chipvoice/blob/main/docs/CREATION.md.
 
-## Executable original ensemble
+## Render your own composition locally
 
-In a new directory run npm install chipvoice@${catalog.engineVersion}. Save the following JavaScript as compose.mjs and run node compose.mjs TARGET, using a target ID from the catalogue. It writes project.json, preview.wav and evaluation.json. The eight-bar source has six parts; overlapping strings consume separate voices. No network publication occurs.
+Author your MusicProject as project.json using the discovered schema and composition guidance above. In a working directory run npm install chipvoice@${catalog.engineVersion}. Save this helper as render-project.mjs and run node render-project.mjs project.json. It renders the entire source to song.wav and records full-duration signal measurements, allocation losses and mix diagnostics in evaluation.json. It does not publish or change your loss policy. Correct rejected arrangements or deliberately accept documented reductions before rendering again.
 
 \`\`\`js
-${example.trim()}
+${renderExample.trim()}
 \`\`\`
 
-The example deliberately enables allowLoss for **audition**, so it runs on small machines and reveals their compromises. Read evaluation.json before sharing. For strict production, set allowLoss=false; voice omissions then reject rendering. This flag does not reject every timbre substitution or certify fidelity.
+If you need a concrete source-format example, read [the optional ensemble fixture](${SITE}/skill/example.mjs). Save it as compose.mjs and run node compose.mjs TARGET. This existing sixteen-second test piece writes project.json, preview.wav and evaluation.json; it is a syntax/allocation reference, not the default answer to a song request. It deliberately enables allowLoss for audition on small machines. For strict production, allowLoss=false rejects voice omissions; it does not reject every timbre substitution or certify fidelity.
 
 ## Evaluate and iterate
 

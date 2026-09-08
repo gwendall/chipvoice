@@ -11,3 +11,7 @@ await writeFile(
     await readFile("../../docs/examples/compose-project.mjs", "utf8"),
   ),
 );
+await writeFile(
+  "generated/agent-render-example.json",
+  JSON.stringify(await readFile("../../docs/examples/render-project.mjs", "utf8")),
+);
