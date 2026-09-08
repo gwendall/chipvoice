@@ -1,5 +1,7 @@
 # Projects, creation and publication
 
+For scoped agent authorization, separate artist profiles, HTTP evaluation before publication, MP3 sharing and grouped console versions, see [Artists and agents](ARTISTS-AND-AGENTS.md).
+
 <p align="center"><a href="CREATION.md">English</a> &bull; <a href="CREATION_ja.md">日本語</a></p>
 
 The **0.17.0** project API joins complete performances, compact scores, the browser workspace and publication without reducing imported music to four tracker lines. [Create](https://chipvoice.dev/create) works locally; [Explore](https://chipvoice.dev/explore) contains only explicitly public revisions. The existing compact composer, `/s/{id}` links and SDK APIs remain supported.
@@ -97,7 +99,7 @@ The [OpenAPI document](https://chipvoice.dev/.well-known/openapi.json) and [agen
 | `POST /api/v1/projects/{id}/report` | Authenticated reason, 3–500 characters; one report per account/publication |
 | `POST /api/v1/projects/{id}/render` | Owner starts `{kind: 'preview'|'full'}`; idempotent per publication/kind |
 | `GET/DELETE /api/v1/jobs/{id}` | Progress/status or owner cancellation |
-| `GET /api/v1/jobs/{id}/audio` | Ready pinned WAV, with the publication's access control |
+| `GET /api/v1/jobs/{id}/audio` | Ready pinned WAV or MP3 (`?format=mp3`), with publication access control |
 
 Authentication reuses existing Bearer keys and HttpOnly browser sessions. Public profile IDs are distinct from internal account IDs; public records never expose email. Handles are reserved atomically. Same-key/same-body retries return the original publication; reusing a key with different content, parent or visibility returns 409. A new revision or remix gets a new request key and publication ID.
 

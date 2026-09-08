@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { parseProject, type MusicProject } from "chipvoice";
+import { SITE } from "./songs";
 import { db, newId } from "./db";
 export class ProjectHttpError extends Error {
   constructor(
@@ -16,9 +17,16 @@ export interface Profile {
   handle: string | null;
   displayName: string;
   bio: string;
+  kind: "human" | "agent";
+  avatar: { palette: number; variant: number } | null;
+  url: string | null;
+  avatarUrl: string;
 }
 export interface Publication {
   id: string;
+  url: string;
+  coverUrl: string;
+  variants?: { id: string; chip: string; url: string }[];
   parentId: string | null;
   rootId: string;
   title: string;
@@ -31,13 +39,19 @@ export interface Publication {
   favourites: number;
   favourited: boolean;
   owned: boolean;
-  renditions?: { id: string; kind: string; status: string; engine: string }[];
+  renditions?: {
+    id: string;
+    kind: string;
+    status: string;
+    engine: string;
+    mp3Bytes: number;
+  }[];
   project?: MusicProject;
 }
 const digest = (text: string) =>
   createHash("sha256").update(text).digest("hex");
 /** Stable serialization makes request retries independent of JSON key ordering. */
-function canonical(value: unknown): string {
+export function canonical(value: unknown): string {
   if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
   if (value && typeof value === "object")
     return (
@@ -77,26 +91,31 @@ export async function admitProject(scope: string, limit: number) {
 export async function ensureProfile(userId: string): Promise<Profile> {
   const client = await db();
   await client.execute({
-    sql: "insert into profiles(id,user_id,created_at) values(?,?,?) on conflict(user_id) do nothing",
+    sql: "insert into profiles(id,user_id,created_at,is_default) values(?,?,?,1) on conflict(user_id) where is_default=1 do nothing",
     args: [newId(), userId, Date.now()],
   });
   const result = await client.execute({
-    sql: "select * from profiles where user_id=?",
+    sql: "select * from profiles where user_id=? and is_default=1",
     args: [userId],
   });
   return profile(result.rows[0]);
 }
-function profile(row: Record<string, unknown>): Profile {
+export function profile(row: Record<string, unknown>): Profile {
   return {
     id: String(row.profile_id ?? row.id),
     handle: row.handle ? String(row.handle) : null,
     displayName: String(row.display_name ?? ""),
     bio: String(row.bio ?? ""),
+    kind: row.kind === "agent" ? "agent" : "human",
+    avatar: row.avatar ? JSON.parse(String(row.avatar)) : null,
+    url: row.handle ? `${SITE}/u/${row.handle}` : null,
+    avatarUrl: `${SITE}/api/v1/profiles/${row.profile_id ?? row.id}/avatar`,
   };
 }
 export async function editProfile(
   userId: string,
-  input: { handle: string; displayName: string; bio: string },
+  input: { handle: string; displayName: string; bio: string; avatar?: unknown },
+  profileId?: string,
 ) {
   const handle = input.handle.toLowerCase().trim();
   if (
@@ -123,19 +142,30 @@ export async function editProfile(
       "invalid_profile",
       "Profile text is too long",
     );
-  await ensureProfile(userId);
+  const current = profileId
+    ? await ownedProfile(userId, profileId)
+    : await ensureProfile(userId);
+  const avatar =
+    input.avatar === undefined ? current.avatar : validateAvatar(input.avatar);
   const client = await db();
   try {
     await client.execute({
-      sql: "update profiles set handle=?,display_name=?,bio=? where user_id=?",
-      args: [handle, input.displayName.trim(), input.bio.trim(), userId],
+      sql: "update profiles set handle=?,display_name=?,bio=?,avatar=? where user_id=? and id=?",
+      args: [
+        handle,
+        input.displayName.trim(),
+        input.bio.trim(),
+        avatar ? JSON.stringify(avatar) : null,
+        userId,
+        current.id,
+      ],
     });
   } catch (error) {
     if (String(error).includes("UNIQUE"))
       throw new ProjectHttpError(409, "handle_taken", "This username is taken");
     throw error;
   }
-  return ensureProfile(userId);
+  return ownedProfile(userId, current.id);
 }
 export async function profileByHandle(handle: string) {
   const r = await (
@@ -146,14 +176,16 @@ export async function profileByHandle(handle: string) {
   });
   return r.rows[0] ? profile(r.rows[0]) : null;
 }
-const SELECT = `select p.*,f.id as profile_id,f.handle,f.display_name,f.bio,(select count(*) from favourites v where v.project_id=p.id) as favourite_count from projects p join profiles f on f.user_id=p.user_id`;
+const SELECT = `select p.*,f.id as profile_id,f.handle,f.display_name,f.bio,f.kind,f.avatar,(select count(*) from favourites v where v.project_id=p.id) as favourite_count from projects p join profiles f on f.id=p.profile_id`;
 function present(
   row: Record<string, unknown>,
-  viewer: string | null,
+  viewer: Viewer,
   document = false,
 ): Publication {
   return {
     id: String(row.id),
+    url: `${SITE}/p/${row.id}`,
+    coverUrl: `${SITE}/api/v1/projects/${row.id}/cover`,
     parentId: row.parent_id ? String(row.parent_id) : null,
     rootId: String(row.root_id),
     title: String(row.title),
@@ -165,30 +197,35 @@ function present(
     profile: profile(row),
     favourites: Number(row.favourite_count ?? 0),
     favourited: !!row.favourited,
-    owned: row.user_id === viewer,
+    owned: owns(row, viewer),
     ...(document ? { project: parseProject(String(row.document)) } : {}),
   };
 }
 export async function getProject(
   id: string,
-  viewer: string | null = null,
+  viewer: Viewer = null,
 ): Promise<Publication | null> {
   const result = await (
     await db()
   ).execute({
     sql:
       SELECT +
-      " where p.id=? and p.deleted_at is null and (p.visibility<>'private' or p.user_id=?)",
-    args: [id, viewer],
+      ` where p.id=? and p.deleted_at is null and (p.visibility<>'private' or (p.user_id=? and (? is null or p.profile_id=?)))`,
+    args: [
+      id,
+      viewerUser(viewer),
+      viewerProfile(viewer),
+      viewerProfile(viewer),
+    ],
   });
   const row = result.rows[0];
   if (!row) return null;
-  if (viewer) {
+  if (viewer && !viewerProfile(viewer)) {
     const fav = await (
       await db()
     ).execute({
       sql: "select 1 from favourites where project_id=? and user_id=?",
-      args: [id, viewer],
+      args: [id, viewerUser(viewer)],
     });
     row.favourited = fav.rows.length ? 1 : 0;
   }
@@ -196,7 +233,7 @@ export async function getProject(
   const jobs = await (
     await db()
   ).execute({
-    sql: "select id,kind,status,engine from project_jobs where project_id=?",
+    sql: "select id,kind,status,engine,mp3_bytes from project_jobs where project_id=?",
     args: [id],
   });
   publication.renditions = jobs.rows.map((j) => ({
@@ -204,7 +241,34 @@ export async function getProject(
     kind: String(j.kind),
     status: String(j.status),
     engine: String(j.engine),
+    mp3Bytes: Number(j.mp3_bytes ?? 0),
   }));
+  const variants = await (
+    await db()
+  ).execute({
+    sql: `select id,chip from projects where profile_id=? and composition_hash=? and deleted_at is null and (visibility='public' or id=? or (user_id=? and (? is null or profile_id=?))) order by created_at desc,id desc`,
+    args: [
+      row.profile_id,
+      row.composition_hash,
+      id,
+      viewerUser(viewer),
+      viewerProfile(viewer),
+      viewerProfile(viewer),
+    ],
+  });
+  const seen = new Set<string>();
+  publication.variants = variants.rows
+    .filter((v) => {
+      const chip = String(v.chip);
+      if (seen.has(chip)) return false;
+      seen.add(chip);
+      return true;
+    })
+    .map((v) => ({
+      id: String(v.id),
+      chip: String(v.chip),
+      url: `${SITE}/p/${v.id}`,
+    }));
   return publication;
 }
 export async function publishProject(
@@ -214,6 +278,8 @@ export async function publishProject(
     visibility: Visibility;
     parentId?: string;
     requestKey: string;
+    profileId?: string;
+    viewer?: Viewer;
   },
 ) {
   if (!["public", "unlisted", "private"].includes(input.visibility))
@@ -236,6 +302,9 @@ export async function publishProject(
       "project_too_large",
       "Publications support up to 4 MB of musical data",
     );
+  const artist = input.profileId
+    ? await ownedProfile(userId, input.profileId)
+    : await ensureProfile(userId);
   const hash = digest(document),
     client = await db();
   const existing = await client.execute({
@@ -245,6 +314,7 @@ export async function publishProject(
   if (existing.rows[0]) {
     const row = existing.rows[0];
     if (
+      row.profile_id !== artist.id ||
       row.content_hash !== hash ||
       row.visibility !== input.visibility ||
       (row.parent_id ?? null) !== (input.parentId ?? null) ||
@@ -260,7 +330,7 @@ export async function publishProject(
   await admitProject(`publish:${userId}`, 10);
   await ensureProfile(userId);
   const parent = input.parentId
-    ? await getProject(input.parentId, userId)
+    ? await getProject(input.parentId, input.viewer ?? userId)
     : null;
   if (input.parentId && !parent)
     throw new ProjectHttpError(
@@ -272,7 +342,7 @@ export async function publishProject(
   const id = newId(),
     now = Date.now();
   await client.execute({
-    sql: `insert into projects(id,user_id,parent_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,request_key) values(?,?,?,?,?,?,?,?,?,?,?,?) on conflict(user_id,request_key) do nothing`,
+    sql: `insert into projects(id,user_id,parent_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,request_key,profile_id,composition_hash) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(user_id,request_key) do nothing`,
     args: [
       id,
       userId,
@@ -286,6 +356,8 @@ export async function publishProject(
       input.visibility,
       now,
       input.requestKey,
+      artist.id,
+      digest(canonical(project.source)),
     ],
   });
   const saved = await client.execute({
@@ -294,6 +366,7 @@ export async function publishProject(
   });
   const row = saved.rows[0];
   if (
+    row.profile_id !== artist.id ||
     row.content_hash !== hash ||
     row.visibility !== input.visibility ||
     (row.parent_id ?? null) !== (input.parentId ?? null)
@@ -307,6 +380,7 @@ export async function publishProject(
 }
 export async function listProjects(
   query: {
+    group?: boolean;
     q?: string;
     chip?: string;
     tag?: string;
@@ -316,7 +390,7 @@ export async function listProjects(
     sort?: string;
     cursor?: string;
   },
-  viewer: string | null,
+  viewer: Viewer,
 ) {
   const client = await db(),
     where = ["p.deleted_at is null"],
@@ -325,7 +399,11 @@ export async function listProjects(
     if (!viewer)
       throw new ProjectHttpError(401, "sign_in", "Sign in to see your library");
     where.push("p.user_id=?");
-    args.push(viewer);
+    args.push(viewerUser(viewer));
+    if (viewerProfile(viewer)) {
+      where.push("p.profile_id=?");
+      args.push(viewerProfile(viewer));
+    }
   } else where.push("p.visibility='public'");
   if (query.q) {
     where.push(
@@ -352,7 +430,7 @@ export async function listProjects(
     where.push(
       "exists(select 1 from favourites v where v.project_id=p.id and v.user_id=?)",
     );
-    args.push(viewer);
+    args.push(viewerUser(viewer));
   }
   const popular = query.sort === "popular";
   // A fixed snapshot keeps pagination deterministic while new songs/favourites arrive.
@@ -383,6 +461,7 @@ export async function listProjects(
   where.push("p.created_at<=?");
   args.push(snapshot);
   const count = `(select count(*) from favourites v where v.project_id=p.id and v.created_at>${snapshot - 7 * 86400000} and v.created_at<=${snapshot})`;
+  const filterCount = where.length;
   if (lastTime !== null) {
     where.push(
       popular
@@ -398,12 +477,13 @@ export async function listProjects(
     `, ${count} as weekly_count, exists(select 1 from favourites v where v.project_id=p.id and v.user_id=?) as favourited from projects p`,
   );
   const result = await client.execute({
-    sql:
-      select +
-      " where " +
-      where.join(" and ") +
-      ` order by ${popular ? "weekly_count desc," : ""}p.created_at desc,p.id desc limit 25`,
-    args: [viewer, ...args],
+    sql: query.group
+      ? `select * from (select base.*,row_number() over(partition by profile_id,coalesce(composition_hash,id) order by ${popular ? "weekly_count desc," : ""}created_at desc,id desc) as variant_rank from (${select} where ${where.slice(0, filterCount).join(" and ")}) base) p where variant_rank=1${where.length > filterCount ? " and " + where.slice(filterCount).join(" and ") : ""} order by ${popular ? "weekly_count desc," : ""}p.created_at desc,p.id desc limit 25`
+      : select +
+        " where " +
+        where.join(" and ") +
+        ` order by ${popular ? "weekly_count desc," : ""}p.created_at desc,p.id desc limit 25`,
+    args: [viewerProfile(viewer) ? null : viewerUser(viewer), ...args],
   });
   const page = result.rows.slice(0, 24),
     last = page.at(-1);
@@ -422,11 +502,14 @@ export async function listProjects(
         : null,
   };
 }
-export async function withdrawProject(id: string, userId: string) {
+export async function withdrawProject(id: string, viewer: Viewer) {
   const client = await db();
+  const found = await getProject(id, viewer);
+  if (!found?.owned)
+    throw new ProjectHttpError(404, "not_found", "Publication not found");
   const r = await client.execute({
     sql: "update projects set deleted_at=? where id=? and user_id=? and deleted_at is null returning id",
-    args: [Date.now(), id, userId],
+    args: [Date.now(), id, viewerUser(viewer)],
   });
   if (!r.rows.length)
     throw new ProjectHttpError(404, "not_found", "Publication not found");
@@ -461,4 +544,84 @@ export async function setFavourite(
       args: [id, userId],
     });
   return getProject(id, userId);
+}
+
+/** An agent sees private resources only within its explicitly authorized artist. */
+export type Viewer = string | null | { userId: string; profileId: string };
+export const viewerUser = (viewer: Viewer) =>
+  typeof viewer === "object" ? (viewer?.userId ?? null) : viewer;
+export const viewerProfile = (viewer: Viewer) =>
+  typeof viewer === "object" ? (viewer?.profileId ?? null) : null;
+function owns(row: Record<string, unknown>, viewer: Viewer) {
+  return (
+    row.user_id === viewerUser(viewer) &&
+    (!viewerProfile(viewer) || row.profile_id === viewerProfile(viewer))
+  );
+}
+export async function ownedProfile(
+  userId: string,
+  id: string,
+): Promise<Profile> {
+  const result = await (
+    await db()
+  ).execute({
+    sql: "select * from profiles where id=? and user_id=?",
+    args: [id, userId],
+  });
+  if (!result.rows[0])
+    throw new ProjectHttpError(404, "not_found", "Artist not found");
+  return profile(result.rows[0]);
+}
+export async function listProfiles(userId: string) {
+  await ensureProfile(userId);
+  return (
+    await (
+      await db()
+    ).execute({
+      sql: "select * from profiles where user_id=? order by is_default desc,created_at,id",
+      args: [userId],
+    })
+  ).rows.map(profile);
+}
+export async function createProfile(userId: string) {
+  await ensureProfile(userId);
+  await admitProject(`artist:${userId}`, 3);
+  const client = await db(),
+    id = newId();
+  const r = await client.execute({
+    sql: `insert into profiles(id,user_id,created_at,kind) select ?,?,?,'agent' where (select count(*) from profiles where user_id=?)<20 returning *`,
+    args: [id, userId, Date.now(), userId],
+  });
+  if (!r.rows.length)
+    throw new ProjectHttpError(
+      429,
+      "artist_limit",
+      "An account supports up to 20 artists",
+    );
+  return profile(r.rows[0]);
+}
+export function validateAvatar(value: unknown): Profile["avatar"] {
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new ProjectHttpError(
+      422,
+      "invalid_avatar",
+      "Choose a palette and portrait variant",
+    );
+  const v = value as Record<string, unknown>;
+  if (
+    Object.keys(v).some((k) => !["palette", "variant"].includes(k)) ||
+    !Number.isInteger(v.palette) ||
+    Number(v.palette) < 0 ||
+    Number(v.palette) > 3 ||
+    !Number.isInteger(v.variant) ||
+    Number(v.variant) < 0 ||
+    Number(v.variant) > 15
+  )
+    throw new ProjectHttpError(
+      422,
+      "invalid_avatar",
+      "Palette must be 0–3; variant must be 0–15",
+    );
+  return { palette: Number(v.palette), variant: Number(v.variant) };
 }

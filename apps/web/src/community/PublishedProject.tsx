@@ -4,6 +4,8 @@ import { useT } from "@/i18n/react";
 import Link from "@/i18n/react";
 import { SiteHeader, SiteFooter, Button } from "@/ui/components";
 import type { Publication } from "@/lib/projects";
+import { DEMO_MACHINES } from "@/studio/document";
+import { PixelAvatar } from "./avatar";
 import Creator from "@/create/Creator";
 export default function PublishedProject({ id }: { id: string }) {
   const t = useT(),
@@ -24,6 +26,11 @@ export default function PublishedProject({ id }: { id: string }) {
       });
     return () => abort.abort();
   }, [id]);
+  const rendition =
+    publication?.renditions?.find(
+      (r) => r.kind === "full" && r.status === "ready",
+    ) ?? publication?.renditions?.find((r) => r.status === "ready");
+
   return (
     <>
       <SiteHeader />
@@ -96,10 +103,42 @@ export default function PublishedProject({ id }: { id: string }) {
           </div>
           {!editing && (
             <section className="demo-main published-listen">
+              <div className="song-author">
+                <PixelAvatar
+                  id={publication.profile.id}
+                  avatar={publication.profile.avatar}
+                />
+                {publication.profile.handle && (
+                  <Link href={`/u/${publication.profile.handle}`}>
+                    {publication.profile.displayName ||
+                      publication.profile.handle}
+                  </Link>
+                )}
+              </div>
               <h1>{publication.title}</h1>
+              {!!publication.variants?.length && (
+                <nav
+                  className="project-actions"
+                  aria-label={t("Console versions")}
+                >
+                  {publication.variants.map((v) => (
+                    <Link
+                      key={v.id}
+                      className="small-button"
+                      aria-current={v.id === id ? "page" : undefined}
+                      href={`/p/${v.id}`}
+                    >
+                      {DEMO_MACHINES.find((m) => m.id === v.chip)?.name ??
+                        v.chip}
+                    </Link>
+                  ))}
+                </nav>
+              )}
               <p>{publication.project?.description}</p>
               <p>
-                {publication.project?.author} ·{" "}
+                {publication.project?.author
+                  ? `${publication.project.author} · `
+                  : ""}
                 {publication.project?.licence &&
                 publication.project.licence !== "reserved"
                   ? publication.project.licence
@@ -107,17 +146,46 @@ export default function PublishedProject({ id }: { id: string }) {
               </p>
               {publication.renditions?.some((r) => r.status === "ready") ? (
                 <>
-                  <p>{t("Published audio · preserved with this revision")}</p>
+                  <p>
+                    {t(
+                      rendition?.kind === "full"
+                        ? "Full song · preserved with this revision"
+                        : "Published audio · preserved with this revision",
+                    )}
+                  </p>
                   <audio
                     controls
                     preload="none"
                     src={`/api/v1/jobs/${(publication.renditions.find((r) => r.kind === "full" && r.status === "ready") ?? publication.renditions.find((r) => r.status === "ready"))!.id}/audio`}
                   />
-                  <p>
-                    {t(
-                      "Previews contain up to 30 seconds. Open the project to hear or edit the complete song.",
-                    )}
-                  </p>
+                  {rendition && (
+                    <div className="project-actions">
+                      <a
+                        className="small-button"
+                        href={`/api/v1/jobs/${rendition.id}/audio`}
+                      >
+                        {t("Download WAV")}
+                      </a>
+                      {rendition.mp3Bytes > 0 && (
+                        <a
+                          className="small-button"
+                          href={`/api/v1/jobs/${rendition.id}/audio?format=mp3`}
+                        >
+                          {t("Download MP3")}
+                        </a>
+                      )}
+                      <a className="small-button" href={publication.coverUrl}>
+                        {t("Cover image")}
+                      </a>
+                    </div>
+                  )}
+                  {rendition?.kind !== "full" && (
+                    <p>
+                      {t(
+                        "Previews contain up to 30 seconds. Open the project to hear or edit the complete song.",
+                      )}
+                    </p>
+                  )}
                 </>
               ) : (
                 <p>

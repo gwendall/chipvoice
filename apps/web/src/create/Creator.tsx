@@ -11,7 +11,7 @@ import {
   type MusicProject,
   type PerformancePart,
 } from "chipvoice";
-import { useT } from "@/i18n/react";
+import { useT, useErrorText } from "@/i18n/react";
 import Link from "@/i18n/react";
 import {
   SiteHeader,
@@ -21,6 +21,7 @@ import {
   Button,
 } from "@/ui/components";
 import { RangeControl } from "@/ui/RangeControl";
+import type { Profile } from "@/lib/projects";
 import { Account } from "@/studio/Account";
 import type { Publication } from "@/lib/projects";
 import { PixelAvatar } from "@/community/avatar";
@@ -56,6 +57,7 @@ export default function Creator({
   embedded?: boolean;
   active?: boolean;
 }) {
+  const errorText = useErrorText();
   const t = useT(),
     [project, setProject] = useState<MusicProject>(initial ?? starterProject),
     [ready, setReady] = useState(false),
@@ -80,6 +82,10 @@ export default function Creator({
     [codeMode, setCodeMode] = useState<"json" | "javascript">("json"),
     [generatorCode, setGeneratorCode] = useState(GENERATOR_EXAMPLE),
     [seed, setSeed] = useState(42);
+  const [artists, setArtists] = useState<Profile[]>([]),
+    [artistId, setArtistId] = useState(
+      publication?.owned ? publication.profile.id : "",
+    );
   const [sharing, setSharing] = useState(false),
     [visibility, setVisibility] = useState("public"),
     [published, setPublished] = useState<Publication | null>(
@@ -90,8 +96,25 @@ export default function Creator({
       status: string;
       progress: number;
       audio: string | null;
+      mp3Url: string | null;
+      mp3Status: string;
+      mp3Error: string | null;
       error: string | null;
     } | null>(null);
+  useEffect(() => {
+    if (!sharing) return;
+    const controller = new AbortController();
+    void fetch("/api/v1/profiles", { signal: controller.signal })
+      .then(async (r) => {
+        if (r.ok) {
+          const p = await r.json();
+          setArtists(p.items);
+          setArtistId((current) => current || p.items[0]?.id || "");
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [sharing]);
   const player = useRef<ProjectPlayer | null>(null),
     alive = useRef(true),
     projectRef = useRef(project),
@@ -331,7 +354,11 @@ export default function Creator({
     return () => cancelAnimationFrame(frame);
   }, [audio.playing]);
   useEffect(() => {
-    if (!job || !["queued", "rendering", "cancelling"].includes(job.status))
+    if (
+      !job ||
+      (!["queued", "rendering", "cancelling"].includes(job.status) &&
+        job.mp3Status !== "queued")
+    )
       return;
     const abort = new AbortController();
     const timer = setTimeout(() => {
@@ -468,6 +495,7 @@ export default function Creator({
         },
         body: JSON.stringify({
           project: clean,
+          ...(artistId ? { profileId: artistId } : {}),
           visibility,
           ...(published ? { parentId: published.id } : {}),
         }),
@@ -612,7 +640,10 @@ export default function Creator({
                     : "/library"
                 }
               >
-                <PixelAvatar id={published.profile.id} />
+                <PixelAvatar
+                  id={published.profile.id}
+                  avatar={published.profile.avatar}
+                />
                 {published.profile.displayName ||
                   published.profile.handle ||
                   t("Creator")}
@@ -1221,6 +1252,24 @@ export default function Creator({
               )}
             </p>
             <Account />
+            {artists.length > 0 && (
+              <label>
+                {t("Publish as")}
+                <select
+                  value={artistId}
+                  onChange={(e) => {
+                    setArtistId(e.target.value);
+                    requestKey.current = crypto.randomUUID();
+                  }}
+                >
+                  {artists.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.displayName || p.handle || t("Artist")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <Button
               disabled={busy || !project.title.trim()}
               onClick={() => void publish()}
@@ -1245,12 +1294,17 @@ export default function Creator({
             )}
             {job && (
               <p role="status">
-                {t(job.status)} {Math.round(job.progress * 100)}%{" "}
+                {t(job.mp3Status === "queued" ? "Encoding MP3…" : job.status)}{" "}
+                {job.mp3Status !== "queued" &&
+                  `${Math.round(job.progress * 100)}%`}{" "}
                 {job.error && t.source(job.error)}{" "}
+                {job.mp3Error && errorText(job.mp3Error)}{" "}
+                {job.mp3Url && <a href={job.mp3Url}>{t("Download MP3")}</a>}
                 {job.audio && (
                   <a href={job.audio}>{t("Download pinned audio")}</a>
                 )}
-                {["queued", "rendering", "cancelling"].includes(job.status) && (
+                {(["queued", "rendering", "cancelling"].includes(job.status) ||
+                  job.mp3Status === "queued") && (
                   <Button
                     onClick={() =>
                       void fetch(`/api/v1/jobs/${job.id}`, {

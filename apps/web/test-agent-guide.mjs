@@ -264,6 +264,13 @@ try {
     hash(await readFile(join(directory, "published.wav"))),
     hash(toWav(result.audio)),
   );
+  const publishedMp3 = await readFile(join(directory, "published.mp3"));
+  assert.equal(
+    publishedMp3.subarray(0, 3).toString(),
+    "ID3",
+    "served recipe downloads tagged MP3",
+  );
+  assert.ok(publishedMp3.length > 1000);
   const headers = {
     Authorization: `Bearer ${key.key}`,
     "Idempotency-Key": "agent-guide-rehearsal",
@@ -351,13 +358,11 @@ try {
       ...canonical,
       settings: { ...canonical.settings, chip: "snes" },
     };
-    await page
-      .locator("input[type=file]")
-      .setInputFiles({
-        name: "ensemble.json",
-        mimeType: "application/json",
-        buffer: Buffer.from(JSON.stringify(imported)),
-      });
+    await page.locator("input[type=file]").setInputFiles({
+      name: "ensemble.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(imported)),
+    });
     await page
       .getByRole("option", { name: "GM program 73", exact: true })
       .waitFor({ state: "attached" });

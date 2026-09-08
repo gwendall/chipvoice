@@ -61,15 +61,25 @@ export async function DELETE(
   if (!SongId.safeParse(id).success) {
     return NextResponse.json({ error: "bad_id" }, { status: 400 });
   }
-  if (!hasDatabase()) return NextResponse.json({ error: "no_database" }, { status: 503 });
+  if (!hasDatabase())
+    return NextResponse.json({ error: "no_database" }, { status: 503 });
 
   const found = await find(id);
   if (!found) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   const caller = await identify(request);
+  if (caller.agent)
+    return NextResponse.json(
+      { error: "agent_endpoint_required" },
+      { status: 403 },
+    );
   const admin =
     process.env.CHIPVOICE_ADMIN_KEY &&
-    request.headers.get("authorization") === `Bearer ${process.env.CHIPVOICE_ADMIN_KEY}`;
+    request.headers.get("authorization") ===
+      `Bearer ${process.env.CHIPVOICE_ADMIN_KEY}`;
+
+  if (request.headers.has("authorization") && !caller.userId && !admin)
+    return NextResponse.json({ error: "invalid_token" }, { status: 401 });
 
   if (!admin && (!caller.userId || caller.userId !== found.song.userId)) {
     return NextResponse.json(

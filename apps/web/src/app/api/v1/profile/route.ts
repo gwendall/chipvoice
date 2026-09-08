@@ -1,12 +1,16 @@
 import { projectRoute, readProjectBody, objectBody } from "@/lib/project-http";
 import {
   ensureProfile,
+  ownedProfile,
   editProfile,
   admitProject,
   ProjectHttpError,
 } from "@/lib/projects";
 export const GET = projectRoute(
-  async (_, caller) => ensureProfile(caller.userId!),
+  async (_, caller) =>
+    caller.agent
+      ? ownedProfile(caller.userId!, caller.agent.profileId)
+      : ensureProfile(caller.userId!),
   true,
 );
 export const PUT = projectRoute(async (request, caller) => {
@@ -14,6 +18,7 @@ export const PUT = projectRoute(async (request, caller) => {
     "handle",
     "displayName",
     "bio",
+    "avatar",
   ]);
   if (
     typeof body.handle !== "string" ||
@@ -29,5 +34,6 @@ export const PUT = projectRoute(async (request, caller) => {
   return editProfile(
     caller.userId!,
     body as { handle: string; displayName: string; bio: string },
+    caller.agent?.profileId,
   );
 }, true);

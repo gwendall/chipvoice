@@ -1,3 +1,4 @@
+import { authorizeAgent } from "./agents";
 import { ProjectValidationError } from "chipvoice";
 import { identify, type Caller } from "./auth";
 import { ProjectHttpError } from "./projects";
@@ -46,6 +47,13 @@ export function projectRoute(
           "Publication service is unavailable",
         );
       const caller = await identify(request);
+      if (request.headers.has("authorization") && !caller.userId)
+        throw new ProjectHttpError(
+          401,
+          "invalid_token",
+          "Credential is invalid, expired or revoked",
+        );
+      authorizeAgent(request, caller);
       if (authenticated && !caller.userId)
         throw new ProjectHttpError(
           401,

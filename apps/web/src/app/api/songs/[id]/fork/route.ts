@@ -16,8 +16,10 @@ export const runtime = "nodejs";
  * other three, and cannot mangle them by accident while doing so.
  */
 const ForkInput = SongInput.partial().extend({
-  chip:SongInput.shape.chip.removeDefault().optional(),
-  title:SongInput.shape.title.nullable(), author:SongInput.shape.author.nullable(), intent:SongInput.shape.intent.nullable(),
+  chip: SongInput.shape.chip.removeDefault().optional(),
+  title: SongInput.shape.title.nullable(),
+  author: SongInput.shape.author.nullable(),
+  intent: SongInput.shape.intent.nullable(),
 });
 
 export async function POST(
@@ -33,7 +35,17 @@ export async function POST(
   }
 
   const caller = await identify(request);
-  const gate = allow(caller.userId ? `user:${caller.userId}` : clientKey(request), caller.userId ? "key" : "anonymous");
+  if (caller.agent)
+    return NextResponse.json(
+      { error: "agent_endpoint_required" },
+      { status: 403 },
+    );
+  if (request.headers.has("authorization") && !caller.userId)
+    return NextResponse.json({ error: "invalid_token" }, { status: 401 });
+  const gate = allow(
+    caller.userId ? `user:${caller.userId}` : clientKey(request),
+    caller.userId ? "key" : "anonymous",
+  );
   if (!gate.ok) {
     return NextResponse.json(
       { error: "rate_limited", retryAfter: gate.retryAfter },
@@ -42,7 +54,8 @@ export async function POST(
   }
 
   const parent = await find(id);
-  if (!parent) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (!parent)
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
 
   let body: unknown = {};
   try {
@@ -69,25 +82,46 @@ export async function POST(
   }
 
   const merged = {
-    title: parsed.data.title === null ? undefined : parsed.data.title ?? parent.song.title ?? undefined,
+    title:
+      parsed.data.title === null
+        ? undefined
+        : (parsed.data.title ?? parent.song.title ?? undefined),
     bpm: parsed.data.bpm ?? parent.song.bpm,
     stepsPerBeat: parsed.data.stepsPerBeat ?? parent.song.stepsPerBeat,
     patterns: parsed.data.patterns ?? parent.song.patterns,
     order: parsed.data.order ?? parent.song.order,
-    chip: (parsed.data.chip ?? parent.song.chip) as "2a03" | "dmg" | "md" | "snes" | "c64",
-    intent: parsed.data.intent === null ? undefined : parsed.data.intent ?? parent.song.intent ?? undefined,
+    chip: (parsed.data.chip ?? parent.song.chip) as
+      | "2a03"
+      | "dmg"
+      | "md"
+      | "snes"
+      | "c64",
+    intent:
+      parsed.data.intent === null
+        ? undefined
+        : (parsed.data.intent ?? parent.song.intent ?? undefined),
     author: parsed.data.author ?? undefined,
   };
 
   const result = checkAll(merged);
   if (!result.ok) {
-    return NextResponse.json({ error: "invalid_song", issues: result.issues }, { status: 422 });
+    return NextResponse.json(
+      { error: "invalid_song", issues: result.issues },
+      { status: 422 },
+    );
   }
 
   const song = await insert(
-    { ...merged, title: result.title || undefined, author: result.author || undefined },
+    {
+      ...merged,
+      title: result.title || undefined,
+      author: result.author || undefined,
+    },
     parent.song,
     caller,
   );
-  return NextResponse.json({ ...present(song), issues: result.issues }, { status: 201 });
+  return NextResponse.json(
+    { ...present(song), issues: result.issues },
+    { status: 201 },
+  );
 }

@@ -23,8 +23,17 @@ export async function generateMetadata({
     description,
     alternates: alternates(`/p/${id}`, locale === "ja" ? "ja" : "en"),
     robots: { index: !!publicSong, follow: !!publicSong },
-    openGraph: { title, description },
-    twitter: { card: "summary" as const, title, description },
+    openGraph: {
+      title,
+      description,
+      ...(publicSong ? { images: [publicSong.coverUrl] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title,
+      description,
+      ...(publicSong ? { images: [publicSong.coverUrl] } : {}),
+    },
   };
 }
 export default async function Page({

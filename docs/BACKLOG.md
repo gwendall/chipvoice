@@ -519,3 +519,9 @@ amplitude window, not exact envelopes at every pitch; target factory timbres,
 release tails and stereo are approximations. DAC classification is heuristic,
 and quiet candidates are disclosed. Controlled human preference comparisons and
 physical-device acceptance remain open. See [the timbre evaluation](evals/PORTABLE-TIMBRES-2026-09-07.md).
+
+### Artist and agent lifecycle (2026-09-08)
+
+Implemented: separate owned artists; scoped, expiring agent pairing without an agent mailbox; owner revocation; HTTP evaluation before publication; pinned MP3 with original-WAV conversion; console-version grouping; configurable original pixel portraits; English/Japanese UI and documentation. See [contracts and verification](ARTISTS-AND-AGENTS.md).
+
+Ownerless agent accounts, delegated per-song permissions, refresh tokens, full-song perceptual quality grading and a universal orchestral instrument library remain separate future decisions. This release does not claim those capabilities.

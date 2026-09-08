@@ -1,5 +1,5 @@
-import {createTranslator,type Locale} from '@/i18n/core';
-import {getMessages} from '@/i18n/server';
+import { createTranslator, type Locale } from "@/i18n/core";
+import { getMessages } from "@/i18n/server";
 /**
  * Sending mail, through domani.
  *
@@ -8,9 +8,8 @@ import {getMessages} from '@/i18n/server';
  * was a second provider to verify a domain that is already verified somewhere
  * else.
  *
- * Failure is reported, never thrown. A key that was created but not delivered
- * is a recoverable annoyance - ask for another - while a 500 on the sign-up
- * route looks like the product is broken.
+ * Failure is reported to the caller so the UI can offer another sign-in attempt.
+ * Only temporary login links are sent; agent credentials never enter email.
  */
 const FROM = process.env.CHIPVOICE_MAIL_FROM ?? "hello@chipvoice.dev";
 
@@ -18,37 +17,29 @@ const FROM = process.env.CHIPVOICE_MAIL_FROM ?? "hello@chipvoice.dev";
 const sendUrl = (from: string) =>
   `https://domani.run/api/emails/${encodeURIComponent(from)}/send`;
 
-export async function sendKeyEmail(
+export async function sendSignInEmail(
   to: string,
-  key: string,
   link: string,
+  locale: Locale = "en",
 ): Promise<boolean> {
-  const text = [
-    "Here is your chipvoice key.",
-    "",
-    key,
-    "",
-    "Use it on writes:",
-    `  curl -H 'Authorization: Bearer ${key}' ...`,
-    "",
-    "Or open this link once to sign into your browser (valid for 30 minutes):",
-    `  ${link}`,
-    "",
-    "It is the only copy - only its fingerprint is stored, so it cannot be looked",
-    "up or resent. Ask for another if you lose it.",
-    "",
-    "chipvoice.dev",
-  ].join("\n");
-
-  return send(to, "Your chipvoice key", text);
+  const t = createTranslator(await getMessages(locale));
+  return send(
+    to,
+    t("Sign in to chipvoice"),
+    [
+      t("Open this link to sign in. It works once, for 30 minutes."),
+      link,
+      t("Your API keys remain unchanged."),
+      "chipvoice.dev",
+    ].join("\n\n"),
+  );
 }
 
-export async function sendSignInEmail(to: string, link: string, locale: Locale = 'en'): Promise<boolean> {
-  const t=createTranslator(await getMessages(locale));
-  return send(to,t('Sign in to chipvoice'),[t('Open this link to sign in. It works once, for 30 minutes.'),link,t('Your API keys remain unchanged.'),'chipvoice.dev'].join('\n\n'));
-}
-
-async function send(to: string, subject: string, text: string): Promise<boolean> {
+async function send(
+  to: string,
+  subject: string,
+  text: string,
+): Promise<boolean> {
   const token = process.env.DOMANI_API_KEY;
   if (!token) return false;
   try {
