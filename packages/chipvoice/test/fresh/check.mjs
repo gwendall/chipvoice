@@ -116,11 +116,18 @@ try {
     const seek=player.position>.3 && player.position<.8;
     const analyser=context.createAnalyser();player.output.connect(analyser);const samples=new Float32Array(analyser.fftSize);
     await new Promise(r=>setTimeout(r,120));analyser.getFloatTimeDomainData(samples);const peak=Math.max(...samples.map(Math.abs));
-    player.dispose();const callerOwned=context.state!=='closed';await context.close();
+    player.dispose();
+    const preview=new ProjectPlayer({context,preview:true});
+    const previewScore=await preview.load(score);await preview.play();
+    const previewPerformance=await preview.load(performance),previewUpdate=await preview.update({chip:'snes'});
+    preview.output.connect(analyser);await new Promise(r=>setTimeout(r,150));analyser.getFloatTimeDomainData(samples);
+    const previewPeak=Math.max(...samples.map(Math.abs));
+    const progressive=previewScore&&previewPerformance&&previewUpdate&&preview.playing&&preview.prepared===null&&preview.previewMetadata.seconds>0&&previewPeak>.001;
+    preview.dispose();const callerOwned=context.state!=='closed';await context.close();
     const owned=new ProjectPlayer();owned.dispose();await new Promise(r=>setTimeout(r,20));
-    return {legacy,complete,replaced,outcomes,failed,preserved,cancelled,seek,peak,callerOwned,pauseWins,ownClosed:owned.context.state==='closed'};
+    return {legacy,complete,replaced,outcomes,failed,preserved,cancelled,seek,peak,progressive,previewPeak,callerOwned,pauseWins,ownClosed:owned.context.state==='closed'};
   });
-  check('installed project facade preserves playback, aborts superseded work and owns only its context', projects.legacy && projects.complete && projects.replaced && projects.outcomes[0]===false && projects.outcomes[1]===true && projects.failed===false && projects.preserved && projects.cancelled && projects.seek && projects.peak>.001 && projects.callerOwned && projects.pauseWins && projects.ownClosed, JSON.stringify(projects));
+  check('installed project facade preserves playback, aborts superseded work and owns only its context', projects.legacy && projects.complete && projects.replaced && projects.outcomes[0]===false && projects.outcomes[1]===true && projects.failed===false && projects.preserved && projects.cancelled && projects.seek && projects.peak>.001 && projects.callerOwned && projects.pauseWins && projects.ownClosed && projects.progressive, JSON.stringify(projects));
 
   check('no errors', errors.length === 0, errors.slice(0, 2).join(' | '));
 } finally {

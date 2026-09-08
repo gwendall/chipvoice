@@ -50,7 +50,8 @@ export class ArrangementPlayback {
     if (this.incoming && this.incoming !== this.current && this.incoming !== target) this.incoming.pause();
     const ticket = ++this.generation; this.incoming = target; this.pending = true; this.failure = ''; this.changed();
     target.setLoop(this.current.loop);
-    if (target !== this.current && this.playing && !target.playing) void target.toggle();
+    // Prepare the requested source before starting this muted engine; waking
+    // its previous cached song would waste DSP and obscure readiness timing.
     const selected = await load();
     if (ticket !== this.generation) return false;
     // Play/Pause may have changed while the source was preparing.
@@ -93,7 +94,6 @@ export class ArrangementPlayback {
     this.playing = true; this.changed();
     const starts: Promise<void>[] = [];
     if (!this.current.playing) starts.push(this.current.toggle());
-    if (this.incoming && this.incoming !== this.current && !this.incoming.playing) starts.push(this.incoming.toggle());
     await Promise.all(starts);
   }
   pause() {this.playing = false; this.recording.pause(); this.preview.pause(); this.changed();}

@@ -15,16 +15,17 @@ export class ProgressiveRenderer {
   private readonly scratchR = new Float32Array(4096);
   private readonly interval: number;
   readonly frames: number;
-  constructor(readonly plan: PerformancePlan, readonly chip: ChipDefinition, readonly sampleRate = 44100, private gain = .6) {
+  constructor(readonly plan: PerformancePlan, readonly chip: ChipDefinition, readonly sampleRate = 44100, private gain = .6, state?: Checkpoint) {
     if (plan.chip !== chip.spec.id) throw Error('Plan/chip mismatch');
     this.frames = Math.round(plan.seconds * sampleRate);
     this.interval = Math.max(sampleRate, Math.ceil(this.frames / 24 / sampleRate) * sampleRate);
-    this.core = this.fresh();
+    this.core = state?.core ?? this.fresh();
+    if (state) {this.sample = state.sample; this.event = state.event;}
   }
   /** Independent cursors share only immutable checkpoints and the source plan. */
   branch() {
-    const next = new ProgressiveRenderer(this.plan, this.chip, this.sampleRate, this.gain);
-    if (this.core.fork) {next.core = this.core.fork(); next.sample = this.sample; next.event = this.event;}
+    const state = this.sample > 0 && this.core.fork ? {core: this.core.fork(), sample: this.sample, event: this.event} : undefined;
+    const next = new ProgressiveRenderer(this.plan, this.chip, this.sampleRate, this.gain, state);
     next.checkpoints = this.checkpoints.slice(); next.recent = this.recent.slice();
     return next;
   }
@@ -41,7 +42,7 @@ export class ProgressiveRenderer {
     return core;
   }
   private checkpoint() {
-    if (!this.core.fork) return;
+    if (!this.core.fork || this.sample === 0) return;
     const checkpoint = {sample: this.sample, event: this.event, core: this.core.fork()};
     if (this.sample % this.interval === 0 && !this.checkpoints.some(p => p.sample === this.sample)) {
       this.checkpoints.push(checkpoint);

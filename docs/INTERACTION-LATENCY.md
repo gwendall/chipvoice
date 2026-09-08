@@ -59,7 +59,7 @@ The existing `ChipCore.schedule/load/render` seam can drive a bounded progressiv
 | LAT-1 | Remove debounce from ready selections; ignore equivalent selections; deduplicate view requests and start view/audio loading concurrently; separate same-source metadata updates | Warm selection reaches audio scheduling within 100 ms on the controlled test host; rename causes no DSP work and updates the player title; no duplicate view request |
 | LAT-2 | Load the independent reference on explicit comparison, then reuse it; cache compiled plans/variants by source revision, engine version, sample rate and musical settings; prefetch only bounded likely next assets | Slow/broken reference cannot block primary playback; revisiting an edited variant avoids another render; explicit byte/time budgets, cancellation and disposal |
 | LAT-3 | Separate project compilation from offline WAV export; add progressive preview using the same plans and cores | First audio does not wait for full-song PCM, WAV encoding or decoding; blockwise/offline PCM comparison on all chips; bounded memory and measured sustained headroom on long/MIDI fixtures |
-| LAT-4 | Add incremental updates for tempo, instrument, notes, gain and mute; reuse compatible live engines; make readiness event-driven | Small edits reach an audio-clock commit without full-song rendering; no clicks, silence gaps, stale events or stuck notes; Pause wins over rapid input; no per-block allocation growth |
+| LAT-4 | Apply tempo, instrument, note, gain and mute edits without full-song rendering; reuse compatible engines where safe; notify readiness immediately | Small edits reach an audio-clock commit without full-song rendering; no clicks, silence gaps, stale events or stuck notes; Pause wins over rapid input; no per-block allocation growth |
 | LAT-5 | Preserve state for mid-song console changes and seeks; define a dynamic per-chip checkpoint capability and bounded checkpoint cache | Preserve envelopes, noise state, sample position, filters and echo where applicable; compare forward playback to checkpoint/seek output, including native register captures; maintain beat phase |
 | LAT-6 | Reuse publication descriptors, support byte ranges and bounded server reads; evaluate object storage for immutable renditions and warm only the next queue item | Playback/seek does not require reading all database audio; Range correctness and early delivery tested; private/revoked tracks retain authorization rules; no mass catalogue preload |
 | LAT-7 | Qualify end to end with latency budgets and sonic regressions | Cold/warm and rapid changes across all visible consoles; desktop/mobile; output-clock visuals; cancellation, navigation, loop edges, memory, CPU, underruns and long tracks |
@@ -88,7 +88,7 @@ The landing now starts view/audio requests concurrently, deduplicates score view
 
 Project preview and edited arrangements use `ProgressivePlayback`: compile the existing project/plan, generate an initial prefix, and schedule PCM ahead in bounded chunks. WAV generation is an explicit export operation. Three worker-backed variants are retained; each caches at most roughly three seconds of stereo Float32 PCM. The worker compiler is shared with offline export. Obsolete compilation is coalesced to the newest input; a running obsolete task gets 100 ms before replacement. Pending worker replies carry revisions so a reused worker cannot inject an older project's sound.
 
-Optional `ChipCore.fork()` supports complete in-process DSP checkpoints. All five built-in cores opt in. New cores without a checkpoint implementation still work by replaying from their initial state; cores with closures/private/native resources must provide their own fork. Checkpoints preserve class prototypes, typed-array aliases and nested DSP state. Each variant retains at most 25 coarse checkpoints and four recent ones; no persistent snapshot format is introduced.
+Optional `ChipCore.fork()` supports complete in-process DSP checkpoints. All five built-in cores opt in. New cores without a checkpoint implementation still work by replaying from their initial state; cores with closures/private/native resources must provide their own fork. Checkpoints preserve class prototypes, typed-array aliases and nested DSP state. Constructor-created copies retain hot DSP object layouts; a second independent constructor graph excludes shared globals from reuse. Multi-generation mutation tests protect snapshot isolation, including mutable chip voice arrays and caller profiles. Each variant retains at most 25 coarse checkpoints and four recent ones; no persistent snapshot format is introduced.
 
 The loop editor coalesces edits for one frame, schedules 25 ms ahead with short overlapping fades. Unchanged and stopped compatible engines are reused; a completed replacement disposes the old worklet to avoid paying for idle DSP. This is **not** an in-place retiming API: changed music is still rescheduled. Direct retiming of arbitrary native register captures would change emulator history and needs a separate fidelity contract. Current progressive updates preserve the established offline semantics, including nonlinear shared mixes.
 
@@ -97,3 +97,23 @@ Publication playback reuses available descriptors. Audio GET/HEAD supports byte 
 Qualification includes exact block/seek PCM equality on all five chips and on native Mario, Zelda and Sonic captures; delayed-worker races; paused and playing handoffs; lazy reference cancellation; byte ranges with real private-job authorization; browser playback/edits/end/replay/disposal and measured output. Test artifacts are in `.artifacts/progressive`, `.artifacts/interaction-latency`, `.artifacts/unified-playground` and `.artifacts/continuity`.
 
 Remaining boundary: a never-prepared mid-song variant must render its history to reach the requested phase. Preparation preserves the previous audio. Network/device latency and a browser suspended by the operating system cannot be reduced to a universal zero-delay guarantee. In-place musical retiming and storage migration are follow-up design options, not prerequisites for progressive playback.
+
+
+### Measured implementation results
+
+Production-built local app, Chromium on the same development Mac, sequential trials. These are diagnostic samples, **not** p95 guarantees or a controlled network comparison with production. Scheduling measurements exclude the additional 25 ms audio scheduling lead and device/output latency.
+
+| Interaction | Implementation sample | Baseline sample |
+| --- | --- | --- |
+| Landing: cached console/song | 18–19 ms | 181–182 ms |
+| Landing: Mario/Game Boy tempo 125% | 385 ms | 7.15–12.38 s |
+| Composer: tempo / transpose / part level | 165 / 140 / 106 ms | 890 ms for tempo |
+| Composer: first Game Boy | 327 ms | 2.51 s |
+| Loop studio: tempo / console handoff completion | 121 / 128 ms | 272 / 277 ms |
+| Lab: cached Super Famicom | 1 ms | 1 ms |
+
+A prior warm trial had a 1.295 s transition wait while the audio clock barely advanced; the repeated warm trials measured 12–19 ms. This outlier remains part of the observations, not a universal sub-100 ms claim. Renaming updates the persistent title without replacing audio.
+
+The progressive browser fixture measured a 265 ms first prefix, 147–148 ms tempo/transpose edits and a 50 ms cached console return, with measured nonzero output and zero underruns. The long native Mario fixture seeks to 60 seconds, changes all four visible consoles, then combines rapid edits, seek and loop changes. It retains Play intent, limits workers to three and records zero underruns. **Cold history remains expensive:** the first Game Boy replacement took 7.35 s and Mega Drive 27.11 s on that fixture, while the old audio continued. Subsequent Super Famicom/Famicom changes occurred after the song looped and are not comparable 60-second cold-seek benchmarks.
+
+Further reducing this cold-history cost needs faster cycle-accurate DSP or explicitly prepared checkpoints for the requested musical variant. It cannot be solved by treating register values as a complete saved state, skipping elapsed envelopes/filters, or silently accepting a different sound. Broad speculative pre-rendering would move the cost into background CPU and memory, contrary to the lightweight goal; this release does not do it.

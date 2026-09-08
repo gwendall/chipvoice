@@ -778,7 +778,7 @@ export class GbOutputStage {
 
 /** The chip and its output stage behind `ChipCore`. */
 export class GbApuCore implements ChipCore {
-  fork(): GbApuCore { return forkState(this); }
+  fork(): GbApuCore { return forkState(this, () => new GbApuCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new GbApu();
   readonly stage: GbOutputStage;

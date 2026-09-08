@@ -43,7 +43,7 @@ export async function handlePreviewMessage(data: PreviewRequest) {
         scope.postMessage({id: data.id, start: data.start, left, right}, [left.buffer as ArrayBuffer, right.buffer as ArrayBuffer]);
         return;
       }
-      if (performance.now() - budget >= 8) {
+      if (performance.now() - budget >= (lane === 'ahead' ? 8 : 32)) {
         await new Promise(resolve => setTimeout(resolve, 0)); budget = performance.now();
       }
     }

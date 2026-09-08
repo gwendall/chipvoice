@@ -116,7 +116,7 @@ export const SNES_PROFILE: SnesOutputProfile = {
 };
 
 export class SnesOutputStage {
-  private readonly profile: SnesOutputProfile;
+  readonly profile: SnesOutputProfile;
   private heldL = 0;
   private heldR = 0;
   private lpL = 0;
@@ -160,7 +160,7 @@ export class SnesOutputStage {
 }
 
 export class SnesCore implements ChipCore {
-  fork(): SnesCore { return forkState(this); }
+  fork(): SnesCore { return forkState(this, () => new SnesCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new SnesChip();
   readonly stage: SnesOutputStage;

@@ -126,7 +126,10 @@ try {
     });
     await page.getByLabel("Song title", { exact: true }).fill("Latency audit local draft");
     await page.waitForTimeout(600);
-    results.push({ label: "rename only", audioRestarted: await page.evaluate(() => window.starts > window.baselineStarts), probes: await page.evaluate(() => window.probes) });
+    const audioRestarted = await page.evaluate(() => window.starts > window.baselineStarts);
+    const playerTitle = await page.locator('.persistent-player .player-identity a').innerText();
+    results.push({ label: "rename only", audioRestarted, playerTitle, probes: await page.evaluate(() => window.probes) });
+    if (audioRestarted || playerTitle !== "Latency audit local draft") throw Error("Renaming must update the player title without restarting audio");
   } else if (mode === "lab") {
     await trial("lab first play", () => page.getByRole("button", { name: "Play", exact: true }).click());
     await trial("lab Game Boy cold", () => page.getByRole("button", { name: "Game Boy", exact: true }).click());

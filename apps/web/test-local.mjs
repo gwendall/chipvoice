@@ -77,6 +77,7 @@ try {
     "test-playback-races.mjs",
     "test-audio-range.mjs",
     "test-progressive-browser.mjs",
+    "test-progressive-long.mjs",
     "test-lab-publication.mjs",
     "test-recording.mjs",
     "test-creative.mjs",

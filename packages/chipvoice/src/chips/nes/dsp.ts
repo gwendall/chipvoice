@@ -928,7 +928,7 @@ export class NesOutputStage {
  * sample clock and the cycle clock.
  */
 export class NesApuCore implements ChipCore {
-  fork(): NesApuCore { return forkState(this); }
+  fork(): NesApuCore { return forkState(this, () => new NesApuCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new Nes2A03();
   readonly stage: NesOutputStage;

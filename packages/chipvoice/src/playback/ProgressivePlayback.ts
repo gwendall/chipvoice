@@ -21,6 +21,7 @@ class PreviewSource {
   ready!: Promise<PreviewMetadata>;
   meta!: PreviewMetadata;
   disposed = false;
+  preparing = false;
   constructor(input: Input, readonly sampleRate: number) {
     const url = URL.createObjectURL(new Blob([WORKLET_SOURCE], {type: 'text/javascript'}));
     try {this.worker = new Worker(url);} finally {URL.revokeObjectURL(url);}
@@ -35,12 +36,12 @@ class PreviewSource {
   }
   reload(input: Input) {
     this.cancelReads();
-    const revision = ++this.revision;
+    const revision = ++this.revision; this.preparing = true;
     this.chunks.clear();
     this.ready = this.request({type: 'load', ...input}).then(meta => {
       if (revision !== this.revision) throw cancelled();
-      return this.meta = meta;
-    });
+      this.preparing = false; return this.meta = meta;
+    }, error => {if (revision === this.revision) this.preparing = false; throw error;});
   }
   private request(data: object): Promise<any> {
     if (this.disposed) return Promise.reject(cancelled());
@@ -154,9 +155,17 @@ export class ProgressivePlayback {
     const key = `${sampleRate}:${options.key ?? JSON.stringify(input)}`;
     let source = this.sources.get(key);
     if (!source || source.disposed) {
-      const spare = this.sources.size >= 3 ? [...this.sources].find(([, value]) => value !== this.source && value.sampleRate === sampleRate && !value.disposed) : undefined;
+      const spare = this.sources.size >= 3 ? [...this.sources].find(([, value]) => value !== this.source && value.sampleRate === sampleRate && !value.preparing && !value.disposed) : undefined;
       if (spare) {this.sources.delete(spare[0]); source = spare[1]; source.reload(input);}
-      else source = new PreviewSource(input, sampleRate);
+      else {
+        // Never queue repeated compilations behind a worker still loading an
+        // obsolete project. Keep the current worker; replace a busy spare.
+        if (this.sources.size >= 3) {
+          const old = [...this.sources].find(([, value]) => value !== this.source);
+          if (old) {old[1].dispose(); this.sources.delete(old[0]);}
+        }
+        source = new PreviewSource(input, sampleRate);
+      }
       this.sources.set(key, source);
     }
     else {this.sources.delete(key); this.sources.set(key, source);}
@@ -299,6 +308,7 @@ export class ProgressivePlayback {
   setVolume(volume: number) {this.output.gain.setTargetAtTime(volume, this.context.currentTime, .008);}
   private cancelPendingReads() {
     if (this.incoming) this.incoming.cancelReads(this.incoming === this.source ? 'foreground' : undefined);
+    if (this.source && this.source !== this.incoming) this.source.cancelReads('foreground');
   }
   cancelSelection() {
     this.generation++; this.cancelPendingReads(); this.incoming = null;

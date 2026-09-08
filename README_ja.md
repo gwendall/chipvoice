@@ -165,9 +165,11 @@ Sonic の DAC 移植も、すべてをキックにせず、観測したキック
 
 ## 対話操作向けの逐次再生
 
-Web の作曲画面は `new ProjectPlayer({preview: true})` を使用します。この SDK のオプションは、オフライン書き出しと同じプロジェクトコンパイラと音源コアを使い、生成できた PCM ブロックから順に再生します。再生前に曲全体を WAV に変換してデコードする必要はありません。`previewMetadata` は長さ・ネイティブ再生の状態・ミックス結果を公開し、`losses` は両方の再生モードで使用できます。プレビューモードの `prepared` は `null` のままです。ファイルが必要な場合は `prepareProject()` または `renderProject()` を明示的に呼び出します。
+SDK 0.18.0 以降、Web の作曲画面は `new ProjectPlayer({preview: true})` を使用します。この SDK のオプションは、オフライン書き出しと同じプロジェクトコンパイラと音源コアを使い、生成できた PCM ブロックから順に再生します。再生前に曲全体を WAV に変換してデコードする必要はありません。`previewMetadata` は長さ・ネイティブ再生の状態・ミックス結果を公開し、`losses` は両方の再生モードで使用できます。プレビューモードの `prepared` は `null` のままです。ファイルが必要な場合は `prepareProject()` または `renderProject()` を明示的に呼び出します。
 
 ```js
+import {ProjectPlayer} from 'chipvoice';
+
 const player = new ProjectPlayer({preview: true});
 // Call play from a user gesture to unlock browser audio.
 void player.play();

@@ -216,7 +216,7 @@ export class SidOutputStage {
 
 /** The chip and its output stage behind `ChipCore`. */
 export class SidCore implements ChipCore {
-  fork(): SidCore { return forkState(this); }
+  fork(): SidCore { return forkState(this, () => new SidCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
   readonly chip = new Sid();
   readonly stage: SidOutputStage;

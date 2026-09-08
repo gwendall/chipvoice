@@ -6,7 +6,7 @@ const moduleFrom = async (options) => {
  return import('data:text/javascript;base64,'+Buffer.from(out.outputFiles[0].text).toString('base64'));
 };
 const workers=[];
-globalThis.Worker=class {sent=[];constructor(){workers.push(this);}postMessage(data){this.sent.push(data);}terminate(){}reply(request,data){this.onmessage({data:{id:request.id,...data}});}};
+globalThis.Worker=class {sent=[];constructor(){workers.push(this);}postMessage(data){this.sent.push(data);}terminate(){this.dead=true;}reply(request,data){this.onmessage({data:{id:request.id,...data}});}};
 const sourceText=await readFile('../../packages/chipvoice/src/playback/ProgressivePlayback.ts','utf8');
 const {PreviewSource,ProgressivePlayback}=await moduleFrom({stdin:{contents:sourceText+'\nexport {PreviewSource};',resolveDir:new URL('../../packages/chipvoice/src/playback/',import.meta.url).pathname,loader:'ts'}});
 const meta={frames:1000,seconds:10,loopStartSeconds:0,losses:[],mix:null,native:false};
@@ -35,6 +35,12 @@ w.reply(w.sent.at(-1),readyMeta);await settle();r=w.sent.at(-1);
 assert.equal(r.start,48000);w.reply(r,chunk(r.start,r.frames));assert.equal(await nextLoad,true);
 assert.equal(changing.presentation,'B');assert.equal(changing.phase(),.6);assert.equal(changing.loop,false);
 changing.dispose();
+const busy=new ProgressivePlayback(context,()=>{},8000),jobs=[];
+const beforeWorkers=workers.length;
+for(let i=0;i<12;i++) jobs.push(busy.load({}, {key:String(i)}));
+assert.ok(workers.slice(beforeWorkers).filter(w=>!w.dead).length<=3,'busy compilation workers stay bounded');
+assert.ok(workers.slice(beforeWorkers).every(w=>w.sent.filter(m=>m.type==='load').length===1),'obsolete compilations never accumulate in a worker queue');
+busy.dispose();await Promise.all(jobs);
 const fakeBackend=`export const outputTime = ctx => ctx.currentTime; export class BufferPlayback {
  playing=false;loading=false;loop=true;error='';buffers=[];output={disconnect(){},connect(){}};
  constructor() {globalThis.backends.push(this);} setVolume(){}setLoop(v){this.loop=v;}

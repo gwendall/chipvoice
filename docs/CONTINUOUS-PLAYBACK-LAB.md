@@ -134,9 +134,11 @@ recording, MIDI and canvas-touch coverage. Screenshots live under `.artifacts/pl
 
 ## Progressive interactive playback
 
-The web composer uses `new ProjectPlayer({preview: true})`. This opt-in SDK mode compiles the same project and renders the same chip cores as offline export, but schedules bounded PCM blocks as they become available. It does not encode/decode a complete WAV before playing. `previewMetadata` exposes duration, native status and mix results; `losses` works in both playback modes. `prepared` remains `null` in preview mode. Use `prepareProject()` or `renderProject()` explicitly when you need a downloadable file.
+Since SDK 0.18.0, the web composer uses `new ProjectPlayer({preview: true})`. This opt-in SDK mode compiles the same project and renders the same chip cores as offline export, but schedules bounded PCM blocks as they become available. It does not encode/decode a complete WAV before playing. `previewMetadata` exposes duration, native status and mix results; `losses` works in both playback modes. `prepared` remains `null` in preview mode. Use `prepareProject()` or `renderProject()` explicitly when you need a downloadable file.
 
 ```js
+import {ProjectPlayer} from 'chipvoice';
+
 const player = new ProjectPlayer({preview: true});
 // Call play from a user gesture to unlock browser audio.
 void player.play();

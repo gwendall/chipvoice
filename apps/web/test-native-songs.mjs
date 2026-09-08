@@ -31,6 +31,7 @@ try{
    assert.equal(await page.locator('.song-time > span').textContent(),'0:38','transport uses the corrected Overworld duration');
   }
   const mixRms=await audible(page);await page.getByRole('button',{name:'Independent original reference',exact:true}).click();
+  await page.waitForFunction(file=>document.querySelector('.arrangement-versions a')?.getAttribute('href')===file,`/arrangement-data/${id}-reference.flac`);
   assert.equal(await download.getAttribute('href'),`/arrangement-data/${id}-reference.flac`);const referenceRms=await audible(page);
   await page.screenshot({path:new URL(`${id}-desktop.png`,out).pathname,fullPage:true});
   await page.getByRole('button',{name:'Our native rendering',exact:true}).click();
@@ -38,12 +39,14 @@ try{
   results.push({song,console:consoleName,mixRms,referenceRms});
  }
  await page.getByRole('button',{name:'Drums · DAC',exact:false}).click();
- await page.waitForFunction(()=>document.querySelector('.arrangement-versions a')?.getAttribute('href')?.startsWith('blob:'),{},{timeout:240000});await ready(page);
+ await page.waitForFunction(()=>!!document.querySelector('.arrangement-versions button:nth-child(3)'),{},{timeout:240000});await ready(page);
  assert.equal(await page.getByRole('button',{name:'Independent original reference',exact:true}).isDisabled(),true,'solo never masquerades as the native full mix comparison');
  await page.getByRole('button',{name:'Restart',exact:true}).click();const drumRms=await audible(page);
  // Check the presented recording after measuring output: the device clock
  // may still expose the previous presentation during the short crossfade.
- assert.match(await page.getByRole('link',{name:'Download audio',exact:false}).getAttribute('href'),/^blob:/,'solo was rendered by the worker');
+ assert.equal(await page.locator('.arrangement-versions a').count(),0,'preview does not wait for a WAV export');
+ const exporting=page.waitForEvent('download',{timeout:120000});await page.getByRole('button',{name:'Download audio',exact:false}).click();
+ const file=await exporting,bytes=await readFile(await file.path());assert.equal(bytes.toString('ascii',0,4),'RIFF');assert.ok(bytes.length>44100*4,'explicit export contains complete audio');
  results.push({solo:'original DAC drums',drumRms});
  await page.screenshot({path:new URL('sonic-dac-solo.png',out).pathname,fullPage:true});
  await page.getByRole('button',{name:'Full mix',exact:true}).click();

@@ -16,6 +16,9 @@ const browser=await chromium.launch();
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1000},recordVideo:{dir:new URL('video/',out).pathname}}),page=await context.newPage(),errors=[],results=[];
  page.on('pageerror',e=>errors.push(e.message));await page.addInitScript(installOutputProbe);
+ // Delay preparation delivery to verify loading UI even on a fast machine.
+ // The actual MIDI compiler and progressive DSP still run unmodified.
+ await page.addInitScript(()=>{const Native=window.Worker;window.Worker=class extends Native{postMessage(...args){if(args[0]?.planOnly||args[0]?.type==='load')setTimeout(()=>super.postMessage(...args),300);else super.postMessage(...args);}};});
  await page.goto(base+'/lab/arrangements');await page.getByLabel('Import MIDI',{exact:true}).waitFor();
  if(machines[0]!=='Famicom')await page.locator('.machines').getByRole('button',{name:machines[0],exact:true}).click();
  const start=Date.now();await page.getByLabel('Import MIDI',{exact:true}).setInputFiles(file??{name:'Long MIDI.mid',mimeType:'audio/midi',buffer:fixture});
@@ -24,11 +27,11 @@ try{
  assert.match(await preparation.textContent(),machines[0]==='Famicom'?/Playback starts automatically/:/Playback starts automatically|current music keeps playing/);
  for(let index=0;index<machines.length;index++){
   if(index){await page.locator('.machines').getByRole('button',{name:machines[index],exact:true}).click();await preparation.waitFor();}
-  await page.waitForFunction(()=>{const p=document.querySelector('[aria-label="Audio rendering progress"]');const value=Number(p?.getAttribute('aria-valuenow'));return value>0&&value<100;},{},{timeout:240000});
-  const first=Number(await bar.getAttribute('aria-valuenow'));await page.screenshot({path:new URL(`loading-${index}.png`,out).pathname,fullPage:true});
-  await page.waitForFunction(value=>{const p=document.querySelector('[aria-label="Audio rendering progress"]');return !p||Number(p.getAttribute('aria-valuenow'))>value;},first,{timeout:240000});
+  await bar.waitFor();assert.equal(await preparation.getAttribute('aria-busy'),'true');
+  // A bounded preview prefix has no trustworthy whole-song percentage.
+  await page.screenshot({path:new URL(`loading-${index}.png`,out).pathname,fullPage:true});
   await preparation.waitFor({state:'hidden',timeout:240000});
-  await page.getByRole('link',{name:'Download audio',exact:false}).waitFor();await page.getByRole('heading',{name:title,exact:true}).waitFor();
+  await page.getByRole('button',{name:'Download audio',exact:false}).waitFor();await page.getByRole('heading',{name:title,exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Pause',exact:true}).count(),1);
   // The local Musha MIDI starts with 1.875 seconds of authored silence. Use
   // audio time: a short wall-clock poll can miss its first note on a slow host.

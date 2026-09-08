@@ -8,6 +8,7 @@ const browser=await chromium.launch();
 try{
  const context=await browser.newContext({viewport:{width:1280,height:1050},recordVideo:{dir:new URL('video/',out).pathname}}),page=await context.newPage(),errors=[],results=[];
  page.on('pageerror',e=>errors.push(e.message));await page.addInitScript(installOutputProbe);
+ await page.addInitScript(()=>{window.bufferGroups=0;const groups=new WeakSet(),create=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){const source=create.call(this),connect=source.connect.bind(source),start=source.start.bind(source);let group;source.connect=(...args)=>{group=args[0];return connect(...args);};source.start=(...args)=>{if(group&&!groups.has(group)){groups.add(group);window.bufferGroups++;}return start(...args);};return source;};});
  for(const japanese of [false,true]){
   await page.setViewportSize(japanese?{width:390,height:844}:{width:1280,height:1050});
   await page.goto(base+(japanese?'/ja':''));
@@ -16,9 +17,9 @@ try{
   const details=page.locator('.import-roles');await details.locator('summary').click();
   const selects=details.locator('select');await selects.first().waitFor();
   assert.deepEqual(await selects.evaluateAll(nodes=>nodes.map(n=>n.value)),['chord','lead']);
-  const download=page.locator('.arrangement-versions a[download][href^="blob:"]');await download.waitFor({timeout:120000});const old=await download.getAttribute('href');
+  await page.locator('.arrangement-versions button:nth-child(3)').waitFor({timeout:120000});const old=await page.evaluate(()=>window.bufferGroups);
   await selects.first().selectOption('bass');
-  await page.waitForFunction(previous=>document.querySelector('a[download][href^="blob:"]')?.getAttribute('href')!==previous,old,{timeout:120000});
+  await page.waitForFunction(previous=>window.bufferGroups>previous,old,{timeout:120000});
   assert.equal(await selects.first().inputValue(),'bass');
   assert.match(await details.innerText(),japanese?/手動設定/:/Chosen by you/);
   const rms=await outputPhraseRms(page);assert.ok(rms>.001,'editing roles retains audible playback');
