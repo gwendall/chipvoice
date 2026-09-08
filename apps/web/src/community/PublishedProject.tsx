@@ -136,7 +136,9 @@ export default function PublishedProject({ id }: { id: string }) {
               )}
               <p>{publication.project?.description}</p>
               <p>
-                {publication.project?.author} ·{" "}
+                {publication.project?.author
+                  ? `${publication.project.author} · `
+                  : ""}
                 {publication.project?.licence &&
                 publication.project.licence !== "reserved"
                   ? publication.project.licence
@@ -144,7 +146,13 @@ export default function PublishedProject({ id }: { id: string }) {
               </p>
               {publication.renditions?.some((r) => r.status === "ready") ? (
                 <>
-                  <p>{t("Published audio · preserved with this revision")}</p>
+                  <p>
+                    {t(
+                      rendition?.kind === "full"
+                        ? "Full song · preserved with this revision"
+                        : "Published audio · preserved with this revision",
+                    )}
+                  </p>
                   <audio
                     controls
                     preload="none"
@@ -171,11 +179,13 @@ export default function PublishedProject({ id }: { id: string }) {
                       </a>
                     </div>
                   )}
-                  <p>
-                    {t(
-                      "Previews contain up to 30 seconds. Open the project to hear or edit the complete song.",
-                    )}
-                  </p>
+                  {rendition?.kind !== "full" && (
+                    <p>
+                      {t(
+                        "Previews contain up to 30 seconds. Open the project to hear or edit the complete song.",
+                      )}
+                    </p>
+                  )}
                 </>
               ) : (
                 <p>

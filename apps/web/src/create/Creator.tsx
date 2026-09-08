@@ -11,7 +11,7 @@ import {
   type MusicProject,
   type PerformancePart,
 } from "chipvoice";
-import { useT } from "@/i18n/react";
+import { useT, useErrorText } from "@/i18n/react";
 import Link from "@/i18n/react";
 import {
   SiteHeader,
@@ -57,6 +57,7 @@ export default function Creator({
   embedded?: boolean;
   active?: boolean;
 }) {
+  const errorText = useErrorText();
   const t = useT(),
     [project, setProject] = useState<MusicProject>(initial ?? starterProject),
     [ready, setReady] = useState(false),
@@ -96,6 +97,8 @@ export default function Creator({
       progress: number;
       audio: string | null;
       mp3Url: string | null;
+      mp3Status: string;
+      mp3Error: string | null;
       error: string | null;
     } | null>(null);
   useEffect(() => {
@@ -351,7 +354,11 @@ export default function Creator({
     return () => cancelAnimationFrame(frame);
   }, [audio.playing]);
   useEffect(() => {
-    if (!job || !["queued", "rendering", "cancelling"].includes(job.status))
+    if (
+      !job ||
+      (!["queued", "rendering", "cancelling"].includes(job.status) &&
+        job.mp3Status !== "queued")
+    )
       return;
     const abort = new AbortController();
     const timer = setTimeout(() => {
@@ -1287,13 +1294,17 @@ export default function Creator({
             )}
             {job && (
               <p role="status">
-                {t(job.status)} {Math.round(job.progress * 100)}%{" "}
+                {t(job.mp3Status === "queued" ? "Encoding MP3…" : job.status)}{" "}
+                {job.mp3Status !== "queued" &&
+                  `${Math.round(job.progress * 100)}%`}{" "}
                 {job.error && t.source(job.error)}{" "}
+                {job.mp3Error && errorText(job.mp3Error)}{" "}
                 {job.mp3Url && <a href={job.mp3Url}>{t("Download MP3")}</a>}
                 {job.audio && (
                   <a href={job.audio}>{t("Download pinned audio")}</a>
                 )}
-                {["queued", "rendering", "cancelling"].includes(job.status) && (
+                {(["queued", "rendering", "cancelling"].includes(job.status) ||
+                  job.mp3Status === "queued") && (
                   <Button
                     onClick={() =>
                       void fetch(`/api/v1/jobs/${job.id}`, {

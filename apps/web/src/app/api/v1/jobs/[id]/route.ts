@@ -44,6 +44,12 @@ export async function DELETE(
       sql: "update project_jobs set status=case when status='rendering' then 'cancelling' else 'cancelled' end where id=? and status in ('queued','rendering')",
       args: [id],
     });
+    await (
+      await db()
+    ).execute({
+      sql: "update project_jobs set mp3_status='cancelled' where id=? and mp3_status='queued'",
+      args: [id],
+    });
     return { ok: true };
   }, true)(r);
 }

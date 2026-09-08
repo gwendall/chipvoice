@@ -126,13 +126,18 @@ curl --fail-with-body -sS "$API_BASE/api/v1/projects" \\
 PROJECT_ID=$(jq -r '.id' published.json)
 curl --fail-with-body -sS "$API_BASE/api/v1/projects/$PROJECT_ID/render" \\
   -H "Authorization: Bearer $CHIPVOICE_API_KEY" \\
-  -H 'Content-Type: application/json' --data '{"kind":"preview"}' > job.json
+  -H 'Content-Type: application/json' --data '{"kind":"full"}' > job.json
 JOB_ID=$(jq -r '.id' job.json)
 ATTEMPTS=0
 while [ "$ATTEMPTS" -lt 300 ]; do
   STATUS=$(jq -r '.status' job.json)
   case "$STATUS" in
-    ready) break ;;
+    ready)
+      case "$(jq -r '.mp3Status' job.json)" in
+        ready) break ;;
+        queued) ;;
+        *) jq '{mp3Status,mp3Error}' job.json; exit 1 ;;
+      esac ;;
     failed|cancelled) jq '{status,error}' job.json; exit 1 ;;
     queued|rendering|cancelling) ;;
     *) echo 'Unknown job state'; exit 1 ;;
@@ -142,9 +147,11 @@ while [ "$ATTEMPTS" -lt 300 ]; do
     -H "Authorization: Bearer $CHIPVOICE_API_KEY" > job.json
   ATTEMPTS=$((ATTEMPTS + 1))
 done
-[ "$(jq -r '.status' job.json)" = ready ] || { echo 'Polling deadline reached; retain the job ID'; exit 1; }
+[ "$(jq -r '.status' job.json)" = ready ] && [ "$(jq -r '.mp3Status' job.json)" = ready ] || { echo 'Polling deadline reached; retain the job ID'; exit 1; }
 curl --fail-with-body -sS "$API_BASE/api/v1/jobs/$JOB_ID/audio" \\
   -H "Authorization: Bearer $CHIPVOICE_API_KEY" -o published.wav
+curl --fail-with-body -sS "$API_BASE/api/v1/jobs/$JOB_ID/audio?format=mp3" \\
+  -H "Authorization: Bearer $CHIPVOICE_API_KEY" -o published.mp3
 \`\`\`
 
 Never assume the ready state immediately. queued, rendering and cancelling are nonterminal; ready, failed and cancelled are terminal. Owner polling also advances the cooperative queue. Honour Retry-After on 429/503; retain the same idempotency key for uncertain identical publication retries. A 409 means a conflicting key/body or state: inspect it, do not blindly change keys and duplicate a publication. A 401 needs authentication; a 422 needs corrected input.

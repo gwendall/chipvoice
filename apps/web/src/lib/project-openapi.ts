@@ -105,7 +105,7 @@ const jobResponse = {
     wavUrl: { type: ["string", "null"] },
     mp3Url: { type: ["string", "null"] },
     mp3Bytes: { type: "integer" },
-    mp3Status: { enum: ["none", "queued", "ready", "failed"] },
+    mp3Status: { enum: ["none", "queued", "ready", "failed", "cancelled"] },
     mp3Error: { type: ["string", "null"] },
     pageUrl: { type: "string" },
     coverUrl: { type: "string" },

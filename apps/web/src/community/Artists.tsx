@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link, { useT, useErrorText } from "@/i18n/react";
 import { Button } from "@/ui/components";
 import type { Profile } from "@/lib/projects";
+import { scopeLabels } from "./permissions";
 import { PixelAvatar } from "./avatar";
 export async function artistRequest(
   path: string,
@@ -233,7 +234,11 @@ export default function Artists() {
                   t("Artist")}{" "}
                 · {new Date(g.expiresAt).toISOString().slice(0, 10)}
               </span>
-              <code>{g.scopes.join(" · ")}</code>
+              <p className="agent-permissions">
+                {g.scopes
+                  .map((scope) => t(scopeLabels[scope] ?? scope))
+                  .join(" · ")}
+              </p>
               <Button
                 disabled={busy}
                 onClick={() => {

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       {
         error: "not_signed_in",
         message:
-          "send Authorization: Bearer cv_live_... . Get one with POST /api/keys and an email address",
+          "Sign in through /api/auth/signin or use an existing owner API key. Authorized agents use /api/v1/agent.",
       },
       { status: 401 },
     );

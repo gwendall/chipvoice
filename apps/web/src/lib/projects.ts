@@ -246,7 +246,7 @@ export async function getProject(
   const variants = await (
     await db()
   ).execute({
-    sql: `select id,chip from projects where profile_id=? and composition_hash=? and deleted_at is null and (visibility='public' or id=? or (user_id=? and (? is null or profile_id=?))) order by (id=?) desc,created_at desc,id desc`,
+    sql: `select id,chip from projects where profile_id=? and composition_hash=? and deleted_at is null and (visibility='public' or id=? or (user_id=? and (? is null or profile_id=?))) order by created_at desc,id desc`,
     args: [
       row.profile_id,
       row.composition_hash,
@@ -254,7 +254,6 @@ export async function getProject(
       viewerUser(viewer),
       viewerProfile(viewer),
       viewerProfile(viewer),
-      id,
     ],
   });
   const seen = new Set<string>();
@@ -585,6 +584,7 @@ export async function listProfiles(userId: string) {
   ).rows.map(profile);
 }
 export async function createProfile(userId: string) {
+  await ensureProfile(userId);
   await admitProject(`artist:${userId}`, 3);
   const client = await db(),
     id = newId();

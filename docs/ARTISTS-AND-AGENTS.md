@@ -25,7 +25,7 @@ The pairing protocol is inspired by [RFC 8628](https://www.rfc-editor.org/rfc/rf
 | `evaluate` | Evaluate a submitted project without publishing |
 | `profile:write` | Update that artist's handle, display name, biography and portrait |
 
-Agent tokens are denied access to legacy account/publishing endpoints, other owned artists, favourites, reports and further authorization grants. Explicit invalid credentials never fall back to a browser session or anonymous publication. Account quotas are shared across its agents. Revocation and expiry block subsequent requests; already authorized work may finish. No public profile exposes the owner's email or internal account ID. Tokens and pairing secrets are stored only as hashes.
+Agent tokens are denied access to legacy account/publishing endpoints, other owned artists, favourites, reports and further authorization grants. Explicit invalid credentials never fall back to a browser session or anonymous publication. Account quotas are shared across its agents. An owner can have up to 100 active credentials; management lists active credentials before recent inactive history. Revocation and expiry block subsequent requests; already authorized work may finish. No public profile exposes the owner's email or internal account ID. Tokens and pairing secrets are stored only as hashes.
 
 ## Evaluate before publishing
 

@@ -12,7 +12,7 @@ const file = resolve("generated/test-projects.mjs");
 await build({
   stdin: {
     contents:
-      "export * from './src/lib/project-jobs';export * from './src/lib/auth';export * from './src/lib/projects';export * from './src/lib/db';export * from './src/create/starter';",
+      "export * from './src/lib/utility-worker';export * from './src/lib/project-jobs';export * from './src/lib/auth';export * from './src/lib/projects';export * from './src/lib/db';export * from './src/create/starter';",
     resolveDir: process.cwd(),
   },
   outfile: file,
@@ -24,6 +24,28 @@ await build({
 });
 const api = await import(pathToFileURL(file));
 try {
+  // A slow preflight must consume the same lease deadline as actual computation.
+  const realNow = Date.now;
+  try {
+    await assert.rejects(
+      () =>
+        api.utilityWorker({}, 30000, async () => {
+          Date.now = () => realNow() + 60000;
+          return false;
+        }),
+      (error) => error.code === "worker_limit",
+    );
+  } finally {
+    Date.now = realNow;
+  }
+  assert.equal(
+    (
+      await (
+        await api.db()
+      ).execute("select count(*) as n from evaluation_lease")
+    ).rows[0].n,
+    0,
+  );
   const account = async (email) => {
     const key = await api.createKey(email, null);
     return api.identify(

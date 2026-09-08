@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { build } from "../../packages/chipvoice/node_modules/esbuild/lib/main.js";
-import { readFile, mkdir } from "node:fs/promises";
+import { writeFile, mkdir } from "node:fs/promises";
 import { randomUUID, createHash } from "node:crypto";
 import { chromium } from "playwright";
 const base = process.env.API_URL;
@@ -11,7 +11,8 @@ assert.ok(
 assert.ok(process.env.TURSO_DEV_DATABASE_URL?.startsWith("file:"));
 await build({
   stdin: {
-    contents: "export * from './src/lib/auth';export * from './src/lib/db';",
+    contents:
+      "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/create/starter';",
     resolveDir: process.cwd(),
   },
   outfile: "generated/test-artists.mjs",
@@ -57,6 +58,62 @@ const ok = async (...args) => {
   assert.ok(r.status >= 200 && r.status < 300, JSON.stringify(r));
   return r.data;
 };
+// Fresh accounts reserve the default before admitting additional artist profiles.
+const freshKey = await api.createKey(`fresh-${suffix}@example.test`, null);
+const fresh = await api.identify(
+  new Request(base, { headers: { authorization: `Bearer ${freshKey.key}` } }),
+);
+await ok("POST", "/api/v1/profiles", undefined, freshKey.key);
+assert.equal(
+  (
+    await client.execute({
+      sql: "select count(*) as n from profiles where user_id=?",
+      args: [fresh.userId],
+    })
+  ).rows[0].n,
+  2,
+);
+await client.batch(
+  Array.from({ length: 18 }, (_, i) => ({
+    sql: "insert into profiles(id,user_id,created_at) values(?,?,?)",
+    args: [`cap-${suffix}-${i}`, fresh.userId, Date.now()],
+  })),
+  "write",
+);
+assert.equal(
+  (await http("POST", "/api/v1/profiles", undefined, freshKey.key)).status,
+  429,
+);
+if (process.env.CHIPVOICE_ADMIN_KEY) {
+  const legacy = await ok(
+    "POST",
+    "/api/songs",
+    {
+      title: "Operator fixture",
+      bpm: 120,
+      patterns: [
+        {
+          lead: "C4 . . .",
+          chord: ". . . .",
+          bass: ". . . .",
+          perc: ". . . .",
+          chordShape: [[0, 4, 7]],
+        },
+      ],
+      order: [0],
+    },
+    null,
+  );
+  assert.equal(
+    (
+      await http("DELETE", `/api/songs/${legacy.id}`, undefined, null, {
+        authorization: `Bearer ${process.env.CHIPVOICE_ADMIN_KEY}`,
+      })
+    ).status,
+    200,
+    "operator moderation remains available",
+  );
+}
 const profiles = await ok("GET", "/api/v1/profiles");
 assert.equal(profiles.items.length, 1);
 const artist = await ok("POST", "/api/v1/profiles");
@@ -170,6 +227,41 @@ try {
   const identity = await ok("GET", "/api/v1/agent", undefined, agent);
   assert.equal(identity.profile.id, artist.id);
   assert.equal(identity.profile.avatar.palette, 2);
+  await client.batch(
+    Array.from({ length: 101 }, (_, i) => ({
+      sql: "insert into agent_grants(id,user_id,profile_id,hash,label,scopes,created_at,expires_at,revoked_at) values(?,?,?,?,?,?,?,?,?)",
+      args: [
+        `history-${suffix}-${i}`,
+        owner.userId,
+        artist.id,
+        `history-${suffix}-${i}`,
+        "Old",
+        "[]",
+        Date.now() + i,
+        Date.now() + 86400000,
+        Date.now(),
+      ],
+    })),
+    "write",
+  );
+  assert.ok(
+    (await ok("GET", "/api/v1/agents")).items.some((g) => g.id === identity.id),
+    "active credentials remain discoverable behind history",
+  );
+  assert.equal(
+    (await http("GET", "/api/v1/projects?favourites=1", undefined, agent))
+      .status,
+    403,
+  );
+  assert.equal(
+    (
+      await http("POST", "/api/songs", {}, null, {
+        authorization: `bearer ${agent}`,
+      })
+    ).status,
+    403,
+  );
+
   assert.ok(!JSON.stringify(identity).includes(owner.email));
   for (const [method, path, body] of [
     ["GET", "/api/me"],
@@ -188,11 +280,9 @@ try {
       403,
       `${method} ${path}`,
     );
-  const project = JSON.parse(
-    await readFile("generated/agent-example.json", "utf8"),
-  );
+  const project = api.starterProject();
   project.title = "Authorization fixture";
-  project.source.performance.endTick = 480;
+  project.source.performance.endTick = 1920;
   project.source.performance.tempos = project.source.performance.tempos.slice(
     0,
     1,
@@ -200,8 +290,8 @@ try {
   delete project.source.performance.loopStartTick;
   for (const p of project.source.performance.parts) {
     p.notes = p.notes
-      .filter((n) => n.tick < 480)
-      .map((n) => ({ ...n, endTick: Math.min(n.endTick, 480) }));
+      .filter((n) => n.tick < 1920)
+      .map((n) => ({ ...n, endTick: Math.min(n.endTick, 1920) }));
   }
   const report = await ok("POST", "/api/v1/evaluate", project, agent),
     again = await ok("POST", "/api/v1/evaluate", project, agent);
@@ -284,6 +374,18 @@ try {
   const song = await publish(artist.id, "2a03"),
     variant = await publish(artist.id, "md"),
     hidden = await publish(artist.id, "snes", "unlisted");
+  const newer = await publish(artist.id, "2a03");
+  const versions = await ok(
+    "GET",
+    `/api/v1/projects/${song.id}`,
+    undefined,
+    null,
+  );
+  assert.equal(
+    versions.variants.find((v) => v.chip === "2a03").id,
+    newer.id,
+    "old publication links latest console revision",
+  );
   const publicView = await ok(
     "GET",
     `/api/v1/projects/${song.id}`,
@@ -294,7 +396,7 @@ try {
   assert.ok(!JSON.stringify(publicView).includes(hidden.id));
   assert.equal(
     (await ok("GET", "/api/v1/projects?mine=1", undefined, agent)).items.length,
-    3,
+    4,
   );
   assert.equal(
     (
@@ -351,12 +453,44 @@ try {
     ],
     "write",
   );
-  await ok(
-    "POST",
-    `/api/v1/projects/${song.id}/render`,
-    { kind: "full" },
-    agent,
+  await client.execute({
+    sql: "insert into evaluation_lease(singleton,id,expires_at) values(1,?,?)",
+    args: ["test-mp3-lease", Date.now() + 60000],
+  });
+  assert.equal(
+    (await http("POST", "/api/v1/evaluate", project, agent)).status,
+    429,
+    "busy evaluation returns retryable admission",
   );
+  await page.goto(`${base}/p/${song.id}`);
+  await page
+    .getByRole("button", { name: /Open \/ remix this project/ })
+    .click();
+  await page.getByRole("button", { name: "Share", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Prepare full download", exact: true })
+    .click();
+  await page.getByRole("status").filter({ hasText: "Encoding MP3…" }).waitFor();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Encoding MP3…" })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Encoding MP3…" })
+    .waitFor({ state: "hidden" });
+  assert.equal(
+    (await ok("GET", `/api/v1/jobs/${job.id}`, undefined, agent)).mp3Status,
+    "cancelled",
+  );
+  await client.execute(
+    "delete from evaluation_lease where id='test-mp3-lease'",
+  );
+  await page
+    .getByRole("button", { name: "Prepare full download", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Download MP3", exact: true }).waitFor();
   await waitJob();
   assert.deepEqual(
     (await http("GET", `/api/v1/jobs/${job.id}/audio`, undefined, null)).data,
@@ -379,6 +513,31 @@ try {
   await page.waitForFunction(
     () => document.querySelector("audio")?.duration > 0,
   );
+  const decoded = await page.evaluate(async () => {
+    const bytes = await (
+      await fetch(document.querySelector("audio").src)
+    ).arrayBuffer();
+    const context = new OfflineAudioContext(2, 1, 44100),
+      audio = await context.decodeAudioData(bytes);
+    let energy = 0,
+      peak = 0,
+      count = 0;
+    for (let c = 0; c < audio.numberOfChannels; c++)
+      for (const sample of audio.getChannelData(c)) {
+        energy += sample * sample;
+        peak = Math.max(peak, Math.abs(sample));
+        count++;
+      }
+    return {
+      channels: audio.numberOfChannels,
+      seconds: audio.duration,
+      rms: Math.sqrt(energy / count),
+      peak,
+    };
+  });
+  assert.equal(decoded.channels, 2);
+  assert.ok(decoded.rms > 0.001);
+  assert.ok(Math.abs(decoded.seconds - report.seconds) < 0.15);
   assert.ok(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -393,6 +552,12 @@ try {
   await page
     .getByRole("heading", { name: "アーティストとエージェント" })
     .waitFor();
+  await page.locator(".song-card").first().waitFor();
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  );
   await page.screenshot({
     path: "../../.artifacts/artist-lifecycle/library-ja-mobile.png",
     fullPage: true,
@@ -400,6 +565,7 @@ try {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${base}/library`);
   await page.getByRole("heading", { name: "Artists & agents" }).waitFor();
+  await page.locator(".song-card").first().waitFor();
   await page.screenshot({
     path: "../../.artifacts/artist-lifecycle/library-desktop.png",
     fullPage: true,
@@ -501,6 +667,39 @@ try {
       )
     ).status,
     403,
+  );
+  const pinnedMp3 = await http(
+    "GET",
+    `/api/v1/jobs/${job.id}/audio?format=mp3`,
+    undefined,
+    null,
+  );
+  await writeFile(
+    "../../.artifacts/artist-lifecycle/full.wav",
+    Buffer.from(wav.data),
+  );
+  await writeFile(
+    "../../.artifacts/artist-lifecycle/full.mp3",
+    Buffer.from(pinnedMp3.data),
+  );
+  await writeFile(
+    "../../.artifacts/artist-lifecycle/report.json",
+    JSON.stringify(
+      {
+        version: 1,
+        engine: report.engine,
+        engineVersion: report.engineVersion,
+        evaluation: report,
+        decodedMp3: decoded,
+        wavBytes: wav.data.byteLength,
+        mp3Bytes: pinnedMp3.data.byteLength,
+        wavPreserved: true,
+        authorizationAndIsolation: "passed",
+        mobileAndJapanese: "passed",
+      },
+      null,
+      2,
+    ),
   );
   assert.deepEqual(errors, []);
   console.log(

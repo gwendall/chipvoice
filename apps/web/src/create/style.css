@@ -596,3 +596,8 @@
 .agent-list code {grid-column:1/-1;white-space:normal;font-size:1rem;}
 .connect-panel .project-actions {margin:1.25rem 0;}
 @media(max-width:600px){.agent-list li{grid-template-columns:1fr;}.connect-panel .project-actions{align-items:stretch;}.connect-panel .project-actions label{flex:1 1 100%;}.connect-panel{padding-inline:1rem;}.profile-form{max-width:100%;}}
+
+.published-listen .song-author{display:flex;align-items:center;gap:.75rem;margin-top:1rem;}
+.publication-bar{padding-inline:1rem;}
+.agent-permissions{grid-column:1/-1;margin:.25rem 0;font-size:1rem;line-height:1.5;}
+.agent-list li>.small-button{justify-self:start;}

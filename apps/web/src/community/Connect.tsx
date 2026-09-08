@@ -2,17 +2,11 @@
 import { useEffect, useState } from "react";
 import { useT, useErrorText } from "@/i18n/react";
 import { SiteHeader, SiteFooter, Button } from "@/ui/components";
+import { scopeLabels } from "./permissions";
 import { Account } from "@/studio/Account";
 import type { Profile } from "@/lib/projects";
 import { ArtistEditor, artistRequest } from "./Artists";
 import "@/create/style.css";
-const scopeLabels: Record<string, string> = {
-  "projects:read": "Read music for this artist",
-  "projects:write": "Publish and withdraw this artist’s songs",
-  render: "Export audio",
-  evaluate: "Evaluate arrangements",
-  "profile:write": "Edit this artist’s profile and portrait",
-};
 export default function Connect() {
   const t = useT(),
     errorText = useErrorText(),

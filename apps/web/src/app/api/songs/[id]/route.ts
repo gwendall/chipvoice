@@ -73,12 +73,13 @@ export async function DELETE(
       { error: "agent_endpoint_required" },
       { status: 403 },
     );
-  if (request.headers.has("authorization") && !caller.userId)
-    return NextResponse.json({ error: "invalid_token" }, { status: 401 });
   const admin =
     process.env.CHIPVOICE_ADMIN_KEY &&
     request.headers.get("authorization") ===
       `Bearer ${process.env.CHIPVOICE_ADMIN_KEY}`;
+
+  if (request.headers.has("authorization") && !caller.userId && !admin)
+    return NextResponse.json({ error: "invalid_token" }, { status: 401 });
 
   if (!admin && (!caller.userId || caller.userId !== found.song.userId)) {
     return NextResponse.json(

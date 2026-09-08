@@ -466,7 +466,7 @@ export function openApiSpec() {
           security: ACCOUNT_AUTH,
           summary: "The latest 50 songs this account has published",
           description:
-            "Keys and browser sessions share a stable account. Reissuing a key to the same email retains access to prior publications. Anonymous publications cannot be claimed later.",
+            "Existing keys and browser sessions share a stable account. Signing in with the same email retains access to prior publications. Agent credentials use /api/v1/agent; anonymous publications cannot be claimed later.",
           tags: ["identity"],
           responses: {
             "200": { description: "Your songs, newest first" },

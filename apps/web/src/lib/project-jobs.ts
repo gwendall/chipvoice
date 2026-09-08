@@ -38,10 +38,14 @@ export async function createProjectJob(
     });
   if (existing.rows[0]) {
     const row = existing.rows[0];
-    if (row.status === "ready" && !row.mp3_bytes && row.mp3_status === "none") {
+    if (
+      row.status === "ready" &&
+      !row.mp3_bytes &&
+      ["none", "cancelled", "failed"].includes(String(row.mp3_status))
+    ) {
       await admitProject(`render:${viewerUser(userId)}`, 3);
       await client.execute({
-        sql: "update project_jobs set mp3_status='queued' where id=? and mp3_status='none'",
+        sql: "update project_jobs set mp3_status='queued',mp3_error=null where id=? and mp3_status in ('none','cancelled','failed')",
         args: [row.id],
       });
       row.mp3_status = "queued";
@@ -281,11 +285,34 @@ export async function runProjectMp3(id: string) {
   ).rows[0];
   if (!row) return;
   try {
-    const result=await utilityWorker(async()=>{
-      const chunks=await client.execute({sql:"select bytes from project_audio where job_id=? order by chunk",args:[id]});
-      const wav=Buffer.concat(chunks.rows.map(r=>Buffer.from(r.bytes as ArrayBuffer)));
-      return {wav,tags:{title:String(row.title),artist:String(row.display_name||row.handle||"chipvoice"),album:"chipvoice",url:`${SITE}/p/${row.project_id}`}};
-    },240000);
+    const result = await utilityWorker(
+      async () => {
+        const chunks = await client.execute({
+          sql: "select bytes from project_audio where job_id=? order by chunk",
+          args: [id],
+        });
+        const wav = Buffer.concat(
+          chunks.rows.map((r) => Buffer.from(r.bytes as ArrayBuffer)),
+        );
+        return {
+          wav,
+          tags: {
+            title: String(row.title),
+            artist: String(row.display_name || row.handle || "chipvoice"),
+            album: "chipvoice",
+            url: `${SITE}/p/${row.project_id}`,
+          },
+        };
+      },
+      240000,
+      async () => {
+        const active = await client.execute({
+          sql: "select 1 from project_jobs j join projects p on p.id=j.project_id where j.id=? and j.mp3_status='queued' and p.deleted_at is null",
+          args: [id],
+        });
+        return active.rows.length === 0;
+      },
+    );
     const mp3 = result.mp3 as Uint8Array,
       tx = await client.transaction("write");
     try {

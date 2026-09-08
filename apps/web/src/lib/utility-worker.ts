@@ -6,12 +6,13 @@ import { ProjectHttpError } from "./projects";
 export async function utilityWorker(
   data: unknown | (() => Promise<unknown>),
   timeout = 30000,
+  cancelled?: () => Promise<boolean>,
 ): Promise<Record<string, unknown>> {
   const client = await db(),
     id = newId(),
     now = Date.now();
   const r = await client.execute({
-    sql: `insert into evaluation_lease(id,expires_at) select ?,? where not exists(select 1 from project_jobs where status in ('rendering','cancelling') and started_at>?) on conflict(singleton) do update set id=excluded.id,expires_at=excluded.expires_at where evaluation_lease.expires_at<? returning id`,
+    sql: `insert into evaluation_lease(singleton,id,expires_at) select 1,?,? where not exists(select 1 from project_jobs where status in ('rendering','cancelling') and started_at>?) on conflict(singleton) do update set id=excluded.id,expires_at=excluded.expires_at where evaluation_lease.expires_at<? returning id`,
     args: [id, now + timeout + 15000, now - 270000, now],
   });
   if (!r.rows.length)
@@ -22,8 +23,15 @@ export async function utilityWorker(
     );
   try {
     const input = typeof data === "function" ? await data() : data;
-    const remaining=now+timeout-Date.now();
-    if(remaining<=0) throw new ProjectHttpError(422,"worker_limit","Processing exceeded its time budget");
+    if (await cancelled?.())
+      throw new ProjectHttpError(409, "cancelled", "Processing cancelled");
+    const remaining = now + timeout - Date.now();
+    if (remaining <= 0)
+      throw new ProjectHttpError(
+        422,
+        "worker_limit",
+        "Processing exceeded its time budget",
+      );
     return await new Promise<Record<string, unknown>>((resolve, reject) => {
       const worker = new Worker(
         join(process.cwd(), "generated/project-render.cjs"),
@@ -34,6 +42,7 @@ export async function utilityWorker(
         if (ended) return;
         ended = true;
         clearTimeout(timer);
+        clearInterval(cancellation);
         void worker
           .terminate()
           .then(() => (error ? reject(error) : resolve(value!)), reject);
@@ -49,6 +58,22 @@ export async function utilityWorker(
           ),
         remaining,
       );
+      let polling = false;
+      const cancellation = setInterval(() => {
+        if (!cancelled || ended || polling) return;
+        polling = true;
+        void cancelled()
+          .then((stopped) => {
+            if (stopped)
+              finish(
+                new ProjectHttpError(409, "cancelled", "Processing cancelled"),
+              );
+          })
+          .catch((error) => finish(error))
+          .finally(() => {
+            polling = false;
+          });
+      }, 500);
       worker.on("message", (m) => {
         if (m.progress !== undefined) return;
         finish(

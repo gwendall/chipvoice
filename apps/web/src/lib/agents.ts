@@ -145,6 +145,16 @@ export async function pollAgentAccess(token: string) {
       await tx.commit();
       return { status: "pending", interval: 5 };
     }
+    const active = await tx.execute({
+      sql: "select count(*) as n from agent_grants where user_id=? and revoked_at is null and expires_at>?",
+      args: [row.user_id, now],
+    });
+    if (Number(active.rows[0].n) >= 100)
+      error(
+        429,
+        "agent_limit",
+        "Revoke an existing access before creating more than 100 active agent credentials",
+      );
     const key = "cv_agent_" + secret(),
       id = newId(),
       expiresAt = now + Number(row.grant_days) * 86400000;
@@ -187,8 +197,8 @@ export async function agentGrants(userId: string) {
     await (
       await db()
     ).execute({
-      sql: "select id,profile_id,label,scopes,created_at,expires_at,revoked_at,last_used from agent_grants where user_id=? order by created_at desc limit 100",
-      args: [userId],
+      sql: "select id,profile_id,label,scopes,created_at,expires_at,revoked_at,last_used from agent_grants where user_id=? order by (revoked_at is null and expires_at>?) desc,created_at desc,id desc limit 100",
+      args: [userId, Date.now()],
     })
   ).rows.map((r) => ({
     id: r.id,

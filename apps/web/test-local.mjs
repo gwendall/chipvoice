@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -16,6 +17,7 @@ const env = {
   TURSO_DEV_DATABASE_URL: `file:${join(directory, "songs.db")}`,
   TURSO_DEV_AUTH_TOKEN: "",
   DOMANI_API_KEY: "",
+  CHIPVOICE_ADMIN_KEY: `test-admin-${randomUUID()}`,
   API_URL: base,
   URL: base,
   SITE: base,
