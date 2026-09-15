@@ -175,7 +175,29 @@ try {
     .getByRole("button", { name: "Review access", exact: true })
     .click();
   await page.getByRole("heading", { name: "Pocket conductor" }).waitFor();
+  // The decision is visible without scrolling, on the phone viewport, with
+  // the profile editor folded: the person who reviewed the request sees the
+  // button that answers it.
+  const authorize = page.getByRole("button", {
+    name: "Authorize this agent",
+    exact: true,
+  });
+  await authorize.waitFor();
+  const [box, viewport] = [
+    await authorize.boundingBox(),
+    page.viewportSize(),
+  ];
+  assert.ok(
+    box && viewport && box.y + box.height <= viewport.height,
+    `authorize button above the fold (y=${box?.y}, h=${viewport?.height})`,
+  );
+  assert.equal(
+    await page.getByLabel("Username", { exact: true }).isVisible(),
+    false,
+    "profile editor folded by default",
+  );
   await page.getByLabel("Artist", { exact: true }).selectOption(artist.id);
+  await page.getByText("Edit your profile", { exact: true }).click();
   await page.getByLabel("Username", { exact: true }).fill(`bot_${suffix}`);
   await page
     .getByLabel("Display name", { exact: true })

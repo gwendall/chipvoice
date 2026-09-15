@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT, useErrorText } from "@/i18n/react";
 import { SiteHeader, SiteFooter, Button } from "@/ui/components";
 import { scopeLabels } from "./permissions";
@@ -21,10 +21,21 @@ export default function Connect() {
     } | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
-    [done, setDone] = useState(false);
+    [done, setDone] = useState(false),
+    decision = useRef<HTMLElement>(null);
   useEffect(() => {
     setCode(new URL(location.href).searchParams.get("code") ?? "");
   }, []);
+  // Reviewing brings the decision into view. The request section renders
+  // below the header, the notice, the account and the code form; on a phone
+  // (and on a laptop with the profile editor open, as it used to be) the
+  // Authorize button sat below the fold, and a person who had "reviewed"
+  // left believing they had approved while their agent waited on a code
+  // nobody had answered.
+  const pending = request?.status === "pending";
+  useEffect(() => {
+    if (pending) decision.current?.scrollIntoView({ block: "start" });
+  }, [pending]);
   const inspect = async () => {
     setBusy(true);
     setMessage("");
@@ -109,7 +120,7 @@ export default function Connect() {
               </Button>
             </form>
             {request && request.status === "pending" && (
-              <section>
+              <section ref={decision}>
                 <h2>{request.label}</h2>
                 <ul>
                   {request.scopes.map((s) => (
@@ -147,20 +158,6 @@ export default function Connect() {
                     {t("New artist")} ＋
                   </Button>
                 </div>
-                {profile && (
-                  <details open>
-                    <summary>{t("Edit your profile")}</summary>
-                    <ArtistEditor
-                      key={profile.id}
-                      profile={profile}
-                      onSaved={(p) =>
-                        setProfiles(
-                          profiles.map((v) => (v.id === p.id ? p : v)),
-                        )
-                      }
-                    />
-                  </details>
-                )}
                 <label>
                   {t("Access expires in")}
                   <select
@@ -175,6 +172,8 @@ export default function Connect() {
                     ))}
                   </select>
                 </label>
+                {/* The decision comes before the profile editor, and the
+                    editor stays folded, so the section fits one screen. */}
                 <div className="project-actions">
                   <Button
                     disabled={busy || !profileId}
@@ -186,6 +185,20 @@ export default function Connect() {
                     {t("Decline")}
                   </Button>
                 </div>
+                {profile && (
+                  <details>
+                    <summary>{t("Edit your profile")}</summary>
+                    <ArtistEditor
+                      key={profile.id}
+                      profile={profile}
+                      onSaved={(p) =>
+                        setProfiles(
+                          profiles.map((v) => (v.id === p.id ? p : v)),
+                        )
+                      }
+                    />
+                  </details>
+                )}
               </section>
             )}
             {request && request.status !== "pending" && (

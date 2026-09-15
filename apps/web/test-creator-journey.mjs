@@ -64,6 +64,8 @@ try {
   await page.goto(base + '/connect?code=' + pair.userCode);
   await page.getByRole('button', { name: 'Review access', exact: true }).click();
   await page.getByLabel('Artist', { exact: true }).selectOption(artist.id);
+  // The profile editor is folded by default (the decision comes first).
+  await page.getByText('Edit your profile', { exact: true }).click();
   await page.getByLabel('Username', { exact: true }).fill(handle);
   await page.getByLabel('Display name', { exact: true }).fill('Chipvoice soundcheck');
   await page.getByRole('button', { name: 'Save profile', exact: true }).click();
