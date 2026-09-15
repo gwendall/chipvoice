@@ -656,3 +656,22 @@ the generic conformance script every issuer of the grant shares, vendored under
 `apps/web/vendor/`, written from the RFCs and knowing nothing of chipvoice, must
 get the same nine answers - the owner's approval and refusal are a browser
 session, never an API call.
+
+## 31. The approval page answers before it edits (2026-09-16)
+
+On `/connect`, after "Review access", the decision (expiry, Authorize, Decline)
+comes right after the agent's permissions, the section scrolls itself into
+view, and the profile editor is folded by default.
+
+**Why.** The first person to connect an agent for real reviewed the request,
+read the permissions, and told the agent "done" - with the Authorize button
+below the fold, pushed there by a profile editor that opened by itself for a
+fresh artist. The agent waited on a code nobody had answered, then blamed its
+own side. A page that asks for a decision must show the button that gives it
+where the person is looking.
+
+**What changes.** `apps/web/src/community/Connect.tsx` reorders the section and
+scrolls to it when the request loads. `apps/web/test-artists.mjs` pins the
+button inside the phone viewport after review and the editor folded;
+`test-creator-journey.mjs` opens the editor before filling it. The profile is
+still editable there, one click away, and the agent kinds do not need it.
