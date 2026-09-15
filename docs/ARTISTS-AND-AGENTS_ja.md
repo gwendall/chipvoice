@@ -60,7 +60,7 @@
 <a id="verification"></a>
 ## 検証
 
-`apps/web/test-artists.mjs` は使い捨てデータベースと本番ビルドの Next サーバーを使います。実ブラウザでの承認、アバター変更、権限制限・期限切れ・取り消し、旧 API の拒否、別アーティストの非公開曲、決定的な HTTP 評価、秘密の別版を漏らさないグループ化、MP3 のデコード、WAV を保持した変換、英語・日本語のモバイル画面を検証します。`apps/web/test-agent-oauth.mjs` は標準の面を固定します。発見文書、通常・終了のすべてのトークン応答、一度限りの配布、スコープ強制、`WWW-Authenticate` チャレンジ、非推奨エイリアスが同じ許可を共有することです。既存のアカウント、公開、音声、エージェントガイドのテストも必須です。
+`apps/web/test-artists.mjs` は使い捨てデータベースと本番ビルドの Next サーバーを使います。実ブラウザでの承認、アバター変更、権限制限・期限切れ・取り消し、旧 API の拒否、別アーティストの非公開曲、決定的な HTTP 評価、秘密の別版を漏らさないグループ化、MP3 のデコード、WAV を保持した変換、英語・日本語のモバイル画面を検証します。`apps/web/test-agent-oauth.mjs` は標準の面を固定します。発見文書、通常・終了のすべてのトークン応答、一度限りの配布、スコープ強制、`WWW-Authenticate` チャレンジ、非推奨エイリアスが同じ許可を共有することです。`apps/web/test-auth-conformance.mjs` は、この許可方式を実装するすべてのサービスが共有する汎用の適合性スクリプト（kami モノレポから `apps/web/vendor/auth-conformance.mjs` に取り込んだもの）を同じ使い捨てサーバーに対して実行します。RFC だけから書かれた 9 項目の検査で、所有者の承認と拒否は実ブラウザのセッション（`test-auth-conformance-decide.mjs`）で行い、`projects:read` のトークンによる作曲は `insufficient_scope` で拒否されることを確かめます。既存のアカウント、公開、音声、エージェントガイドのテストも必須です。
 
 `pnpm --filter chipvoice-web build` の後に `pnpm --filter chipvoice-web test` を実行します。スクリーンショットは `.artifacts/artist-lifecycle/` に保存します。本番データの作成や実メールの送信でテストしないでください。
 

@@ -60,6 +60,7 @@ try {
     "test-projects.mjs",
     "test-artists.mjs",
     "test-agent-oauth.mjs",
+    "test-auth-conformance.mjs",
     "test-agent-guide.mjs",
     "test-generation-stream.mjs",
     "test-generation.mjs",
@@ -104,15 +105,22 @@ try {
   const from = process.env.CHIPVOICE_TEST_FROM;
   if (from && !scripts.includes(from))
     throw new Error(`Unknown qualification start: ${from}`);
+  // One script alone, for iterating on it; the full run stays the gate.
+  const only = process.env.CHIPVOICE_TEST_ONLY;
+  if (only && !scripts.includes(only))
+    throw new Error(`Unknown qualification script: ${only}`);
   // Partial local qualification still initializes the disposable API schema.
-  if (from) {
+  if (from || only) {
     const response = await fetch(`${base}/api/songs/00000000`);
     if (response.status !== 404)
       throw new Error(
         `Test database initialization failed: ${response.status}`,
       );
   }
-  for (const script of scripts.slice(from ? scripts.indexOf(from) : 0)) {
+  const selected = only
+    ? [only]
+    : scripts.slice(from ? scripts.indexOf(from) : 0);
+  for (const script of selected) {
     const child = spawn(process.execPath, [script], { env, stdio: "inherit" });
     const code = await new Promise((resolve) => child.on("exit", resolve));
     if (code !== 0) throw new Error(`${script} exited ${code}`);
