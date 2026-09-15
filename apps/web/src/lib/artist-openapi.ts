@@ -95,11 +95,121 @@ const grant = object({
   revokedAt: { type: ["integer", "null"] },
   lastUsed: { type: ["integer", "null"] },
 });
+const oauthError = object({
+  error: {
+    enum: [
+      "invalid_request",
+      "invalid_grant",
+      "unsupported_grant_type",
+      "invalid_scope",
+      "authorization_pending",
+      "slow_down",
+      "access_denied",
+      "expired_token",
+      "temporarily_unavailable",
+    ],
+  },
+  error_description: text,
+});
+const oauthErrors = {
+  "400": {
+    description:
+      "RFC 6749 section 5.2 body. authorization_pending and slow_down are routine while polling; access_denied, expired_token and invalid_grant are terminal.",
+    content: json(oauthError),
+  },
+  "429": { description: "Rate limited. Honour Retry-After." },
+  "503": { description: "Authorization service unavailable" },
+};
 export const artistPaths = {
+  "/api/v1/oauth/device_authorization": {
+    post: {
+      operationId: "requestDeviceAuthorization",
+      summary: "OAuth 2.0 device authorization (RFC 8628 section 3.1)",
+      tags: ["artists"],
+      description:
+        "Standard device grant, discoverable at /.well-known/oauth-authorization-server. Form encoding is the standard; JSON is accepted. client_id is the agent's name as the owner will review it. scope is space-separated; omitted means every agent scope. Keep device_code private and show the owner only verification_uri_complete and user_code. Requests expire after ten minutes.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/x-www-form-urlencoded": {
+            schema: object(
+              {
+                client_id: { type: "string", minLength: 1, maxLength: 60 },
+                scope: {
+                  type: "string",
+                  description: "Space-separated agent scopes",
+                },
+              },
+              ["client_id"],
+            ),
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Device authorization response",
+          content: json(
+            object({
+              device_code: text,
+              user_code: text,
+              verification_uri: text,
+              verification_uri_complete: text,
+              expires_in: { const: 600 },
+              interval: { const: 5 },
+            }),
+          ),
+        },
+        ...oauthErrors,
+      },
+    },
+  },
+  "/api/v1/oauth/token": {
+    post: {
+      operationId: "exchangeDeviceCode",
+      summary: "OAuth 2.0 token endpoint for the device grant (RFC 8628 section 3.4)",
+      tags: ["artists"],
+      description:
+        "Poll with grant_type=urn:ietf:params:oauth:grant-type:device_code and device_code at most every five seconds; add five seconds on slow_down. The access token is delivered exactly once, expires after the period the owner chose, and is bound to one artist. Store it outside source control; a lost response requires a new authorization.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/x-www-form-urlencoded": {
+            schema: object(
+              {
+                grant_type: {
+                  const: "urn:ietf:params:oauth:grant-type:device_code",
+                },
+                device_code: text,
+                client_id: text,
+              },
+              ["grant_type", "device_code"],
+            ),
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Access token response (RFC 6749 section 5.1)",
+          content: json(
+            object({
+              access_token: text,
+              token_type: { const: "Bearer" },
+              expires_in: { type: "integer" },
+              scope: {
+                type: "string",
+                description: "Space-separated granted scopes",
+              },
+            }),
+          ),
+        },
+        ...oauthErrors,
+      },
+    },
+  },
   "/api/v1/agent-requests": {
     post: op(
       "requestAgentAccess",
-      "Request owner authorization without an agent mailbox",
+      "Deprecated alias of /api/v1/oauth/device_authorization",
       object({
         requestToken: text,
         userCode: text,
@@ -108,8 +218,9 @@ export const artistPaths = {
         interval: { const: 5 },
       }),
       {
+        deprecated: true,
         description:
-          "Custom pairing protocol inspired by RFC 8628; not an OAuth token endpoint. Keep requestToken private. Show the owner only verificationUrl and userCode. Requests expire after ten minutes.",
+          "The pairing API that preceded the standard device grant; same lifecycle, custom JSON field names. New agents use the OAuth endpoints. Keep requestToken private. Show the owner only verificationUrl and userCode. Requests expire after ten minutes.",
         requestBody: body(
           object({
             label: { type: "string", minLength: 1, maxLength: 60 },
@@ -122,7 +233,7 @@ export const artistPaths = {
   "/api/v1/agent-requests/token": {
     post: op(
       "pollAgentAccess",
-      "Poll for a credential, delivered exactly once",
+      "Deprecated alias of /api/v1/oauth/token",
       {
         oneOf: [
           object({ status: { const: "pending" }, interval: { const: 5 } }),
@@ -138,8 +249,9 @@ export const artistPaths = {
         ],
       },
       {
+        deprecated: true,
         description:
-          "Poll at most every five seconds. Stop on denied, expired or consumed. On 429 honour Retry-After. Store the token outside source control; losing the one-time response requires a new authorization.",
+          "Poll at most every five seconds. Stop on invalid_token, denied, expired or consumed. On 429 honour Retry-After. Store the token outside source control; losing the one-time response requires a new authorization.",
         requestBody: body(object({ requestToken: text })),
       },
     ),

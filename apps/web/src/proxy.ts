@@ -17,6 +17,9 @@ export function proxy(request: NextRequest) {
       );
     return NextResponse.next();
   }
+  // Discovery documents without a file extension (RFC 8414 / RFC 9728) are
+  // not pages; the locale rewrite would turn them into a 404 page.
+  if (url.pathname.startsWith("/.well-known/")) return NextResponse.next();
   if (/^\/en(?:\/|$)/.test(url.pathname)) {
     url.pathname = url.pathname.replace(/^\/en/, "") || "/";
     return NextResponse.redirect(url);
@@ -26,5 +29,8 @@ export function proxy(request: NextRequest) {
   return NextResponse.rewrite(url);
 }
 export const config = {
-  matcher: ["/api/:path*", "/((?!api(?:/|$)|_next(?:/|$)|.*\\.[^/]+$).*)"],
+  matcher: [
+    "/api/:path*",
+    "/((?!api(?:/|$)|_next(?:/|$)|\\.well-known(?:/|$)|.*\\.[^/]+$).*)",
+  ],
 };

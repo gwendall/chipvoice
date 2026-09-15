@@ -59,6 +59,7 @@ try {
     "test-foundations.mjs",
     "test-projects.mjs",
     "test-artists.mjs",
+    "test-agent-oauth.mjs",
     "test-agent-guide.mjs",
     "test-generation-stream.mjs",
     "test-generation.mjs",

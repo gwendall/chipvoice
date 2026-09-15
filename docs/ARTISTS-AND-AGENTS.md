@@ -10,12 +10,15 @@ One owner account can manage up to 20 artistic profiles. Existing profiles keep 
 
 Email delivers a single-use, 30-minute sign-in link. The legacy `POST /api/keys` registration path also sends a sign-in link; it no longer creates or emails a permanent key. Previously issued owner keys remain valid until revoked. An agent uses a dedicated `cv_agent_` credential, never an owner's email or browser session.
 
-The pairing protocol is inspired by [RFC 8628](https://www.rfc-editor.org/rfc/rfc8628.html), but is a custom JSON API, **not an OAuth implementation**:
+Agents are authorized with the standard [OAuth 2.0 Device Authorization Grant (RFC 8628)](https://www.rfc-editor.org/rfc/rfc8628.html), discoverable through [RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html) and [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html) metadata. Any OAuth device-flow client works without chipvoice-specific code:
 
-1. `POST /api/v1/agent-requests` with `{label, scopes}` returns a private `requestToken`, public `userCode`, `verificationUrl`, `expiresIn:600` and `interval:5`.
-2. The owner opens the verification link, signs in, then reopens the link if needed. Opening it grants nothing. The owner explicitly chooses an artist, reviews permissions and approves access for 1, 7 or 30 days, or declines it.
-3. The agent polls `POST /api/v1/agent-requests/token` with `{requestToken}` no more than once every five seconds. Honour `Retry-After`. Pending is a normal response; denied, expired and consumed requests are terminal. An authorized response returns the bearer token once. Lost responses require a new authorization.
-4. `GET /api/v1/agent` returns the agent's profile, scopes and expiry. `GET /api/v1/profile` returns that artist, including public page and SVG portrait URLs. Only the owner browser session can list or revoke `/api/v1/agents`.
+1. `GET /.well-known/oauth-authorization-server` names the `device_authorization_endpoint`, the `token_endpoint` and `scopes_supported`. `GET /.well-known/oauth-protected-resource/api/v1` describes the protected API; a `401` also carries `WWW-Authenticate: Bearer resource_metadata="…"`.
+2. `POST /api/v1/oauth/device_authorization` (form-encoded `client_id`, optional space-separated `scope`; an omitted scope requests every agent scope) returns a private `device_code`, a public `user_code`, `verification_uri`, `verification_uri_complete`, `expires_in:600` and `interval:5`. `client_id` is the name the owner reviews.
+3. The owner opens the verification link, signs in, then reopens the link if needed. Opening it grants nothing. The owner explicitly chooses an artist, reviews permissions and approves access for 1, 7 or 30 days, or declines it.
+4. The agent polls `POST /api/v1/oauth/token` with `grant_type=urn:ietf:params:oauth:grant-type:device_code` and `device_code` every `interval` seconds. `authorization_pending` and `slow_down` (add five seconds) are routine; `access_denied`, `expired_token` and `invalid_grant` are terminal. The token response carries `access_token`, `token_type`, `expires_in` and the granted `scope`, exactly once. Lost responses require a new authorization.
+5. `GET /api/v1/agent` returns the agent's profile, scopes and expiry. `GET /api/v1/profile` returns that artist, including public page and SVG portrait URLs. Only the owner browser session can list or revoke `/api/v1/agents`.
+
+The pairing API that preceded the standard (`POST /api/v1/agent-requests` with `{label, scopes}`, polled at `/api/v1/agent-requests/token` with `{requestToken}`) remains as a deprecated alias of the same grant: a request started on either face is answered on both. It is marked `deprecated` in the OpenAPI document and no longer appears in the skill.
 
 | Scope | Permission |
 | --- | --- |
@@ -51,7 +54,7 @@ Publications expose accessible `variants`: the latest version per console with i
 
 ## Verification
 
-`apps/web/test-artists.mjs` runs against a disposable database and production Next server. It exercises actual browser authorization, profile customization, scoped/expired/revoked tokens, legacy endpoint denial, another artist's private resources, repeated deterministic HTTP evaluation, grouped variants without hidden siblings, complete MP3 decoding, WAV-preserving conversion and English/Japanese mobile layouts. Existing account, publication, audio and agent-guide suites remain required.
+`apps/web/test-artists.mjs` runs against a disposable database and production Next server. It exercises actual browser authorization, profile customization, scoped/expired/revoked tokens, legacy endpoint denial, another artist's private resources, repeated deterministic HTTP evaluation, grouped variants without hidden siblings, complete MP3 decoding, WAV-preserving conversion and English/Japanese mobile layouts. `apps/web/test-agent-oauth.mjs` pins the standard face: discovery documents, every routine and terminal token answer, one-time delivery, scope enforcement, the `WWW-Authenticate` challenge and the deprecated alias sharing the grant. Existing account, publication, audio and agent-guide suites remain required.
 
 Run `pnpm --filter chipvoice-web build` then `pnpm --filter chipvoice-web test`. Screenshots are written under `.artifacts/artist-lifecycle/`. Never seed production or send a real email to qualify this flow.
 

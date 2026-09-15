@@ -624,3 +624,31 @@ NSF/ROM files and entire downloaded archives remain local.
 
 
 The Zelda regression also requires song identity to precede emulation parity. An emulator and a reference can agree perfectly on the wrong NSF subsong. Pin the selected track and independently check a reviewed musical phrase before source acceptance and publication. Catalogue identity, full command parity and physical audio fidelity are separate claims; [regression evidence](evals/ZELDA-SELECTION-2026-09-07.md).
+
+## 30. Agents authorize through the standard device grant, not a dialect (2026-09-15)
+
+Agent authorization speaks OAuth 2.0 on the wire: the Device Authorization
+Grant (RFC 8628) at `/api/v1/oauth/device_authorization` and `/api/v1/oauth/token`,
+advertised by RFC 8414 server metadata and RFC 9728 resource metadata under
+`/.well-known/`, with the metadata URL repeated in every `401`'s `WWW-Authenticate`.
+The grant lifecycle in `apps/web/src/lib/agents.ts` did not change; the standard
+endpoints are a second face over it, and the earlier `/api/v1/agent-requests`
+JSON API stays as a deprecated alias so agents already paired keep working.
+
+**Why.** The custom API had the same shape as the standard (a private code, a
+public code, a verification link, polling with a slow-down) but different field
+names and error vocabulary, so every client needed chipvoice-specific code and
+the skill had to teach a protocol. OAuth device-flow clients already exist in
+every agent runtime and in the MCP authorization specification; conformance to
+the standard makes chipvoice reachable by agents nobody wrote for it, and lets
+one generic client, one conformance check and one three-line skill section
+serve every service that speaks it.
+
+**What changes.** New agents discover the endpoints instead of reading a guide.
+Scopes keep their names; they are advertised in `scopes_supported`. Unknown
+request tokens now answer `invalid_grant` (standard) and `invalid_token` (alias)
+instead of being reported as expired. The proxy leaves `/.well-known/` paths
+alone: without a file extension they were rewritten into the locale tree.
+`apps/web/test-agent-oauth.mjs` pins discovery, every routine and terminal
+token answer, one-time delivery, scope enforcement and the alias sharing the
+grant.

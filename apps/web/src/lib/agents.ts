@@ -113,8 +113,23 @@ export async function decideAgentRequest(
     );
   return { ok: true };
 }
-/** Custom pairing protocol, inspired by RFC 8628. Tokens are delivered once and stored hashed. */
-export async function pollAgentAccess(token: string) {
+/**
+ * The grant lifecycle behind both wire shapes: the RFC 8628 token endpoint
+ * (src/lib/oauth.ts) and the earlier /api/v1/agent-requests/token alias.
+ * Tokens are delivered once and stored hashed.
+ */
+export type AgentAccessPoll =
+  | { status: "pending"; interval: number }
+  | {
+      status: "authorized";
+      accessToken: string;
+      tokenType: "Bearer";
+      expiresAt: number;
+      scopes: AgentScope[];
+      profileId: string;
+      profileUrl: string;
+    };
+export async function pollAgentAccess(token: string): Promise<AgentAccessPoll> {
   const client = await db(),
     tx = await client.transaction("write");
   try {
@@ -126,7 +141,8 @@ export async function pollAgentAccess(token: string) {
         args: [hash],
       })
     ).rows[0];
-    if (!row || Number(row.expires_at) <= now)
+    if (!row) error(400, "invalid_token", "Unknown request token");
+    if (Number(row.expires_at) <= now)
       error(400, "expired", "Start a new authorization request");
     if (row.status === "denied")
       error(403, "denied", "The owner declined access");
@@ -144,7 +160,7 @@ export async function pollAgentAccess(token: string) {
     });
     if (row.status === "pending") {
       await tx.commit();
-      return { status: "pending", interval: 5 };
+      return { status: "pending" as const, interval: 5 };
     }
     const active = await tx.execute({
       sql: "select count(*) as n from agent_grants where user_id=? and revoked_at is null and expires_at>?",
@@ -178,11 +194,11 @@ export async function pollAgentAccess(token: string) {
     });
     await tx.commit();
     return {
-      status: "authorized",
+      status: "authorized" as const,
       accessToken: key,
-      tokenType: "Bearer",
+      tokenType: "Bearer" as const,
       expiresAt,
-      scopes: JSON.parse(String(row.scopes)),
+      scopes: JSON.parse(String(row.scopes)) as AgentScope[],
       profileId: String(row.profile_id),
       profileUrl: `${SITE}/api/v1/profile`,
     };

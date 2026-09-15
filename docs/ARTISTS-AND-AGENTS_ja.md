@@ -12,12 +12,15 @@
 
 メールでは 30 分間有効な一度限りのログインリンクだけを送ります。従来の `POST /api/keys` もログインリンクを送り、永続キーを作成・送信しません。既存の所有者キーは取り消すまで利用できます。エージェントは所有者のメールやブラウザセッションではなく、専用の `cv_agent_` 認証情報を使います。
 
-[RFC 8628](https://www.rfc-editor.org/rfc/rfc8628.html) を参考にした独自 JSON API であり、**OAuth の実装ではありません**。
+エージェントの認可は標準の [OAuth 2.0 Device Authorization Grant (RFC 8628)](https://www.rfc-editor.org/rfc/rfc8628.html) で行い、[RFC 8414](https://www.rfc-editor.org/rfc/rfc8414.html) と [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html) のメタデータで発見できます。chipvoice 固有のコードなしに、任意の OAuth デバイスフロークライアントが利用できます。
 
-1. `{label, scopes}` を `POST /api/v1/agent-requests` に送ると、秘密の `requestToken`、公開用 `userCode`、`verificationUrl`、`expiresIn:600`、`interval:5` を返します。
-2. 所有者がリンクを開いてログインします。必要なら認証リンクを再度開きます。開くだけでは許可されません。アーティストとアクセス権を確認し、1、7、30 日の期間を選んで承認するか拒否します。
-3. エージェントは `{requestToken}` を `POST /api/v1/agent-requests/token` に 5 秒以上の間隔で送信します。`Retry-After` に従います。pending は通常の待機状態です。denied、expired、consumed なら終了します。承認されたトークンは一度だけ返ります。受信に失敗した場合は認証をやり直します。
-4. `GET /api/v1/agent` はプロフィール、アクセス権、有効期限を返します。`GET /api/v1/profile` はアーティストページと SVG アバターの URL を含みます。`/api/v1/agents` の一覧・取り消しは所有者のブラウザセッション限定です。
+1. `GET /.well-known/oauth-authorization-server` が `device_authorization_endpoint`、`token_endpoint`、`scopes_supported` を示します。`GET /.well-known/oauth-protected-resource/api/v1` は保護された API を説明し、`401` 応答にも `WWW-Authenticate: Bearer resource_metadata="…"` が付きます。
+2. `POST /api/v1/oauth/device_authorization`（フォームエンコードの `client_id` と、省略可能な空白区切りの `scope`。省略時はすべてのエージェントスコープを要求）は、秘密の `device_code`、公開用 `user_code`、`verification_uri`、`verification_uri_complete`、`expires_in:600`、`interval:5` を返します。`client_id` は所有者が確認する名前です。
+3. 所有者がリンクを開いてログインします。必要なら認証リンクを再度開きます。開くだけでは許可されません。アーティストとアクセス権を確認し、1、7、30 日の期間を選んで承認するか拒否します。
+4. エージェントは `grant_type=urn:ietf:params:oauth:grant-type:device_code` と `device_code` を `POST /api/v1/oauth/token` に `interval` 秒ごとに送信します。`authorization_pending` と `slow_down`（5 秒追加）は通常の応答、`access_denied`、`expired_token`、`invalid_grant` は終了です。トークン応答は `access_token`、`token_type`、`expires_in`、許可された `scope` を一度だけ返します。受信に失敗した場合は認証をやり直します。
+5. `GET /api/v1/agent` はプロフィール、アクセス権、有効期限を返します。`GET /api/v1/profile` はアーティストページと SVG アバターの URL を含みます。`/api/v1/agents` の一覧・取り消しは所有者のブラウザセッション限定です。
+
+標準化以前のペアリング API（`{label, scopes}` を `POST /api/v1/agent-requests`、`{requestToken}` で `/api/v1/agent-requests/token` をポーリング）は、同じ許可の非推奨エイリアスとして残ります。どちらの面で開始した要求も両方で応答されます。OpenAPI では `deprecated` と表示され、スキルには載りません。
 
 | スコープ | 許可 |
 | --- | --- |
@@ -57,7 +60,7 @@
 <a id="verification"></a>
 ## 検証
 
-`apps/web/test-artists.mjs` は使い捨てデータベースと本番ビルドの Next サーバーを使います。実ブラウザでの承認、アバター変更、権限制限・期限切れ・取り消し、旧 API の拒否、別アーティストの非公開曲、決定的な HTTP 評価、秘密の別版を漏らさないグループ化、MP3 のデコード、WAV を保持した変換、英語・日本語のモバイル画面を検証します。既存のアカウント、公開、音声、エージェントガイドのテストも必須です。
+`apps/web/test-artists.mjs` は使い捨てデータベースと本番ビルドの Next サーバーを使います。実ブラウザでの承認、アバター変更、権限制限・期限切れ・取り消し、旧 API の拒否、別アーティストの非公開曲、決定的な HTTP 評価、秘密の別版を漏らさないグループ化、MP3 のデコード、WAV を保持した変換、英語・日本語のモバイル画面を検証します。`apps/web/test-agent-oauth.mjs` は標準の面を固定します。発見文書、通常・終了のすべてのトークン応答、一度限りの配布、スコープ強制、`WWW-Authenticate` チャレンジ、非推奨エイリアスが同じ許可を共有することです。既存のアカウント、公開、音声、エージェントガイドのテストも必須です。
 
 `pnpm --filter chipvoice-web build` の後に `pnpm --filter chipvoice-web test` を実行します。スクリーンショットは `.artifacts/artist-lifecycle/` に保存します。本番データの作成や実メールの送信でテストしないでください。
 
