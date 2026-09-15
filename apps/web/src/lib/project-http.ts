@@ -3,6 +3,7 @@ import { ProjectValidationError } from "chipvoice";
 import { identify, type Caller } from "./auth";
 import { ProjectHttpError } from "./projects";
 import { hasDatabase } from "./db";
+import { bearerChallenge } from "./oauth";
 export async function readProjectBody(
   request: Request,
   max = 4 * 1024 * 1024,
@@ -78,6 +79,14 @@ export function projectRoute(
             headers: {
               "Cache-Control": "no-store",
               ...(error.status === 429 ? { "Retry-After": "60" } : {}),
+              // RFC 9728: a rejected bearer learns where to obtain one.
+              ...(error.status === 401
+                ? {
+                    "WWW-Authenticate": bearerChallenge(
+                      error.code === "invalid_token",
+                    ),
+                  }
+                : {}),
             },
           },
         );

@@ -1,4 +1,8 @@
 import { openApiSpec } from "./openapi";
+import {
+  DEVICE_GRANT_TYPE,
+  PROTECTED_RESOURCE_METADATA_PATH,
+} from "./oauth";
 import { SITE } from "./songs";
 import catalog from "../../generated/agent-catalog.json";
 
@@ -51,7 +55,10 @@ export function agentManifest() {
           };
           if (mandatory.length) required.push(key);
         }
-        const body = op.requestBody?.content["application/json"]?.schema;
+        // The OAuth endpoints document form encoding and accept JSON as well.
+        const body =
+          op.requestBody?.content["application/json"]?.schema ??
+          op.requestBody?.content["application/x-www-form-urlencoded"]?.schema;
         if (body) {
           properties.body = body;
           if (op.requestBody?.required) required.push("body");
@@ -85,6 +92,11 @@ export function agentManifest() {
     instructions: `${SITE}/skill.md`,
     capabilities: `${SITE}/api/v1/capabilities`,
     openapi: `${SITE}/.well-known/openapi.json`,
+    authorization: {
+      authorization_server: `${SITE}/.well-known/oauth-authorization-server`,
+      resource_metadata: `${SITE}${PROTECTED_RESOURCE_METADATA_PATH}`,
+      grant_types_supported: [DEVICE_GRANT_TYPE],
+    },
     components: spec.components,
     tools,
   };
