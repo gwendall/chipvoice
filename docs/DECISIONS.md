@@ -651,4 +651,8 @@ instead of being reported as expired. The proxy leaves `/.well-known/` paths
 alone: without a file extension they were rewritten into the locale tree.
 `apps/web/test-agent-oauth.mjs` pins discovery, every routine and terminal
 token answer, one-time delivery, scope enforcement and the alias sharing the
-grant.
+grant. `apps/web/test-auth-conformance.mjs` (2026-09-16) adds the outside view:
+the generic conformance script every issuer of the grant shares, vendored under
+`apps/web/vendor/`, written from the RFCs and knowing nothing of chipvoice, must
+get the same nine answers - the owner's approval and refusal are a browser
+session, never an API call.
