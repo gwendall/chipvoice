@@ -286,6 +286,7 @@ VGM の時刻は毎秒 44,100 tick の論理レジスターコマンドを表し
 
 Zelda の回帰を受け、エミュレーションの一致より先に曲の特定を検証します。誤った NSF トラックでも本実装とリファレンスは完全に一致し得ます。選択トラックを固定し、ソース採用と公開前に確認済みの旋律を独立して照合します。収録曲の特定、全コマンドの一致、実機音声の再現性は別の主張です。[回帰の証拠](evals/ZELDA-SELECTION-2026-09-07_ja.md)を参照してください。
 
+<a id="30-agents-authorize-through-the-standard-device-grant-not-a-dialect-2026-09-15"></a>
 ## 30. エージェント認可は独自方言ではなく標準のデバイスグラント（2026-09-15）
 
 エージェント認可は通信上 OAuth 2.0 を話します。Device Authorization Grant（RFC 8628）を `/api/v1/oauth/device_authorization` と `/api/v1/oauth/token` で提供し、`/.well-known/` 配下の RFC 8414 サーバーメタデータと RFC 9728 リソースメタデータで公開し、すべての `401` の `WWW-Authenticate` にメタデータ URL を繰り返します。`apps/web/src/lib/agents.ts` の許可ライフサイクルは変わっていません。標準エンドポイントはその上の第二の面であり、従来の `/api/v1/agent-requests` JSON API は非推奨エイリアスとして残るため、ペアリング済みのエージェントはそのまま動きます。
@@ -294,6 +295,7 @@ Zelda の回帰を受け、エミュレーションの一致より先に曲の�
 
 **変わること。** 新しいエージェントはガイドを読む代わりにエンドポイントを発見します。スコープ名は維持され、`scopes_supported` で公開されます。未知のリクエストトークンは期限切れではなく `invalid_grant`（標準）と `invalid_token`（エイリアス）を返します。プロキシは `/.well-known/` パスに触れません。拡張子のないパスはロケールツリーへ書き換えられていました。`apps/web/test-agent-oauth.mjs` が発見、通常・終了のすべてのトークン応答、一度限りの配布、スコープ強制、エイリアスが同じ許可を共有することを固定します。`apps/web/test-auth-conformance.mjs`（2026-09-16）が外からの視点を加えます。この許可方式を実装するすべてのサービスが共有する汎用の適合性スクリプトを `apps/web/vendor/` に取り込み、RFC だけから書かれ chipvoice を知らないそのスクリプトが同じ 9 つの答えを得なければなりません。所有者の承認と拒否はブラウザのセッションであり、API 呼び出しではありません。
 
+<a id="31-the-approval-page-answers-before-it-edits-2026-09-16"></a>
 ## 31. 承認ページは編集より先に答える（2026-09-16）
 
 `/connect` では「Review access」の後、決定（有効期限、Authorize、Decline）がエージェントの権限の直後に来て、そのセクションは自動でスクロールして表示され、プロフィール編集は既定で折りたたまれます。
@@ -301,3 +303,12 @@ Zelda の回帰を受け、エミュレーションの一致より先に曲の�
 **理由。** 実際に初めてエージェントを接続した人は、リクエストを確認し、権限を読み、エージェントに「done」と伝えました。しかし Authorize ボタンは画面外にあり、新しいアーティストのために自動で開いたプロフィール編集がそれを押し下げていました。エージェントは誰も答えていないコードを待ち続け、自分側の障害だと語りました。決定を求めるページは、人が見ている場所にそのボタンを置かなければなりません。
 
 **変わること。** `apps/web/src/community/Connect.tsx` はセクションを並べ替え、リクエストが読み込まれたらそこへスクロールします。`apps/web/test-artists.mjs` は確認後にボタンがスマートフォンのビューポート内にあることと編集が折りたたまれていることを固定し、`test-creator-journey.mjs` は入力前に編集を開きます。プロフィールはそこでワンクリックで編集でき、エージェントの機能にプロフィールは不要です。
+
+<a id="32-a-games-own-mega-drive-driver-beside-the-portable-one-2026-09-26"></a>
+## 32. 移植用と並ぶゲーム専用のメガドライブdriver（2026-09-26）
+
+chipvoice は `MdDriver` の横に二つ目のメガドライブ driver、`compileMdVoices` を持ちます。`MdDriver` は移植用 score の4つの役割を演奏し、5機種で同じ曲に聞こえなければなりません。ネイティブ driver は FM 6チャンネル、矩形波3音、ノイズ、DAC を名前で受け取り、この機種のために書かれたゲームが鳴らすものを鳴らします。テキスト tracker、PCM kit 付きの bank、ゲームが出荷するまでの render 手順が付属します。[MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER_ja.md) を参照してください。
+
+**理由。** このチップのために書かれたシューティング Punk Force は、移植用の経路では DAC kit、完全な左右定位、FM 6声、音符ごとの patch を得られなかったため、自前の driver、tracker、render script をゲームのリポジトリに育てました。その中にゲーム固有のものはなく、二本目のゲームはそれを複製したはずです。決定29はすでにネイティブのレジスタープランを同じコアの上の第三のインターフェースとして残しており、これはその一機種向けの作曲側です。`MdDriver` に組み込めば、移植用 score の約束（全機種で全役割）を他の4機種にない声に縛ることになりました。
+
+**変わること。** `compileMdVoices`、`arrangeMdTracker`、`MD_BANK` とその部品、`renderMdEvents`、`MD_BRIGHT_PROFILE`、5つの render helper を export します。`FmOperator` は `ssg` を受け取り、両 driver が `$90` に書きます（未指定なら従来どおり0）。抽出はゲームの楽譜を両方で compile して証明しました。5曲と40効果音で同じレジスター書き込み、render、trim、level、sprite 化の後も同じサンプルです。唯一の違いは修正で、tail なしのときゲームの tracker はループ終端を0と返していました。`test/md-native.mjs`、`test/game-audio.mjs`、`test/golden-md-native.mjs` が固定します。LFO は off のまま、channel 3 特殊モードは未使用です（P5-12）。

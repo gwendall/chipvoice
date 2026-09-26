@@ -127,7 +127,9 @@
 | P5-7 | Nuked全voice比較、script／song corpusのsheet | done | `docs/chips/md.md` |
 | P5-8 | PSG参照：MAME `sn76496` shimまたはMaster System ROM | todo | noise系列とperiod 0は資料由来 |
 | P5-9 | 既知scriptでModel 1 line-out測定 | todo | P2-3同様、実機必要 |
-| P5-10 | channel 6のFM drumとarranger LFO | todo | 現kitはPSG noise |
+| P5-10 | channel 6のFM drumとarranger LFO | todo | 移植用arrangerのkitは現状PSG noise。ネイティブdriver（P5-11）はDACでPCM kitを流す |
+| P5-11 | 移植用と並ぶゲーム専用driver：FM 6ch、矩形波3音、noise、DACを名前で指定、テキストtracker、PCM kit付きbank、ゲームが出荷するまでのrender手順。Punk Forceから抽出 | done | `chips/md/native-driver.ts`、`bank.ts`、`tracker.ts`、`src/game-audio.ts`。[MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER_ja.md)、決定32。ゲームの楽譜は同じバイトにcompile・renderされる |
+| P5-12 | ネイティブdriverのLFOとchannel 3特殊モード | todo | 起動時に`$22` = 0を書くため、`ams`、`pms`、`am`は書かれるが効かない |
 
 <a id="phase-6-snes"></a>
 ## フェーズ6. SNES
@@ -293,6 +295,7 @@ Zelda の選曲回帰を修正しました。NSF トラック 3 を使用し、�
 
 所有者のいないアカウント、曲ごとの権限委譲、更新トークン、全曲の知覚的な品質採点、汎用のオーケストラ音源は今後の別の判断事項です。今回の実装ではこれらの機能を提供したとはしません。
 
+<a id="persistent-site-player-2026-09-08"></a>
 ### サイト共通プレーヤー（2026-09-08）
 
 - アレンジ、ループ、作曲、ラボ、公開曲で再生操作を統一。
@@ -308,6 +311,7 @@ Zelda の選曲回帰を修正しました。NSF トラック 3 を使用し、�
 再読み込み後の復元、複数タブ間の調整、共同編集は別の作業です。
 
 
+<a id="interactive-audio-latency--audit-2026-09-08"></a>
 ## 操作から再生までの遅延 — 2026-09-08 の監査
 
 状態：実装とローカル検証が完了。リリース検証は CI で実施する。[測定・試作・合格条件](INTERACTION-LATENCY_ja.md)を参照。

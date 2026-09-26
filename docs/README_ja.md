@@ -25,6 +25,7 @@
 | [適合性検証](CONFORMANCE_ja.md) | 検証方法、コーパス、参照実装 |
 | [試聴評価](AUDIO-EVALUATION_ja.md) | 試聴方法と音声測定 |
 | [SNESパレット](SNES-PALETTE_ja.md) | SNESの楽器、エンベロープ、和音 |
+| [ゲーム専用メガドライブdriver](MD-NATIVE-DRIVER_ja.md) | FM 6チャンネル、DAC、tracker、ゲームが出荷するまでのrender手順 |
 | [プロジェクト監査](AUDIT-2026-09-05_ja.md) | プロジェクト監査（フランス語原文） |
 | [設計判断](DECISIONS_ja.md) | 設計判断と理由 |
 | [バックログ](BACKLOG_ja.md) | チケット、状態、発見 |

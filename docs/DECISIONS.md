@@ -675,3 +675,31 @@ scrolls to it when the request loads. `apps/web/test-artists.mjs` pins the
 button inside the phone viewport after review and the editor folded;
 `test-creator-journey.mjs` opens the editor before filling it. The profile is
 still editable there, one click away, and the agent kinds do not need it.
+
+## 32. A game's own Mega Drive driver beside the portable one (2026-09-26)
+
+chipvoice has a second Mega Drive driver, `compileMdVoices`, beside `MdDriver`.
+`MdDriver` plays the portable score's four roles and must sound like the same
+song on five machines; the native driver takes the six FM channels, the three
+tones, the noise and the DAC by name and plays what a game written for this
+machine plays. A text tracker, a bank with a PCM kit and the render steps a
+game ships through come with it: [MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER.md).
+
+**Why.** Punk Force, a shooter written for this chip, grew its own driver,
+tracker and render script in its game repository, because the portable path
+could not give it a DAC kit, hard pan, six FM voices or a patch per note.
+Nothing in them was about that game; a second game would have copied them.
+Decision 29 already keeps native register plans as a third interface over the
+same cores, and this is its authoring side for one machine. Folding it into
+`MdDriver` would have tied the portable score's promise (every role on every
+machine) to voices four machines lack.
+
+**What changes.** `compileMdVoices`, `arrangeMdTracker`, `MD_BANK` and its
+parts, `renderMdEvents`, `MD_BRIGHT_PROFILE` and five render helpers are
+exported. `FmOperator` takes `ssg`, which both drivers write to `$90` (0 when
+absent, as before). The extraction was proven by compiling the game's score
+both ways: the same register writes for five songs and forty effects, and the
+same samples after render, trim, level and sprite packing. The one difference
+is a fix: without a tail, the game's tracker returned a loop end of zero.
+`test/md-native.mjs`, `test/game-audio.mjs` and `test/golden-md-native.mjs`
+pin it. The LFO stays off and channel 3's special mode is unused (P5-12).

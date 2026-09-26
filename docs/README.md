@@ -24,6 +24,7 @@ Project purpose, methods and decisions live beside the code and change with it.
 | [Conformance](CONFORMANCE.md) | Verification method, corpus and oracles |
 | [Audio evaluation](AUDIO-EVALUATION.md) | Listening protocol and audio measurements |
 | [SNES palette](SNES-PALETTE.md) | SNES instruments, envelopes and chords |
+| [A game's own Mega Drive driver](MD-NATIVE-DRIVER.md) | Six FM channels, the DAC, a tracker and the render steps a game ships through |
 | [Project audit](AUDIT-2026-09-05.md) | Project audit (French original) |
 | [Decisions](DECISIONS.md) | Decisions and their reasoning |
 | [Backlog](BACKLOG.md) | Tickets, status and discoveries |
