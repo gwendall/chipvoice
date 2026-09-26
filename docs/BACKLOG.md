@@ -39,8 +39,8 @@ created the same day.
 
 - todo - REV-06 `refactor/package-playback`: `BufferPlayback` in TypeScript,
   node tests for progressive playback, `node --test` instead of the 44-command
-  chain, the SN76489 noise sync checked against the reference, then 0.19.0
-  released with the site.
+  chain, the SN76489 noise sync checked against the reference, then the next
+  package version released with the site (0.19.0 is taken by #60).
 
 - todo - REV-07 `ci/pipeline-hygiene`: current action majors, the evaluation
   artifact only on failure, unit and browser suites in parallel jobs,
