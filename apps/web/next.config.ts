@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import audioStore from "./audio-store.json";
 
 const config: NextConfig = {
   // Preserve the real origin in locale rewrites. NextURL normalizes loopback
@@ -19,12 +20,30 @@ const config: NextConfig = {
    * the handler lives under /api and this maps the public shape onto it.
    */
   async rewrites() {
-    return [
-      {
-        source: "/s/:id([0-9A-Za-z]{8}).:format(mp3|wav)",
-        destination: "/api/audio/:id/:format",
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        {
+          source: "/s/:id([0-9A-Za-z]{8}).:format(mp3|wav)",
+          destination: "/api/audio/:id/:format",
+        },
+        /*
+         * The published recordings live in object storage (decision 40) under
+         * their site paths, and each path names its content, so these map
+         * one to one and never go stale. They come after public files, so a
+         * local copy from `pnpm audio:pull` is served first.
+         */
+        {
+          source: "/lab-data/:version([0-9a-f]{12})/:file([0-9a-f]{64}).flac",
+          destination: `${audioStore.base}/lab-data/:version/:file.flac`,
+        },
+        {
+          source: "/arrangement-data/:file([a-z0-9-]+-[0-9a-f]{12}).flac",
+          destination: `${audioStore.base}/arrangement-data/:file.flac`,
+        },
+      ],
+      fallback: [],
+    };
   },
 
   /*

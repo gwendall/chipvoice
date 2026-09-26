@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -229,6 +230,36 @@ const again = new Uint8Array(await (await fetch(`${SITE}/s/${song.id}.mp3`)).arr
 check(
   "rendering twice gives the same file",
   again.length === mp3Bytes.length && again[5000] === mp3Bytes[5000],
+);
+
+// ──────────────────────────────────────── the published recordings
+section("the published recordings");
+
+// They live in object storage and reach the site through a rewrite (decision
+// 40). What a visitor downloads must be exactly what the report names, and an
+// audio element asks for ranges, so the rewrite has to pass those through.
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const arrangementReport = await (await fetch(`${SITE}/arrangement-data/report.json`)).json();
+const labReport = await (await fetch(`${SITE}/lab-data/report.json`)).json();
+const recordings = [
+  ["an arrangement", arrangementReport.pieces[0].cases[0].asset],
+  ["a lab recording", Object.values(labReport.cases[0].assets)[0]],
+];
+for (const [name, asset] of recordings) {
+  const response = await fetch(`${SITE}${asset.file}`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  check(
+    `${name} is the file its report names`,
+    response.ok && sha256(bytes) === asset.sha256,
+    `${asset.file}, ${bytes.length} bytes`,
+  );
+}
+const ranged = await fetch(`${SITE}${recordings[0][1].file}`, { headers: { range: "bytes=0-3" } });
+const magic = new TextDecoder().decode(await ranged.arrayBuffer());
+check(
+  "served in ranges, as audio/flac",
+  ranged.status === 206 && magic === "fLaC" && ranged.headers.get("content-type") === "audio/flac",
+  `${ranged.status} ${ranged.headers.get("content-type")}`,
 );
 
 // ────────────────────────────────────────────── the agent surface

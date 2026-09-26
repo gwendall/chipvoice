@@ -34,6 +34,11 @@ __pycache__/
 
 apps/web/public/arrangement-data/*-view.json
 
+# Published recordings live in object storage (decision 40); the reports stay
+# here as their manifest. `pnpm audio:pull` fetches a verified local copy.
+apps/web/public/lab-data/*/
+apps/web/public/arrangement-data/*.flac
+
 packages/chipvoice/src/project-worker-inline.ts
 
 # Local credentials never belong in source control.

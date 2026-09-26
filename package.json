@@ -15,7 +15,10 @@
     "scores:compare": "node apps/web/scripts/scores/compare.mjs",
     "arrangements:check": "node scores/arrangements/test.mjs",
     "arrangements:import": "node scores/arrangements/import.mjs",
-    "arrangements:eval": "node scores/arrangements/evaluate.mjs"
+    "arrangements:eval": "node scores/arrangements/evaluate.mjs",
+    "audio:pull": "node apps/web/scripts/audio-store.mjs pull",
+    "audio:check": "node apps/web/scripts/audio-store.mjs check",
+    "audio:push": "node apps/web/scripts/audio-store.mjs push"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

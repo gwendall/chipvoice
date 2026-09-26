@@ -103,6 +103,22 @@ NSF/VGM dumps with the commands in
 [`scores/arrangements/README.md`](scores/arrangements/README.md#native-source-reproduction)
 before running either.
 
+The recordings themselves are not committed. They live in a Vercel Blob store
+(decision 40) under site paths that name their content, and the two reports,
+`arrangement-data/report.json` and `lab-data/report.json`, are their manifest.
+After `pnpm arrangements:eval` or `pnpm --filter chipvoice-web publish:lab`,
+upload what is new:
+
+```bash
+vercel env pull .env.local --environment=development   # once, at the repository root
+pnpm audio:push
+```
+
+CI fails a report that names a recording the store does not hold
+(`pnpm audio:check`). The site reads recordings from the store;
+`pnpm audio:pull` puts a verified copy under `apps/web/public` for offline
+work, and a local copy is served first.
+
 ## Pull requests
 
 - One plain sentence as the PR title, no type prefix (`Put the Authorize

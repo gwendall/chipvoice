@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "revision": "99deb3bcdbe77dcc6a3b8827612bb9a5a0c4d7bc",
+  "revision": "cba2fa76260cd56d475ff7735005bc32aca00af3",
   "engineSha256": "b3cf20b64f5f9add62b494dcd3e64ebd4e9a7b0707258026cc22405ae2e0376f",
-  "evaluationSha256": "118d3dfdad8545b9f314543b31148c270958505828d5a0791086b849d6ac7b0a",
+  "evaluationSha256": "7a866132f9ad08cc2f85fb9422075938f23ca344c82361a5fbc67bee53f6aa3f",
   "sourceChecks": [
     {
       "id": "mario",
@@ -107,7 +107,7 @@
       }
     }
   ],
-  "createdAt": "2026-09-26T16:19:59.536Z",
+  "createdAt": "2026-09-26T22:51:20.565Z",
   "pieces": [
     {
       "id": "mario",
@@ -174,7 +174,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/mario-2a03.flac",
+            "file": "/arrangement-data/mario-2a03-a21392086d25.flac",
             "sha256": "a21392086d259a6c5d267496edc95e59c7d9a0f6cda8c1dc3158acf5fd28230a",
             "sourceWavSha256": "467cef39d0278906bf251ad129755076e17a95f38327c8e523be3df9884e8ddd",
             "metrics": {
@@ -377,7 +377,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/mario-dmg.flac",
+            "file": "/arrangement-data/mario-dmg-f8522f152b21.flac",
             "sha256": "f8522f152b211e25b90fb3d2e07c164450633309d943cb5074ceea9b56f1ec1e",
             "sourceWavSha256": "bd5c7d4c99438ad2613678028a2ac741a96572d31e2f52ad5df03ece3db12201",
             "metrics": {
@@ -570,7 +570,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/mario-md.flac",
+            "file": "/arrangement-data/mario-md-e225887952a3.flac",
             "sha256": "e225887952a34f7d4bee1541207cef29825e51e0af4046896f04f66ac9276594",
             "sourceWavSha256": "1246b62b38c3205bfbcc197adb82522f8ec74c3567d8c02c208d93cab3da08a1",
             "metrics": {
@@ -794,7 +794,7 @@
             "echoClippedFrames": 0
           },
           "asset": {
-            "file": "/arrangement-data/mario-snes.flac",
+            "file": "/arrangement-data/mario-snes-85cedfaae8a1.flac",
             "sha256": "85cedfaae8a13f65c1420429a138ee2d49cb3d805c5aa537ea9be10633403e3a",
             "sourceWavSha256": "b41441c7cdf2c344e4ce0160bee0d66b79ed839795c460a214339eae48ec73cd",
             "metrics": {
@@ -962,7 +962,7 @@
           "rendererSourceSha256": "ecdf7936c442b7f9ff4e4cc0a88854e75004d1091e9a3be1a418258c43978669"
         },
         "asset": {
-          "file": "/arrangement-data/mario-reference.flac",
+          "file": "/arrangement-data/mario-reference-e6417941eacb.flac",
           "sha256": "e6417941eacb03122b91c7fdacd9f9266640a956d3ad617a4fbbadfe74410d98",
           "sourceWavSha256": "89a71fb363b82c7888527b847c645d44067e22af6c2802feba26d18d88e13dd9",
           "metrics": {
@@ -1149,7 +1149,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/zelda-2a03.flac",
+            "file": "/arrangement-data/zelda-2a03-3ce8f9a9013a.flac",
             "sha256": "3ce8f9a9013afcf3e848dfce0db6e98796c1fe04b3bca266477edef5fa33862c",
             "sourceWavSha256": "7111c0cb433b70b705bbbf8886e9d7309a225dc50ab75890b123485d7f409203",
             "metrics": {
@@ -1336,7 +1336,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/zelda-dmg.flac",
+            "file": "/arrangement-data/zelda-dmg-b762b99783b1.flac",
             "sha256": "b762b99783b1de1eccabacd0ff854e51ac1bb558359a934f952097129aad590a",
             "sourceWavSha256": "03efc87bbd07d925d35c651a84d5ab23a266127884146e0cc7bcc18eff653114",
             "metrics": {
@@ -1514,7 +1514,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/zelda-md.flac",
+            "file": "/arrangement-data/zelda-md-b065ab830be7.flac",
             "sha256": "b065ab830be7bb18c3721077383d6043b785ef4f82a3916bf01e335984fffff1",
             "sourceWavSha256": "140e0df793a88eef030d9dc263e63ad6c2f514091bf43a0a95a6512529288874",
             "metrics": {
@@ -1738,7 +1738,7 @@
             "echoClippedFrames": 0
           },
           "asset": {
-            "file": "/arrangement-data/zelda-snes.flac",
+            "file": "/arrangement-data/zelda-snes-dde4e5f62a36.flac",
             "sha256": "dde4e5f62a36d2dc5a0ebf9fc78c78023788fecc7afb5e122e15cdd4cfcf5fd4",
             "sourceWavSha256": "5a62d67e00f2638871d955d28ca5b64d1a5f34c98abed2545bbcd8a20e39d549",
             "metrics": {
@@ -1925,7 +1925,7 @@
           "rendererSourceSha256": "ecdf7936c442b7f9ff4e4cc0a88854e75004d1091e9a3be1a418258c43978669"
         },
         "asset": {
-          "file": "/arrangement-data/zelda-reference.flac",
+          "file": "/arrangement-data/zelda-reference-c49d6fb44738.flac",
           "sha256": "c49d6fb4473886e9744370d80ce89cd4051f209b148879c186e9fda9b57f1f29",
           "sourceWavSha256": "10271924cb39dc2f9461d6cccd3769bd767acecbeda006a1bf5c097bdb85f92a",
           "metrics": {
@@ -4709,7 +4709,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/sonic-2a03.flac",
+            "file": "/arrangement-data/sonic-2a03-6d44c125e2cb.flac",
             "sha256": "6d44c125e2cba3cbdca62003df8110290a07b0254e33cf2bd3601330d8c30e58",
             "sourceWavSha256": "68658a7ad56c9e03628e49245e244daee7298fa8f39c146a9a6d987f24d68a82",
             "metrics": {
@@ -7402,7 +7402,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/sonic-dmg.flac",
+            "file": "/arrangement-data/sonic-dmg-36a448fe1e4c.flac",
             "sha256": "36a448fe1e4c97d87b0c283717a613e55f5f18ed1edd00fc10d86e0b29cbfa8b",
             "sourceWavSha256": "1df46796870994dc7663cf49385316569f4e5588e562efc58a3043e25482ed76",
             "metrics": {
@@ -7537,7 +7537,7 @@
             "rmsError": 0
           },
           "asset": {
-            "file": "/arrangement-data/sonic-md.flac",
+            "file": "/arrangement-data/sonic-md-7bb83e6314e5.flac",
             "sha256": "7bb83e6314e5ecc2f0840c97d8c3ecee185b64b05d810cd3d02686780c90d40f",
             "sourceWavSha256": "26bfa5b27b83fd9541824786e9d656ddb7af019812d7fd05292bfbff9dc63baa",
             "metrics": {
@@ -7861,7 +7861,7 @@
             "echoClippedFrames": 0
           },
           "asset": {
-            "file": "/arrangement-data/sonic-snes.flac",
+            "file": "/arrangement-data/sonic-snes-a97b6d7cf6a6.flac",
             "sha256": "a97b6d7cf6a6b043c43165a19ef7ad70c74d77b212697cd9f294389f82461850",
             "sourceWavSha256": "062b7bf639486d1476581c4d2a4f660dd3cb3561ce03facb568333c1d9006bda",
             "metrics": {
@@ -8028,7 +8028,7 @@
           "rendererSourceSha256": "ecdf7936c442b7f9ff4e4cc0a88854e75004d1091e9a3be1a418258c43978669"
         },
         "asset": {
-          "file": "/arrangement-data/sonic-reference.flac",
+          "file": "/arrangement-data/sonic-reference-563cb1d547fd.flac",
           "sha256": "563cb1d547fdcbe3235e14447247499dee914af84dea9dfe287f634caa5be485",
           "sourceWavSha256": "7d8e0f941b915b1610571d88f00a94249450b104cc7cbf81e135cdbc6dea5e78",
           "metrics": {
