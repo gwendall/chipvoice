@@ -68,6 +68,8 @@ cd apps/web && node test-local.mjs
 
 検証ハーネス（参照コア、実機用テストROM、ミキサー打ち消し）は`packages/conform`にあり、そこから実行します。例：`pnpm --filter chipvoice-conform check`。全チェックの一覧は`.github/workflows/ci.yml`の`conformance`ジョブを参照してください。
 
+本番e2eの`test-e2e.mjs`は、代わりに公開中のサイトを確かめます。npmのパッケージ、API、エディターがバイト単位で一致することです。`.github/workflows/e2e.yml`は本番デプロイが成功するたびにこれを実行し、手動では`SITE=https://chipvoice.dev pnpm test:e2e`で実行します。e2eは曲を1つ保存してフォークします。`CHIPVOICE_E2E_KEY`に専用テストアカウントのAPIキーがあれば、それらの曲はそのアカウントのものになり、なければ匿名になります。
+
 <a id="the-publication-report"></a>
 ## 公開レポート
 

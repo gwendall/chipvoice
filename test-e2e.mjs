@@ -20,6 +20,13 @@ import { chromium } from "playwright";
  */
 const SITE = process.env.SITE;
 if (!SITE) throw new Error('Set SITE explicitly for release verification; use pnpm --filter chipvoice-web test for isolated local tests.');
+// The dedicated test account's API key. Its songs are that account's, and so
+// are easy to tell apart from anyone's; without it the writes are anonymous.
+const KEY = process.env.CHIPVOICE_E2E_KEY;
+const writeHeaders = {
+  "content-type": "application/json",
+  ...(KEY ? { authorization: `Bearer ${KEY}` } : {}),
+};
 const guard = setTimeout(() => { console.error("TIMEOUT"); process.exit(1); }, 300000);
 guard.unref();
 
@@ -65,7 +72,7 @@ const post = async (p, body) => {
   for (let attempt = 0; attempt < 3; attempt++) {
     const response = await fetch(SITE + p, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: writeHeaders,
       body: JSON.stringify(body),
     });
     if (response.status !== 429) return response;
@@ -75,7 +82,7 @@ const post = async (p, body) => {
   }
   return fetch(SITE + p, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: writeHeaders,
     body: JSON.stringify(body),
   });
 };
