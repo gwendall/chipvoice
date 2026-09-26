@@ -74,9 +74,7 @@ created the same day.
   The SN76489 noise channel's rate-3 ("clocked by tone 2") behavior was
   checked against SMS Power's notes and MAME's public source; it already
   matches both, down to the exact frequencies the notes give, so the tests
-  that pin it landed without a code change. The next package version is
-  released with the site by the coordinator after merge (0.19.0 is taken by
-  #60).
+  that pin it landed without a code change. It shipped in 0.19.1.
 
 - done - REV-07 `ci/pipeline-hygiene`: current action majors, the evaluation
   artifact only on failure, unit and browser suites in parallel jobs,

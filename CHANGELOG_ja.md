@@ -8,6 +8,24 @@
 
 `chipvoice`パッケージとそのSDKの主な変更点を新しい順に記載します。現在のクイックスタートと機能概要は[README_ja.md](README_ja.md)を参照してください。
 
+<a id="0191-console-changes-without-a-dropout"></a>
+## 0.19.1：途切れないコンソール切り替え
+
+曲の途中で未準備のコンソールへ切り替えても、音が途切れなくなりました。逐次再生で新しいソースの最初のブロックが残りわずかな状態で届いた場合、準備済みの連続した読み込みで延長し、再生位置より少なくとも 0.75 秒先から始めます。別のソースを準備している間、再生中のソースは 1.5 秒ではなく 3 秒先までスケジュールします。未準備のレンダーと CPU を奪い合うためです。
+
+`BufferPlayback` は隣の `ProgressivePlayback` と同じく TypeScript になりました。公開される型定義は、エントリー・クロック・グループ・パートを `any` のままにせず型付けします。音の変更はありません。公開済みのすべての編曲は 0.19.0 とバイト単位で同一にレンダーされ、既存の API も変わりません。
+
+<a id="0190-a-games-own-mega-drive-driver"></a>
+## 0.19.0：ゲーム専用の Mega Drive ドライバー
+
+`MdDriver` とは別の、2 つ目の Mega Drive ドライバーです。複数のコンソールへ編曲する音楽ではなく、この機種のためだけに書かれた音楽を対象とします。詳細は[ネイティブドライバーのガイド](docs/MD-NATIVE-DRIVER_ja.md)を参照してください。
+
+- `compileMdVoices(voices)` は、ハードパンと音符ごとのパッチを持つ `fm1`〜`fm6`、`psg1`〜`psg3`、ノイズチャンネル、DAC の PCM ストリームを駆動し、ハードウェアにできないことは拒否します。
+- `arrangeMdTracker(song, {tailBars, bank})` はテキスト形式のトラッカーをコンパイルします。音符、休符、タイ、スライド、アーティキュレーション、パッチ、音量、ドラム、エコーチャンネル、ループ位置に対応します。
+- `MD_BANK` は FM パッチ、PSG とノイズの音色、合成 PCM ドラムキットを提供します。
+- ゲーム音声用のヘルパーで効果音をレンダー・トリム・レベル調整・パックできます：`renderMdEvents`、`trimRender`、`levelRender`、`scaleRender`、`packSprite`、`renderOnset`。
+- `FmOperator.ssg` は両方のドライバーで SSG-EG を設定します。省略した場合は従来の音のままです。
+
 <a id="0180-progressive-interactive-playback"></a>
 ## 0.18.0：対話操作向けの逐次再生
 
