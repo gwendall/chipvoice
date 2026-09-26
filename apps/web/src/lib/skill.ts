@@ -138,7 +138,7 @@ If you need a concrete source-format example, read [the optional ensemble fixtur
 
 POST ${SITE}/api/v1/evaluate with the **raw project document**, the same shape as /validate. This needs no SDK installation and creates no publication. Agents need evaluate scope. Inspect losses (including omitted notes and timbre substitutions), silentNotes and mix before publishing. The complete source is planned; peak/RMS/clippedSamples cover only the first two seconds of audio. Native playback may have no note-level allocation ledger. Scores retain their authored mix. There is no universal musical-quality score.
 
-Limits: 4 MB request, six evaluations/minute/account (anonymous clients: IP), 30-second worker budget and one CPU lease shared with publication rendering. Retry 429 with Retry-After. Strict projects can reject voice exhaustion; only set allowLoss=true after deliberately accepting a lossy adaptation. Keep the report's engine version/hash when comparing revisions.
+Limits: 4 MB request, six evaluations/minute/account (anonymous clients: IP), a 30-second worker budget (15 seconds anonymous) and one CPU lease shared with publication rendering, MP3 encoding and composition validation; publications take that lease first, even while only queued. A per-account render-time budget also applies across all of that work: 60 seconds/minute signed in, 20 seconds/minute anonymous. Retry 429 with Retry-After. Strict projects can reject voice exhaustion; only set allowLoss=true after deliberately accepting a lossy adaptation. Keep the report's engine version/hash when comparing revisions.
 
 ## Validate, publish and render over HTTP
 

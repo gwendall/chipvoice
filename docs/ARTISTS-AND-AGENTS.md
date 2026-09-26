@@ -36,7 +36,7 @@ Agent tokens are denied access to legacy account/publishing endpoints, other own
 
 The response includes the engine version and renderer fingerprint, full duration, note counts, the complete allocation loss ledger and mix report. Peak, RMS and clipped-sample counts measure only the first two seconds of rendered audio at 44100 Hz. They cannot certify the rest of the mix, musical quality or fidelity to an original game. Native register sources may have no note-level ledger; compact Score sources keep their authored mix. Strict projects can reject voice exhaustion: `allowLoss:true` is an explicit musical tradeoff, not an automatic repair.
 
-Limits are 4 MB per request, six evaluations per minute per owner (anonymous: IP), 256 MB worker heap and a 30-second processing deadline. A database lease serializes evaluation and publication rendering. A busy renderer returns 429; honour `Retry-After`. Worker termination precedes lease release.
+Limits are 4 MB per request, six evaluations per minute per owner (anonymous: IP), 256 MB worker heap and a processing deadline of 30 seconds signed in or 15 seconds anonymous. A database lease serializes evaluation, MP3 encoding, composition validation and publication rendering; publications go first, so a queued publication render takes the lease ahead of that other work too, not only a rendering one, unless the queued row is stale. Render time is also budgeted per caller per minute across all of that work (60 seconds signed in, 20 seconds anonymous), charged whether the work succeeds or not. A busy renderer or a spent budget returns 429; honour `Retry-After`. Worker termination precedes lease release.
 
 ## Publication, audio and variants
 

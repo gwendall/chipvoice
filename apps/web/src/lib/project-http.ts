@@ -78,7 +78,9 @@ export function projectRoute(
             status: error.status,
             headers: {
               "Cache-Control": "no-store",
-              ...(error.status === 429 ? { "Retry-After": "60" } : {}),
+              ...(error.status === 429
+                ? { "Retry-After": String(error.retryAfter ?? 60) }
+                : {}),
               // RFC 9728: a rejected bearer learns where to obtain one.
               ...(error.status === 401
                 ? {

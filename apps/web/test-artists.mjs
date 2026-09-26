@@ -518,6 +518,100 @@ try {
     (await http("GET", `/api/v1/jobs/${job.id}/audio`, undefined, null)).data,
     wav.data,
   );
+
+  // Decision 33: publications go first, and render time is budgeted per caller.
+  // A fresh account keeps this admission isolated from the evaluate calls above;
+  // the renderer is free again here, so a queued row or a spent budget is the
+  // only thing that can still refuse admission below.
+  const laneKey = await api.createKey(`lanes-${suffix}@example.test`, null),
+    lane = await api.identify(
+      new Request(base, { headers: { authorization: `Bearer ${laneKey.key}` } }),
+    );
+  const queuedRow = async (createdAt) => {
+    const jobId = randomUUID();
+    await client.execute({
+      sql: "insert into project_jobs(id,project_id,kind,status,engine,created_at) values(?,?,?,'queued',?,?)",
+      args: [jobId, randomUUID(), "full", "test-lane", createdAt],
+    });
+    return jobId;
+  };
+  const freshQueue = await queuedRow(Date.now());
+  assert.equal(
+    (await http("POST", "/api/v1/evaluate", project, laneKey.key)).status,
+    429,
+    "evaluation yields to a queued publication render, not only a rendering one",
+  );
+  await client.execute({
+    sql: "delete from project_jobs where id=?",
+    args: [freshQueue],
+  });
+  assert.equal(
+    (await ok("POST", "/api/v1/evaluate", project, laneKey.key)).chip,
+    project.settings.chip,
+    "evaluation resumes once the publication queue clears",
+  );
+  const staleQueue = await queuedRow(Date.now() - 300000);
+  assert.equal(
+    (await ok("POST", "/api/v1/evaluate", project, laneKey.key)).chip,
+    project.settings.chip,
+    "an abandoned queued row does not block evaluation forever",
+  );
+  await client.execute({
+    sql: "delete from project_jobs where id=?",
+    args: [staleQueue],
+  });
+  const laneScope = createHash("sha256").update(lane.userId).digest("hex");
+  await client.execute({
+    sql: "insert into worker_time_budget(scope,window,spent_ms) values(?,?,?) on conflict(scope) do update set window=excluded.window,spent_ms=excluded.spent_ms",
+    args: [laneScope, Math.floor(Date.now() / 60000), 60000],
+  });
+  const overBudget = await http(
+    "POST",
+    "/api/v1/evaluate",
+    project,
+    laneKey.key,
+  );
+  assert.equal(overBudget.status, 429);
+  assert.equal(overBudget.data.error, "worker_budget");
+  const retryAfter = Number(overBudget.headers.get("retry-after"));
+  assert.ok(retryAfter > 0 && retryAfter <= 60, "Retry-After reflects the window");
+  await client.execute({
+    sql: "delete from worker_time_budget where scope=?",
+    args: [laneScope],
+  });
+  assert.equal(
+    (await ok("POST", "/api/v1/evaluate", project, laneKey.key)).chip,
+    project.settings.chip,
+    "evaluation resumes once the render-time budget window clears",
+  );
+  // next start sets x-forwarded-for from the raw socket address when a request
+  // arrives with none, so a loopback caller resolves to 127.0.0.1, not "unknown".
+  const anonymousScope = createHash("sha256")
+    .update("anonymous:127.0.0.1")
+    .digest("hex");
+  await client.execute({
+    sql: "insert into worker_time_budget(scope,window,spent_ms) values(?,?,?) on conflict(scope) do update set window=excluded.window,spent_ms=excluded.spent_ms",
+    args: [anonymousScope, Math.floor(Date.now() / 60000), 20000],
+  });
+  const anonymousOverBudget = await http(
+    "POST",
+    "/api/v1/evaluate",
+    project,
+    null,
+  );
+  assert.equal(anonymousOverBudget.status, 429);
+  assert.equal(anonymousOverBudget.data.error, "worker_budget");
+  assert.ok(Number(anonymousOverBudget.headers.get("retry-after")) > 0);
+  await client.execute({
+    sql: "delete from worker_time_budget where scope=?",
+    args: [anonymousScope],
+  });
+  assert.equal(
+    (await ok("POST", "/api/v1/evaluate", project, null)).chip,
+    project.settings.chip,
+    "anonymous evaluation resumes once its smaller budget window clears",
+  );
+
   assert.equal(
     (
       await http("GET", `/api/v1/projects/${song.id}/cover`, undefined, null)

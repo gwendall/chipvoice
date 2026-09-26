@@ -1,19 +1,37 @@
 import { Worker } from "node:worker_threads";
 import { join } from "node:path";
 import { db, newId } from "./db";
-import { ProjectHttpError } from "./projects";
-/** Shared admission with publication renders; termination precedes lease release. */
+import { ProjectHttpError, admitWorkerTime, chargeWorkerTime } from "./projects";
+/** Render time one caller may spend per minute across every utility action
+ * (decision 33): well below the six evaluate requests per minute that
+ * admitProject already allows anonymously, so a caller that never stops
+ * asking cannot fill the one fleet-wide slot for everyone else. */
+const ANONYMOUS_BUDGET_MS = 20000;
+const ACCOUNT_BUDGET_MS = 60000;
+/** A queued publication render blocks utility work only while fresh; past this
+ * bound (matching the interrupted-render cleanup below) it is presumed
+ * abandoned, so it stops holding the lease hostage. */
+const QUEUE_STALE_MS = 270000;
+/** Shared admission with publication renders; termination precedes lease release.
+ * Publications go first (decision 33): the lease is refused while a fresh
+ * publication render is queued, not only while one is already rendering, and a
+ * caller past its per-minute render-time budget is refused before either check. */
 export async function utilityWorker(
+  identity: string,
   data: unknown | (() => Promise<unknown>),
   timeout = 30000,
   cancelled?: () => Promise<boolean>,
 ): Promise<Record<string, unknown>> {
+  await admitWorkerTime(
+    identity,
+    identity.startsWith("anonymous:") ? ANONYMOUS_BUDGET_MS : ACCOUNT_BUDGET_MS,
+  );
   const client = await db(),
     id = newId(),
     now = Date.now();
   const r = await client.execute({
-    sql: `insert into evaluation_lease(singleton,id,expires_at) select 1,?,? where not exists(select 1 from project_jobs where status in ('rendering','cancelling') and started_at>?) on conflict(singleton) do update set id=excluded.id,expires_at=excluded.expires_at where evaluation_lease.expires_at<? returning id`,
-    args: [id, now + timeout + 15000, now - 270000, now],
+    sql: `insert into evaluation_lease(singleton,id,expires_at) select 1,?,? where not exists(select 1 from project_jobs where status in ('rendering','cancelling') and started_at>?) and not exists(select 1 from project_jobs where status='queued' and created_at>?) on conflict(singleton) do update set id=excluded.id,expires_at=excluded.expires_at where evaluation_lease.expires_at<? returning id`,
+    args: [id, now + timeout + 15000, now - 270000, now - QUEUE_STALE_MS, now],
   });
   if (!r.rows.length)
     throw new ProjectHttpError(
@@ -104,5 +122,19 @@ export async function utilityWorker(
       sql: "delete from evaluation_lease where id=?",
       args: [id],
     });
+    await chargeWorkerTime(identity, Date.now() - now);
+    // Publications go first: a queued render need not wait for the next poll
+    // to notice the lease is free. A failed claim (already taken, cancelled,
+    // none queued) is a normal, silent no-op; runProjectJob is imported lazily
+    // to avoid a load-time cycle with the module that already imports this one.
+    void (async () => {
+      const queued = (
+        await client.execute({
+          sql: "select id from project_jobs where status='queued' order by created_at limit 1",
+        })
+      ).rows[0];
+      if (queued)
+        await (await import("./project-jobs")).runProjectJob(String(queued.id));
+    })().catch(() => {});
   }
 }

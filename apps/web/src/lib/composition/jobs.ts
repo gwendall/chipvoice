@@ -139,7 +139,7 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
     if (!project || await stopped()) return;
     if (!await authorized(row)) error(403, "authorization_expired", "Composition authorization expired or was revoked");
     if (row.status === "validating") {
-      const result = await utilityWorker({ project, evaluate: true }, 30000, stopped);
+      const result = await utilityWorker(String(row.user_id), { project, evaluate: true }, 30000, stopped);
       if (await stopped()) return;
       await client.execute({ sql: "update generations set report=?,status='saving' where id=? and status='validating'", args: [JSON.stringify(result.report), id] });
     }

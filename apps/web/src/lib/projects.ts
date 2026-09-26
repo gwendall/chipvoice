@@ -7,6 +7,7 @@ export class ProjectHttpError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    readonly retryAfter?: number,
   ) {
     super(message);
   }
@@ -90,6 +91,45 @@ export async function admitProject(scope: string, limit: number) {
       "rate_limited",
       "Please wait before trying again",
     );
+}
+/** Render time each caller may spend per minute, on top of admitProject's call-count
+ * limits above. A queued or in-progress publication render is not counted here: it
+ * is bounded by decision 27's single fleet-wide slot, not by who is asking for it. */
+export async function admitWorkerTime(identity: string, budgetMs: number) {
+  const client = await db(),
+    now = Date.now(),
+    window = Math.floor(now / 60000);
+  await client.execute({
+    sql: "delete from worker_time_budget where window < ?",
+    args: [window - 2],
+  });
+  const row = (
+    await client.execute({
+      sql: "select window,spent_ms from worker_time_budget where scope=?",
+      args: [digest(identity)],
+    })
+  ).rows[0];
+  const spent =
+    row && Number(row.window) === window ? Number(row.spent_ms) : 0;
+  if (spent >= budgetMs)
+    throw new ProjectHttpError(
+      429,
+      "worker_budget",
+      "Render time budget spent; retry shortly",
+      Math.max(1, Math.ceil(((window + 1) * 60000 - now) / 1000)),
+    );
+}
+/** Charges time actually held on the shared lease to the caller's window,
+ * regardless of whether the work it paid for succeeded, failed or timed out. */
+export async function chargeWorkerTime(identity: string, ms: number) {
+  if (ms <= 0) return;
+  const client = await db(),
+    now = Date.now(),
+    window = Math.floor(now / 60000);
+  await client.execute({
+    sql: "insert into worker_time_budget(scope,window,spent_ms) values(?,?,?) on conflict(scope) do update set window=excluded.window,spent_ms=case when worker_time_budget.window=excluded.window then worker_time_budget.spent_ms+excluded.spent_ms else excluded.spent_ms end",
+    args: [digest(identity), window, Math.round(ms)],
+  });
 }
 export async function ensureProfile(userId: string): Promise<Profile> {
   const client = await db();
