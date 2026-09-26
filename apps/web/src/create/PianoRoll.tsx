@@ -45,8 +45,9 @@ export default function PianoRoll({
   const rows = drums
     ? [42, 38, 36]
     : Array.from({ length: 25 }, (_, i) => Math.min(127, low + 24 - i));
+  // One placement while stopped (a new part or octave redraws the cells), a
+  // frame loop only while the read position actually moves.
   useEffect(()=>{
-    if(!playing) return;
     let frame=0,last=-2;
     const tick=()=>{
       const column=Math.floor((readPosition()-startTick)/step);
@@ -55,7 +56,7 @@ export default function PianoRoll({
         grid.current?.querySelectorAll('.now').forEach(node=>node.classList.remove('now'));
         if(column>=0 && column<columns) grid.current?.querySelectorAll(`[data-column="${column}"]`).forEach(node=>node.classList.add('now'));
       }
-      frame=requestAnimationFrame(tick);
+      if(playing) frame=requestAnimationFrame(tick);
     };
     tick();return()=>cancelAnimationFrame(frame);
   },[playing,readPosition,startTick,step,columns,part,octave]);
