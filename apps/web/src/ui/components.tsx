@@ -3,7 +3,11 @@ import {AccountLink} from '@/auth/AccountLink';
 import {LanguageSelector, useT} from '@/i18n/react';
 import type {ButtonHTMLAttributes, ReactNode} from 'react';
 import Link from '@/i18n/react';
-import {DEMO_MACHINES, type ChipId} from '../studio/document';
+// From `machines.ts`, not `document.ts`: `SiteHeader`/`Button` in this module
+// render on nearly every page, and `document.ts` carries a module-scope
+// `chipvoice` import that would otherwise ship all five chip engines to every
+// page just for `MachinePicker`'s logos.
+import {DEMO_MACHINES, type ChipId} from '../studio/machines';
 
 export function SiteHeader({active = 'playground'}: {active?: 'playground' | 'lab' | 'about' | 'create' | 'explore' | 'docs' | 'signin'}) {
  const t = useT();
