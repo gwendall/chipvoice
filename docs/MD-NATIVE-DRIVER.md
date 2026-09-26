@@ -50,8 +50,10 @@ vibrato (`vibrato: {delay, hz, depth}`) and sweep (`sweep`, semitones a frame).
 Everything moves once a frame, sixty times a second.
 
 `compileMdVoices` refuses what the machine cannot do: an unknown voice, a voice
-given twice, `dac` beside `fm6`, and `psg3` beside a noise that uses `rate`
-(the rate is tone 3's period).
+given twice, `dac` beside `fm6`, `psg3` beside a noise that uses `rate` (the
+rate is tone 3's period), and two notes at once on one channel (notes come in
+time order, each ending before the next starts; touching is legato). A noise
+hit is cut short by the next.
 
 ```ts
 import { compileMdVoices, mdDrumStream, mdPatchWithRelease, MD_PATCHES, MD_DAC_HZ } from "chipvoice";

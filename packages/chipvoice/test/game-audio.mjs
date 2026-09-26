@@ -69,6 +69,8 @@ function signal(n, f, stereo = true) {
   check('a name given twice is refused', throws(() => packSprite([['a', a], ['a', b]])));
   check('mixed sample rates are refused', throws(() => packSprite([['a', a], ['b', { ...b, sampleRate: 2000 }]])));
   check('the default gap is 0.15 seconds', packSprite([['a', a]]).sprites.a.start === 0.15);
+  const odd = packSprite([['toString', a], ['__proto__', b]]).sprites;
+  check('names like Object members are sprites like any other', Object.hasOwn(odd, 'toString') && Object.hasOwn(odd, '__proto__') && odd.__proto__.duration === 0.05);
 }
 
 // ---- onset

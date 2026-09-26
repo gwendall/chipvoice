@@ -140,16 +140,19 @@ export function packSprite(parts: Iterable<[name: string, render: RenderResult]>
   const total = list.reduce((s, [, r]) => s + r.left.length + gap, gap);
   const left = new Float32Array(total);
   const right = stereo ? new Float32Array(total) : null;
-  const sprites: Sprite["sprites"] = {};
+  const entries: [string, { start: number; duration: number }][] = [];
+  const names = new Set<string>();
   let o = gap;
   for (const [name, r] of list) {
-    if (name in sprites) throw new Error(`packSprite: ${name} is given twice`);
+    if (names.has(name)) throw new Error(`packSprite: ${name} is given twice`);
+    names.add(name);
     left.set(r.left, o);
     if (right) right.set(r.right ?? r.left, o);
-    sprites[name] = { start: o / sampleRate, duration: r.left.length / sampleRate };
+    entries.push([name, { start: o / sampleRate, duration: r.left.length / sampleRate }]);
     o += r.left.length + gap;
   }
-  return { render: result(sampleRate, left, right), sprites };
+  // fromEntries makes every name an own property, `__proto__` included.
+  return { render: result(sampleRate, left, right), sprites: Object.fromEntries(entries) };
 }
 
 export interface OnsetOptions {

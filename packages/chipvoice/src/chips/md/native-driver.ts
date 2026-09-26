@@ -267,7 +267,9 @@ const PSG_IDS: readonly string[] = ["psg1", "psg2", "psg3"];
 
 /**
  * Compiles voices to register writes. Times are seconds from zero, pitches
- * MIDI semitones.
+ * MIDI semitones. A channel plays one note at a time: its notes come in time
+ * order and each ends before the next starts (touching is legato), or the
+ * compile throws. A noise hit is cut short by the next.
  *
  * ```ts
  * const { events } = compileMdVoices([
@@ -285,6 +287,14 @@ export function compileMdVoices(voices: MdVoice[]): MdCompiled {
   }
   if (used.has("dac") && used.has("fm6")) throw new Error("compileMdVoices: the DAC takes FM 6; fm6 and dac cannot both play");
   if (used.has("psg3") && voices.some((v) => v.voice === "noise" && v.hits.some((h) => h.rate))) throw new Error("compileMdVoices: a noise rate is tone 3's period; psg3 cannot play beside it");
+  for (const v of voices) {
+    if (v.voice === "noise" || v.voice === "dac") continue;
+    v.notes.forEach((n, k) => {
+      if (!(n.until > n.at)) throw new Error(`compileMdVoices: ${v.voice} note ${k} ends at ${n.until} s, not after its start at ${n.at} s`);
+      const prev = v.notes[k - 1];
+      if (prev && n.at < prev.until - 1e-6) throw new Error(`compileMdVoices: ${v.voice} note ${k} starts at ${n.at} s, before the previous one ends at ${prev.until} s`);
+    });
+  }
 
   const bus = createBus();
   // power on: LFO off, channel 3 normal, the DAC on when it plays (it takes FM 6), every key off, the PSG silent

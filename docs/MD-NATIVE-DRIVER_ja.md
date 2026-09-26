@@ -38,7 +38,7 @@ voiceは機種のチャンネルの一つと、それが演奏するものです
 
 すべての音符は、しゃくり（`bend`、`bendFrames`）、前の音からのスライド（`glide`、フレーム単位。前の音に接する音へのglideはレガートで新しいアタックなし）、終わりの下降（`fall`、`fallAt`）、遅延ビブラート（`vibrato: {delay, hz, depth}`）、スイープ（`sweep`、フレームあたり半音）を持てます。すべては1フレームに1回、毎秒60回動きます。
 
-`compileMdVoices`は機種にできないことを拒否します。未知のvoice、二度指定されたvoice、`fm6`と並ぶ`dac`、`rate`を使うノイズと並ぶ`psg3`（rateはtone 3の周期です）。
+`compileMdVoices`は機種にできないことを拒否します。未知のvoice、二度指定されたvoice、`fm6`と並ぶ`dac`、`rate`を使うノイズと並ぶ`psg3`（rateはtone 3の周期です）、そして一つのチャンネルで同時に鳴る二つの音符です（音符は時刻順に並び、各音符は次が始まる前に終わる。接する場合はレガート）。ノイズのhitは次のhitで打ち切られます。
 
 ```ts
 import { compileMdVoices, mdDrumStream, mdPatchWithRelease, MD_PATCHES, MD_DAC_HZ } from "chipvoice";

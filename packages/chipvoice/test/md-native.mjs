@@ -133,6 +133,11 @@ const note = (at, until, pitch, o = {}) => ({ at, until, pitch, patch: MD_PATCHE
   check('the DAC and FM 6 together are refused', throws(() => compileMdVoices([{ voice: 'fm6', notes: [] }, { voice: 'dac', stream: new Float32Array(1) }])));
   check('tone 3 and a noise rate together are refused', throws(() => compileMdVoices([{ voice: 'psg3', notes: [] }, { voice: 'noise', hits: [{ at: 0, until: 1, envelope: [0], rate: 4 }] }])));
   check('tone 3 beside a fixed-rate noise is allowed', !throws(() => compileMdVoices([{ voice: 'psg3', notes: [] }, { voice: 'noise', hits: [{ at: 0, until: 1, envelope: [0], fixed: 1 }] }])));
+  const note = (at, until) => ({ at, until, pitch: 69, patch: MD_PATCHES.lead });
+  check('overlapping notes on one channel are refused', throws(() => compileMdVoices([{ voice: 'fm1', notes: [note(0, 2), note(0.1, 0.2)] }])));
+  check('notes out of time order are refused', throws(() => compileMdVoices([{ voice: 'psg1', notes: [{ ...note(1, 2), envelope: [0] }, { ...note(0, 0.5), envelope: [0] }] }])));
+  check('a note that ends before it starts is refused', throws(() => compileMdVoices([{ voice: 'fm1', notes: [note(1, 1)] }])));
+  check('touching notes are allowed (legato)', !throws(() => compileMdVoices([{ voice: 'fm1', notes: [note(0, 0.5), { ...note(0.5, 1), glide: 4 }] }])));
 }
 
 // ---- the bank
@@ -176,6 +181,10 @@ const SONG = {
   check('an unknown drum letter is refused', throws(bad({ drums: 'z...............' }), /bad drum z/));
   check('a tie with nothing is refused', throws(bad({ lead: '-:16' }), /tie with nothing/));
   check('the loop section must be in the order', throws(() => arrangeMdTracker({ ...SONG, loop: 'C' }), /loop section/));
+  check('a patch named like an Object member is still unknown', throws(bad({ lead: '@constructor E5:16' }), /no patch @constructor/));
+  check('an instrument named like an Object member is still unknown', throws(() => arrangeMdTracker({ ...SONG, channels: { ...SONG.channels, arp: { voice: 'psg1', patch: 'hasOwnProperty' } } }), /no PSG instrument hasOwnProperty/));
+  check('a section of zero bars is refused, even as the loop with a tail', throws(() => arrangeMdTracker({ ...SONG, sections: { ...SONG.sections, A: { ...SONG.sections.A, bars: 0 } } }, { tailBars: 1 }), /bars must be a whole number/));
+  check('a section missing from the song is refused before the tail', throws(() => arrangeMdTracker({ ...SONG, order: ['intro', 'A', 'C'] }, { tailBars: 2 }), /no section C/));
 }
 {
   const a = arrangeMdTracker(SONG);

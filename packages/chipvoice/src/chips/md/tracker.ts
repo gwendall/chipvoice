@@ -57,6 +57,7 @@ export interface MdTrackerChannel {
 
 /** A section: its length in bars, and a line per channel that plays in it. */
 export interface MdTrackerSection {
+  /** A whole number, at least 1. */
   bars: number;
   [channel: string]: string | number | undefined;
 }
@@ -122,7 +123,7 @@ function parseLine(line: string, patch: string | undefined, known: Record<string
     }
     if (tok[0] === "@") {
       cur = { ...cur, patch: tok.slice(1) };
-      if (!known[cur.patch!]) throw new Error(`${where}: no patch ${tok}`);
+      if (!Object.hasOwn(known, cur.patch!)) throw new Error(`${where}: no patch ${tok}`);
       continue;
     }
     if (tok[0] === "%") {
@@ -178,6 +179,11 @@ export function arrangeMdTracker(song: MdTrackerSong, options: MdTrackerOptions 
   const order = [...song.order];
   const loopIndex = song.loop ? order.indexOf(song.loop) : -1;
   if (song.loop && loopIndex < 0) throw new Error("loop section not in order");
+  for (const name of order) {
+    const bars = Object.hasOwn(song.sections, name) ? song.sections[name].bars : undefined;
+    if (bars === undefined) throw new Error(`no section ${name}`);
+    if (!Number.isInteger(bars) || bars < 1) throw new Error(`${name}: bars must be a whole number above zero, not ${bars}`);
+  }
   let tail = options.tailBars ?? 0;
   for (let i = loopIndex; tail > 0 && loopIndex >= 0; i = i + 1 < song.order.length ? i + 1 : loopIndex) {
     order.push(song.order[i]);
@@ -289,11 +295,11 @@ export function arrangeMdTracker(song: MdTrackerSong, options: MdTrackerOptions 
           fall: n.fall ? 3 : 0, fallAt: n.fall ? Math.max(0, frames - 8) : null,
         };
         if (fm) {
-          const patch = n.patch === undefined ? undefined : bank.patches[n.patch];
+          const patch = n.patch !== undefined && Object.hasOwn(bank.patches, n.patch) ? bank.patches[n.patch] : undefined;
           if (!patch) throw new Error(`${n.sec}.${id}: no FM patch ${n.patch ?? "(none set)"}`);
           return { ...base, patch } satisfies MdFmNote;
         }
-        const inst = n.patch === undefined ? undefined : bank.psg[n.patch];
+        const inst = n.patch !== undefined && Object.hasOwn(bank.psg, n.patch) ? bank.psg[n.patch] : undefined;
         if (!inst) throw new Error(`${n.sec}.${id}: no PSG instrument ${n.patch ?? "(none set)"}`);
         return { ...base, envelope: inst.envelope, hold: inst.hold } satisfies MdPsgNote;
       });
