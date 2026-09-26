@@ -9,11 +9,14 @@ import type {BufferPlayback} from '../audio/BufferPlayback.mjs';
 export type Overview={seconds:number;loopStart:number;parts:{id:string;name:string;role:string;notes:number[][]}[]};
 const colors=['#e8bc68','#98c9ad','#b6b2ee','#ec9c83','#99cbd8'];
 
+/** mm:ss, matching the format `PlayerControls` shows for the same transport. */
+const stamp=(seconds:number)=>`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`;
+
 /** Static note raster + one moving cursor. The long MIDI never becomes tens
  * of thousands of DOM nodes or gets redrawn on each animation frame. */
 export function Transport({translateParts=true,onPlay,player,overview,seconds,part,pending,active}:{translateParts?:boolean;onPlay:()=>void;player:BufferPlayback|ArrangementPlayback|null;overview:Overview|null;seconds:number;part:string;pending:boolean;active:boolean}){
  const t = useT();
- const root=useRef<HTMLDivElement>(null),canvas=useRef<HTMLCanvasElement>(null),cursor=useRef<HTMLDivElement>(null);
+ const root=useRef<HTMLDivElement>(null),canvas=useRef<HTMLCanvasElement>(null),cursor=useRef<HTMLDivElement>(null),seekArea=useRef<HTMLDivElement>(null);
  const rows=useMemo(()=>overview?.parts.filter(p=>part==='mix'||p.id===part)??[],[overview,part]);
  const activity=useMemo(()=>rows.map(row=>{let end=0;return row.notes.map(n=>{end=Math.max(end,n[1]);return [n[0],end];});}),[rows]);
  useEffect(()=>{
@@ -24,21 +27,38 @@ export function Transport({translateParts=true,onPlay,player,overview,seconds,pa
   };
   draw();const observer=new ResizeObserver(draw);observer.observe(node);return()=>observer.disconnect();
  },[rows]);
+ const updateValue=(phase:number)=>{
+  const node=seekArea.current;if(!node)return;
+  node.setAttribute('aria-valuenow',String(Math.round(phase*100)));
+  node.setAttribute('aria-valuetext',t('{elapsed} of {duration}',{elapsed:stamp(phase*seconds),duration:stamp(seconds)}));
+ };
  useEffect(()=>{
   if(!active)return;
   let raf=0;const badges=root.current?.querySelectorAll<HTMLElement>('.score-part');
   const tick=()=>{const phase=player?.phase()??0;
    if(cursor.current)cursor.current.style.transform=`translateX(${phase*100}%)`;
+   updateValue(phase);
    badges?.forEach((badge,i)=>{const notes=activity[i];let lo=0,hi=notes.length;while(lo<hi){const mid=(lo+hi)>>>1;if(notes[mid][0]<=phase)lo=mid+1;else hi=mid;}badge.dataset.sounding=String(!!player?.playing&&lo>0&&notes[lo-1][1]>phase);});
    raf=requestAnimationFrame(tick);
   };tick();return()=>cancelAnimationFrame(raf);
  },[player,seconds,activity,active,t]);
- const seek=(phase:number)=>{player?.seek(phase);};
+ const seek=(phase:number)=>{player?.seek(phase);updateValue(phase);};
+ const onSeekKeyDown=(e:React.KeyboardEvent<HTMLDivElement>)=>{
+  if(!player?.buffers.length)return;
+  const current=player?.phase()??0;
+  const next=e.key==='ArrowRight'||e.key==='ArrowUp'?Math.min(1,current+.02)
+   :e.key==='ArrowLeft'||e.key==='ArrowDown'?Math.max(0,current-.02)
+   :e.key==='Home'?0
+   :e.key==='End'?1
+   :null;
+  if(next===null)return;
+  e.preventDefault();seek(next);
+ };
  return <div ref={root} className="song-transport">
   <PlayerControls player={playbackFor(player)} seconds={seconds} loading={pending} onToggle={onPlay}/>
   <div className="score-overview" role="region" tabIndex={0} aria-label={t("Source score")}>
    <div className="score-labels">{rows.map((row,i)=><div key={row.id} className="score-part" style={{borderColor:colors[i%colors.length]}} title={translateParts?t(row.name):row.name}><span className="score-part-name">{translateParts?t(row.name):row.name}</span></div>)}</div>
-   <div className="score-notes" onClick={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
+   <div ref={seekArea} className="score-notes" role="slider" tabIndex={0} aria-label={t("Source score position")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} aria-valuetext={t('{elapsed} of {duration}',{elapsed:stamp(0),duration:stamp(seconds)})} onKeyDown={onSeekKeyDown} onClick={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
     <canvas ref={canvas} style={{height:`max(104px, calc(var(--score-row-height) * ${rows.length}))`}} aria-hidden="true"/>
     <div ref={cursor} className="score-cursor" aria-hidden="true"><i/></div>
    </div>

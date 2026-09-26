@@ -61,15 +61,23 @@ export function PersistentPlayer() {
   const [expanded, setExpanded] = useState(false), [queueOpen, setQueueOpen] = useState(false);
   const player = state.active ?? state.pending;
   const info = player?.info();
+  const activePlaying = state.active?.playing() ?? false;
   useEffect(() => {
-    const timer = setInterval(() => session.refresh(), 50);
     const key = (event: KeyboardEvent) => {
       if (event.code !== 'Space' || event.repeat || event.defaultPrevented || (event.target instanceof Element && event.target.closest('input,textarea,select,button,a,summary,[contenteditable]'))) return;
       if (session.active || session.pending) { event.preventDefault(); session.toggle(); }
     };
     window.addEventListener('keydown', key);
-    return () => { clearInterval(timer); window.removeEventListener('keydown', key); };
+    return () => window.removeEventListener('keydown', key);
   }, []);
+  useEffect(() => {
+    // Only poll while something is being auditioned in (`pending`) or is
+    // actually playing: `refresh()` promotes a ready pending track and
+    // detects natural end-of-track, neither of which happens while idle.
+    if (!state.pending && !activePlaying) return;
+    const timer = setInterval(() => session.refresh(), 50);
+    return () => clearInterval(timer);
+  }, [state.pending, activePlaying]);
   useEffect(() => { document.body.classList.toggle('has-player', !!player); return () => document.body.classList.remove('has-player'); }, [!!player]);
   useEffect(() => { const node=root.current;if(!node)return;const observer=new ResizeObserver(()=>document.documentElement.style.setProperty('--player-height', `${node.getBoundingClientRect().height}px`));observer.observe(node);return()=>{observer.disconnect();document.documentElement.style.removeProperty('--player-height');}; }, [!!player]);
   if (!player || !info) return state.error ? <aside className="persistent-player" role="alert">{errorText(state.error)}</aside> : null;

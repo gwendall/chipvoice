@@ -10,6 +10,7 @@ export default function PianoRoll({
   readPosition,
   columns,
   onEdit,
+  playing,
 }: {
   part: PerformancePart;
   ticksPerBeat: number;
@@ -17,6 +18,7 @@ export default function PianoRoll({
   readPosition: () => number;
   columns: number;
   onEdit: (part: PerformancePart) => void;
+  playing: boolean;
 }) {
   const t = useT(),
     drums = part.role === "perc";
@@ -43,6 +45,8 @@ export default function PianoRoll({
   const rows = drums
     ? [42, 38, 36]
     : Array.from({ length: 25 }, (_, i) => Math.min(127, low + 24 - i));
+  // One placement while stopped (a new part or octave redraws the cells), a
+  // frame loop only while the read position actually moves.
   useEffect(()=>{
     let frame=0,last=-2;
     const tick=()=>{
@@ -52,10 +56,10 @@ export default function PianoRoll({
         grid.current?.querySelectorAll('.now').forEach(node=>node.classList.remove('now'));
         if(column>=0 && column<columns) grid.current?.querySelectorAll(`[data-column="${column}"]`).forEach(node=>node.classList.add('now'));
       }
-      frame=requestAnimationFrame(tick);
+      if(playing) frame=requestAnimationFrame(tick);
     };
     tick();return()=>cancelAnimationFrame(frame);
-  },[readPosition,startTick,step,columns,part,octave]);
+  },[playing,readPosition,startTick,step,columns,part,octave]);
   const cells = useMemo(() => {
     const result = new Set<string>();
     for (const note of part.notes) {

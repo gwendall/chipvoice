@@ -14,6 +14,9 @@ export default function PublishedProject({ id }: { id: string }) {
     [publication, setPublication] = useState<Publication | null>(null),
     [message, setMessage] = useState("Opening this song…"),
     [editing, setEditing] = useState(false);
+  // A new song id means a different publication: never keep the previous
+  // song's editor open when navigating between published songs.
+  useEffect(() => setEditing(false), [id]);
   useEffect(() => {
     const abort = new AbortController(), started = Date.now();
     let timer: ReturnType<typeof setTimeout>;
@@ -220,6 +223,7 @@ export default function PublishedProject({ id }: { id: string }) {
           )}
           {editing && (
             <Creator
+              key={publication.id}
               embedded
               initial={publication.project}
               publication={publication}
