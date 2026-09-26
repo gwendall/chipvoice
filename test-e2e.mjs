@@ -84,6 +84,7 @@ section("the package, installed from npm");
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), "chipvoice-e2e-"));
 let localRender = null;
+let lib = null;
 let installedVersion = null;
 try {
   execSync("npm init -y", { cwd: dir, stdio: "pipe" });
@@ -95,7 +96,7 @@ try {
   ).version;
   check("npm i chipvoice works", !!installedVersion, `v${installedVersion}`);
 
-  const lib = await import(path.join(dir, "node_modules/chipvoice/dist/index.js"));
+  lib = await import(path.join(dir, "node_modules/chipvoice/dist/index.js"));
   check("it exports the offline renderer", typeof lib.renderSong === "function");
   check("and the validator", typeof lib.validateSong === "function");
   check("and the chip registry", typeof lib.chips === "function");
@@ -128,7 +129,8 @@ try {
     `peak ${localRender.peak.toFixed(3)} in ${Date.now() - started}ms`,
   );
 } finally {
-  fs.rmSync(dir, { recursive: true, force: true });
+  // Kept until exit: the server comparison below renders with this install.
+  process.on("exit", () => fs.rmSync(dir, { recursive: true, force: true }));
 }
 
 // ─────────────────────────────────────────────────────────── the API
@@ -164,27 +166,30 @@ const serverWav = new Uint8Array(
 );
 check("the server renders a WAV", serverWav.length > 100000, `${serverWav.length} bytes`);
 
-if (localRender && serverWav.length > 44) {
-  // Compare the PCM, skipping the 44-byte header. Identical bytes means the
-  // published package and the deployed server are running the same chip - not
-  // a similar one, the same one.
-  const view = new DataView(serverWav.buffer, serverWav.byteOffset);
-  const frames = Math.min(localRender.left.length, (serverWav.length - 44) / 2);
-  let worst = 0;
-  let differing = 0;
-  for (let i = 0; i < frames; i++) {
-    const server = view.getInt16(44 + i * 2, true);
-    const local = Math.round(Math.max(-1, Math.min(1, localRender.left[i])) * 32767);
-    const delta = Math.abs(server - local);
-    if (delta > 0) differing++;
-    worst = Math.max(worst, delta);
+if (lib && serverWav.length > 44) {
+  // The server arranges the stored score and renders it in stereo, so the
+  // reference is the installed package doing exactly that. Identical bytes
+  // means the published package and the deployed server are running the same
+  // chip - not a similar one, the same one.
+  const score = {
+    bpm: reread.bpm,
+    stepsPerBeat: reread.stepsPerBeat,
+    chip: reread.chip,
+    patterns: reread.patterns,
+    order: reread.order,
+    intent: reread.intent ?? undefined,
+  };
+  const local = lib.toWav(lib.renderSong(lib.arrange(score), { seconds: 10, sampleRate: 44100, stereo: true }));
+  let differing = Math.abs(local.length - serverWav.length);
+  for (let i = 0; i < Math.min(local.length, serverWav.length); i++) {
+    if (local[i] !== serverWav[i]) differing++;
   }
   check(
     "every sample is identical",
-    worst === 0,
-    worst === 0
-      ? `${frames} samples, byte for byte`
-      : `${differing} of ${frames} differ, worst ${worst}`,
+    differing === 0,
+    differing === 0
+      ? `${serverWav.length} bytes, byte for byte`
+      : `${differing} of ${serverWav.length} bytes differ`,
   );
 }
 
@@ -192,9 +197,11 @@ const mp3 = await fetch(`${SITE}/s/${song.id}.mp3`);
 const mp3Bytes = new Uint8Array(await mp3.arrayBuffer());
 check("the MP3 is served", mp3.status === 200 && mp3Bytes.length > 20000, `${mp3Bytes.length} bytes`);
 check("as audio/mpeg", mp3.headers.get("content-type") === "audio/mpeg");
+// A song URL renders with the current engine, so browsers revalidate it
+// rather than keep a file an engine change would leave stale.
 check(
-  "cached immutably",
-  (mp3.headers.get("cache-control") ?? "").includes("immutable"),
+  "and revalidated rather than kept",
+  (mp3.headers.get("cache-control") ?? "").includes("no-cache"),
   mp3.headers.get("cache-control"),
 );
 /*
@@ -242,7 +249,7 @@ const skill = await (await fetch(`${SITE}/skill.md`)).text();
 check("the skill has frontmatter", skill.startsWith("---\nname: chipvoice"));
 check("names every endpoint", (skill.match(/^\| `(GET|POST)`/gm) ?? []).length >= 6);
 check("warns about the silent failure", /mistyped note is silent/i.test(skill));
-check("and says how to write something good", /Loop length beats melody/i.test(skill));
+check("and says how to compose deliberately", /^## Compose deliberately/m.test(skill));
 
 const spec = await (await fetch(`${SITE}/.well-known/openapi.json`)).json();
 check("the spec is OpenAPI 3.1", spec.openapi?.startsWith("3.1"), spec.openapi);
@@ -268,14 +275,20 @@ check("and is a real PNG", new Uint8Array(await card.arrayBuffer())[1] === 0x50)
 // ───────────────────────────────────────────────────── the editor
 section("the editor");
 
+// The editor with the chip, its transport and the arcade pads opens on a
+// shared song's page; the home page is the listening room now. An anonymous
+// visitor's session probe answers 401, which the browser logs as an error but
+// is the expected reply rather than a fault.
+const editor = `${SITE}/s/${song.id}`;
+const expected = (m) => m.location().url === `${SITE}/api/auth/session` && /status of 401/.test(m.text());
 const browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] });
 try {
   const p = await browser.newPage({ viewport: { width: 1200, height: 860 } });
   const errors = [];
   p.on("pageerror", (e) => errors.push(e.message));
-  p.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  p.on("console", (m) => { if (m.type() === "error" && !expected(m)) errors.push(m.text()); });
 
-  await p.goto(SITE, { waitUntil: "domcontentloaded" });
+  await p.goto(editor, { waitUntil: "domcontentloaded" });
   /*
    * Click until the chip appears, not once.
    *
@@ -319,7 +332,7 @@ try {
         peak: Math.round(peak * 1000) / 1000,
         steps: steps.size,
         stolen: chip.canPlay("p2", at + 0.05) === false,
-        rowMarked: !!document.querySelector("[data-stolen="true"]"),
+        rowMarked: !!document.querySelector('[data-stolen="true"]'),
       };
     });
     check("it makes a sound", heard.peak > 0.05, `peak ${heard.peak}`);
@@ -337,8 +350,8 @@ try {
   });
   const phoneErrors = [];
   phone.on("pageerror", (e) => phoneErrors.push(e.message));
-  phone.on("console", (m) => { if (m.type() === "error") phoneErrors.push(m.text()); });
-  await phone.goto(SITE, { waitUntil: "domcontentloaded" });
+  phone.on("console", (m) => { if (m.type() === "error" && !expected(m)) phoneErrors.push(m.text()); });
+  await phone.goto(editor, { waitUntil: "domcontentloaded" });
   await phone.waitForTimeout(1200);
   const fixed = await phone.evaluate(() => {
     const bar = document.querySelector(".play-button");
