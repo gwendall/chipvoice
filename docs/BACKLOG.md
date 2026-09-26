@@ -62,10 +62,14 @@ created the same day.
   chain, the SN76489 noise sync checked against the reference, then the next
   package version released with the site (0.19.0 is taken by #60).
 
-- todo - REV-07 `ci/pipeline-hygiene`: current action majors, the evaluation
+- done - REV-07 `ci/pipeline-hygiene`: current action majors, the evaluation
   artifact only on failure, unit and browser suites in parallel jobs,
   `test:parity` in release qualification, the GitHub release created by the
-  publish workflow, and the unused root `lamejs` dependency removed.
+  publish workflow, and the unused root `lamejs` dependency removed. Also
+  bumped `next`, `react`, `react-dom` and `domani` within their current
+  majors (left `typescript` alone). The three historical releases already on
+  npm without a release page, 0.15.0, 0.15.1 and 0.18.0, were left for the
+  maintainer to backfill by hand rather than created by this change.
 
 - todo - REV-08 `docs/review-cleanup`: fix the English/Japanese drift and run
   `check-translations.py` in CI, one wording for emulation accuracy, the README
