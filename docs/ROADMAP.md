@@ -219,7 +219,7 @@ The five chips provide the material for a playful library demonstration.
 [DEMO.md](DEMO.md) defines V1 and its acceptance criteria; decision 20 updates
 decision 19 following the audit and product discussion.
 
-V1 is implemented on `feat/playable-demo`, awaiting PR review and deployment.
+V1 is merged and deployed; decision 38 accepted it on 2026-09-27.
 The evaluation report records completed checks and the real-device follow-up.
 
 The implementation repairs complete-score preservation and cancellation of scheduled music
@@ -235,9 +235,14 @@ are not prerequisites for calling the initial demonstration complete.
 
 ### Later
 
-PC Engine, Game Boy Advance, Amiga Paula, POKEY, YM2151, YM2610. Closed by
-decision 20 until phase 8 V1 acceptance, and then only as additions to a proven
-shape.
+Decision 38 accepted V1 on 2026-09-27 and reopened additions, each only as an
+addition to a proven shape and only once the open second oracles (P1-13, P3-4,
+P5-8, P7-7) are done. In order: NES expansion audio (VRC6, VRC7, FDS, N163,
+Sunsoft 5B, MMC5), which extends the 2A03 and plays from the same NSF files;
+AY-3-8910 and YM2149; YM2151 and YM2610; OPL2 and OPL3; then PC Engine, Game
+Boy Advance, Amiga Paula, POKEY, TIA, SCC and YM2608. The
+[backlog](BACKLOG.md#next-steps-2026-09-27) sequences them with the rest of the
+work.
 
 ## Chips, in order
 

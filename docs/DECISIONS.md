@@ -365,6 +365,8 @@ systems closed until it is done; the README points at it.
 
 ### 20. A playable library demo, with two foundations repaired first (2026-09-05)
 
+Updated by decision 38: V1 is accepted and new systems reopen under its guards.
+
 The product discussion following the audit defines chipvoice.dev as a playful
 demonstration of the library. [DEMO.md](DEMO.md) is the implementation spec.
 V1 is three composed presets, five machine selectors, four reactive role lanes,
@@ -903,3 +905,67 @@ entry today. `--test-concurrency=4` matches CI's four vCPUs; wall time on the
 author's machine went from about 48s to about 20s for the same 49 files.
 `pnpm test:unit`, `pnpm test` and the release workflow's own call to
 `test:unit` are unaffected by name; only what runs underneath changed.
+
+## 38. Demo V1 is accepted; new chips reopen, with guards (2026-09-27)
+
+Phase 8's V1, as [DEMO.md](DEMO.md) defines it, is merged, deployed and
+exercised by the production e2e. It is accepted. P8-9 (phone editing), P8-13
+(the SID's filter, which is chip work) and P8-14 (usage measurement) are still
+partial or open; they continue after V1 instead of holding it. This lifts the
+gate decision 20 put on new systems (the roadmap's "Later").
+
+**Why.** Decision 20 closed new systems so the demo would be finished before
+the project spread, and said optional later work must not make that gate
+indefinite. The demo is finished; what remains are refinements. The aim is
+still more machines, instruments and music, each one measured.
+
+**Guards.** No new chip starts before the open second-oracle tickets are done:
+P1-13 (NES), P3-4 (Game Boy), P5-8 (the Mega Drive's PSG) and P7-7 (the SID's
+digital part against VICE's test programs). The YM2612 and the S-DSP already
+run a reference core line for line, so their next check is a unit. The first
+addition is NES expansion audio (VRC6, VRC7, FDS, N163, Sunsoft 5B, MMC5): it
+extends a proven chip, and NSF already carries it, so the real-game corpus
+(P1-12) grows with it. Every addition follows "a sheet before a chip": a core,
+an oracle, test ROMs where they exist and a conformance sheet before it
+reaches the public picker.
+
+**Hardware, free evidence first.** An emulator cannot settle the analog stage
+on its own. It is a model fitted to someone's measurements, so agreeing with
+it proves agreement with that model, not with the hardware; filters, DAC
+curves and output stages also vary between units and board revisions. The
+order is independent emulator oracles and published recordings of real units
+first (blargg's recordings of his NES already back P2-3's mixer), then one
+purchased reference unit, a NES, to validate a capture bench and its method
+before any other machine is bought.
+
+**What changes.** The roadmap's "Later" lists the additions in order, and
+[the backlog](BACKLOG.md#next-steps-2026-09-27) sequences the work. The
+backlog's phase 8 and "Later phases" text records the acceptance.
+
+## 39. Generation opens as a closed beta; familiar game melodies stay only while it is free (2026-09-27)
+
+Prompt-to-music ([GENERATIVE-COMPOSITION.md](GENERATIVE-COMPOSITION.md))
+opens to people outside the project as a closed beta: by invitation (20 to 50
+people to start, not an open sign-up), free, bounded by the existing per-owner
+daily limit (`COMPOSITION_DAILY_LIMIT`) and by a monthly spend cap set at the
+model provider (100 EUR to start). Pricing is decided afterwards, from the
+beta's measured cost per song and the share of songs that pass whole-song
+checks and listening.
+
+The Mario, Zelda and Sonic material on chipvoice.dev (the studio's familiar
+melodies and the complete arrangements) stays while the site is free and
+non-commercial. Before any paid launch it leaves the public site; its hashes,
+ledgers and measurements stay in the repository, and a legal review happens
+before anyone is charged. Generation declines requests to reproduce a known
+theme.
+
+**Why.** The generator works end to end but has been qualified on a handful of
+songs, its HTTP acoustic report covers the opening two seconds, and nothing
+accounts for money. A closed beta measures what an open launch would
+otherwise discover in public. Familiar melodies are a fair way to demonstrate
+an engine in a free preservation project; the same material beside a paid
+product is a different risk.
+
+**What changes.** This refines GEN-13: fixture tests alone still do not launch
+paid inference, and neither does a beta without its measurements. Step 6 of
+[the backlog's next steps](BACKLOG.md#next-steps-2026-09-27) lists the work.
