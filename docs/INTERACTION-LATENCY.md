@@ -1,6 +1,6 @@
 # Interactive audio latency audit
 
-[日本語](INTERACTION-LATENCY_ja.md)
+<p align="center"><a href="INTERACTION-LATENCY.md">English</a> &bull; <a href="INTERACTION-LATENCY_ja.md">日本語</a></p>
 
 2026-09-08. Audited production revision `2cdf7b3` (PR #55). The measurements below describe the baseline; the implementation section records the subsequent changes.
 

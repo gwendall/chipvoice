@@ -43,6 +43,7 @@ pnpm --filter chipvoice-web publish:lab .artifacts/listening/NEW/report.json
 
 さらに、失敗する旧エンジンの後の新機種要求、停止エンジンの再利用、録音伴奏の同一性、初回Play前の音量、バッファー読込中断、最大4ソースの重なりを検証します。公開は不完全な集合を拒否し、壊れたFLACキャッシュは検証済みWAVとデコードPCMを比較してから修復します。ブラウザー試験は`.artifacts`へPC／モバイル画像、動画、音声測定を保存し、CIはコーパスを再レンダーせずそれをアップロードします。
 
+<a id="application-playback-session"></a>
 ## アプリ全体の再生セッション
 
 Web のレイアウトが単一の `PlaybackSession` を所有します。ページを離れても、
@@ -74,6 +75,7 @@ Web のレイアウトが単一の `PlaybackSession` を所有します。ペー
 作者表示、曲の自動進行、デスクトップ・モバイル・日本語表示、ブラインド比較を
 検証します。スクリーンショットは `.artifacts/player` に保存します。
 
+<a id="progressive-interactive-playback"></a>
 ## 対話操作向けの逐次再生
 
 SDK 0.18.0 以降、Web の作曲画面は `new ProjectPlayer({preview: true})` を使用します。この SDK のオプションは、オフライン書き出しと同じプロジェクトコンパイラと音源コアを使い、生成できた PCM ブロックから順に再生します。再生前に曲全体を WAV に変換してデコードする必要はありません。`previewMetadata` は長さ・ネイティブ再生の状態・ミックス結果を公開し、`losses` は両方の再生モードで使用できます。プレビューモードの `prepared` は `null` のままです。ファイルが必要な場合は `prepareProject()` または `renderProject()` を明示的に呼び出します。

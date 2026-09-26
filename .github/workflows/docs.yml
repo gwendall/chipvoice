@@ -1,0 +1,22 @@
+name: docs
+
+# ci.yml excludes docs/**/*.md from its triggers, so a docs-only change never
+# runs there. This workflow exists to still catch English/Japanese drift on
+# those changes; the checker itself needs only the standard library.
+on:
+  push:
+    branches: [main]
+    paths: ['**/*.md', 'docs/**']
+  pull_request:
+    paths: ['**/*.md', 'docs/**']
+
+permissions:
+  contents: read
+
+jobs:
+  check-translations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 docs/check-translations.py

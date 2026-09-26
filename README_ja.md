@@ -11,6 +11,39 @@
   <a href="README_ja.md">日本語</a>
 </p>
 
+<a id="quickstart"></a>
+## クイックスタート
+
+```bash
+npm install chipvoice
+```
+
+```ts
+import { arrange, renderSong, toWav } from "chipvoice";
+import { writeFileSync } from "node:fs";
+
+const song = arrange(
+  {
+    bpm: 140,
+    order: [0],
+    patterns: [{
+      lead: "C4 . E4 . G4 . C5 .",
+      bass: "C2 . . . C2 . . .",
+      chord: ". . . . . . . .",
+      perc: "K . H . S . H .",
+    }],
+    intent: { lead: "bright" },
+  },
+  "dmg", // または "2a03"、"md"、"snes"、"c64"
+);
+
+writeFileSync("theme.wav", toWav(renderSong(song, { seconds: 4 })));
+```
+
+ブラウザーで音を確かめるなら[chipvoice.dev](https://chipvoice.dev)。最近の変更点は
+[CHANGELOG_ja.md](CHANGELOG_ja.md)、このリポジトリをソースからビルドする方法は
+下の[実行方法](#実行方法)を参照してください。
+
 **全パートの音楽を制作・コード編集・公開：** [制作画面](https://chipvoice.dev/ja/create)、[コミュニティ](https://chipvoice.dev/ja/explore)、[SDK / HTTP ドキュメント](https://chipvoice.dev/ja/docs)。バージョン付きプロジェクトは完全な演奏を保存し、中断可能な再生、独自のピクセルアバター、固定された公開 WAV を提供します。制作・試聴はアカウント不要、公開はアカウントを使います。[契約と運用上限](https://github.com/gwendall/chipvoice/blob/main/docs/CREATION_ja.md)。
 
 
@@ -121,7 +154,7 @@ pnpm --filter chipvoice-web test # ローカルの本番ビルド、一時DB、�
 <a id="how-accurate-is-it"></a>
 ## どれほど正確か
 
-形容詞でなく測定で示します。全チップが[`docs/CONFORMANCE.md`](docs/CONFORMANCE_ja.md)の手順に従うシートを持ち、何をどの参照で検証し、どの差が既知かを記載します。2A03の[`docs/chips/2a03.md`](docs/chips/2a03_ja.md)では、コーパス全曲のパルス波がblarggの参照とサイクルごとに一致し、ハーネスの6502上で29個すべてのAPU ROMが合格し、実NES録音とのミキサー打ち消しも実機並みです。Game Boyの[`docs/chips/dmg.md`](docs/chips/dmg_ja.md)はSM83上で`dmg_sound`の12/12が合格。Mega Driveの[`docs/chips/md.md`](docs/chips/md_ja.md)は、ダイの解析に基づくNuked-OPN2とコーパス全サイクルのYM2612が一致。SNESの[`docs/chips/snes.md`](docs/chips/snes_ja.md)は全出力サンプルがsnes_spcと一致。C64の[`docs/chips/c64.md`](docs/chips/c64_ja.md)は、文献実装のSIDが各声の2デジタル値でreSID-fpと一致します。全5機種で正直に**未検証**と残るのは、実機ライン出力が必要なアナログ段です。[ロードマップ](docs/ROADMAP_ja.md)はその行を変える順序、[バックログ](docs/BACKLOG_ja.md)は今週の対応です。
+形容詞でなく測定で示します。全チップが[`docs/CONFORMANCE.md`](docs/CONFORMANCE_ja.md)の手順に従うシートを持ち、何をどの参照で検証し、どの差が既知かを記載します。2A03の[`docs/chips/2a03.md`](docs/chips/2a03_ja.md)では、コーパス全曲のパルス波がblarggの参照とサイクルごとに一致し、ハーネスの6502上で29個すべてのAPU ROMが合格し、実NES録音とのミキサー打ち消しも実機並みです。Game Boyの[`docs/chips/dmg.md`](docs/chips/dmg_ja.md)は、各声の遷移区間の97.5%がGb_Snd_Emuとそのオラクル自身のタイミング規約の下で一致し、SM83上で`dmg_sound`の12/12が合格。Mega Driveの[`docs/chips/md.md`](docs/chips/md_ja.md)は、ダイの解析に基づくNuked-OPN2とコーパス全サイクルのYM2612が一致。SNESの[`docs/chips/snes.md`](docs/chips/snes_ja.md)は全出力サンプルがsnes_spcと一致。C64の[`docs/chips/c64.md`](docs/chips/c64_ja.md)は、文献実装のSIDが各声の2デジタル値でreSID-fpと一致します。全5機種で正直に**未検証**と残るのは、実機ライン出力が必要なアナログ段です。[ロードマップ](docs/ROADMAP_ja.md)はその行を変える順序、[バックログ](docs/BACKLOG_ja.md)は今週の対応です。
 
 <a id="where-it-is-going"></a>
 ## 目指すもの
@@ -163,20 +196,5 @@ Sonic の DAC 移植も、すべてをキックにせず、観測したキック
 
 [プロンプト作曲](docs/LOCAL-COMPOSITION_ja.md)：`/create`または設定済みOpenAI APIから作曲し、作者と作成方法を保持して全WAV/MP3レンダーを再利用します。エージェントは認可後に`/skill/compose.mjs`をダウンロードし、プロンプトまたは自作プロジェクトから1コマンドで全MP3を取得できます。[実施計画](docs/GENERATIVE-COMPOSITION_ja.md)も参照してください。
 
-## 対話操作向けの逐次再生
-
-SDK 0.18.0 以降、Web の作曲画面は `new ProjectPlayer({preview: true})` を使用します。この SDK のオプションは、オフライン書き出しと同じプロジェクトコンパイラと音源コアを使い、生成できた PCM ブロックから順に再生します。再生前に曲全体を WAV に変換してデコードする必要はありません。`previewMetadata` は長さ・ネイティブ再生の状態・ミックス結果を公開し、`losses` は両方の再生モードで使用できます。プレビューモードの `prepared` は `null` のままです。ファイルが必要な場合は `prepareProject()` または `renderProject()` を明示的に呼び出します。
-
-```js
-import {ProjectPlayer} from 'chipvoice';
-
-const player = new ProjectPlayer({preview: true});
-// Call play from a user gesture to unlock browser audio.
-void player.play();
-await player.load(project);
-await player.update({tempoScale: 1.25});
-player.setTitle('New title'); // Metadata only; no audio preparation.
-```
-
-準備中も現在の音を維持し、再生・一時停止の最新の操作を尊重します。表示は音声出力クロックに従います。ワーカーを再利用し、バリエーション・PCM・DSP 状態のキャッシュには上限があります。ただし、未準備の設定へ曲の途中で変更するときは DSP の履歴を再構築する必要があります。音符の位置だけではエンベロープ、サンプル位置、フィルタ、エコーを復元できません。ブラウザの音声解除、未取得のデータ、出力機器の遅延も残ります。既存の `ProjectPlayer()` の既定動作は互換性のため全体バッファ方式を維持します。
+SDK 0.18.0の逐次再生の変更を含むリリースノートは[CHANGELOG_ja.md](CHANGELOG_ja.md)にあります。
 

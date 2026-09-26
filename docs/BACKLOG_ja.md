@@ -84,10 +84,21 @@
   npmには既に公開済みでリリースページのない0.15.0、0.15.1、0.18.0の3件は、
   今回は作成せずメンテナーの手作業に残しました。
 
-- todo - REV-08 `docs/review-cleanup`: 英語と日本語のずれを直してCIで
-  `check-translations.py`を実行し、エミュレーション精度の表現を統一し、
-  READMEはクイックスタートを先頭に、`.env.example`を完全にし、貢献ガイドを
-  追加します。
+- done - REV-08 `docs/review-cleanup`: mainで`check-translations.py`が
+  報告していた指摘（不足していたアンカー、古い言語切替行、未翻訳の測定列）を
+  すべて修正し、`.github/workflows/docs.yml`を追加してMarkdownを含むpush・
+  pull requestのたびに実行するようにしました（`ci.yml`はそれらのパスを
+  無視するため）。両READMEの精度説明にあったGame Boyの一文が唯一の実質的な
+  不整合で、他の全チップにあるデジタル一致の記述が欠けていたため、4つの
+  README変種すべてで修正しました。README.mdとREADME_ja.mdは検証済みの
+  クイックスタート（`npm install`、ビルド済みパッケージに対して実行を確認した
+  コード例、サイトへのリンク）で始まり、逐次再生の告知は新設した
+  `CHANGELOG.md`／`CHANGELOG_ja.md`へ移しました。`apps/web/.env.example`は
+  テスト以外で読まれる`process.env`変数をすべて列挙し、それぞれに用途と
+  ローカルでの要否を一行で記載しています。`CONTRIBUTING.md`／
+  `CONTRIBUTING_ja.md`はセットアップ、ビルド、typecheck、各テストスイート、
+  公開レポートの規則、PRと決定記録の慣例を記載し、すべてのコマンドを
+  `package.json`と突き合わせて確認しました。
 
 - todo - REV-09: ラボと編曲のFLAC 147 MBがLFSなしで管理されています。
   外に移すには保存先の判断が必要です。
