@@ -800,3 +800,19 @@ delete each other's still-valid rows during cleanup. All three changes are
 pinned in `apps/web/test-auth-http.mjs`; the agent-identity note is also
 checked against the phone viewport in `apps/web/test-artists.mjs`, so it
 cannot push the Authorize button below the fold that Decision 31 fixed.
+
+The emailed sign-in link no longer signs anyone in by being opened.
+`GET /api/auth/redeem` only checks that the link is still good and sends the
+person to `/signin/confirm`, whose button posts back to the same route; that
+POST is the one thing that spends the token. Mail scanners and link
+prefetchers open links to inspect them, and the old GET spent the one-time
+token before the person ever clicked, which then read as an expired link.
+Three smaller fixes ride along: `clientKey` in `apps/web/src/lib/limit.ts`
+now prefers `x-real-ip` and otherwise the rightmost `X-Forwarded-For` entry,
+because the leftmost one is whatever the client chose to send and let a
+caller pick its own rate-limit bucket; the admin key on song deletion is
+compared in constant time and never matches when unset; and
+`apps/web/src/lib/db.ts` refuses a development database URL without its own
+`TURSO_DEV_AUTH_TOKEN` instead of falling back to the production token.
+`apps/web/test-auth-http.mjs` pins that a GET sets no cookie and leaves the
+token redeemable, and that a spent token cannot be redeemed twice.

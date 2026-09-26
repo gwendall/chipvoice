@@ -33,10 +33,10 @@ function target(): { url: string; token?: string } | null {
   }
   if (process.env.TURSO_DEV_DATABASE_URL) {
     const token = process.env.TURSO_DEV_AUTH_TOKEN;
-    // Its own token, full stop: a preview that fell back to the production
-    // token would authenticate against production while pointed at a
-    // development URL, and every read and write would go to the wrong
-    // database silently instead of failing in a way anyone would notice.
+    // Its own token, full stop: falling back to TURSO_AUTH_TOKEN would put
+    // the production credential to work in whatever preview or branch sets a
+    // development URL, and a token that fails against the wrong database looks
+    // like a wrong URL. Refuse instead of guessing.
     // `undefined` means the variable was never set; an explicit empty string
     // (every local test fixture's local sqlite file needs no token at all)
     // is a deliberate, different thing and stays allowed.
