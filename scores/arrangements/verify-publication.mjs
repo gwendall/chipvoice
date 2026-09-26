@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
-import {readFile,readdir} from 'node:fs/promises';
+import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {arrangementIds,arrangementChips,loadArrangement,checkArrangements} from './check.mjs';
 import {nativeSources} from './native-sources.mjs';
 import {publishedBytes} from '../../apps/web/scripts/audio-store.mjs';
+import {engineModules,engineSha256} from './engine.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const bytes=path=>readFile(root+path);
@@ -27,9 +28,9 @@ export function validatePublication(report){
 }
 export async function verifyPublication(){
  const report=JSON.parse(await bytes('apps/web/public/arrangement-data/report.json'));validatePublication(report);
- const engine=createHash('sha256');
- for(const name of (await readdir(root+'packages/chipvoice/dist',{recursive:true})).filter(n=>n.endsWith('.js')).sort())engine.update(name).update(await bytes(`packages/chipvoice/dist/${name}`));
- assert.equal(report.engineSha256,engine.digest('hex'),'recordings match the built SDK');
+ const modules=await engineModules();
+ assert.ok(modules.includes('performance.js')&&modules.includes('chips/nes/dsp.js')&&!modules.some(m=>m.startsWith('playback/')),'the engine hash covers what renders the recordings and not playback');
+ assert.equal(report.engineSha256,await engineSha256(),'recordings match the modules of the built SDK that render them');
  assert.equal(report.evaluationSha256,hash(await bytes('scores/arrangements/evaluate.mjs')),'evaluation method identity');
  assert.deepEqual(report.sourceChecks,await checkArrangements(),'source and register checks match publication');
  for(const piece of report.pieces){

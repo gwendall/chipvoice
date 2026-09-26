@@ -85,10 +85,11 @@ cancellation) lives in `packages/conform` and runs from there, for example
 ## The publication report
 
 `apps/web/public/arrangement-data/report.json` records an `engineSha256` of
-the exact engine build its rendered audio and measurements came from. Any
-change to `packages/chipvoice`'s engine (the chip cores, the driver, the
-mixer) that could change rendered audio needs a fresh report before the
-change is merged:
+the built engine modules its audio and measurements came from: the ones
+`evaluate.mjs` can reach, which `scores/arrangements/engine.mjs` finds by
+bundling it. A change to any of them (the chip cores, the drivers, the mixer)
+needs a fresh report before it is merged; a change to playback, the editor or
+the project API does not:
 
 ```bash
 pnpm arrangements:eval

@@ -1,4 +1,4 @@
-import {readFile,writeFile,mkdir,readdir} from 'node:fs/promises';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {spawnSync,execFileSync} from 'node:child_process';
 import {planPerformance,renderPerformance,toWav} from '../../packages/chipvoice/dist/index.js';
@@ -6,13 +6,12 @@ import {measureAudio,comparePcm} from '../../packages/conform/src/listening/metr
 import {observeSnesMixer} from '../../packages/conform/src/listening/snes-mixer.mjs';
 import {arrangementIds,arrangementChips,loadArrangement,checkArrangements} from './check.mjs';
 import {nativeSources,loadNative} from './native-sources.mjs';
+import {engineSha256} from './engine.mjs';
 const out='.artifacts/arrangements/evaluation';
 await mkdir(out,{recursive:true});
 const publication='apps/web/public/arrangement-data';await mkdir(publication,{recursive:true});
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
-const engine=createHash('sha256');
-for(const name of (await readdir('packages/chipvoice/dist',{recursive:true})).filter(n=>n.endsWith('.js')).sort())engine.update(name).update(await readFile(`packages/chipvoice/dist/${name}`));
-const report={version:1,revision:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),engineSha256:engine.digest('hex'),evaluationSha256:hash(await readFile(new URL('./evaluate.mjs',import.meta.url))),sourceChecks:await checkArrangements(),createdAt:new Date().toISOString(),pieces:[]};
+const report={version:1,revision:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),engineSha256:await engineSha256(),evaluationSha256:hash(await readFile(new URL('./evaluate.mjs',import.meta.url))),sourceChecks:await checkArrangements(),createdAt:new Date().toISOString(),pieces:[]};
 async function asset(id,audio){
  const metrics=measureAudio(audio);
  if(metrics.invalidSamples||metrics.clippedSamples)throw new Error(`${id}: invalid or clipped PCM`);
