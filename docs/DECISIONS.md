@@ -852,3 +852,30 @@ the home page, which needs none of the chip machinery, is unchanged.
 `.next` output directly (no server, no browser) and fails if any of those
 seven audio-feature-free pages ever references a chunk containing
 `registerProcessor` again.
+
+## 36. Publishing gains a parity gate and creates its own release (2026-09-27)
+
+`publish.yml` runs `test:parity` after `test:fresh`, before `npm publish`: the
+offline render and the worklet's live capture have to describe the same
+loudness, headroom and brightness, or the MP3 a listener downloads is not what
+they actually heard. It hosts `packages/chipvoice` itself on the fixed port,
+4181, the check has always expected a server there rather than starting one of
+its own. Once `npm publish` succeeds, the job also creates the tag's GitHub
+release, `gh release view "$GITHUB_REF_NAME" || gh release create "$GITHUB_REF_NAME"
+--verify-tag --notes-from-tag`, skipping it if one already exists.
+
+**Why.** The chip now runs in two places, a worklet on the audio clock and
+Node on a counter, and nothing before this checked that they still agree -
+only `test/parity.mjs` did, and it had never run anywhere. Release
+qualification is where that check belongs: it is slower and more failure-prone
+than the rest of the suite, a real Chromium capturing four seconds of real
+audio, which is why CI does not run it on every push, but a release is exactly
+the point where "the render matches what people actually heard" has to hold.
+The GitHub release, separately, was a manual step that depended on somebody
+remembering it after `npm publish` had already succeeded; 0.15.0, 0.15.1 and
+0.18.0 are what happens when nobody does. Checking for an existing release
+first keeps a maintainer's own manual release from becoming a failed run.
+
+**What changes.** `publish.yml` needs `contents: write` (kept alongside the
+existing `id-token: write` for npm's OIDC exchange) to create the release. A
+release is still not created if `test:parity` or `npm publish` fails.

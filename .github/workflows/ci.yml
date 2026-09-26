@@ -17,23 +17,26 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  # Static and unit checks: scores, arrangements, mixing, MIDI import,
+  # typecheck, package unit tests. None of this touches a browser, so it only
+  # needs the package build, not the much slower Next.js build.
+  unit:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: actions/cache@v4
-        with:
-          path: apps/web/.next/cache
-          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
-          restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
-      - run: pnpm build
+      - run: pnpm --filter chipvoice build
+      # The web typecheck imports the catalogues and render workers the web
+      # build writes to the ignored `generated/`; this is that step alone,
+      # without `next build`.
+      - run: node scripts/build-renderer.mjs
+        working-directory: apps/web
       - run: pnpm scores:check
       - run: pnpm arrangements:check
       - run: node scores/test-portable-timbres.mjs
@@ -47,14 +50,48 @@ jobs:
           /tmp/chipvoice-score-tools/bin/python scores/test-import-midi.py
       - run: pnpm typecheck
       - run: pnpm test:unit
+
+  # The web browser suite: production Next, anonymous API flows, measured
+  # browser audio and editor recovery. Split from `unit` so a late failure
+  # here (the slowest part of the old chain) does not also delay the fast
+  # checks, and vice versa.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v6
+        with:
+          path: apps/web/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+      - run: pnpm build
+      # The binaries are the slow part of `playwright install`; caching them
+      # skips that download on a cache hit. The apt step still runs every
+      # time - it is quick once the packages are already there, and there is
+      # no flag to ask Playwright to install browsers only when missing.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - run: pnpm exec playwright install --with-deps chromium
       # Production Next, anonymous API flows, measured browser audio and editor
       # recovery. Owns its server and temporary SQLite DB; never touches prod.
       - name: Audio publication verifier
         run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
       - run: pnpm --filter chipvoice-web test
-      - uses: actions/upload-artifact@v4
-        if: always()
+      # Uploaded for a post-mortem, not for a routine pass: it is 22 MB and
+      # nobody opens it when the run is green. A short retention because a
+      # failing run gets attention (and a fix or a re-run) within days, not
+      # weeks.
+      - uses: actions/upload-artifact@v7
+        if: failure()
         with:
           name: demo-evaluation
           path: |
@@ -80,15 +117,15 @@ jobs:
             .artifacts/session
             .artifacts/creator-journey
             .artifacts/i18n
-          retention-days: 7
+          retention-days: 3
 
   conformance:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm

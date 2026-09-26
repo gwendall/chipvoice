@@ -16,15 +16,16 @@ jobs:
       # to revoke - and npm retires 2FA-bypass tokens for direct publishing in
       # January 2027 anyway.
       id-token: write
-      contents: read
+      # Write, not read: creating the GitHub release below needs it.
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # No version here: package.json's `packageManager` field is the one
       # source, and naming it twice is an error rather than a redundancy.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
@@ -61,5 +62,40 @@ jobs:
       - run: pnpm test:fresh
         working-directory: packages/chipvoice
 
+      # The engine runs in two places now, a worklet on the audio clock and
+      # Node on a counter. This is the check that they still agree - the
+      # offline render is what the server would hand a listener as an MP3,
+      # and it means nothing if it is not what the worklet actually played.
+      # test/parity.mjs expects a static server on a fixed port rather than
+      # spawning its own, so this job hosts the package directory itself.
+      - name: Start the static server the parity check plays against
+        working-directory: packages/chipvoice
+        run: |
+          node_modules/.bin/serve . -l 4181 &
+          echo $! > /tmp/parity-serve.pid
+          for _ in $(seq 1 40); do
+            curl -sf -o /dev/null http://localhost:4181/test/parity/ && exit 0
+            sleep 0.5
+          done
+          echo "the parity server never came up" >&2
+          exit 1
+      - run: pnpm test:parity
+        working-directory: packages/chipvoice
+      - name: Stop the parity server
+        if: always()
+        run: kill "$(cat /tmp/parity-serve.pid)" 2>/dev/null || true
+
       - run: npm publish --access public
         working-directory: packages/chipvoice
+
+      # No workflow has ever done this - the release page has always been a
+      # separate, manual step after publishing, which is exactly the kind of
+      # step a maintainer forgets: 0.15.0, 0.15.1 and 0.18.0 are all on npm
+      # with no release page at all. npm publish above already means the
+      # version is out and nothing here can undo that, so this only ever adds
+      # the page and checks first rather than failing on one a maintainer
+      # already created by hand.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag
