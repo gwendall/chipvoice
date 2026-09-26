@@ -1,0 +1,44 @@
+name: production e2e
+
+# Vercel deploys production on every merge to main, outside Actions, and
+# reports each deployment back to GitHub. A successful production deployment
+# is what runs test-e2e.mjs against chipvoice.dev: the package from npm, the
+# API and the editor, byte for byte. Before this it ran only when someone
+# remembered to.
+on:
+  deployment_status:
+  workflow_dispatch:
+
+# One run at a time: two deployments close together would otherwise race each
+# other's writes into the rate limiter.
+concurrency:
+  group: production-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.deployment.sha || github.sha }}
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      # The e2e stores a song and forks it. With the dedicated test account's
+      # key those writes are that account's; without it they are anonymous.
+      - name: Run the e2e against chipvoice.dev
+        env:
+          SITE: https://chipvoice.dev
+          CHIPVOICE_E2E_KEY: ${{ secrets.CHIPVOICE_E2E_KEY }}
+        run: |
+          if [ -z "$CHIPVOICE_E2E_KEY" ]; then
+            echo "::warning::CHIPVOICE_E2E_KEY is not set, so this run writes anonymously"
+          fi
+          pnpm test:e2e

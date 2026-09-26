@@ -82,6 +82,14 @@ cancellation) lives in `packages/conform` and runs from there, for example
 `pnpm --filter chipvoice-conform check`; see `.github/workflows/ci.yml`'s
 `conformance` job for the full list of its checks.
 
+The production e2e, `test-e2e.mjs`, checks the live site instead: the package
+from npm, the API and the editor, byte for byte.
+`.github/workflows/e2e.yml` runs it after every successful production
+deployment, and by hand it is `SITE=https://chipvoice.dev pnpm test:e2e`. It
+stores a song and forks it. When `CHIPVOICE_E2E_KEY` holds the dedicated test
+account's API key, those songs belong to that account; without it they are
+anonymous.
+
 ## The publication report
 
 `apps/web/public/arrangement-data/report.json` records an `engineSha256` of

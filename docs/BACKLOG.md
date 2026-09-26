@@ -123,8 +123,10 @@ Work without a ticket takes a NEXT id.
   not the published package version. Decide what the constant means, then
   align and document it.
 - todo - P2-4: link the sheets from the package README and the skill.
-- todo - NEXT-02: run the production e2e after every deployment, writing to a
-  dedicated test account.
+- doing - NEXT-02: `.github/workflows/e2e.yml` runs the production e2e after
+  every successful production deployment, and its writes use the
+  `CHIPVOICE_E2E_KEY` secret when set. The dedicated test account and its key
+  are still to be created.
 - done - NEXT-03: `test-creation-browser.mjs` failed only at a load average of
   70, on Playwright's 30-second default wait. Every wait now gets the test's
   two-minute preparation budget. The editor itself kept Pause visible through
