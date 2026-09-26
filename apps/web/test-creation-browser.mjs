@@ -147,6 +147,48 @@ try {
     (await source()).performance.endTick,
     generated.performance.endTick,
   );
+  assert.ok(
+    await button("Undo").isDisabled(),
+    "Undo should have nothing left after the section undo",
+  );
+  const title = page.getByRole("textbox", { name: "Song title", exact: true });
+  const titleBefore = await title.inputValue();
+  await title.click();
+  await title.press("End");
+  await title.pressSequentially(" v2", { delay: 20 });
+  assert.equal(await title.inputValue(), `${titleBefore} v2`);
+  await button("Undo").click();
+  assert.equal(
+    await title.inputValue(),
+    titleBefore,
+    "A whole run of title keystrokes undoes in one step",
+  );
+  assert.ok(
+    await button("Undo").isDisabled(),
+    "Coalesced title edits leave nothing further to undo",
+  );
+  await button("Notes").click();
+  await page.getByRole("button", { name: "Add part", exact: false }).click();
+  // Located by structure, not by its (locale-dependent) aria-label, since the
+  // point of this check is that the label translates but a typed value never does.
+  const partName = page.locator(".part-tools input:not([type])");
+  await partName.fill("Bass");
+  assert.equal(await partName.inputValue(), "Bass");
+  await page.getByLabel("Language", { exact: true }).selectOption("ja");
+  await page.getByLabel("言語", { exact: true }).waitFor();
+  assert.equal(
+    await partName.inputValue(),
+    "Bass",
+    "A user-typed part name is never translated",
+  );
+  await page.getByLabel("言語", { exact: true }).selectOption("en");
+  await page.getByLabel("Language", { exact: true }).waitFor();
+  // Editing a part clears the project's generator metadata (it no longer
+  // matches the seed exactly), so undo the rename and the added part to
+  // leave the seed-generated project intact for the check just below.
+  await button("Undo").click();
+  await button("Undo").click();
+  assert.deepEqual(await source(), generated);
   const oldDraft = await page.evaluate(() =>
     localStorage.getItem("chipvoice.project.v1:active"),
   );

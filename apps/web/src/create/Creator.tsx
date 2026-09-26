@@ -52,16 +52,32 @@ export default function Creator({
   initial,
   publication,
   embedded = false,
-  active = true,
 }: {
   initial?: MusicProject;
   publication?: Publication;
   embedded?: boolean;
-  active?: boolean;
 }) {
   const errorText = useErrorText();
   const t = useT(),
-    [project, setProject] = useState<MusicProject>(initial ?? starterProject),
+    withTranslatedParts = (p: MusicProject): MusicProject =>
+      p.source.kind !== "performance"
+        ? p
+        : {
+            ...p,
+            source: {
+              ...p.source,
+              performance: {
+                ...p.source.performance,
+                parts: p.source.performance.parts.map((part) => ({
+                  ...part,
+                  name: t(part.name),
+                })),
+              },
+            },
+          },
+    [project, setProject] = useState<MusicProject>(
+      () => initial ?? withTranslatedParts(starterProject()),
+    ),
     [ready, setReady] = useState(false),
     [view, setView] = useState<"notes" | "code">("notes"),
     [partId, setPartId] = useState("lead"),
@@ -118,6 +134,7 @@ export default function Creator({
   const player = useRef<ProjectPlayer | null>(null),
     alive = useRef(true),
     projectRef = useRef(project),
+    publicationRef = useRef(publication),
     loaded = useRef<MusicProject | null>(null),
     history = useRef<MusicProject[]>([]),
     future = useRef<MusicProject[]>([]),
@@ -135,6 +152,7 @@ export default function Creator({
   }, []);
   const draftKey = useRef<string | null>(null);
   projectRef.current = project;
+  publicationRef.current = publication;
   const performance =
       project.source.kind === "score" ? null : project.source.performance,
     parts = performance?.parts ?? [],
@@ -180,11 +198,17 @@ export default function Creator({
     }
     return player.current;
   };
-  const edit = (next: MusicProject, remember = true) => {
+  // A `group` coalesces a run of edits (e.g. every keystroke while typing the
+  // title) into the single undo step that was open when the run started.
+  const editGroup = useRef<string | null>(null);
+  const edit = (next: MusicProject, remember = true, group?: string) => {
     if (remember) {
-      history.current = [...history.current.slice(-39), projectRef.current];
+      if (!group || group !== editGroup.current) {
+        history.current = [...history.current.slice(-39), projectRef.current];
+      }
       future.current = [];
     }
+    editGroup.current = remember ? (group ?? null) : null;
     setHistoryVersion((v) => v + 1);
     setProject(next);
     projectRef.current = next;
@@ -235,6 +259,7 @@ export default function Creator({
     let cancelled = false;
     void (async () => {
       try {
+        const publication = publicationRef.current;
         const requestedKey = new URLSearchParams(location.search).get("draft");
         const requestedDraft =
           requestedKey && isDraftKey(requestedKey) ? requestedKey : null;
@@ -277,7 +302,7 @@ export default function Creator({
           new URLSearchParams(location.search).get("starter") === "orbit"
         ) {
           draftKey.current = newDraftKey();
-          setProject(starterProject());
+          setProject(withTranslatedParts(starterProject()));
         } else if (!initial) {
           const saved = readDraft(draftKey.current!) ?? readDraft(DRAFT);
           if (saved) setProject(saved);
@@ -311,7 +336,10 @@ export default function Creator({
       releasePlayback(player.current);
       player.current = null;
     };
-  }, [initial]);
+    // publicationRef carries the latest publication into the effect; only its
+    // id re-runs initialisation, so a parent's unrelated re-fetch (e.g. while
+    // polling a pending render) does not reset the project mid-edit.
+  }, [initial, publication?.id]);
   useEffect(() => {
     if (!ready) return;
     try {
@@ -479,14 +507,16 @@ export default function Creator({
         codeMode === "json"
           ? parseProject(code)
           : await runGenerator(generatorCode, seed, starterProject());
+      if (!alive.current) return;
       edit(next);
       setNotice("Applied. Your previous version is available with Undo.");
     } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Could not apply this code",
-      );
+      if (alive.current)
+        setNotice(
+          error instanceof Error ? error.message : "Could not apply this code",
+        );
     } finally {
-      setBusy(false);
+      if (alive.current) setBusy(false);
     }
   };
   const publish = async () => {
@@ -543,7 +573,7 @@ export default function Creator({
           ...performance,
           parts: [
             ...parts,
-            { id, name: "New part", role: "lead", priority: 2, notes: [] },
+            { id, name: t("New part"), role: "lead", priority: 2, notes: [] },
           ],
         },
       },
@@ -598,7 +628,7 @@ export default function Creator({
             disabled={busy}
             onClick={() => {
               draftKey.current = newDraftKey();
-              edit(starterProject());
+              edit(withTranslatedParts(starterProject()));
               setPublished(null);
               setBar(0);
               setSolo(null);
@@ -635,7 +665,9 @@ export default function Creator({
               aria-label={t("Song title")}
               maxLength={80}
               value={project.title}
-              onChange={(e) => edit({ ...project, title: e.target.value })}
+              onChange={(e) =>
+                edit({ ...project, title: e.target.value }, true, "title")
+              }
             />
             {published && (
               <Link
@@ -746,7 +778,10 @@ export default function Creator({
                                   ? "≋"
                                   : "♪"}
                           </span>
-                          <span>{t(p.name)}</span>
+                          {/* Part names are free text (typed or imported);
+                              only the app's own generated defaults are ever
+                              translated, and only once, at creation. */}
+                          <span>{p.name}</span>
                           <small>{p.notes.length}</small>
                         </button>
                       ))}
@@ -1035,6 +1070,7 @@ export default function Creator({
                         ticksPerBeat={performance.ticksPerBeat}
                         startTick={bar * 4 * performance.ticksPerBeat}
                         readPosition={readPositionTick}
+                        playing={audio.playing}
                         onEdit={(next) => {
                           const max = next.notes.reduce(
                             (end, n) => Math.max(end, n.endTick),

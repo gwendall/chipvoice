@@ -36,10 +36,16 @@ created the same day.
   anonymous), on top of the existing per-minute call limits, and anonymous
   evaluate's deadline dropped to 15 seconds; decision 33.
 
-- todo - REV-04 `fix/creator-player-bugs`: title typing floods undo, the piano
+- done - REV-04 `fix/creator-player-bugs`: title typing floods undo, the piano
   roll playhead loop runs while paused, a published song can reuse the previous
   editor, user part names go through the UI dictionary, the shared player polls
-  while idle, and the score seek bar has no keyboard control.
+  while idle, and the score seek bar has no keyboard control. Fixed all six,
+  plus the listed cleanups (dead `active` prop, a missing unmount guard in
+  `applyCode`, a mount effect that reset the draft on unrelated `publication`
+  refetches, non-locale-aware grant expiry dates, and an untranslatable "The
+  listening lab" link); left the Arrangements.tsx/Lab.tsx loudness-matching
+  duplication alone, since the shared helper imposes a floor the arrangement
+  mixer does not and reusing it would change audio output.
 
 - todo - REV-05 `perf/page-weight`: measure whether every page ships the five
   chip engines through the shared player, and load the engine on first play if

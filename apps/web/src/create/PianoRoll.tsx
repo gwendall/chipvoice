@@ -10,6 +10,7 @@ export default function PianoRoll({
   readPosition,
   columns,
   onEdit,
+  playing,
 }: {
   part: PerformancePart;
   ticksPerBeat: number;
@@ -17,6 +18,7 @@ export default function PianoRoll({
   readPosition: () => number;
   columns: number;
   onEdit: (part: PerformancePart) => void;
+  playing: boolean;
 }) {
   const t = useT(),
     drums = part.role === "perc";
@@ -44,6 +46,7 @@ export default function PianoRoll({
     ? [42, 38, 36]
     : Array.from({ length: 25 }, (_, i) => Math.min(127, low + 24 - i));
   useEffect(()=>{
+    if(!playing) return;
     let frame=0,last=-2;
     const tick=()=>{
       const column=Math.floor((readPosition()-startTick)/step);
@@ -55,7 +58,7 @@ export default function PianoRoll({
       frame=requestAnimationFrame(tick);
     };
     tick();return()=>cancelAnimationFrame(frame);
-  },[readPosition,startTick,step,columns,part,octave]);
+  },[playing,readPosition,startTick,step,columns,part,octave]);
   const cells = useMemo(() => {
     const result = new Set<string>();
     for (const note of part.notes) {

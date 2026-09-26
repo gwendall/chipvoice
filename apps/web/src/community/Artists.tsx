@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link, { useT, useErrorText } from "@/i18n/react";
+import Link, { useT, useI18n, useErrorText } from "@/i18n/react";
 import { Button } from "@/ui/components";
 import type { Profile } from "@/lib/projects";
 import { scopeLabels } from "./permissions";
@@ -137,7 +137,7 @@ export function ArtistEditor({
   );
 }
 export default function Artists() {
-  const t = useT(),
+  const { t, locale } = useI18n(),
     errorText = useErrorText(),
     [profiles, setProfiles] = useState<Profile[]>([]),
     [selected, setSelected] = useState(""),
@@ -233,7 +233,7 @@ export default function Artists() {
               <span>
                 {profiles.find((p) => p.id === g.profileId)?.displayName ||
                   t("Artist")}{" "}
-                · {new Date(g.expiresAt).toISOString().slice(0, 10)}
+                · {new Date(g.expiresAt).toLocaleDateString(locale)}
               </span>
               <p className="agent-permissions">
                 {g.scopes
