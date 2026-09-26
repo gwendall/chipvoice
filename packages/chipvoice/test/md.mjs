@@ -137,6 +137,63 @@ function sine(ym, hz) {
 }
 
 {
+  // Rate 3 clocks the noise from tone 2's period register, not from tone 2's
+  // own counter (see the comments in sn76489.ts). SMS Power's notes give the
+  // resulting "periodic noise" frequency range as 6.8 Hz to 6991 Hz for
+  // register values $3ff and $001, an independently stated number to check
+  // against rather than a restatement of this file's own formula.
+  const rate3Hz = (period) => {
+    const psg = new Sn76489();
+    psg.write(0xc0 | (period & 0x0f));
+    psg.write((period >> 4) & 0x3f);
+    psg.write(0xe3); // periodic noise, rate 3
+    let rises = 0;
+    let bit = psg.lfsr & 1;
+    for (let i = 0; i < 3579545; i++) {
+      psg.clock();
+      const next = psg.lfsr & 1;
+      if (next === 1 && bit === 0) rises++;
+      bit = next;
+    }
+    return rises;
+  };
+  const fast = rate3Hz(1);
+  const slow = rate3Hz(1023);
+  check('rate 3 at register $001 gives the documented 6991 Hz', fast === 6991, `${fast}`);
+  check('and register $3ff gives about the documented 6.8 Hz', near(slow, 6.8, 0.15), `${slow}`);
+}
+
+{
+  // The noise's own counter is independent of tone 2's: changing tone 2's
+  // period mid-count does not move the noise's next reload, only what it
+  // reloads to the next time it reaches zero.
+  const psg = new Sn76489();
+  const tone2 = (period) => {
+    psg.write(0xc0 | (period & 0x0f));
+    psg.write((period >> 4) & 0x3f);
+  };
+  tone2(5);
+  psg.write(0xe3); // periodic noise, rate 3
+  const shifts = [];
+  let last = psg.lfsr;
+  for (let tick = 1; tick <= 60; tick++) {
+    if (tick === 3) tone2(9); // mid-count: between the 1st reload (tick 1) and the 2nd (tick 6)
+    for (let k = 0; k < 16; k++) psg.clock();
+    if (psg.lfsr !== last) { shifts.push(tick); last = psg.lfsr; }
+  }
+  // At a steady period of 5, shifts land every 10 ticks: 6, 16, 26, .... The
+  // reload already under way at tick 1 keeps counting down on the old
+  // period and still reloads at tick 6, but that reload reads tone 2's
+  // period as it now is (9), so every reload after it, and every other
+  // shift, keeps that new spacing instead.
+  check(
+    "a tone 2 change mid-count moves the noise's next period, not its next reload",
+    shifts.join() === [6, 24, 42, 60].join(),
+    shifts.join(),
+  );
+}
+
+{
   const chip = mdChip.digital();
   check('the Mega Drive has ten voices', chip.voices.length === 10 && chip.voices[0] === 'fm1' && chip.voices[9] === 'noise');
   check('on the master clock', mdChip.spec.clockHz === MASTER);
