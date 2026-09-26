@@ -760,3 +760,43 @@ queued row blocking evaluation, a stale queued row not blocking it, and both
 budgets refusing with a correct `Retry-After` and resuming once spent;
 `apps/web/test-projects.mjs` updates its direct `utilityWorker` call for the
 new identity parameter.
+
+## 34. No page can be framed, an agent's name is marked unverified, and sign-in mail is throttled per address (2026-09-26)
+
+Every response carries `X-Frame-Options: DENY` and
+`Content-Security-Policy: frame-ancestors 'none'` (`apps/web/next.config.ts`).
+On `/connect`, the agent's declared name is labelled self-declared and
+unverified, next to how long ago the request was made and a warning against
+approving one the person did not just start themselves. `/api/auth/signin`
+throttles outgoing mail per recipient address, on top of the existing per-IP
+limit.
+
+**Why.** No chipvoice page has a legitimate reason to sit inside another
+site's frame, including the agent approval page itself, so refusing all
+framing removes a class of clickjacking for free. On `/connect`, an agent's
+`label` is whatever text it sent when it created the request; shown as a
+plain heading it read as something chipvoice had checked, which is exactly
+where an agent posing as "chipvoice support" would put a name to talk someone
+into approving a device code they did not request, especially over a phone
+call or a shared screen. Sign-in links must never reveal whether an address
+has an account, but nothing before this stopped one address from being
+flooded with them; a per-IP limit alone does not stop that flood once it is
+spread across many IPs.
+
+**What changes.** `apps/web/next.config.ts`'s `headers()` sets both framing
+headers for every path; `apps/web/test-auth-http.mjs` checks them on `/` and
+on `/connect`. `apps/web/src/community/Connect.tsx` shows the label with a
+"self-declared, not verified by chipvoice" note and an elapsed-time line
+asking the person to decline unless they started this just now;
+`apps/web/src/lib/agents.ts`'s `inspectAgentRequest` now returns `createdAt`
+for that line to read. `apps/web/src/app/api/auth/signin/route.ts` admits at
+most three links per normalized address per fifteen minutes, answering an
+exceeded throttle exactly like the per-IP limit (429, `Retry-After`) and
+never revealing whether the address has an account either way.
+`apps/web/src/lib/projects.ts`'s `admitProject` takes an optional window
+length now, and stores its window as an absolute timestamp instead of a
+dimensionless index, so two callers using different window lengths cannot
+delete each other's still-valid rows during cleanup. All three changes are
+pinned in `apps/web/test-auth-http.mjs`; the agent-identity note is also
+checked against the phone viewport in `apps/web/test-artists.mjs`, so it
+cannot push the Authorize button below the fold that Decision 31 fixed.

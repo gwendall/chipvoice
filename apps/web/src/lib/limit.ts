@@ -33,9 +33,22 @@ export function allow(key: string, tier: keyof typeof LIMITS = "anonymous"): { o
   return { ok: true };
 }
 
-/** Best-effort client identity: the proxy header, then the socket. */
+/** Best-effort client identity: the proxy-set header, then the edge of the
+ * forwarded chain, then the socket. `x-forwarded-for` is a list a client can
+ * prepend to freely; only the entry the last trusted proxy appended (the
+ * rightmost one) is ours, and Vercel gives that to us directly as
+ * `x-real-ip`. Trusting the leftmost entry let a caller behind our own proxy
+ * pick its own rate-limit bucket. */
 export function clientKey(request: Request): string {
+  const real = request.headers.get("x-real-ip");
+  if (real) return real.trim();
   const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]!.trim();
-  return request.headers.get("x-real-ip") ?? "unknown";
+  if (forwarded) {
+    const parts = forwarded
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length) return parts[parts.length - 1]!;
+  }
+  return "unknown";
 }

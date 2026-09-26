@@ -36,7 +36,10 @@ const api = await import("./generated/test-agent-oauth.mjs"),
 const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
 const ownerKey = await api.createKey(`oauth-${suffix}@example.test`, null);
 const magic = await api.createMagicLink(ownerKey.id),
+  // POST is the step that actually consumes a link; GET only checks it and
+  // points at the confirm page, so it cannot be burned by a prefetch.
   redeem = await fetch(`${base}/api/auth/redeem?token=${magic}`, {
+    method: "POST",
     redirect: "manual",
   }),
   cookie = redeem.headers.get("set-cookie").split(";")[0];
@@ -187,6 +190,10 @@ const review = await owner(
 assert.equal(review.status, 200);
 assert.equal(review.body.label, "Pocket conductor");
 assert.deepEqual(review.body.scopes, ["projects:read", "evaluate"]);
+// The owner also sees when the request was made, to judge whether it is the
+// one they just started or an old code somebody sent them.
+assert.equal(typeof review.body.createdAt, "number");
+assert.ok(review.body.createdAt <= Date.now() && review.body.createdAt > Date.now() - 60000);
 // A bearer holder cannot approve: approval is a browser session, never an API key.
 assert.equal(
   (

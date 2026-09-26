@@ -26,6 +26,27 @@ const config: NextConfig = {
       },
     ];
   },
+
+  /*
+   * Nothing on the site is meant to be embedded by another origin - no
+   * twitter:player card, no oEmbed document, no /embed route - so every
+   * response, including the agent approval page at /connect, refuses framing
+   * outright rather than opting each page in one at a time.
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'none'",
+          },
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
+      },
+    ];
+  },
 };
 
 export default config;

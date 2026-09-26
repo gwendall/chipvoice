@@ -63,6 +63,10 @@ try {
   const link = deliveredLink(deliveries[0]);
   const emailTab = await context.newPage();
   await emailTab.goto(link);
+  // The mailed link only checks the token; a person still has to click
+  // through the confirm page for it to actually spend the token.
+  await emailTab.getByRole('button', { name: 'Confirm sign-in', exact: true }).click();
+  await emailTab.waitForURL(url => new URL(url).pathname === '/create');
   assert.equal(new URL(emailTab.url()).pathname, '/create');
   await emailTab.waitForLoadState('networkidle', { timeout: 10000 });
   await emailTab.locator('.prompt-composer').getByRole('button', { name: 'Generate music', exact: true }).waitFor();
@@ -98,6 +102,8 @@ try {
   assert.match(deliveries[1].text, /30/);
   const jaLink = deliveredLink(deliveries[1]);
   await mobile.goto(jaLink);
+  await mobile.getByRole('button', { name: 'ログインを確定', exact: true }).click();
+  await mobile.waitForURL(url => new URL(url).pathname === '/ja/create');
   assert.equal(new URL(mobile.url()).pathname, '/ja/create');
   await mobile.getByRole('button', { name: "曲を生成", exact: true }).waitFor();
   const signedOut = await context.request.delete(server.base + '/api/auth/session');

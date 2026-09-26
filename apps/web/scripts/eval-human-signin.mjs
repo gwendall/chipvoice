@@ -47,6 +47,10 @@ try {
   const emailTab = await context.newPage();
   // Never log, screenshot or save the token-bearing navigation URL.
   await emailTab.goto(link);
+  // The mailed link only checks the token; a person still has to click
+  // through the confirm page for it to actually spend the token.
+  await emailTab.getByRole('button', { name: 'Confirm sign-in', exact: true }).click();
+  await emailTab.waitForURL(url => new URL(url).pathname === '/create');
   assert.equal(new URL(emailTab.url()).pathname, '/create');
   const me = await context.request.get(base + '/api/me');
   assert.equal(me.status(), 200);

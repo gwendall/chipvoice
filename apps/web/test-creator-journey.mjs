@@ -52,7 +52,9 @@ try {
   const script = await fetch(base + '/skill/compose.mjs'); assert.equal(script.status, 200);
   await writeFile(resolve(out, 'compose.mjs'), await script.text());
   const magic = await internal.createMagicLink(owner.id);
-  const redeemed = await fetch(base + '/api/auth/redeem?token=' + encodeURIComponent(magic), { redirect: 'manual' });
+  // POST is the step that actually consumes a link; GET only checks it and
+  // points at the confirm page, so it cannot be burned by a prefetch.
+  const redeemed = await fetch(base + '/api/auth/redeem?token=' + encodeURIComponent(magic), { method: 'POST', redirect: 'manual' });
   cookie = redeemed.headers.get('set-cookie')?.split(';')[0]; assert.ok(cookie);
   const artist = await ok('POST', '/api/v1/profiles', undefined, cookie);
   const pair = await ok('POST', '/api/v1/agent-requests', { label: 'Chipvoice end-to-end conductor', scopes: ['generate','projects:read','projects:write','render','evaluate','profile:write'] }, null);

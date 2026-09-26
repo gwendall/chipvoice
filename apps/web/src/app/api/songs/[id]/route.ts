@@ -1,8 +1,23 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { SongId } from "@/lib/schema";
 import { find, lineageOf, present, softDelete } from "@/lib/songs";
 import { hasDatabase } from "@/lib/db";
 import { identify } from "@/lib/auth";
+
+/** Constant-time, and refuses outright when there is nothing configured to
+ * compare against - an unset admin key must never compare equal to a bearer
+ * value, however it is spelled. Hashing first also makes the two buffers a
+ * fixed, equal length regardless of the presented header's length. */
+function isAdminKey(request: Request): boolean {
+  const configured = process.env.CHIPVOICE_ADMIN_KEY;
+  if (!configured) return false;
+  const header = request.headers.get("authorization") ?? "";
+  const presented = /^Bearer (.+)$/.exec(header)?.[1];
+  if (!presented) return false;
+  const digest = (value: string) => createHash("sha256").update(value).digest();
+  return timingSafeEqual(digest(presented), digest(configured));
+}
 
 export const runtime = "nodejs";
 
@@ -73,10 +88,7 @@ export async function DELETE(
       { error: "agent_endpoint_required" },
       { status: 403 },
     );
-  const admin =
-    process.env.CHIPVOICE_ADMIN_KEY &&
-    request.headers.get("authorization") ===
-      `Bearer ${process.env.CHIPVOICE_ADMIN_KEY}`;
+  const admin = isAdminKey(request);
 
   if (request.headers.has("authorization") && !caller.userId && !admin)
     return NextResponse.json({ error: "invalid_token" }, { status: 401 });

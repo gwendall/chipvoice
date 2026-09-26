@@ -1,5 +1,10 @@
 export const pages = {
   signin: { path: "/signin", title: "Sign in · chipvoice", description: "Sign in with your email to save, generate and publish your music." },
+  signinConfirm: {
+    path: "/signin/confirm",
+    title: "Confirm sign-in · chipvoice",
+    description: "Finish signing in to chipvoice with one click.",
+  },
   connect: {
     path: "/connect",
     title: "Connect an agent · chipvoice",

@@ -12,12 +12,24 @@ const hash = value=>createHash('sha256').update(value).digest('hex');
 const token = randomBytes(24).toString('hex'), key = 'cv_live_'+randomBytes(24).toString('hex');
 const userId='httpuser', keyId='httpkey1', now=Date.now();
 try {
+  // Nothing on the site is meant to be framed by another origin: every
+  // response, including the agent approval page, refuses it outright.
+  for (const path of ['/', '/connect']) {
+    const response = await fetch(`${base}${path}`);
+    assert.equal(response.headers.get('x-frame-options'), 'DENY', path);
+    assert.equal(response.headers.get('content-security-policy'), "frame-ancestors 'none'", path);
+  }
   await db.batch([
     {sql:'insert into users values (?,?,?)',args:[userId,'browser@example.test',now]},
     {sql:'insert into keys (id,user_id,hash,email,created_at) values (?,?,?,?,?)',args:[keyId,userId,hash(key),'browser@example.test',now]},
     {sql:'insert into login_tokens (hash,user_id,created_at) values (?,?,?)',args:[hash(token),userId,now]},
   ],'write');
-  const redeemed = await fetch(`${base}/api/auth/redeem?token=${token}`,{redirect:'manual'});
+  // GET never spends the link: a mail scanner following it lands on the
+  // confirm page, not a session, and the token still works afterward.
+  const peeked = await fetch(`${base}/api/auth/redeem?token=${token}`,{redirect:'manual'});
+  assert.equal(peeked.status,302); assert.equal(peeked.headers.get('location'),`/signin/confirm?token=${token}&locale=en`);
+  assert.equal(peeked.headers.get('set-cookie'),null,'GET does not sign anyone in');
+  const redeemed = await fetch(`${base}/api/auth/redeem?token=${token}`,{method:'POST',redirect:'manual'});
   assert.equal(redeemed.status,302); assert.equal(redeemed.headers.get('location'),'/');
   const setCookie=redeemed.headers.get('set-cookie'); assert.match(setCookie,/HttpOnly/i); assert.match(setCookie,/SameSite=lax/i);
   assert.equal(redeemed.headers.get('cache-control'),'no-store');
@@ -36,7 +48,7 @@ try {
   assert.equal(typeof identityBody.profile.id,'string');
   assert.equal('songs' in identityBody,false,'header identity does not load the library');
   assert.equal((await fetch(`${base}/api/auth/session`,{headers:{cookie:revision}})).status,401,'display marker cannot authenticate');
-  assert.equal((await fetch(`${base}/api/auth/redeem?token=${token}`,{redirect:'manual'})).headers.get('set-cookie'),null);
+  assert.equal((await fetch(`${base}/api/auth/redeem?token=${token}`,{method:'POST',redirect:'manual'})).headers.get('set-cookie'),null,'a spent token cannot be redeemed twice');
   const me=await fetch(`${base}/api/me`,{headers:{cookie}}); assert.equal(me.status,200); assert.equal((await me.json()).email,'browser@example.test');
   const score={title:'Owned tune',chip:'2a03',bpm:144,order:[0],patterns:[{lead:'C4 . . .',chord:'C3 . . .',bass:'C2 . . .',perc:'K . H .',chordShape:[[0,4,7]]}]};
   const publish=await fetch(`${base}/api/songs`,{method:'POST',headers:{cookie,origin:base,'content-type':'application/json'},body:JSON.stringify(score)});
@@ -81,7 +93,7 @@ try {
   // The first browser session was revoked by the UI; a fresh session retains ownership.
   const nextToken=randomBytes(24).toString('hex');
   await db.execute({sql:'insert into login_tokens (hash,user_id,created_at) values (?,?,?)',args:[hash(nextToken),userId,Date.now()]});
-  const nextLogin=await fetch(`${base}/api/auth/redeem?token=${nextToken}`,{redirect:'manual'});
+  const nextLogin=await fetch(`${base}/api/auth/redeem?token=${nextToken}`,{method:'POST',redirect:'manual'});
   cookie=nextLogin.headers.get('set-cookie').split(';')[0];
   assert.equal((await fetch(`${base}/api/me`,{headers:{authorization:`Bearer ${key}`}})).status,401);
   assert.equal((await fetch(`${base}/api/songs/${song.id}`,{method:'DELETE',headers:{cookie}})).status,200);
@@ -90,5 +102,24 @@ try {
   assert.equal((await fetch(`${base}/api/me`,{headers:{cookie}})).status,401);
   assert.equal((await fetch(`${base}/api/auth/session`,{headers:{cookie:cookie+'; '+revision}})).status,401,'cached metadata cannot revive a revoked session');
   assert.ok(logout.headers.getSetCookie().some(value=>value.startsWith('chipvoice_session_revision=') && /Max-Age=0/.test(value)));
+  // Sign-in mail is throttled per recipient address, on top of the per-IP gate,
+  // so flooding one address from many callers still gets stopped.
+  const throttled=`throttle-${randomBytes(4).toString('hex')}@example.test`;
+  const attemptSignin=email=>fetch(`${base}/api/auth/signin`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email})});
+  for (let i=0;i<3;i++) {
+    const attempt=await attemptSignin(throttled);
+    assert.equal(attempt.status,503,'no mail provider is configured for this test run');
+    assert.equal((await attempt.json()).ok,false);
+  }
+  const fourth=await attemptSignin(throttled);
+  assert.equal(fourth.status,429);
+  assert.ok(Number(fourth.headers.get('retry-after'))>0);
+  assert.equal((await fourth.json()).error,'rate_limited');
+  // A capitalized variant of the same address shares the throttle.
+  const shouted=await attemptSignin(throttled.toUpperCase());
+  assert.equal(shouted.status,429);
+  // An unrelated address is unaffected.
+  const other=await attemptSignin(`throttle-${randomBytes(4).toString('hex')}@example.test`);
+  assert.equal(other.status,503);
   console.log('PASS HTTP session cookies, account ownership, key revocation, conditional audio GET, limits and deletion');
 } finally {db.close();}

@@ -30,7 +30,10 @@ const ownerKey = await api.createKey(`artist-${suffix}@example.test`, null),
     new Request(base, { headers: { authorization: `Bearer ${ownerKey.key}` } }),
   );
 const token = await api.createMagicLink(ownerKey.id),
+  // POST is the step that actually consumes a link; GET only checks it and
+  // points at the confirm page, so it cannot be burned by a prefetch.
   redeem = await fetch(`${base}/api/auth/redeem?token=${token}`, {
+    method: "POST",
     redirect: "manual",
   }),
   cookie = redeem.headers.get("set-cookie").split(";")[0];
@@ -175,6 +178,16 @@ try {
     .getByRole("button", { name: "Review access", exact: true })
     .click();
   await page.getByRole("heading", { name: "Pocket conductor" }).waitFor();
+  // The label is a self-declared, unverified string the agent chose; the
+  // reviewer sees that framing, and when the request was made, next to it.
+  await page
+    .getByText("Self-declared name, not verified by chipvoice.", {
+      exact: true,
+    })
+    .waitFor();
+  await page
+    .getByText(/Requested \d+s ago\. Approve only if you started this just now - otherwise, decline\./)
+    .waitFor();
   // The decision is visible without scrolling, on the phone viewport, with
   // the profile editor folded: the person who reviewed the request sees the
   // button that answers it.

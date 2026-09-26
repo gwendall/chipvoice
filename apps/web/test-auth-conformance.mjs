@@ -42,7 +42,10 @@ const ownerKey = await api.createKey(
   null,
 );
 const magic = await api.createMagicLink(ownerKey.id);
+// POST is the step that actually consumes a link; GET only checks it and
+// points at the confirm page, so it cannot be burned by a prefetch.
 const redeem = await fetch(`${base}/api/auth/redeem?token=${magic}`, {
+  method: "POST",
   redirect: "manual",
 });
 const cookie = redeem.headers.get("set-cookie").split(";")[0];
