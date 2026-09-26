@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {planPerformance,renderPerformance,importVgm,isolateNativePerformance,mdChip,nesChip,instrumentsFor,calibrateMixInstrument,MixProfileBank,prepareMixPhrase} from 'chipvoice';
+import {planPerformance,renderPerformance,importVgm,isolateNativePerformance,mdChip,nesChip,instrumentsFor,calibrateMixInstrument,MixProfileBank,prepareMixPhrase,arrangeMdTracker,compileMdVoices,renderMdEvents,trimRender,levelRender,packSprite,renderOnset,mdDrumStream,mdPatchWithRelease,MD_PATCHES,MD_DAC_HZ,MD_BRIGHT_PROFILE} from 'chipvoice';
 const score={version:1,title:'Consumer fixture',ticksPerBeat:96,endTick:48,tempos:[{tick:0,microsecondsPerBeat:500000}],notices:[],parts:[{id:'lead',name:'Lead',role:'lead',priority:1,notes:[{id:'n',tick:0,endTick:48,pitch:60,velocity:96}]}]};
 const auto=planPerformance(score,nesChip);assert.equal(auto.mix.calibratedNotes,1);assert.ok(renderPerformance(auto,nesChip).peak>0);
 const inst=structuredClone(instrumentsFor('md').lead);inst.fm.ops[0].mul=13;
@@ -11,4 +11,8 @@ const phrase=prepareMixPhrase(mdChip,[{voice:'fm1',part:'lead',role:'lead',at:0,
 const body=[0x50,0x85,0x50,0x20,0x50,0x90,0x61,0x3a,0x11,0x66],bytes=new Uint8Array(64+body.length),header=new DataView(bytes.buffer);
 bytes.set([86,103,109,32]);header.setUint32(4,bytes.length-4,true);header.setUint32(8,0x150,true);header.setUint32(12,3579545,true);header.setUint32(0x2c,7670453,true);header.setUint16(0x28,9,true);bytes[0x2a]=16;header.setUint32(0x34,12,true);header.setUint32(0x18,4410,true);bytes.set(body,64);
 const native=importVgm(bytes),snapshot=JSON.stringify(native);assert.ok(renderPerformance(native,mdChip).peak>0);isolateNativePerformance(native,['psg1']);assert.equal(JSON.stringify(native),snapshot);assert.equal(native.mix,undefined,'native replay bypasses automatic mix');
-console.log('PASS installed public API: native VGM, immutable solo, automatic balance, custom calibration and game phrase');
+const tracked=arrangeMdTracker({bpm:150,order:['s'],channels:{lead:{voice:'fm1',patch:'lead'},drums:{voice:'dac'},hats:{voice:'noise',snareWires:true}},sections:{s:{bars:1,lead:'^E5:4 ~G5:4 B5:8>',drums:'k...s...k.k.s...',hats:'h.h.h.h.h.h.h.h.'}}});
+const fx=compileMdVoices([{voice:'fm1',notes:[{at:0,until:.1,pitch:88,sweep:-4,patch:mdPatchWithRelease(MD_PATCHES.zap,11)}]},{voice:'dac',stream:mdDrumStream([{at:0,drum:'boomS'}],MD_DAC_HZ,.3)}]);
+const jingle=levelRender(trimRender(renderMdEvents(compileMdVoices(tracked.voices).events,{seconds:tracked.totalSeconds+1,profile:MD_BRIGHT_PROFILE,gain:.9})),{peak:.89}),shot=levelRender(trimRender(renderMdEvents(fx.events,{seconds:1,profile:MD_BRIGHT_PROFILE})),{peak:.95,rmsDb:-20});
+const sprite=packSprite([['jingle',jingle],['shot',shot]]);assert.ok(Math.abs(jingle.peak-.89)<1e-6&&sprite.sprites.shot.start>sprite.sprites.jingle.start&&renderOnset(sprite.render)>=.15);
+console.log('PASS installed public API: native VGM, immutable solo, automatic balance, custom calibration, game phrase and the native Mega Drive game-audio path');

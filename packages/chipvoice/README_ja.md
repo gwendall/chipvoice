@@ -241,6 +241,26 @@ NES、Game Boy、Mega Drive、SNES、C64の5機種を出荷しています。`Ch
 
 `validateSong`は機種別の基音とアルペジオの音域警告を出します。楽譜を保存しますが、すべての変調が表現範囲内に収まる保証はしません。[移植可能な楽譜](../../docs/SCORE_ja.md)と各シートで、能力、およびコーパス一致と実機測定の違いを確認してください。
 
+<a id="a-games-own-mega-drive-driver"></a>
+## ゲーム専用のメガドライブdriver
+
+メガドライブだけのために書かれたゲームは、移植用の楽譜を使わず機種に直接書けます。完全な左右定位付きのFM 6チャンネル、PSGの矩形波3音、任意のレートのノイズ、DACのPCMドラムです。`compileMdVoices`はvoiceをレジスター書き込みに、`arrangeMdTracker`はテキストで書いた曲をvoiceにし、`MD_BANK`は出発点になるbank、`renderMdEvents`は書き込みを新しいチップで演奏します。`trimRender`、`levelRender`、`packSprite`、`renderOnset`は、renderからゲームが出荷するファイルまでの手順です。
+
+```ts
+import { arrangeMdTracker, compileMdVoices, renderMdEvents, levelRender, toWav, MD_BRIGHT_PROFILE } from "chipvoice";
+
+const song = arrangeMdTracker({
+  bpm: 160, order: ["A"], loop: "A",
+  channels: { lead: { voice: "fm1", patch: "lead", vibrato: {} }, drums: { voice: "dac" } },
+  sections: { A: { bars: 1, lead: "^E5:4 G5:2 A5 B5:8", drums: "k.k.s..kk.k.S..." } },
+}, { tailBars: 1 });
+const { events } = compileMdVoices(song.voices);
+const render = levelRender(renderMdEvents(events, { seconds: song.totalSeconds, profile: MD_BRIGHT_PROFILE }), { peak: 0.89 });
+const wav = toWav(render); // loopStartからloopEndまでループ。その後の1小節はtail
+```
+
+Punk Forceのサウンドトラックと効果音はこの上で書かれています。voice、trackerの構文、bank、デコーダーのずれは[ゲーム専用のメガドライブdriver](../../docs/MD-NATIVE-DRIVER_ja.md)を参照してください。
+
 <a id="controlled-variations"></a>
 ## 制御された変奏
 
@@ -350,6 +370,7 @@ Sonic の DAC 移植も、すべてをキックにせず、観測したキック
 機種間の音色が完全に同一になることを保証するものではありません。手順は
 [ミキシング API](../../docs/MIXING-API_ja.md)。
 
+<a id="progressive-interactive-playback"></a>
 ## 対話操作向けの逐次再生
 
 SDK 0.18.0 以降、Web の作曲画面は `new ProjectPlayer({preview: true})` を使用します。この SDK のオプションは、オフライン書き出しと同じプロジェクトコンパイラと音源コアを使い、生成できた PCM ブロックから順に再生します。再生前に曲全体を WAV に変換してデコードする必要はありません。`previewMetadata` は長さ・ネイティブ再生の状態・ミックス結果を公開し、`losses` は両方の再生モードで使用できます。プレビューモードの `prepared` は `null` のままです。ファイルが必要な場合は `prepareProject()` または `renderProject()` を明示的に呼び出します。

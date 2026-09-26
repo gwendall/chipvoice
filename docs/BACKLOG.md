@@ -186,7 +186,9 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P5-7 | The Mega Drive sheet: parity with Nuked on every voice, a corpus of scripts and songs | done | `docs/chips/md.md` |
 | P5-8 | A PSG oracle: MAME's `sn76496` behind a shim, or a Master System test ROM | todo | the noise register's sequence and the period-0 behaviour are from the documents |
 | P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3 |
-| P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the kit is on the PSG noise for now |
+| P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the portable arranger's kit is on the PSG noise for now; the native driver (P5-11) streams a PCM kit on the DAC |
+| P5-11 | A game's own driver beside the portable one: all six FM channels, the three tones, the noise and the DAC by name, a text tracker, a bank with a PCM kit, and the render steps a game ships through, extracted from Punk Force | done | `chips/md/native-driver.ts`, `bank.ts`, `tracker.ts`, `src/game-audio.ts`; [MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER.md), decision 32; the game's score compiles and renders to the same bytes |
+| P5-12 | The native driver's LFO and channel 3's special mode | todo | power-on writes `$22` = 0, so `ams`, `pms` and `am` are written but inert |
 
 ## Phase 6. SNES
 

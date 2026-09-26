@@ -110,6 +110,17 @@ to PSG 1, its percussion to the noise with tone 3 as its clock.
 | psg1 | the tone's period and attenuation per frame | psg2, psg3 as tones |
 | noise | white noise clocked by tone 3 at the 2A03's sixteen rates; the attenuation per frame | periodic noise, the three fixed rates |
 
+The native driver, `compileMdVoices` in `native-driver.ts`, checked by
+`test/md-native.mjs` and `test/golden-md-native.mjs`, reaches what `MdDriver`
+leaves out; a game writes for it directly ([MD-NATIVE-DRIVER.md](../MD-NATIVE-DRIVER.md)).
+
+| Voice | Exercised | Not exercised |
+| --- | --- | --- |
+| fm1 to fm6 | a patch per note, written as a diff of the last; hard pan; per-frame levels, bends, glides, vibrato and sweeps; legato; SSG-EG through `ssg`; key scaling | the LFO, channel 3's mode |
+| psg1 to psg3 | tones with a per-frame envelope in dB | - |
+| noise | white and periodic noise, clocked by tone 3 or at the three fixed rates | - |
+| dac | a PCM stream on FM 6 at about 13.3 kHz, one sample per write on the bus | - |
+
 ## Known deviations
 
 | What | Deliberate | Why | Affects |

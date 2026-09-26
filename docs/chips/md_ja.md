@@ -93,6 +93,15 @@ YM2612のDACモデルはNuked作者自身が未検証としています。2チ�
 | psg1 | フレームごとの周期と減衰 | psg2／psg3の音程付き使用 |
 | noise | 2A03の16レートに対応するtone 3時計の白色ノイズ、フレームごとの減衰 | 周期ノイズ、固定3レート |
 
+ネイティブdriver（`native-driver.ts`の`compileMdVoices`）は`test/md-native.mjs`と`test/golden-md-native.mjs`で検証し、`MdDriver`が使わない機能に届きます。ゲームはこれに直接書きます（[MD-NATIVE-DRIVER.md](../MD-NATIVE-DRIVER_ja.md)）。
+
+| ボイス | 使用する機能 | 使用しない機能 |
+| --- | --- | --- |
+| fm1〜fm6 | 音符ごとのパッチを前回との差分で書き込み。完全な左右定位。フレームごとのレベル、ベンド、グライド、ビブラート、スイープ。レガート。`ssg`によるSSG-EG。キースケール | LFO、チャンネル3モード |
+| psg1〜psg3 | dB単位のフレームごとエンベロープ付きの音程 | - |
+| noise | tone 3時計または固定3レートの白色・周期ノイズ | - |
+| dac | FM 6上の約13.3 kHzのPCMストリーム、バス上で書き込みごとに1サンプル | - |
+
 <a id="known-deviations"></a>
 ## 既知の差異
 

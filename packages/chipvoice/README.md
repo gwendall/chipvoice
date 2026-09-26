@@ -364,6 +364,33 @@ It preserves the score; it does not guarantee every modulation stays representab
 See the [portable score](../../docs/SCORE.md) and each chip's conformance sheet for
 capabilities and the distinction between corpus parity and physical measurements.
 
+## A game's own Mega Drive driver
+
+A game written for the Mega Drive alone can skip the portable score and write
+for the machine: six FM channels with hard pan, three PSG tones, the noise at
+any of its rates, PCM drums on the DAC. `compileMdVoices` turns voices into
+register writes, `arrangeMdTracker` turns a song written as text into voices,
+`MD_BANK` is a bank to start from, and `renderMdEvents` plays the writes on a
+fresh chip. `trimRender`, `levelRender`, `packSprite` and `renderOnset` are the
+steps between a render and the files a game ships.
+
+```ts
+import { arrangeMdTracker, compileMdVoices, renderMdEvents, levelRender, toWav, MD_BRIGHT_PROFILE } from "chipvoice";
+
+const song = arrangeMdTracker({
+  bpm: 160, order: ["A"], loop: "A",
+  channels: { lead: { voice: "fm1", patch: "lead", vibrato: {} }, drums: { voice: "dac" } },
+  sections: { A: { bars: 1, lead: "^E5:4 G5:2 A5 B5:8", drums: "k.k.s..kk.k.S..." } },
+}, { tailBars: 1 });
+const { events } = compileMdVoices(song.voices);
+const render = levelRender(renderMdEvents(events, { seconds: song.totalSeconds, profile: MD_BRIGHT_PROFILE }), { peak: 0.89 });
+const wav = toWav(render); // loop from loopStart to loopEnd; the bar after is the tail
+```
+
+Punk Force's soundtrack and effects are written on it. The voices, the tracker's
+syntax, the bank and the decoder's shift are in
+[A game's own Mega Drive driver](../../docs/MD-NATIVE-DRIVER.md).
+
 ## Controlled variations
 
 ```ts
