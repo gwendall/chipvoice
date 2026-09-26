@@ -73,13 +73,23 @@ export function canonical(value: unknown): string {
     );
   return JSON.stringify(value);
 }
-export async function admitProject(scope: string, limit: number) {
+// The longest window any caller admits with. `window` below is stored as the
+// window's own absolute start time (ms since epoch), not a dimensionless
+// index, precisely so that one caller's housekeeping delete cannot mistake
+// another caller's longer-lived, still-current row for garbage: the horizon
+// has to outlive the longest window in use, whichever call happens to run it.
+const MAX_ADMISSION_WINDOW_MS = 15 * 60_000;
+export async function admitProject(
+  scope: string,
+  limit: number,
+  windowMs = 60_000,
+) {
   const client = await db(),
     now = Date.now(),
-    window = Math.floor(now / 60000);
+    window = Math.floor(now / windowMs) * windowMs;
   await client.execute({
     sql: "delete from project_admission where window < ?",
-    args: [window - 2],
+    args: [window - MAX_ADMISSION_WINDOW_MS * 2],
   });
   const result = await client.execute({
     sql: `insert into project_admission(scope,window,count) values(?,?,1) on conflict(scope) do update set window=excluded.window,count=case when project_admission.window=excluded.window then project_admission.count+1 else 1 end where project_admission.window<>excluded.window or project_admission.count<? returning count`,
@@ -90,6 +100,7 @@ export async function admitProject(scope: string, limit: number) {
       429,
       "rate_limited",
       "Please wait before trying again",
+      Math.max(1, Math.ceil((window + windowMs - now) / 1000)),
     );
 }
 /** Render time each caller may spend per minute, on top of admitProject's call-count

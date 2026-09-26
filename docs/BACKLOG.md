@@ -22,11 +22,14 @@ created the same day.
   underruns are counted per source and per phase, and the long fixture forces
   the nearly spent case (it underran on every run before the change).
 
-- todo - REV-02 `fix/security-hardening`: forbid framing of every page, show
+- done - REV-02 `fix/security-hardening`: forbid framing of every page, show
   the agent name on `/connect` as self-declared with the request time and a
   warning, throttle sign-in mail per recipient, stop trusting the first
   `X-Forwarded-For` entry, compare the admin key in constant time, and refuse
-  to reuse the production database token in previews.
+  to reuse the production database token in previews. Also split magic-link
+  redemption so GET only checks a link and a confirm-button POST is the one
+  thing that spends it, since the old GET consumed the token on a mail
+  scanner's prefetch before anyone clicked; see Decision 34.
 
 - done - REV-03 `fix/render-lanes`: one global lease still serves anonymous
   evaluations and publication renders, but publications now take it first,

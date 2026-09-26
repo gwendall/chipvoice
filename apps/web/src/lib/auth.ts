@@ -181,6 +181,20 @@ export async function createSignInLink(email: string): Promise<string> {
   return loginToken(await userFor(email));
 }
 
+/** Read-only mirror of redeemMagicLink's own claim condition, without the
+ * claim: lets the emailed link's first GET show a confirm button for a link
+ * that is still good, without spending it. A mail scanner that opens the GET
+ * link this checks finds the same answer and moves on; only a person clicking
+ * confirm reaches redeemMagicLink and actually consumes it. */
+export async function magicLinkValid(token: string): Promise<boolean> {
+  const result = await (
+    await db()
+  ).execute({
+    sql: `select 1 from login_tokens where hash=? and used_at is null and created_at>=?`,
+    args: [await hashKey(token), Date.now() - MAGIC_TTL_MS],
+  });
+  return result.rows.length > 0;
+}
 /** The conditional update claims one token; session insertion uses that unique
  * claim in the same transaction. Two simultaneous redeems cannot both win. */
 export async function redeemMagicLink(token: string): Promise<string | null> {

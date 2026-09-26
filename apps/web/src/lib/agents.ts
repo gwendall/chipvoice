@@ -69,7 +69,7 @@ export async function inspectAgentRequest(code: string) {
   const r = await (
     await db()
   ).execute({
-    sql: "select label,scopes,status,expires_at from agent_requests where code_hash=? and expires_at>?",
+    sql: "select label,scopes,status,created_at,expires_at from agent_requests where code_hash=? and expires_at>?",
     args: [await codeHash(code), Date.now()],
   });
   if (!r.rows[0])
@@ -79,6 +79,7 @@ export async function inspectAgentRequest(code: string) {
     label: String(row.label),
     scopes: JSON.parse(String(row.scopes)) as AgentScope[],
     status: String(row.status),
+    createdAt: Number(row.created_at),
     expiresAt: Number(row.expires_at),
   };
 }

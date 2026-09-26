@@ -18,6 +18,7 @@ export default function Connect() {
       label: string;
       scopes: string[];
       status: string;
+      createdAt: number;
     } | null>(null),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
@@ -82,6 +83,9 @@ export default function Connect() {
     }
   };
   const profile = profiles.find((p) => p.id === profileId);
+  const elapsedSeconds = request
+    ? Math.max(0, Math.round((Date.now() - request.createdAt) / 1000))
+    : 0;
   return (
     <>
       <SiteHeader />
@@ -121,7 +125,16 @@ export default function Connect() {
             </form>
             {request && request.status === "pending" && (
               <section ref={decision}>
+                <p className="agent-identity-note">
+                  {t("Self-declared name, not verified by chipvoice.")}
+                </p>
                 <h2>{request.label}</h2>
+                <p role="alert" className="agent-identity-note">
+                  {t(
+                    "Requested {seconds}s ago. Approve only if you started this just now - otherwise, decline.",
+                    { seconds: elapsedSeconds },
+                  )}
+                </p>
                 <ul>
                   {request.scopes.map((s) => (
                     <li key={s}>{t(scopeLabels[s])}</li>

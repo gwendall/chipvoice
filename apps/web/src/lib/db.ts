@@ -32,13 +32,17 @@ function target(): { url: string; token?: string } | null {
     return { url, token: process.env.TURSO_AUTH_TOKEN };
   }
   if (process.env.TURSO_DEV_DATABASE_URL) {
-    return {
-      url: process.env.TURSO_DEV_DATABASE_URL,
-      // Its own token on purpose: a preview holding the production token and a
-      // development URL authenticates against the wrong database and fails in
-      // a way that looks like the URL is wrong.
-      token: process.env.TURSO_DEV_AUTH_TOKEN ?? process.env.TURSO_AUTH_TOKEN,
-    };
+    const token = process.env.TURSO_DEV_AUTH_TOKEN;
+    // Its own token, full stop: falling back to TURSO_AUTH_TOKEN would put
+    // the production credential to work in whatever preview or branch sets a
+    // development URL, and a token that fails against the wrong database looks
+    // like a wrong URL. Refuse instead of guessing.
+    // `undefined` means the variable was never set; an explicit empty string
+    // (every local test fixture's local sqlite file needs no token at all)
+    // is a deliberate, different thing and stays allowed.
+    if (token === undefined)
+      throw new Error("TURSO_DEV_DATABASE_URL is set without TURSO_DEV_AUTH_TOKEN");
+    return { url: process.env.TURSO_DEV_DATABASE_URL, token };
   }
   if (!env) return { url: `file:${LOCAL_FILE}` };
   return null;
