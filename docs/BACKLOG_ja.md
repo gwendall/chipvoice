@@ -112,7 +112,7 @@
 - done - REV-09: ラボと編曲の音声はオブジェクトストレージにあります（決定40）。
 - done - 決定38: V1を受け入れ、その条件のもとで新チップを再開しました。
 - done - NEXT-01: スキルのインストール行は`chipvoice@${engineVersion}`を固定していましたが、これは公開パッケージのバージョンではなく`PROJECT_ENGINE_VERSION`（0.17.0）でした。この定数はパッケージのバージョンになり、単体テストが両者を一致させ、本番e2eはスキルがnpmの配布するバージョンをインストールすることを確かめます。
-- todo - P2-4: パッケージのREADMEとスキルから仕様書へリンクします。
+- done - P2-4: パッケージのREADMEは5つの仕様書すべてにリンクし、スキルは各ターゲットの仕様書にリンクします。`test-agent-guide.mjs`が確かめます。
 - doing - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、書き込みにはシークレット`CHIPVOICE_E2E_KEY`があればそれを使います。専用テストアカウントとそのキーはまだ作成していません。
 - done - NEXT-03: `test-creation-browser.mjs`が失敗したのはロードアベレージ70のときだけで、原因はPlaywrightの既定の30秒待機でした。すべての待機にテストの準備時間と同じ2分を与えます。エディター自体は、ページのCPUを6倍遅くしてもテンポ変更の間Pauseを表示し続けました。
 
@@ -229,7 +229,7 @@
 | P2-1 | 全相違を修正するか参照側の誤りを説明 | todo | |
 | P2-2 | DMC | done | PR #5、0.6.0。1bit周期差で同じstep。末尾参照 |
 | P2-3 | analog参照実機をcapture／測定 | doing | PR #8、blargg NES録音と同等にmix相殺。filterはline-out待ち |
-| P2-4 | package README／skillにsheetをリンクしてrelease | todo | |
+| P2-4 | package README／skillにsheetをリンクしてrelease | done | READMEはすべてのsheetに、skillは各ターゲットのsheetにリンク |
 
 <a id="phase-3-game-boy"></a>
 ## フェーズ3. Game Boy

@@ -59,6 +59,15 @@ try {
     capabilities.targets.map((t) => t.id),
     projectCapabilities().map((t) => t.id),
   );
+  // An agent describes a target's fidelity from its sheet, so each target
+  // links one, and the linked file is in the repository.
+  for (const { id } of capabilities.targets) {
+    assert.ok(
+      skill.includes(`[${id}](https://github.com/gwendall/chipvoice/blob/main/docs/chips/${id}.md)`),
+      `the skill links the ${id} sheet`,
+    );
+    await readFile(new URL(`../../docs/chips/${id}.md`, import.meta.url));
+  }
   // The discovery builder has no fixed target count or independent machine list.
   const existing = projectCapabilities(),
     extra = { ...existing[0], id: "future-fixture" };
