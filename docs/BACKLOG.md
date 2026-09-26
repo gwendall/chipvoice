@@ -5,6 +5,55 @@
   <a href="BACKLOG_ja.md">日本語</a>
 </p>
 
+## Project review - plan (2026-09-26)
+
+A review of the whole repository on 2026-09-26 (package, server, client, CI and
+documentation) produced the tickets below, in the order they land. Each pull
+request moves its own tickets; decisions go to [the decision log](DECISIONS.md).
+The GitHub releases missing for 0.15.0, 0.15.1 and 0.18.0, already on npm, were
+created the same day.
+
+- todo - REV-01 `fix/progressive-cold-switch`: main CI is red because
+  `test-progressive-long.mjs` measured one SNES underrun after a cold mid-song
+  console change. Count underruns per source and keep enough rendered audio
+  ahead before resuming after a cold change.
+
+- todo - REV-02 `fix/security-hardening`: forbid framing of every page, show
+  the agent name on `/connect` as self-declared with the request time and a
+  warning, throttle sign-in mail per recipient, stop trusting the first
+  `X-Forwarded-For` entry, compare the admin key in constant time, and refuse
+  to reuse the production database token in previews.
+
+- todo - REV-03 `fix/render-lanes`: one global lease serves anonymous
+  evaluations and publication renders, so one anonymous caller can hold it.
+  Publications get their own lane and render time is budgeted per caller.
+
+- todo - REV-04 `fix/creator-player-bugs`: title typing floods undo, the piano
+  roll playhead loop runs while paused, a published song can reuse the previous
+  editor, user part names go through the UI dictionary, the shared player polls
+  while idle, and the score seek bar has no keyboard control.
+
+- todo - REV-05 `perf/page-weight`: measure whether every page ships the five
+  chip engines through the shared player, and load the engine on first play if
+  it does.
+
+- todo - REV-06 `refactor/package-playback`: `BufferPlayback` in TypeScript,
+  node tests for progressive playback, `node --test` instead of the 44-command
+  chain, the SN76489 noise sync checked against the reference, then 0.19.0
+  released with the site.
+
+- todo - REV-07 `ci/pipeline-hygiene`: current action majors, the evaluation
+  artifact only on failure, unit and browser suites in parallel jobs,
+  `test:parity` in release qualification, the GitHub release created by the
+  publish workflow, and the unused root `lamejs` dependency removed.
+
+- todo - REV-08 `docs/review-cleanup`: fix the English/Japanese drift and run
+  `check-translations.py` in CI, one wording for emulation accuracy, the README
+  quickstart first, a complete `.env.example` and a contributing guide.
+
+- todo - REV-09: 147 MB of lab and arrangement FLAC is tracked without LFS.
+  Moving it out needs a storage decision.
+
 ## Generative composition — specification (2026-09-08)
 
 The [generation plan](GENERATIVE-COMPOSITION.md) reuses ordinary song hosting. The OpenAI adapter, private/public song creation, owner attribution, origin-preserving remixes, visibility changes without rerendering, prompt UI and downloadable agent client are implemented (GEN-02, GEN-06–10). A real local Astra trial produced complete audio. The [creator journey evaluation](evals/CREATOR-JOURNEY-2026-09-08.md) covers agent discovery through MP3 retrieval and the corresponding UI. Wider musical benchmarks, full-song diagnostics and repair remain separate follow-ups.
