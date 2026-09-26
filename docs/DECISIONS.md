@@ -969,3 +969,37 @@ product is a different risk.
 **What changes.** This refines GEN-13: fixture tests alone still do not launch
 paid inference, and neither does a beta without its measurements. Step 6 of
 [the backlog's next steps](BACKLOG.md#next-steps-2026-09-27) lists the work.
+
+## 40. Published recordings live in object storage, under paths that name their content (2026-09-27)
+
+The lab's and the arrangements' FLAC recordings move out of git into a public
+Vercel Blob store. They were 145 MB of the checkout, and each lab publication
+added another 8 to 48 MB to the history for good. The two reports stay in the
+repository as the manifest, with every recording's SHA-256. The lab's paths
+already carried an engine version and the PCM's hash; the arrangements' now
+carry a prefix of the FLAC's own hash. A store key is its site path, written
+once and never overwritten, so Next.js rewrites the two folders to the store
+one to one, and a browser may keep a file for a year.
+
+`pnpm audio:push` uploads what a publication adds. `pnpm audio:pull` fetches
+a verified local copy, which the site serves before the store. CI pulls
+through a cache keyed on the two reports, checking every hash, and
+`pnpm audio:check` fails a report that names a recording the store lacks. The
+production e2e downloads recordings through the site and compares their bytes
+with the reports. The write token is connected to the development environment
+only; the deployed site just reads.
+
+**Why.** The repository proves; the store serves. These recordings are
+deterministic outputs whose hashes the reports already pin, so their bytes in
+git bought nothing a hash does not, and every clone and CI checkout carried
+them. Vercel Blob is where the site already deploys, needs no new provider and
+costs next to nothing at this size. Git LFS would have put a bandwidth quota
+on every clone and CI run without changing what visitors download. Cloudflare
+R2 is the move if egress ever dominates.
+
+**What it does not do.** The history is not rewritten, so `.git` keeps its
+size; only the growth stops. Only recordings a current report names were
+uploaded; the 169 of 316 lab files no report referenced any more are gone.
+The old arrangement URLs without a hash now answer 404. A checkout that pulls
+this change loses its tracked lab copies with it; the site still plays them
+from the store, and `pnpm audio:pull` brings them back.
