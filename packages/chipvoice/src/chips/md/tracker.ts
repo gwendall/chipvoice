@@ -45,9 +45,10 @@ export interface MdTrackerChannel {
   /** A delayed vibrato on notes of a quarter or longer. Defaults: `delay` 8 frames, `hz` 6.3, `depth` 0.3 semitones. */
   vibrato?: Partial<MdVibrato>;
   /**
-   * An echo of another channel: its notes again `delay` steps later at
-   * `volume`, in every section this channel leaves empty. A section that
-   * writes its own line here (a harmony) keeps it, everywhere it is played.
+   * An echo of another channel: its written notes again `delay` steps later
+   * at `volume` (then this channel's own volume, not the other's), in every
+   * section this channel leaves empty. A section that writes its own line
+   * here (a harmony) keeps it, everywhere that section is played.
    */
   echo?: { of: string; delay: number; volume: number };
   /** Noise only: doubles the DAC's snare with the bank's wires, replacing the noise hit on that step. */
