@@ -872,8 +872,9 @@ than the rest of the suite, a real Chromium capturing four seconds of real
 audio, which is why CI does not run it on every push, but a release is exactly
 the point where "the render matches what people actually heard" has to hold.
 The GitHub release, separately, was a manual step that depended on somebody
-remembering it after `npm publish` had already succeeded; 0.15.0, 0.15.1 and
-0.18.0 are what happens when nobody does. Checking for an existing release
+remembering it after `npm publish` had already succeeded; 0.15.0, 0.15.1,
+0.18.0 and 0.19.0 are what happens when nobody does: each reached npm without
+one and had to be backfilled by hand. Checking for an existing release
 first keeps a maintainer's own manual release from becoming a failed run.
 
 **What changes.** `publish.yml` needs `contents: write` (kept alongside the

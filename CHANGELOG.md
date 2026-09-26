@@ -9,6 +9,40 @@ Notable changes to the `chipvoice` package and the SDK it exposes, newest
 first. See [README.md](README.md) for the current quickstart and feature
 overview.
 
+## 0.19.1: Console changes without a dropout
+
+A cold console change in the middle of a song no longer underruns. When the
+new source's first block of progressive playback comes back nearly spent, it
+is extended with warm contiguous reads until it starts at least 0.75 s ahead
+of the playhead. While another source prepares, the one still playing
+schedules 3 s ahead instead of 1.5 s, because the cold render competes with it
+for the CPU.
+
+`BufferPlayback` is now TypeScript, like `ProgressivePlayback` next to it: its
+published declarations type its entries, clock, groups and parts instead of
+leaving them `any`. No sound change: every published arrangement renders byte
+for byte as with 0.19.0, and the existing APIs are unchanged.
+
+## 0.19.0: A game's own Mega Drive driver
+
+A second Mega Drive driver beside `MdDriver`, for music written for this
+machine alone rather than arranged across consoles. The
+[native driver guide](docs/MD-NATIVE-DRIVER.md) documents it.
+
+- `compileMdVoices(voices)` drives `fm1` to `fm6` with hard pan and a patch
+  per note, `psg1` to `psg3`, the noise channel and a PCM stream on the DAC,
+  and refuses what the hardware cannot do.
+- `arrangeMdTracker(song, {tailBars, bank})` compiles a text tracker: notes,
+  rests, holds, slides, articulations, patches, volumes, drums, echo channels
+  and loop points.
+- `MD_BANK` ships FM patches, PSG and noise instruments and a synthesized PCM
+  drum kit.
+- Game-audio helpers render, trim, level and pack sound effects:
+  `renderMdEvents`, `trimRender`, `levelRender`, `scaleRender`, `packSprite`
+  and `renderOnset`.
+- `FmOperator.ssg` sets SSG-EG on either driver; leaving it out keeps the
+  previous sound.
+
 ## 0.18.0: Progressive interactive playback
 
 The web composer uses `new ProjectPlayer({preview: true})`. This opt-in SDK
