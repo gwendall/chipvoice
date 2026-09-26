@@ -1,10 +1,42 @@
 import { Fade } from "./fade.js";
 import { outputTime } from "./output-clock.js";
 
+export type BufferEntry = { file: string; loopStartSeconds?: number; loopFadeSeconds?: number };
+type SelectOptions = { restart?: boolean; side?: number; presentation?: unknown; lazy?: boolean; phase?: () => number };
+type Clock = { at: number; offset: number; duration: number; loopStart: number; loop: boolean; presentation: unknown };
+type Part = { source: AudioBufferSourceNode; level: Fade; index: number };
+type Group = Clock & { parts: Part[]; fade: Fade; ended: boolean };
+
 /** Decoded A/B recordings share one clock. Loading is independent of Play
  * intent; a failed or stale load cannot interrupt the current pair. */
 export class BufferPlayback {
-  constructor(context, changed = () => {}) {
+  context: AudioContext;
+  changed: () => void;
+  playing: boolean;
+  loading: boolean;
+  error: string;
+  entries: BufferEntry[];
+  buffers: (AudioBuffer | null)[];
+  levels: number[];
+  side: number;
+  volume: number;
+  generation: number;
+  group: Group | null;
+  retiring: Group | null;
+  offset: number;
+  cache: Map<string, AudioBuffer>;
+  disposed: boolean;
+  output: GainNode;
+  transition: Promise<void>;
+  presentation: unknown;
+  loop: boolean;
+  pendingPhase: number | null;
+  timeline: Clock[];
+  abort?: AbortController;
+  finishTransition?: (() => void) | null;
+  timer?: number;
+  endTimer?: number;
+  constructor(context: AudioContext, changed: () => void = () => {}) {
     this.context = context;
     this.changed = changed;
     this.playing = false;
@@ -29,12 +61,7 @@ export class BufferPlayback {
     this.pendingPhase = null;
     this.timeline = [];
   }
-  /**
-   * @param {Array<{file:string,loopStartSeconds?:number,loopFadeSeconds?:number}>} entries
-   * @param {number[]} levels
-   * @param {{restart?:boolean,side?:number,presentation?:unknown,lazy?:boolean,phase?:()=>number}} options
-   */
-  async select(entries, levels, options = {}) {
+  async select(entries: BufferEntry[], levels: number[], options: SelectOptions = {}): Promise<boolean> {
     const { restart = false, side = this.side, presentation = null, lazy = false } = options;
     const ticket = ++this.generation;
     this.abort?.abort();
@@ -45,13 +72,13 @@ export class BufferPlayback {
     this.changed();
     try {
       const [buffers, resolvedPresentation] = await Promise.all([Promise.all(
-        entries.map(async (entry, index) => {
+        entries.map(async (entry, index): Promise<AudioBuffer | null> => {
           if (lazy && index !== 0 && index !== side) return null;
           const key = entry.loopFadeSeconds
             ? `${entry.file}|${entry.loopStartSeconds ?? 0}|${entry.loopFadeSeconds}`
             : entry.file;
           if (this.cache.has(key)) {
-            const buffer = this.cache.get(key);
+            const buffer = this.cache.get(key)!;
             this.cache.delete(key);
             this.cache.set(key, buffer);
             return buffer;
@@ -96,8 +123,8 @@ export class BufferPlayback {
           let bytes = 0;
           for (const value of this.cache.values()) bytes += value.length * value.numberOfChannels * 4;
           while (this.cache.size > 8 || bytes > 96 * 1024 * 1024) {
-            const oldest = this.cache.keys().next().value;
-            const value = this.cache.get(oldest);
+            const oldest = this.cache.keys().next().value!;
+            const value = this.cache.get(oldest)!;
             bytes -= value.length * value.numberOfChannels * 4;
             this.cache.delete(oldest);
           }
@@ -119,7 +146,7 @@ export class BufferPlayback {
       return true;
     } catch (error) {
       if (ticket === this.generation && !this.disposed) {
-        this.error = error.message;
+        this.error = error instanceof Error ? error.message : String(error);
         this.loading = false;
         if (!this.group) this.playing = false;
         this.changed();
@@ -129,14 +156,14 @@ export class BufferPlayback {
   }
   /** Invalidate a pending decode immediately while keeping the current music.
    * Call when preparing a replacement that is not ready to select yet. */
-  cancelSelection() {
+  cancelSelection(): void {
     this.generation++;
     this.abort?.abort();
     this.loading = false;
     this.changed();
   }
-  clockGroup(at) {
-    let group = this.group;
+  clockGroup(at: number): Clock | null {
+    let group: Clock | null = this.group;
     if (!group) return null;
     if (at < group.at) {
       for (let i = this.timeline.length - 1; i >= 0; i--)
@@ -147,13 +174,13 @@ export class BufferPlayback {
     }
     return group;
   }
-  audibleSelection() {
+  audibleSelection(): unknown {
     return (
       this.clockGroup(outputTime(this.context))?.presentation ??
       this.presentation
     );
   }
-  phase(at = outputTime(this.context)) {
+  phase(at: number = outputTime(this.context)): number {
     const group = this.clockGroup(at);
     if (!group) return this.offset;
     let position = group.offset + Math.max(0, at - group.at);
@@ -164,17 +191,17 @@ export class BufferPlayback {
         : group.duration;
     return position / group.duration;
   }
-  seek(phase) {
+  seek(phase: number): void {
     if (!Number.isFinite(phase) || this.disposed) return;
     const next = Math.max(0, Math.min(1, phase));
     this.offset = next;
     if (this.playing) this.swap(next);
     this.changed();
   }
-  restart() {
+  restart(): void {
     this.seek(0);
   }
-  setLoop(loop) {
+  setLoop(loop: boolean): void {
     this.loop = loop;
     if (this.group) {
       const group = this.group;
@@ -196,14 +223,14 @@ export class BufferPlayback {
     }
     this.changed();
   }
-  remember({ at, offset, duration, loopStart, loop, presentation }) {
+  remember({ at, offset, duration, loopStart, loop, presentation }: Clock): void {
     this.timeline.push({ at, offset, duration, loopStart, loop, presentation });
     const audible = outputTime(this.context);
     while (this.timeline.length > 1 && this.timeline[1].at <= audible)
       this.timeline.shift();
     if (this.timeline.length > 64) this.timeline.shift();
   }
-  swap(requestedPhase) {
+  swap(requestedPhase?: number): void {
     if (!this.buffers.length || this.disposed) return;
     if (this.retiring) {
       this.pendingPhase =
@@ -214,13 +241,13 @@ export class BufferPlayback {
     const at = this.context.currentTime + 0.025;
     const phase = requestedPhase ?? this.phase(at),
       previous = this.group;
-    const duration = Math.min(...this.buffers.filter(Boolean).map((buffer) => buffer.duration));
+    const duration = Math.min(...this.buffers.filter((buffer): buffer is AudioBuffer => buffer != null).map((buffer) => buffer.duration));
     const loopStart = Math.max(
       0,
       Math.min(duration - 0.001, this.entries[0]?.loopStartSeconds ?? 0),
     );
     const fade = new Fade(this.context, this.output);
-    const parts = this.buffers.flatMap((buffer, index) => {
+    const parts: Part[] = this.buffers.flatMap((buffer, index): Part[] => {
       if (!buffer) return [];
       const source = this.context.createBufferSource();
       const level = new Fade(
@@ -236,7 +263,7 @@ export class BufferPlayback {
       source.start(at, phase * duration);
       return [{ source, level, index }];
     });
-    const group = {
+    const group: Group = {
       parts,
       fade,
       at,
@@ -282,7 +309,7 @@ export class BufferPlayback {
   /** The output clock owns completion. Some browsers omit `ended` for a
    * source starting at its exact end (e.g. a replacement finishing a seek).
    * Wake at the audible deadline, not on every frame of a long song. */
-  finishAtEnd(group) {
+  finishAtEnd(group: Group): void {
     if (this.disposed || this.group !== group) return;
     clearTimeout(this.endTimer);
     // A newer seek is waiting for the retiring pair. Its swap will arm a new
@@ -303,7 +330,7 @@ export class BufferPlayback {
     this.release(group);
     this.changed();
   }
-  async toggle() {
+  async toggle(): Promise<void> {
     if (this.playing) {
       this.pause();
       return;
@@ -315,7 +342,7 @@ export class BufferPlayback {
     if (this.disposed || !this.playing) return;
     if (!this.group && this.buffers.length) this.swap();
   }
-  pause() {
+  pause(): void {
     this.playing = false;
     this.offset = this.phase();
     this.pendingPhase = null;
@@ -355,12 +382,12 @@ export class BufferPlayback {
     this.changed();
   }
   /** Load an optional comparison only when requested; current audio continues. */
-  async selectSide(side) {
+  async selectSide(side: number): Promise<boolean> {
     if (this.buffers[side]) { this.cancelSelection(); this.setSide(side); return true; }
     if (!this.entries[side]) return false;
     return this.select(this.entries, this.levels, {side, presentation: this.presentation, lazy: true});
   }
-  setSide(side) {
+  setSide(side: number): void {
     side = Math.max(0, Math.min(side, this.buffers.length - 1));
     this.side = side;
     for (const part of (this.group?.parts ?? []))
@@ -371,11 +398,11 @@ export class BufferPlayback {
       );
     this.changed();
   }
-  setVolume(value) {
+  setVolume(value: number): void {
     this.volume = value;
     this.setSide(this.side);
   }
-  release(group) {
+  release(group: Group): void {
     for (const part of group.parts) {
       try {
         part.source.stop();
@@ -385,7 +412,7 @@ export class BufferPlayback {
     }
     group.fade.disconnect();
   }
-  dispose() {
+  dispose(): void {
     this.disposed = true;
     this.playing = false;
     this.generation++;
