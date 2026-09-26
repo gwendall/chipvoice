@@ -28,9 +28,13 @@ created the same day.
   `X-Forwarded-For` entry, compare the admin key in constant time, and refuse
   to reuse the production database token in previews.
 
-- todo - REV-03 `fix/render-lanes`: one global lease serves anonymous
-  evaluations and publication renders, so one anonymous caller can hold it.
-  Publications get their own lane and render time is budgeted per caller.
+- done - REV-03 `fix/render-lanes`: one global lease still serves anonymous
+  evaluations and publication renders, but publications now take it first,
+  even while only queued, not just while already rendering (bounded so an
+  abandoned queue row cannot block forever) rather than getting a separate
+  lane. Render time is also budgeted per caller per minute (60s signed in, 20s
+  anonymous), on top of the existing per-minute call limits, and anonymous
+  evaluate's deadline dropped to 15 seconds; decision 33.
 
 - todo - REV-04 `fix/creator-player-bugs`: title typing floods undo, the piano
   roll playhead loop runs while paused, a published song can reuse the previous

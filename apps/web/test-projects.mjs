@@ -29,7 +29,7 @@ try {
   try {
     await assert.rejects(
       () =>
-        api.utilityWorker({}, 30000, async () => {
+        api.utilityWorker("account:test-preflight", {}, 30000, async () => {
           Date.now = () => realNow() + 60000;
           return false;
         }),

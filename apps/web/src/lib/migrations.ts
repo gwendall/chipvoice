@@ -241,6 +241,14 @@ const migrations = [
       });
     },
   },
+  {
+    name: "worker-time-budget",
+    async up(tx: Transaction) {
+      await tx.execute(
+        `create table worker_time_budget (scope text primary key, window integer not null, spent_ms integer not null)`,
+      );
+    },
+  },
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

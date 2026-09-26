@@ -405,7 +405,7 @@ export const artistPaths = {
       }),
       {
         description:
-          "Raw MusicProject body, max 4 MB. Anonymous clients can evaluate; agents need evaluate scope. Six requests/minute/account (anonymous: IP), one shared CPU lease, 256 MB worker, 30-second deadline. The complete plan provides losses/substitutions/mix. Audio metrics describe only the first two seconds at 44100 Hz; they do not certify musical quality. allowLoss=false can reject a constrained arrangement; opt in explicitly to inspect omissions.",
+          "Raw MusicProject body, max 4 MB. Anonymous clients can evaluate; agents need evaluate scope. Six requests/minute/account (anonymous: IP), one shared CPU lease also used by publication rendering, MP3 encoding and composition validation (publications go first, even while only queued), 256 MB worker, a 30-second deadline (15 seconds anonymous), and a per-account render-time budget across all of that work (60 seconds/minute signed in, 20 seconds/minute anonymous). The complete plan provides losses/substitutions/mix. Audio metrics describe only the first two seconds at 44100 Hz; they do not certify musical quality. allowLoss=false can reject a constrained arrangement; opt in explicitly to inspect omissions.",
         requestBody: body(PROJECT_SCHEMA),
       },
     ),

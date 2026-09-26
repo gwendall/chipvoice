@@ -66,7 +66,7 @@ try {
   await api.migrate(legacy);
   assert.equal(
     (await legacy.execute("select * from schema_migrations")).rows.length,
-    8,
+    9,
   );
   assert.equal(
     Number(
@@ -187,7 +187,7 @@ try {
   await api.migrate(fresh);
   assert.equal(
     (await fresh.execute("select * from schema_migrations")).rows.length,
-    8,
+    9,
   );
   fresh.close();
   // Frozen v4 publication tables exercise the real profile/data upgrade.
@@ -284,6 +284,7 @@ try {
   // Freeze the populated database at v6, then verify prompt lineage backfill.
   await published.batch([
     "delete from schema_migrations where version>=7",
+    "drop table worker_time_budget",
     "alter table projects drop column origin",
     "alter table projects drop column origin_model",
     "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at,project_id) values('old-generation','stable-owner','stable-artist','old-generation','hash','{}','recorded-model','ready',0,'stable-song')",

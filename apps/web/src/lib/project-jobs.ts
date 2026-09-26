@@ -284,13 +284,14 @@ export async function runProjectMp3(id: string) {
   const client = await db();
   const row = (
     await client.execute({
-      sql: `select j.*,p.title,f.display_name,f.handle from project_jobs j join projects p on p.id=j.project_id join profiles f on f.id=p.profile_id where j.id=? and j.status='ready' and j.mp3_status='queued' and p.deleted_at is null`,
+      sql: `select j.*,p.user_id,p.title,f.display_name,f.handle from project_jobs j join projects p on p.id=j.project_id join profiles f on f.id=p.profile_id where j.id=? and j.status='ready' and j.mp3_status='queued' and p.deleted_at is null`,
       args: [id],
     })
   ).rows[0];
   if (!row) return;
   try {
     const result = await utilityWorker(
+      String(row.user_id),
       async () => {
         const chunks = await client.execute({
           sql: "select bytes from project_audio where job_id=? order by chunk",

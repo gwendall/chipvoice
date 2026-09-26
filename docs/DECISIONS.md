@@ -703,3 +703,60 @@ same samples after render, trim, level and sprite packing. The one difference
 is a fix: without a tail, the game's tracker returned a loop end of zero.
 `test/md-native.mjs`, `test/game-audio.mjs` and `test/golden-md-native.mjs`
 pin it. The LFO stays off and channel 3's special mode is unused (P5-12).
+
+## 33. The shared render lease favors publications and meters caller time (2026-09-26)
+
+Evaluate, MP3 encoding and composition validation already shared one
+fleet-wide render lease with publication rendering (decision 27); the
+`utilityWorker` that granted it did not distinguish who was asking or what
+else was waiting. A single anonymous caller making repeated evaluate calls,
+each holding the lease up to its deadline, could keep every publication
+render queued behind it indefinitely, and every other caller with it.
+
+`apps/web/src/lib/utility-worker.ts` now checks two admissions before
+evaluate, MP3 encoding or composition validation take the lease: a fresh
+queued publication render (not only a rendering one) refuses admission
+outright, bounded by a 270-second staleness window so an abandoned queued row
+cannot block work forever; and a per-caller render-time budget, tracked in a
+new `worker_time_budget` table and charged by `apps/web/src/lib/projects.ts`'s
+`chargeWorkerTime` whether the held work succeeded, failed or timed out.
+`admitWorkerTime` refuses with 429 `worker_budget` and an accurate
+`Retry-After` once a caller has spent 60 seconds of render time in the current
+minute signed in, or 20 seconds anonymous - well under the six evaluate
+requests per minute `admitProject` already allows, so repeated short requests
+cannot substitute for one long one. Every `utilityWorker` caller now passes an
+identity: the bare account ID signed in, `anonymous:` plus `clientKey(request)`
+anonymous, matching the convention `evaluate/route.ts` already used. A queued
+publication still starts on its owner's next job poll, as before: nothing is
+started outside a request's `after()`, where a serverless instance could freeze
+it mid-render.
+
+**Why.** Decision 27 kept rendering to one fleet-wide slot deliberately, as a
+cost choice, and that stays: this decision does not add a second concurrent
+lane, add capacity, or change who may render at once. It changes who the one
+slot serves when several callers want it. Publication renders are the
+product's core promise and have an owner waiting on them; evaluate is a
+preflight check an agent can retry. Counting evaluate calls (already six per
+minute per address) bounds how often a caller can ask, not how long each turn
+holds the shared slot, so a caller requesting the full 30-second deadline
+every time could still spend nearly all of it. Measured against the starter
+fixture and an eight-times-denser variant, an evaluate call completes in
+200-470 ms because it renders only a two-second excerpt regardless of song
+length - about 30x headroom under a shorter 15-second anonymous deadline, so
+tightening it costs normal callers nothing while capping how long one stuck or
+adversarial anonymous request can occupy the lease.
+
+**What changes.** `apps/web/src/lib/utility-worker.ts` gains the
+queued-publication check and the render-time admission.
+`apps/web/src/lib/projects.ts` gains
+`admitWorkerTime`/`chargeWorkerTime` and a `retryAfter` on `ProjectHttpError`;
+`apps/web/src/lib/project-http.ts` reflects it in the `Retry-After` header
+instead of a fixed 60. `apps/web/src/lib/migrations.ts` adds the
+`worker_time_budget` table. `apps/web/src/lib/evaluation.ts` shortens the
+anonymous evaluate deadline to 15 seconds (30 stays for signed-in callers and
+for `apps/web/src/lib/composition/jobs.ts`'s validation step, which now also
+passes the composing account's identity). `apps/web/test-artists.mjs` pins a
+queued row blocking evaluation, a stale queued row not blocking it, and both
+budgets refusing with a correct `Retry-After` and resuming once spent;
+`apps/web/test-projects.mjs` updates its direct `utilityWorker` call for the
+new identity parameter.
