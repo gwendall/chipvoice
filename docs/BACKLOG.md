@@ -87,9 +87,21 @@ created the same day.
   npm without a release page, 0.15.0, 0.15.1 and 0.18.0, were left for the
   maintainer to backfill by hand rather than created by this change.
 
-- todo - REV-08 `docs/review-cleanup`: fix the English/Japanese drift and run
-  `check-translations.py` in CI, one wording for emulation accuracy, the README
-  quickstart first, a complete `.env.example` and a contributing guide.
+- done - REV-08 `docs/review-cleanup`: fixed every finding
+  `check-translations.py` reported on main (missing anchors, a stale
+  language-switch line, an untranslated measurement column) and added
+  `.github/workflows/docs.yml` so it runs on every push and pull request that
+  touches Markdown, since `ci.yml` ignores those paths. The Game Boy sentence
+  in both READMEs' accuracy summaries was the one real inconsistency found: it
+  lacked the digital-parity clause every other chip has, now fixed in all four
+  README variants. README.md and README_ja.md open with a verified Quickstart
+  (`npm install`, a snippet run against the built package, a link to the
+  site); the progressive-playback announcement moved to a new
+  `CHANGELOG.md`/`CHANGELOG_ja.md`. `apps/web/.env.example` now lists every
+  `process.env` variable read outside tests, each with a one-line purpose and
+  local-need note. `CONTRIBUTING.md`/`CONTRIBUTING_ja.md` document setup,
+  build, typecheck, the test suites, the publication-report rule and the PR
+  and decision conventions, every command checked against `package.json`.
 
 - todo - REV-09: 147 MB of lab and arrangement FLAC is tracked without LFS.
   Moving it out needs a storage decision.
