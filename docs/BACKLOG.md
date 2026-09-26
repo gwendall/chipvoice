@@ -13,10 +13,14 @@ request moves its own tickets; decisions go to [the decision log](DECISIONS.md).
 The GitHub releases missing for 0.15.0, 0.15.1 and 0.18.0, already on npm, were
 created the same day.
 
-- todo - REV-01 `fix/progressive-cold-switch`: main CI is red because
+- done - REV-01 `fix/progressive-cold-switch`: main CI was red because
   `test-progressive-long.mjs` measured one SNES underrun after a cold mid-song
-  console change. Count underruns per source and keep enough rendered audio
-  ahead before resuming after a cold change.
+  console change. The likely cause was the handoff itself: the playhead moves on
+  while a cold target catches up, so its first block could arrive nearly spent.
+  The handoff now extends that block with warm reads until the new source starts
+  0.75 s ahead, the audible source keeps a 3 s reserve while another prepares,
+  underruns are counted per source and per phase, and the long fixture forces
+  the nearly spent case (it underran on every run before the change).
 
 - todo - REV-02 `fix/security-hardening`: forbid framing of every page, show
   the agent name on `/connect` as self-declared with the request time and a
