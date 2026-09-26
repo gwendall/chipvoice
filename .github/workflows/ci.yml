@@ -32,6 +32,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter chipvoice build
+      # The web typecheck imports the catalogues and render workers the web
+      # build writes to the ignored `generated/`; this is that step alone,
+      # without `next build`.
+      - run: node scripts/build-renderer.mjs
+        working-directory: apps/web
       - run: pnpm scores:check
       - run: pnpm arrangements:check
       - run: node scores/test-portable-timbres.mjs
