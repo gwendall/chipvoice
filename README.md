@@ -1,13 +1,45 @@
 # chipvoice
 
-For scoped agent authorization, separate artist profiles, HTTP evaluation before publication, MP3 sharing and grouped console versions, see [Artists and agents](docs/ARTISTS-AND-AGENTS.md).
-
-Ask an agent to create a song using [skill.md](https://chipvoice.dev/skill.md): it should compose original material and deliver complete audio. Local creation needs no account; a requested Chipvoice publication uses your authorized artist. The sample composition is an optional API fixture, not the default song.
-
 <p align="center">
   <a href="README.md">English</a> &bull;
   <a href="README_ja.md">日本語</a>
 </p>
+
+## Quickstart
+
+```bash
+npm install chipvoice
+```
+
+```ts
+import { arrange, renderSong, toWav } from "chipvoice";
+import { writeFileSync } from "node:fs";
+
+const song = arrange(
+  {
+    bpm: 140,
+    order: [0],
+    patterns: [{
+      lead: "C4 . E4 . G4 . C5 .",
+      bass: "C2 . . . C2 . . .",
+      chord: ". . . . . . . .",
+      perc: "K . H . S . H .",
+    }],
+    intent: { lead: "bright" },
+  },
+  "dmg", // or "2a03", "md", "snes", "c64"
+);
+
+writeFileSync("theme.wav", toWav(renderSong(song, { seconds: 4 })));
+```
+
+Play with the sound in a browser at [chipvoice.dev](https://chipvoice.dev). See
+[CHANGELOG.md](CHANGELOG.md) for what shipped recently, and
+[Running it](#running-it) below to build this repository from source.
+
+For scoped agent authorization, separate artist profiles, HTTP evaluation before publication, MP3 sharing and grouped console versions, see [Artists and agents](docs/ARTISTS-AND-AGENTS.md).
+
+Ask an agent to create a song using [skill.md](https://chipvoice.dev/skill.md): it should compose original material and deliver complete audio. Local creation needs no account; a requested Chipvoice publication uses your authorized artist. The sample composition is an optional API fixture, not the default song.
 
 **Create, code and publish complete songs:** [music workspace](https://chipvoice.dev/create), [community](https://chipvoice.dev/explore), [SDK / HTTP docs](https://chipvoice.dev/docs). Versioned projects preserve complete performances, with cancellable playback, original pixel avatars and immutable published WAVs. No account is needed to create or listen; publication uses your account. [Project contracts and operating limits](https://github.com/gwendall/chipvoice/blob/main/docs/CREATION.md).
 
@@ -188,8 +220,10 @@ against which oracle and what is known to differ. The 2A03's is
 reference emulator cycle for cycle on every song in the corpus, all twenty-nine
 of his APU test ROMs pass on a 6502 the harness carries, and its mixer cancels
 against his recordings of a real NES as well as the console did. The Game Boy's
-is [`docs/chips/dmg.md`](docs/chips/dmg.md): twelve of twelve `dmg_sound` ROMs
-on an SM83. The Mega Drive's is [`docs/chips/md.md`](docs/chips/md.md): its
+is [`docs/chips/dmg.md`](docs/chips/dmg.md): every voice's edges line up with
+Gb_Snd_Emu under that oracle's own timing convention, and twelve of twelve
+`dmg_sound` ROMs pass on an SM83 the harness carries. The Mega Drive's is
+[`docs/chips/md.md`](docs/chips/md.md): its
 YM2612 is identical to Nuked-OPN2, a reading of the die, on every cycle of the
 corpus. The SNES's is [`docs/chips/snes.md`](docs/chips/snes.md): its S-DSP is
 identical to snes_spc on every sample of its output stream. The C64's is
@@ -264,20 +298,6 @@ cross-console timbres identical. See the measured-projection workflow in
 
 [Agent composition guide](docs/AGENT-COMPOSITION.md) · [Live capabilities](https://chipvoice.dev/api/v1/capabilities)
 
-## Progressive interactive playback
-
-Since SDK 0.18.0, the web composer uses `new ProjectPlayer({preview: true})`. This opt-in SDK mode compiles the same project and renders the same chip cores as offline export, but schedules bounded PCM blocks as they become available. It does not encode/decode a complete WAV before playing. `previewMetadata` exposes duration, native status and mix results; `losses` works in both playback modes. `prepared` remains `null` in preview mode. Use `prepareProject()` or `renderProject()` explicitly when you need a downloadable file.
-
-```js
-import {ProjectPlayer} from 'chipvoice';
-
-const player = new ProjectPlayer({preview: true});
-// Call play from a user gesture to unlock browser audio.
-void player.play();
-await player.load(project);
-await player.update({tempoScale: 1.25});
-player.setTitle('New title'); // Metadata only; no audio preparation.
-```
-
-The player keeps the current sound during preparation, preserves Play/Pause intent and follows the audio output clock. A warm worker and bounded variant/PCM/checkpoint caches accelerate repeated edits and seeks. Cold mid-song changes still need to reconstruct DSP history: an emulator's envelopes, samples, filters and echo cannot be restored from note positions alone. Browser audio unlock, uncached network assets and device latency remain real costs. Default `ProjectPlayer()` keeps the existing whole-buffer behavior for compatibility.
+Release notes, including the SDK 0.18.0 progressive-playback change, live in
+[CHANGELOG.md](CHANGELOG.md).
 
