@@ -207,7 +207,8 @@ afford.
 ## Rendering without a browser
 
 Rendering is deterministic for a fixed engine version, score and render options.
-Cache keys must include the engine and encoder versions. The hosted API revalidates
+The engine version is the package version, which project renders report as
+`engineVersion`. Cache keys must include the engine and encoder versions. The hosted API revalidates
 stable song URLs, limits public renders to 30 seconds and checks deletion on every request.
 
 ```ts

@@ -118,10 +118,11 @@ Work without a ticket takes a NEXT id.
 
 - done - REV-09: lab and arrangement audio lives in object storage (decision 40).
 - done - decision 38: V1 accepted, new chips reopened under its guards.
-- todo - NEXT-01: the skill's install line pins
-  `chipvoice@${engineVersion}`, which is `PROJECT_ENGINE_VERSION` (0.17.0),
-  not the published package version. Decide what the constant means, then
-  align and document it.
+- done - NEXT-01: the skill's install line pinned
+  `chipvoice@${engineVersion}`, which was `PROJECT_ENGINE_VERSION` (0.17.0),
+  not the published package version. The constant is now the package version,
+  a unit test holds the two equal, and the production e2e checks that the
+  skill installs the version npm serves.
 - todo - P2-4: link the sheets from the package README and the skill.
 - doing - NEXT-02: `.github/workflows/e2e.yml` runs the production e2e after
   every successful production deployment, and its writes use the

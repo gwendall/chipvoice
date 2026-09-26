@@ -18,7 +18,7 @@ name: chipvoice
 description: Compose, import, arrange, evaluate and publish complete multi-instrument music for emulated retro sound chips. Exact-tick projects, machine capabilities and explicit adaptation reports.
 compatibility: HTTP discovery and publication require a network client. Local composition and rendering require Node.js and the chipvoice npm package. Publishing projects requires a browser account, existing owner key or scoped agent credential.
 homepage: ${SITE}
-metadata: {"version":"0.15.0","updated":"2026-09-08","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
+metadata: {"version":"0.16.0","updated":"2026-09-27","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
 ---
 
 # Compose complete music with chipvoice

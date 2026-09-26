@@ -12,7 +12,13 @@ import {
   type PerformancePlan,
 } from "./performance.js";
 import { parseProject, type MusicProject } from "./project.js";
-export const PROJECT_ENGINE_VERSION = "0.17.0";
+/**
+ * The package version that renders a project. Every render reports it and the
+ * skill's install line pins it, so installing it reproduces the site's bytes.
+ * test/engine-version.mjs holds it equal to package.json, so a release bumps
+ * both.
+ */
+export const PROJECT_ENGINE_VERSION = "0.19.1";
 const definitions = {
   "2a03": nesChip,
   dmg: gbChip,
