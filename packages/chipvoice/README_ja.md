@@ -189,7 +189,7 @@ writeFileSync("theme.wav", toWav(audio));
 
 さらに各pushで`packages/conform`の`conform`が2つを行います。レジスターログのコーパスを本チップとblarggのNes_Snd_Emuへ通してサイクル比較し、全曲のパルスは一致します。残る差がバグでなく参照の規約である理由はシートに記載します。また専用6502でblarggの全APU ROMを実行し、長さ、サイクル精度のフレーム時刻、IRQ、リセット、DMCの29個がすべて合格します。各チャンネルをDMCのDACと打ち消すミキサーテストも、本人が録音した実NESと同程度に打ち消します。DAC曲線は仮定でなく測定です。
 
-`src/chips/gb/dsp.ts`から`gbChip`として公開するGame Boyにも同じ手順を適用します。`test/gb.mjs`が時計を数式と比較し、専用SM83で12個の`dmg_sound` ROMが全合格し、Gb_Snd_Emuとも比較します。シートは[`docs/chips/dmg.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg_ja.md)。`test/gb-driver.mjs`が書き込み、`test/golden-dmg.mjs`が2A03の`golden.mjs`同様にレンダーを固定します。
+`src/chips/gb/dsp.ts`から`gbChip`として公開するGame Boyにも同じ手順を適用します。`test/gb.mjs`が時計を数式と比較し、専用SM83で12個の`dmg_sound` ROMが全合格し、Gb_Snd_Emuとも比較します。各声の遷移はそのオラクル自身のタイミング規約の下で一致します。シートは[`docs/chips/dmg.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg_ja.md)。`test/gb-driver.mjs`が書き込み、`test/golden-dmg.mjs`が2A03の`golden.mjs`同様にレンダーを固定します。
 
 第3はMega Driveの`mdChip`。`src/chips/md/ym2612.ts`はNuked-OPN2の行単位の移植で、全声の全サイクルがハーネスで一致します。SN76489は文献から実装しました。`Chip.create({ chip: "md" })`は旋律／ベースをFM、和音をPSG、キットをノイズへ割り当てます。独自音色には4オペレーターの`Instrument.fm`を使えます。シートは[`docs/chips/md.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/md_ja.md)。**ライセンス：** YM2612のファイルはNuked-OPN2の派生でLGPL 2.1です。パッケージの表記は`(MIT AND LGPL-2.1-or-later)`。この節で扱う他の独自コードはMITです。
 
