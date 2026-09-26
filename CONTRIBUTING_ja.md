@@ -71,7 +71,7 @@ cd apps/web && node test-local.mjs
 <a id="the-publication-report"></a>
 ## 公開レポート
 
-`apps/web/public/arrangement-data/report.json`は、そのレンダー音声と測定値がどのエンジンビルドから得られたかを`engineSha256`として記録します。`packages/chipvoice`のエンジン（チップコア、ドライバ、ミキサー）に、レンダー音声を変えうる変更を加えたときは、マージ前に新しいレポートが必要です。
+`apps/web/public/arrangement-data/report.json`は、その音声と測定値を生んだビルド済みエンジンのモジュール、つまり`evaluate.mjs`から到達できるモジュールの`engineSha256`を記録します。`scores/arrangements/engine.mjs`が`evaluate.mjs`をバンドルしてそれらを求めます。そのいずれか（チップコア、ドライバ、ミキサー）を変更したときは、マージ前に新しいレポートが必要です。再生、エディター、プロジェクトAPIの変更には必要ありません。
 
 ```bash
 pnpm arrangements:eval
