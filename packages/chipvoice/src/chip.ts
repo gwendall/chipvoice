@@ -218,6 +218,8 @@ export interface FmOperator {
   rr: number;
   /** Amplitude modulation by the LFO. */
   am?: boolean;
+  /** SSG-EG, register `$90`: 0 is off, 8 to 15 pick one of its eight shapes. */
+  ssg?: number;
 }
 
 /** A YM2612 patch: an algorithm, a feedback level, four operators in the order OP1 to OP4. */

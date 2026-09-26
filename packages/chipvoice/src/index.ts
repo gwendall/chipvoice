@@ -49,6 +49,31 @@ export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export { MEGA_DRIVE, mdChip } from "./chips/md/index.js";
 export { Ym2612 } from "./chips/md/ym2612.js";
 export { Sn76489 } from "./chips/md/sn76489.js";
+export { MdCore, MD1_PROFILE, MASTER_HZ as MD_MASTER_HZ } from "./chips/md/dsp.js";
+export type { MdOutputProfile } from "./chips/md/dsp.js";
+export { compileMdVoices, MD_CARRIERS, MD_DAC_CYCLES, MD_DAC_HZ } from "./chips/md/native-driver.js";
+export type {
+  MdCompiled,
+  MdDacVoice,
+  MdFmNote,
+  MdFmVoice,
+  MdFmVoiceId,
+  MdNoiseHit,
+  MdNoiseVoice,
+  MdNote,
+  MdPan,
+  MdPsgNote,
+  MdPsgVoice,
+  MdPsgVoiceId,
+  MdVibrato,
+  MdVoice,
+} from "./chips/md/native-driver.js";
+export { MD_BANK, MD_DRUMS, MD_NOISE_INSTRUMENTS, MD_PATCHES, MD_PSG_INSTRUMENTS, mdDrumSample, mdDrumStream, mdPatchWithRelease } from "./chips/md/bank.js";
+export type { MdBank, MdDrum, MdDrumHit, MdNoiseInstrument, MdPsgInstrument } from "./chips/md/bank.js";
+export { arrangeMdTracker } from "./chips/md/tracker.js";
+export type { MdArrangement, MdTrackerChannel, MdTrackerOptions, MdTrackerSection, MdTrackerSong } from "./chips/md/tracker.js";
+export { MD_BRIGHT_PROFILE, levelRender, packSprite, renderMdEvents, renderOnset, scaleRender, trimRender } from "./game-audio.js";
+export type { LevelOptions, OnsetOptions, RenderMdEventsOptions, Sprite, SpriteOptions, TrimOptions } from "./game-audio.js";
 export { SNES, snesChip } from "./chips/snes/index.js";
 export { SDsp } from "./chips/snes/sdsp.js";
 export { encodeBrr } from "./chips/snes/brr.js";

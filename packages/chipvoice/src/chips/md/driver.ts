@@ -156,7 +156,7 @@ export class MdDriver implements ChipDriver {
             reg(0x60 + base, ((op.am ? 1 : 0) << 7) | (op.dr & 31));
             reg(0x70 + base, op.sr & 31);
             reg(0x80 + base, ((op.sl & 15) << 4) | (op.rr & 15));
-            reg(0x90 + base, 0);
+            reg(0x90 + base, op.ssg ?? 0);
           });
           // Modulators' levels are the patch's; carriers' are set with the volume.
           patch.ops.forEach((op, i) => {
