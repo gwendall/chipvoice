@@ -3,6 +3,10 @@ import { SITE } from "./songs";
 import catalog from "../../generated/agent-catalog.json";
 import renderExample from "../../generated/agent-render-example.json";
 
+// Every target has a conformance sheet here (decision 38), and
+// test-agent-guide.mjs checks that each linked file exists.
+const SHEETS = "https://github.com/gwendall/chipvoice/blob/main/docs/chips";
+
 export function skillMarkdown(): string {
   const endpoints = endpointRows()
     .map((r) => `| \`${r.method}\` | \`${r.path}\` | ${r.summary} |`)
@@ -10,7 +14,7 @@ export function skillMarkdown(): string {
   const targets = catalog.targets
     .map(
       (t) =>
-        `| \`${t.id}\` | ${t.system} | ${t.voices.map((v) => `${v.id} (${v.kind})`).join(", ")} | ${t.voiceConflicts.map((pair) => pair.join(" / ")).join(", ") || "None declared"} |`,
+        `| \`${t.id}\` | ${t.system} | ${t.voices.map((v) => `${v.id} (${v.kind})`).join(", ")} | ${t.voiceConflicts.map((pair) => pair.join(" / ")).join(", ") || "None declared"} | [${t.id}](${SHEETS}/${t.id}.md) |`,
     )
     .join("\n");
   return `---
@@ -18,7 +22,7 @@ name: chipvoice
 description: Compose, import, arrange, evaluate and publish complete multi-instrument music for emulated retro sound chips. Exact-tick projects, machine capabilities and explicit adaptation reports.
 compatibility: HTTP discovery and publication require a network client. Local composition and rendering require Node.js and the chipvoice npm package. Publishing projects requires a browser account, existing owner key or scoped agent credential.
 homepage: ${SITE}
-metadata: {"version":"0.15.0","updated":"2026-09-08","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
+metadata: {"version":"0.16.0","updated":"2026-09-27","engineVersion":"${catalog.engineVersion}","author":"gwendall"}
 ---
 
 # Compose complete music with chipvoice
@@ -89,8 +93,10 @@ The earlier pairing API (/api/v1/agent-requests, JSON requestToken) remains as a
 
 The catalogue is generated at build time from the same chip definitions, palette and allocation helpers as the renderer. Its contentHash identifies this capability document. It is not an original-game audio fingerprint.
 
-| Target | System | Declared voices | Shared resource pairs |
-| --- | --- | --- | --- |
+Each target's conformance sheet says what its chip has been measured against and what is still unproven. Cite the sheet, not this table, when you describe how faithful a target is.
+
+| Target | System | Declared voices | Shared resource pairs | Sheet |
+| --- | --- | --- | --- | --- |
 ${targets}
 
 Read each target's melodicPalette: programs are zero-based General MIDI numbers. voices lists eligible destinations; preservesInstrument=false means fallback substitution. pitchHz is the base register range before modulation; null means unknown. excludedPerformanceVoices may exist in raw/native APIs without being allocated by Performance. percussionVoices describes the generic drum path, not every custom patch. A voice count is not a promise that all combinations fit. The planner's report is decisive.

@@ -288,6 +288,10 @@ check("the skill has frontmatter", skill.startsWith("---\nname: chipvoice"));
 check("names every endpoint", (skill.match(/^\| `(GET|POST)`/gm) ?? []).length >= 6);
 check("warns about the silent failure", /mistyped note is silent/i.test(skill));
 check("and says how to compose deliberately", /^## Compose deliberately/m.test(skill));
+// An agent renders locally with the version this line names, so it has to be
+// the one npm serves; anything else renders different bytes than the site.
+const pinned = /npm install chipvoice@(\d+\.\d+\.\d+)/.exec(skill)?.[1];
+check("and installs the published package", pinned === installedVersion, `chipvoice@${pinned}, npm has ${installedVersion}`);
 
 const spec = await (await fetch(`${SITE}/.well-known/openapi.json`)).json();
 check("the spec is OpenAPI 3.1", spec.openapi?.startsWith("3.1"), spec.openapi);

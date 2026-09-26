@@ -118,11 +118,13 @@ Work without a ticket takes a NEXT id.
 
 - done - REV-09: lab and arrangement audio lives in object storage (decision 40).
 - done - decision 38: V1 accepted, new chips reopened under its guards.
-- todo - NEXT-01: the skill's install line pins
-  `chipvoice@${engineVersion}`, which is `PROJECT_ENGINE_VERSION` (0.17.0),
-  not the published package version. Decide what the constant means, then
-  align and document it.
-- todo - P2-4: link the sheets from the package README and the skill.
+- done - NEXT-01: the skill's install line pinned
+  `chipvoice@${engineVersion}`, which was `PROJECT_ENGINE_VERSION` (0.17.0),
+  not the published package version. The constant is now the package version,
+  a unit test holds the two equal, and the production e2e checks that the
+  skill installs the version npm serves.
+- done - P2-4: the package README links all five sheets, and the skill links
+  each target's sheet, checked by `test-agent-guide.mjs`.
 - doing - NEXT-02: `.github/workflows/e2e.yml` runs the production e2e after
   every successful production deployment, and its writes use the
   `CHIPVOICE_E2E_KEY` secret when set. The dedicated test account and its key
@@ -288,7 +290,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | todo | |
 | P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
 | P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output |
-| P2-4 | Release with the sheet linked from the package README and the skill | todo | |
+| P2-4 | Release with the sheet linked from the package README and the skill | done | The README links every sheet; the skill links each target's |
 
 ## Phase 3. Game Boy
 
