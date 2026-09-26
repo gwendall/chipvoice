@@ -853,7 +853,7 @@ the home page, which needs none of the chip machinery, is unchanged.
 seven audio-feature-free pages ever references a chunk containing
 `registerProcessor` again.
 
-## 36. Publishing gains a parity gate and creates its own release (2026-09-26)
+## 36. Publishing gains a parity gate and creates its own release (2026-09-27)
 
 `publish.yml` runs `test:parity` after `test:fresh`, before `npm publish`: the
 offline render and the worklet's live capture have to describe the same

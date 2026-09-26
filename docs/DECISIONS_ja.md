@@ -344,8 +344,8 @@ evaluate、MP3エンコード、作曲検証はすでに公開レンダリング
 
 **変わること。** `apps/web/src/studio/machines.ts` が `ChipId`、`ROLES`、`ROLE_NAMES`、`MACHINES`、`DEMO_MACHINES`、`tokens`、`lengthOf` を保持します。これらは純粋なデータと文字列ヘルパーで、`chipvoice` の実行時読み込みを持ちません。`document.ts` は既存の利用者（studio エディター、アレンジ、公開ビュー）のためにそれらを re-export し、ほぼ全ルートから到達する `Player.tsx` と `ui/components.tsx` は `document.ts` の代わりに `machines.ts` から直接読み込みます。`apps/web` のビルド出力で測定すると、About、Connect、Docs、Signin と Lab の3ページはそれぞれ約627KB(初回読み込みJSのおよそ半分)減少しました。Create、Explore、Library は自らの編集機能のために実エンジンを引き続き読み込みますが、これらもそれぞれ約281KB減少しました。変更前は共有UIシェル経由でも同じエンジンを二重に読み込んでいたためです。チップ関連の仕組みを一切必要としないホームページのみ変化していません。`apps/web/test-page-weight.mjs` はサーバーもブラウザも使わずビルド済みの `.next` 出力を直接読み、これら7つの無音ページのいずれかが再び `registerProcessor` を含むチャンクを参照すれば失敗します。
 
-<a id="36-publishing-gains-a-parity-gate-and-creates-its-own-release-2026-09-26"></a>
-## 36. 公開はパリティ検証を経てから自らリリースを作成する（2026-09-26）
+<a id="36-publishing-gains-a-parity-gate-and-creates-its-own-release-2026-09-27"></a>
+## 36. 公開はパリティ検証を経てから自らリリースを作成する（2026-09-27）
 
 `publish.yml`は`test:fresh`の後、`npm publish`の前に`test:parity`を実行します。オフラインレンダリングとworkletのライブキャプチャは、音量、ヘッドルーム、明るさが一致していなければなりません。一致しなければ、リスナーがダウンロードするMP3は実際に聞いた音とは違うものになります。このチェックは常に固定ポート4181でサーバーが動いていることを前提としており、自らサーバーを起動したことがないため、このジョブが`packages/chipvoice`自体をそのポートでホストします。`npm publish`が成功した後、ジョブはタグのGitHubリリースも作成します。`gh release view "$GITHUB_REF_NAME" || gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag`とし、既に存在する場合はスキップします。
 
