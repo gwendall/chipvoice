@@ -125,7 +125,10 @@ Work without a ticket takes a NEXT id.
 - todo - P2-4: link the sheets from the package README and the skill.
 - todo - NEXT-02: run the production e2e after every deployment, writing to a
   dedicated test account.
-- todo - NEXT-03: stabilize the intermittent `test-creation-browser.mjs`.
+- done - NEXT-03: `test-creation-browser.mjs` failed only at a load average of
+  70, on Playwright's 30-second default wait. Every wait now gets the test's
+  two-minute preparation budget. The editor itself kept Pause visible through
+  a tempo change, even with the page's CPU slowed sixfold.
 
 **Step 1. Prove the five chips.** A sheet is complete when it gives a number
 at four levels: an independent oracle, test ROMs written for the hardware,

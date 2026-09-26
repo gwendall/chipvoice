@@ -39,6 +39,14 @@ const context = await browser.newContext({
   viewport: { width: 1440, height: 1000 },
   recordVideo: { dir: out, size: { width: 1280, height: 900 } },
 });
+/*
+ * Every wait gets the preparation budget, not Playwright's 30 seconds. This
+ * suite shares its machine with others, and at a load average of 70 the wait
+ * for the Pause button after a tempo change ran out at 30 seconds, against an
+ * editor that passes alone. A wait that runs out under load says nothing about
+ * the editor; one that runs out after two minutes does.
+ */
+context.setDefaultTimeout(120000);
 await context.addCookies([
   { name: api.SESSION_COOKIE, value: token, url: base },
 ]);
@@ -263,6 +271,7 @@ try {
       viewport: { width: 390, height: 844 },
     }),
     visitor = await fresh.newPage();
+  fresh.setDefaultTimeout(120000);
   await visitor.goto(`${base}${href}`, {
     waitUntil: "networkidle",
     timeout: 120000,
