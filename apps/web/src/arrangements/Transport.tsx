@@ -56,9 +56,9 @@ export function Transport({translateParts=true,onPlay,player,overview,seconds,pa
  };
  return <div ref={root} className="song-transport">
   <PlayerControls player={playbackFor(player)} seconds={seconds} loading={pending} onToggle={onPlay}/>
-  <div className="score-overview">
+  <div className="score-overview" role="region" tabIndex={0} aria-label={t("Source score")}>
    <div className="score-labels">{rows.map((row,i)=><div key={row.id} className="score-part" style={{borderColor:colors[i%colors.length]}} title={translateParts?t(row.name):row.name}><span className="score-part-name">{translateParts?t(row.name):row.name}</span></div>)}</div>
-   <div ref={seekArea} className="score-notes" role="slider" tabIndex={0} aria-label={t("Source score")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} aria-valuetext={t('{elapsed} of {duration}',{elapsed:stamp(0),duration:stamp(seconds)})} onKeyDown={onSeekKeyDown} onClick={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
+   <div ref={seekArea} className="score-notes" role="slider" tabIndex={0} aria-label={t("Source score position")} aria-valuemin={0} aria-valuemax={100} aria-valuenow={0} aria-valuetext={t('{elapsed} of {duration}',{elapsed:stamp(0),duration:stamp(seconds)})} onKeyDown={onSeekKeyDown} onClick={e=>{if(e.button!==0||!player?.buffers.length)return;const rect=e.currentTarget.getBoundingClientRect();seek(Math.max(0,Math.min(1,(e.clientX-rect.left)/rect.width)));}}>
     <canvas ref={canvas} style={{height:`max(104px, calc(var(--score-row-height) * ${rows.length}))`}} aria-hidden="true"/>
     <div ref={cursor} className="score-cursor" aria-hidden="true"><i/></div>
    </div>

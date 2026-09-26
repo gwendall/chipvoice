@@ -93,6 +93,7 @@
   "Restart from beginning": "曲の最初から再生",
   "↻ Loop": "↻ ループ",
   "Source score": "ソース楽譜",
+  "Source score position": "ソース楽譜の再生位置",
   "Scroll the score to see all": "楽譜をスクロールして全",
   "parts.": "パートを表示。",
   "Allocated source notes · cursor follows audio output": "割り当て済みの音符 · カーソルは聞こえる音に同期",

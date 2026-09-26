@@ -16,7 +16,7 @@ try{
  await page.getByRole('button',{name:'Play',exact:true}).click();await page.getByRole('link',{name:'Download audio',exact:false}).waitFor({timeout:60000});
  assert.ok(await audible(page)>.001,'complete native arrangement is audible');
  await page.getByRole('button',{name:'Pause',exact:true}).click();
- const seekSlider=page.getByRole('slider',{name:'Source score',exact:true});
+ const seekSlider=page.getByRole('slider',{name:'Source score position',exact:true});
  await seekSlider.focus();
  await seekSlider.press('Home');
  assert.equal(await seekSlider.getAttribute('aria-valuenow'),'0','Home seeks the score to the start');
