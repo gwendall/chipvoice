@@ -44,9 +44,18 @@ created the same day.
   editor, user part names go through the UI dictionary, the shared player polls
   while idle, and the score seek bar has no keyboard control.
 
-- todo - REV-05 `perf/page-weight`: measure whether every page ships the five
-  chip engines through the shared player, and load the engine on first play if
-  it does.
+- done - REV-05 `perf/page-weight`: confirmed the hypothesis. `PersistentPlayer`
+  and the shared `SiteHeader`/`MachinePicker` only needed a plain array of chip
+  names and logos, but got it from a module that also imported `arrange` and
+  `validateSong`, which pulled in all five chip engines and their inlined
+  AudioWorklet sources. Moved the pure display data into its own module with
+  no `chipvoice` import (see [Decision 35](DECISIONS.md)). About, Connect,
+  Docs, Signin and the three Lab pages now ship about 627KB less JavaScript
+  each (roughly half). Create, Explore and Library still load the real
+  engine for their own editing features, but each drops about 281KB too,
+  since they were loading it a second time through the shared UI shell as
+  well; only the home page, which needs none of the chip machinery, is
+  unchanged. Added `test-page-weight.mjs` as a standing regression guard.
 
 - todo - REV-06 `refactor/package-playback`: `BufferPlayback` in TypeScript,
   node tests for progressive playback, `node --test` instead of the 44-command

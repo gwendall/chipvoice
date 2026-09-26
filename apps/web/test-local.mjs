@@ -68,6 +68,7 @@ try {
     "test-onboarding.mjs",
     "test-player-session.mjs",
     "test-player-browser.mjs",
+    "test-page-weight.mjs",
     "test-session-cache.mjs",
     "test-session-browser.mjs",
     "test-avatar-layout.mjs",

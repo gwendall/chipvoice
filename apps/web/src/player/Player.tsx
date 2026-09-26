@@ -4,7 +4,11 @@ import Link, {useT, useErrorText} from '@/i18n/react';
 import {PlayButton, Button} from '@/ui/components';
 import {Thumbnail} from '@/ui/Thumbnail';
 import {PixelAvatar} from '@/community/avatar';
-import {DEMO_MACHINES} from '@/studio/document';
+// From `machines.ts`, not `document.ts`: this component is mounted on every
+// route, and `document.ts` carries a module-scope `chipvoice` import (for
+// `arrange`/`validateSong`) that would otherwise ship all five chip engines
+// to every page just to show a chip's display name here.
+import {DEMO_MACHINES} from '@/studio/machines';
 import type {Publication} from '@/lib/projects';
 import {playbackSession as session, type Playback, type QueueTrack} from './session';
 import {playPublication} from './publications';

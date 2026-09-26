@@ -44,9 +44,17 @@
   再利用しうる、ユーザーのパート名がUI辞書で翻訳される、共有プレーヤーが
   待機中もポーリングする、楽譜のシークバーがキーボードで操作できない。
 
-- todo - REV-05 `perf/page-weight`: 共有プレーヤー経由で全ページが5つの
-  チップエンジンを読み込んでいるかを測定し、そうであれば最初の再生時に
-  読み込むようにします。
+- done - REV-05 `perf/page-weight`: 仮説を確認しました。`PersistentPlayer`と
+  共有の`SiteHeader`・`MachinePicker`はチップ名とロゴの単純な配列しか必要と
+  していませんでしたが、`arrange`と`validateSong`も読み込むモジュールから
+  それを取得していたため、5つのチップエンジンすべてとその内蔵AudioWorklet
+  ソースを引き込んでいました。純粋な表示データを`chipvoice`を読み込まない
+  独立モジュールへ移しました（[判断35](DECISIONS_ja.md)を参照）。About、
+  Connect、Docs、SigninとLabの3ページは配信JSが約627KB（ほぼ半分）減りました。
+  Create、Explore、Libraryは自らの編集機能のために実エンジンを引き続き読み込み
+  ますが、変更前は共有UIシェル経由でも二重に読み込んでいたため、これらも約
+  281KB減りました。チップ関連の仕組みを必要としないホームページのみ変化して
+  いません。常設の回帰ガードとして`test-page-weight.mjs`を追加しました。
 
 - todo - REV-06 `refactor/package-playback`: `BufferPlayback`のTypeScript化、
   プログレッシブ再生のnodeテスト、44個のコマンド連結に代わる`node --test`、

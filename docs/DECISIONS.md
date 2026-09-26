@@ -816,3 +816,39 @@ compared in constant time and never matches when unset; and
 `TURSO_DEV_AUTH_TOKEN` instead of falling back to the production token.
 `apps/web/test-auth-http.mjs` pins that a GET sets no cookie and leaves the
 token redeemable, and that a spent token cannot be redeemed twice.
+
+## 35. Chip engines load with what needs them, not the shared shell (2026-09-27)
+
+`apps/web/src/studio/document.ts` carried a module-scope `import {arrange,
+validateSong} from 'chipvoice'` next to `DEMO_MACHINES`, a plain array of chip
+logos and labels. `PersistentPlayer` (mounted on every route) and
+`SiteHeader`/`MachinePicker` (rendered on nearly every page) only needed that
+array, but importing it from `document.ts` pulled in the whole package: all
+five chip emulators and their inlined AudioWorklet sources, because
+`validateSong` genuinely depends on every chip's concrete spec to check a
+song's notes against its voice count. About, Connect, Docs, Signin and the
+three Lab pages - none of which plays an emulated chip, only pre-rendered
+recordings - shipped roughly 627KB of chip-engine JavaScript they never used.
+
+**Why.** Chip metadata for display (a name, a logo, a year) and the actual
+playback/validation engine (an AudioWorklet processor per chip, 30-56KB each)
+lived in the same module, so importing either dragged in both. Splitting them
+lets the shared UI shell stay light while the editor, arrangements deck and
+lab keep loading the real engine exactly where they already need it.
+
+**What changes.** `apps/web/src/studio/machines.ts` holds `ChipId`, `ROLES`,
+`ROLE_NAMES`, `MACHINES`, `DEMO_MACHINES`, `tokens` and `lengthOf` - pure data
+and string helpers, with no runtime import of `chipvoice`. `document.ts`
+re-exports them for its existing consumers (the studio editor, arrangements,
+the publication view); `Player.tsx` and `ui/components.tsx` - the two modules
+reachable from nearly every route - import directly from `machines.ts`
+instead. Measured from `apps/web`'s build output: About, Connect, Docs, Signin
+and the three Lab pages drop about 627KB each (roughly half their first-load
+JS). Create, Explore and Library still load the real engine for their own
+editing features, but each drops about 281KB too, because before this change
+they were loading it a second time through the shared UI shell as well; only
+the home page, which needs none of the chip machinery, is unchanged.
+`apps/web/test-page-weight.mjs` reads the built
+`.next` output directly (no server, no browser) and fails if any of those
+seven audio-feature-free pages ever references a chunk containing
+`registerProcessor` again.
