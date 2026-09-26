@@ -220,8 +220,8 @@ against which oracle and what is known to differ. The 2A03's is
 reference emulator cycle for cycle on every song in the corpus, all twenty-nine
 of his APU test ROMs pass on a 6502 the harness carries, and its mixer cancels
 against his recordings of a real NES as well as the console did. The Game Boy's
-is [`docs/chips/dmg.md`](docs/chips/dmg.md): every voice's edges line up with
-Gb_Snd_Emu under that oracle's own timing convention, and twelve of twelve
+is [`docs/chips/dmg.md`](docs/chips/dmg.md): 97.5 % of its voices' edge runs line up
+with Gb_Snd_Emu under that oracle's own timing convention, and twelve of twelve
 `dmg_sound` ROMs pass on an SM83 the harness carries. The Mega Drive's is
 [`docs/chips/md.md`](docs/chips/md.md): its
 YM2612 is identical to Nuked-OPN2, a reading of the die, on every cycle of the

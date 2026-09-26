@@ -265,8 +265,8 @@ his console: the DAC curves are measured, not assumed.
 The Game Boy's chip, at `src/chips/gb/dsp.ts` and exported as `gbChip`, is held
 to the same method: `test/gb.mjs` checks its clocks against the formulas, the
 harness runs blargg's twelve `dmg_sound` ROMs on an SM83 of its own, all of
-which pass, and compares it with Gb_Snd_Emu, where every voice's edges line up
-under that oracle's own timing convention. Its sheet is
+which pass, and compares it with Gb_Snd_Emu, where 97.5 % of the voices' edge runs
+line up under that oracle's own timing convention. Its sheet is
 [`docs/chips/dmg.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md).
 `test/gb-driver.mjs` checks what the driver writes to it, and `test/golden-dmg.mjs`
 locks its render the way `golden.mjs` locks the 2A03's.

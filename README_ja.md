@@ -154,7 +154,7 @@ pnpm --filter chipvoice-web test # ローカルの本番ビルド、一時DB、�
 <a id="how-accurate-is-it"></a>
 ## どれほど正確か
 
-形容詞でなく測定で示します。全チップが[`docs/CONFORMANCE.md`](docs/CONFORMANCE_ja.md)の手順に従うシートを持ち、何をどの参照で検証し、どの差が既知かを記載します。2A03の[`docs/chips/2a03.md`](docs/chips/2a03_ja.md)では、コーパス全曲のパルス波がblarggの参照とサイクルごとに一致し、ハーネスの6502上で29個すべてのAPU ROMが合格し、実NES録音とのミキサー打ち消しも実機並みです。Game Boyの[`docs/chips/dmg.md`](docs/chips/dmg_ja.md)は、各声の遷移がGb_Snd_Emuとそのオラクル自身のタイミング規約の下で一致し、SM83上で`dmg_sound`の12/12が合格。Mega Driveの[`docs/chips/md.md`](docs/chips/md_ja.md)は、ダイの解析に基づくNuked-OPN2とコーパス全サイクルのYM2612が一致。SNESの[`docs/chips/snes.md`](docs/chips/snes_ja.md)は全出力サンプルがsnes_spcと一致。C64の[`docs/chips/c64.md`](docs/chips/c64_ja.md)は、文献実装のSIDが各声の2デジタル値でreSID-fpと一致します。全5機種で正直に**未検証**と残るのは、実機ライン出力が必要なアナログ段です。[ロードマップ](docs/ROADMAP_ja.md)はその行を変える順序、[バックログ](docs/BACKLOG_ja.md)は今週の対応です。
+形容詞でなく測定で示します。全チップが[`docs/CONFORMANCE.md`](docs/CONFORMANCE_ja.md)の手順に従うシートを持ち、何をどの参照で検証し、どの差が既知かを記載します。2A03の[`docs/chips/2a03.md`](docs/chips/2a03_ja.md)では、コーパス全曲のパルス波がblarggの参照とサイクルごとに一致し、ハーネスの6502上で29個すべてのAPU ROMが合格し、実NES録音とのミキサー打ち消しも実機並みです。Game Boyの[`docs/chips/dmg.md`](docs/chips/dmg_ja.md)は、各声の遷移区間の97.5%がGb_Snd_Emuとそのオラクル自身のタイミング規約の下で一致し、SM83上で`dmg_sound`の12/12が合格。Mega Driveの[`docs/chips/md.md`](docs/chips/md_ja.md)は、ダイの解析に基づくNuked-OPN2とコーパス全サイクルのYM2612が一致。SNESの[`docs/chips/snes.md`](docs/chips/snes_ja.md)は全出力サンプルがsnes_spcと一致。C64の[`docs/chips/c64.md`](docs/chips/c64_ja.md)は、文献実装のSIDが各声の2デジタル値でreSID-fpと一致します。全5機種で正直に**未検証**と残るのは、実機ライン出力が必要なアナログ段です。[ロードマップ](docs/ROADMAP_ja.md)はその行を変える順序、[バックログ](docs/BACKLOG_ja.md)は今週の対応です。
 
 <a id="where-it-is-going"></a>
 ## 目指すもの
