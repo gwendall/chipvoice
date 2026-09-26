@@ -123,18 +123,5 @@ export async function utilityWorker(
       args: [id],
     });
     await chargeWorkerTime(identity, Date.now() - now);
-    // Publications go first: a queued render need not wait for the next poll
-    // to notice the lease is free. A failed claim (already taken, cancelled,
-    // none queued) is a normal, silent no-op; runProjectJob is imported lazily
-    // to avoid a load-time cycle with the module that already imports this one.
-    void (async () => {
-      const queued = (
-        await client.execute({
-          sql: "select id from project_jobs where status='queued' order by created_at limit 1",
-        })
-      ).rows[0];
-      if (queued)
-        await (await import("./project-jobs")).runProjectJob(String(queued.id));
-    })().catch(() => {});
   }
 }

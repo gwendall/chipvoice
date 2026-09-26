@@ -721,14 +721,15 @@ cannot block work forever; and a per-caller render-time budget, tracked in a
 new `worker_time_budget` table and charged by `apps/web/src/lib/projects.ts`'s
 `chargeWorkerTime` whether the held work succeeded, failed or timed out.
 `admitWorkerTime` refuses with 429 `worker_budget` and an accurate
-`Retry-After` once a caller has spent 60 seconds of render time in the last
+`Retry-After` once a caller has spent 60 seconds of render time in the current
 minute signed in, or 20 seconds anonymous - well under the six evaluate
 requests per minute `admitProject` already allows, so repeated short requests
 cannot substitute for one long one. Every `utilityWorker` caller now passes an
 identity: the bare account ID signed in, `anonymous:` plus `clientKey(request)`
-anonymous, matching the convention `evaluate/route.ts` already used. When the
-lease frees, `utilityWorker` also kicks the next queued publication render
-itself, instead of waiting for the owner's next poll.
+anonymous, matching the convention `evaluate/route.ts` already used. A queued
+publication still starts on its owner's next job poll, as before: nothing is
+started outside a request's `after()`, where a serverless instance could freeze
+it mid-render.
 
 **Why.** Decision 27 kept rendering to one fleet-wide slot deliberately, as a
 cost choice, and that stays: this decision does not add a second concurrent
@@ -746,8 +747,8 @@ tightening it costs normal callers nothing while capping how long one stuck or
 adversarial anonymous request can occupy the lease.
 
 **What changes.** `apps/web/src/lib/utility-worker.ts` gains the
-queued-publication check and the render-time admission, and kicks a freed
-lease's next queued job itself. `apps/web/src/lib/projects.ts` gains
+queued-publication check and the render-time admission.
+`apps/web/src/lib/projects.ts` gains
 `admitWorkerTime`/`chargeWorkerTime` and a `retryAfter` on `ProjectHttpError`;
 `apps/web/src/lib/project-http.ts` reflects it in the `Retry-After` header
 instead of a fixed 60. `apps/web/src/lib/migrations.ts` adds the
