@@ -126,8 +126,10 @@ node scores/arrangements/verify-publication.mjs
 ```
 
 Evaluation sequentially renders all twelve mixes twice, checks identical repeat
-PCM, finite/unclipped output and SNES internal dry/echo headroom. Lossless FLAC
-and the report go to `apps/web/public/arrangement-data/`; WAV stays in artifacts.
+PCM, finite/unclipped output and SNES internal dry/echo headroom. Lossless FLAC,
+named after a prefix of its own SHA-256, and the report go to
+`apps/web/public/arrangement-data/`; WAV stays in artifacts. The FLAC is not
+committed: `pnpm audio:push` uploads it to object storage (decision 40).
 Publication verification binds the current SDK, source, evaluation method,
 independent evidence, full decoded durations and lossless WAV/FLAC identity.
 Missing references or an adaptation substituted on the original console fail.

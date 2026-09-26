@@ -17,8 +17,12 @@ async function asset(id,audio){
  const metrics=measureAudio(audio);
  if(metrics.invalidSamples||metrics.clippedSamples)throw new Error(`${id}: invalid or clipped PCM`);
  const wav=toWav(audio),path=`${out}/${id}.wav`;await writeFile(path,wav);
- const encoded=spawnSync('ffmpeg',['-y','-v','error','-i',path,'-c:a','flac',`${publication}/${id}.flac`]);if(encoded.status)throw new Error(encoded.stderr.toString());
- return {file:`/arrangement-data/${id}.flac`,sha256:hash(await readFile(`${publication}/${id}.flac`)),sourceWavSha256:hash(wav),metrics};
+ const encoded=spawnSync('ffmpeg',['-y','-v','error','-i',path,'-c:a','flac',`${out}/${id}.flac`]);if(encoded.status)throw new Error(encoded.stderr.toString());
+ // The published name carries a prefix of the FLAC's own hash, so the object
+ // store key behind it never has to change (decision 40).
+ const flac=await readFile(`${out}/${id}.flac`),sha256=hash(flac),file=`/arrangement-data/${id}-${sha256.slice(0,12)}.flac`;
+ await writeFile(`apps/web/public${file}`,flac);
+ return {file,sha256,sourceWavSha256:hash(wav),metrics};
 }
 for(const id of arrangementIds){
  const score=await loadArrangement(id),nativeSpec=nativeSources[id],native=await loadNative(id),piece={id,title:score.title,source:score.source,notices:score.notices,native:{chip:nativeSpec.chip,file:`/arrangement-data/${nativeSpec.file}`,format:nativeSpec.format},scoreSha256:hash(await readFile(`scores/arrangements/${id}.json`)),parts:score.parts.map(p=>({id:p.id,name:p.name,role:p.role,notes:p.notes.length,priority:p.priority})),cases:[]};

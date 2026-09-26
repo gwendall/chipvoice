@@ -62,5 +62,6 @@ export async function publish(input){
  const manifest=resolve(root,'apps/web/public/lab-data/report.json');
  await writeFile(manifest+'.tmp',JSON.stringify(report));await rename(manifest+'.tmp',manifest);
  console.log(`Published ${verified.size} verified lossless recordings; ${report.cases.length} compositions (${version}), ${(Array.from(verified.values()).reduce((total,value)=>total+value.bytes,0)/1048576).toFixed(1)} MiB.`);
+ console.log('The recordings are local until pnpm audio:push uploads them (decision 40).');
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url))await publish(resolve(root,process.argv[2]??'.artifacts/listening/snes-polyphony-reviewed/report.json'));

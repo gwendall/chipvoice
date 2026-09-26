@@ -101,8 +101,9 @@ created the same day.
   build, typecheck, the test suites, the publication-report rule and the PR
   and decision conventions, every command checked against `package.json`.
 
-- todo - REV-09: 147 MB of lab and arrangement FLAC is tracked without LFS.
-  Moving it out needs a storage decision.
+- done - REV-09: 147 MB of lab and arrangement FLAC was tracked without LFS.
+  It now lives in a Vercel Blob store under paths that name their content,
+  with the reports as its manifest (decision 40).
 
 ## Next steps (2026-09-27)
 
@@ -115,7 +116,7 @@ Work without a ticket takes a NEXT id.
 
 **Step 0. Unblock.**
 
-- doing - REV-09: lab and arrangement audio moves to object storage.
+- done - REV-09: lab and arrangement audio lives in object storage (decision 40).
 - done - decision 38: V1 accepted, new chips reopened under its guards.
 - todo - NEXT-01: the skill's install line pins
   `chipvoice@${engineVersion}`, which is `PROJECT_ENGINE_VERSION` (0.17.0),

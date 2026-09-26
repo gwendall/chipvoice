@@ -5,6 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {arrangementIds,arrangementChips,loadArrangement,checkArrangements} from './check.mjs';
 import {nativeSources} from './native-sources.mjs';
+import {publishedBytes} from '../../apps/web/scripts/audio-store.mjs';
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const bytes=path=>readFile(root+path);
@@ -43,9 +44,9 @@ export async function verifyPublication(){
    assets.push({asset:piece.reference.asset,seconds:piece.cases[0].seconds});
   }
   for(const {asset,seconds} of assets){
-   assert.match(asset.file,/^\/arrangement-data\/[a-z0-9-]+\.flac$/);
-   const path=root+'apps/web/public'+asset.file;assert.equal(hash(await readFile(path)),asset.sha256,'published bytes');
-   const pcm=execFileSync('ffmpeg',['-v','error','-i',path,'-f','s16le','-ac','2','-ar','44100','-'],{maxBuffer:128*1024*1024});
+   assert.match(asset.file,/^\/arrangement-data\/[a-z0-9-]+-[0-9a-f]{12}\.flac$/);assert.ok(asset.sha256.startsWith(asset.file.slice(-17,-5)),'the path names its bytes');
+   const flac=await publishedBytes(asset.file,asset.sha256);assert.equal(hash(flac),asset.sha256,'published bytes');
+   const pcm=execFileSync('ffmpeg',['-v','error','-i','pipe:0','-f','s16le','-ac','2','-ar','44100','-'],{input:flac,maxBuffer:128*1024*1024});
    assert.equal(pcm.length,Math.round(seconds*44100)*4,'complete decoded duration');
    const header=Buffer.alloc(44);header.write('RIFF');header.writeUInt32LE(pcm.length+36,4);header.write('WAVEfmt ',8);header.writeUInt32LE(16,16);header.writeUInt16LE(1,20);header.writeUInt16LE(2,22);header.writeUInt32LE(44100,24);header.writeUInt32LE(176400,28);header.writeUInt16LE(4,32);header.writeUInt16LE(16,34);header.write('data',36);header.writeUInt32LE(pcm.length,40);
    assert.equal(hash(Buffer.concat([header,pcm])),asset.sourceWavSha256,'lossless encoding of the evaluated WAV');

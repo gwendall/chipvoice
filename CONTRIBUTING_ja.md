@@ -81,6 +81,15 @@ Webテストスイートの一部として実行される`scores/arrangements/ve
 [`scores/arrangements/README.md`](scores/arrangements/README.md#native-source-reproduction)
 （[日本語版](scores/arrangements/README_ja.md)）のコマンドで再生成してください。
 
+録音そのものはコミットしません。録音はVercel Blobのストア（決定40）に、内容を名前に含むサイトパスで保存され、`arrangement-data/report.json`と`lab-data/report.json`の2つのレポートがそのマニフェストです。`pnpm arrangements:eval`または`pnpm --filter chipvoice-web publish:lab`の後、新しい録音をアップロードします。
+
+```bash
+vercel env pull .env.local --environment=development   # リポジトリのルートで一度だけ
+pnpm audio:push
+```
+
+ストアにない録音をレポートが指していると、CIが失敗します（`pnpm audio:check`）。サイトは録音をストアから読みます。`pnpm audio:pull`は検証済みのコピーを`apps/web/public`に置くので、オフラインでも作業できます。ローカルのコピーがあれば、そちらが先に配信されます。
+
 <a id="pull-requests"></a>
 ## プルリクエスト
 

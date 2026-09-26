@@ -85,6 +85,19 @@ jobs:
       # recovery. Owns its server and temporary SQLite DB; never touches prod.
       - name: Audio publication verifier
         run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      # The published recordings live in object storage (decision 40). Their
+      # keys never change, so a cache keyed on the two reports downloads only
+      # what a new publication adds; the pull verifies every file's hash and
+      # the check fails a report that names a recording nobody uploaded.
+      - uses: actions/cache@v6
+        with:
+          path: |
+            apps/web/public/lab-data/*/
+            apps/web/public/arrangement-data/*.flac
+          key: audio-${{ hashFiles('apps/web/public/lab-data/report.json', 'apps/web/public/arrangement-data/report.json') }}
+          restore-keys: audio-
+      - run: pnpm audio:pull
+      - run: pnpm audio:check
       - run: pnpm --filter chipvoice-web test
       # Uploaded for a post-mortem, not for a routine pass: it is 22 MB and
       # nobody opens it when the run is green. A short retention because a
