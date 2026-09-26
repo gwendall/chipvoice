@@ -11,6 +11,14 @@ type Chunk = {start: number; left: Float32Array; right: Float32Array};
 type Clock = {at: number; offset: number; duration: number; loopStart: number; loop: boolean; presentation: unknown};
 type Group = Clock & {source: PreviewSource; fade: Fade; nodes: Set<AudioBufferSourceNode>; nextFrame: number; nextAt: number; pumping: boolean; retiredAt?: number};
 const cancelled = () => new DOMException('Preparation cancelled', 'AbortError');
+// Seconds a moving handoff has scheduled when it takes over: room for its first
+// half-second read ahead on the slowest chip (Mega Drive, about 2x realtime).
+const HANDOFF_LEAD = .75;
+const join = (a: Chunk, b: Chunk): Chunk => {
+  const left = new Float32Array(a.left.length + b.left.length), right = new Float32Array(left.length);
+  left.set(a.left); left.set(b.left, a.left.length); right.set(a.right); right.set(b.right, a.right.length);
+  return {start: a.start, left, right};
+};
 
 class PreviewSource {
   private worker: Worker;
@@ -22,6 +30,8 @@ class PreviewSource {
   meta!: PreviewMetadata;
   disposed = false;
   preparing = false;
+  /** Late blocks while this source was audible, since its last load. */
+  underruns = 0;
   constructor(input: Input, readonly sampleRate: number) {
     const url = URL.createObjectURL(new Blob([WORKLET_SOURCE], {type: 'text/javascript'}));
     try {this.worker = new Worker(url);} finally {URL.revokeObjectURL(url);}
@@ -37,7 +47,7 @@ class PreviewSource {
   reload(input: Input) {
     this.cancelReads();
     const revision = ++this.revision; this.preparing = true;
-    this.chunks.clear();
+    this.chunks.clear(); this.underruns = 0;
     this.ready = this.request({type: 'load', ...input}).then(meta => {
       if (revision !== this.revision) throw cancelled();
       this.preparing = false; return this.meta = meta;
@@ -201,13 +211,24 @@ export class ProgressivePlayback {
     let chunk: Chunk, position: number;
     for (;;) {
       position = desired();
-      const start = this.playing && (this.group || typeof phase === 'function') ? Math.floor(position / rate) * rate : position;
+      const moving = this.playing && (this.group || typeof phase === 'function');
+      const start = moving ? Math.floor(position / rate) * rate : position;
       // Initial playback gets a short prefix. A moving handoff includes enough
       // future audio to keep the beat while a cold target is catching up.
-      const size = this.playing && (this.group || typeof phase === 'function') ? rate * 2 : Math.round(rate * .25);
+      const size = moving ? rate * 2 : Math.round(rate * .25);
       chunk = await source.read(start, Math.min(size, meta.frames - start));
       if (ticket !== this.generation || this.disposed) return false;
       position = desired();
+      // The playhead kept moving while a cold target caught up, so its block
+      // can come back nearly spent. Extend it with warm contiguous reads: the
+      // new group must start further ahead than its first read ahead takes.
+      while (moving && this.playing && position >= chunk.start && position < chunk.start + chunk.left.length
+        && chunk.start + chunk.left.length < Math.min(meta.frames, position + Math.round(rate * HANDOFF_LEAD))) {
+        const end = chunk.start + chunk.left.length;
+        const next = await source.read(end, Math.min(rate, meta.frames - end));
+        if (ticket !== this.generation || this.disposed) return false;
+        chunk = join(chunk, next); position = desired();
+      }
       if (position >= chunk.start && position < chunk.start + chunk.left.length) break;
     }
     if (ticket !== this.generation || this.disposed) return false;
@@ -241,7 +262,9 @@ export class ProgressivePlayback {
     if (group.pumping || group !== this.group || !this.playing || this.disposed) return;
     group.pumping = true;
     try {
-      while (group === this.group && this.playing && group.nextAt < this.context.currentTime + 1.5) {
+      // While another source prepares, its cold render competes for the CPU:
+      // the audible group keeps a deeper reserve until the handoff.
+      while (group === this.group && this.playing && group.nextAt < this.context.currentTime + (this.selecting ? 3 : 1.5)) {
         if (group.nextFrame >= group.source.meta.frames) {
           if (!group.loop) break;
           group.nextFrame = Math.min(group.source.meta.frames - 1, Math.round(group.loopStart * group.source.sampleRate));
@@ -249,7 +272,7 @@ export class ProgressivePlayback {
         const chunk = await group.source.read(group.nextFrame, Math.min(Math.round(group.source.sampleRate * .5), group.source.meta.frames - group.nextFrame), 'ahead');
         if (group !== this.group || !this.playing || this.disposed) break;
         if (group.nextAt < this.context.currentTime) {
-          this.underruns++;
+          this.underruns++; group.source.underruns++;
           group.nextAt = this.context.currentTime + .025;
           group.at = group.nextAt; group.offset = group.nextFrame / group.source.sampleRate; this.remember(group);
         }
