@@ -62,10 +62,19 @@
   281KB減りました。チップ関連の仕組みを必要としないホームページのみ変化して
   いません。常設の回帰ガードとして`test-page-weight.mjs`を追加しました。
 
-- todo - REV-06 `refactor/package-playback`: `BufferPlayback`のTypeScript化、
-  プログレッシブ再生のnodeテスト、44個のコマンド連結に代わる`node --test`、
-  SN76489ノイズ同期のリファレンス照合、その後サイトと合わせて次のパッケージ
-  バージョンをリリースします（0.19.0は#60が使用）。
+- done - REV-06 `refactor/package-playback`: `BufferPlayback`を姉妹の
+  `ProgressivePlayback`と同じくTypeScriptへ変換し、公開される`.d.ts`は旧来の
+  推論型より厳密に精密な上位互換になりました。プログレッシブ再生と
+  `ProjectPlayer`のプレビュー経路のnodeテストが、ハンドオフの延長、
+  アンダーランと予備時間の規則、シーク、読み込み中の一時停止、読み込み中の
+  連続やり直し、workerの上限を、擬似`AudioContext`と本物のpreview workerに
+  対して固定します。`test:unit`の44個のコマンド連結は、ディスクから読んだ
+  `test/*.mjs`全ファイルに対する`node --test`になりました（決定37）。
+  SN76489ノイズチャンネルのrate 3（「tone 2でクロック」）の挙動をSMS Powerの
+  資料とMAMEの公開ソースに照らして確認したところ、資料が示す正確な周波数
+  まで一致しており、これを固定するテストはコード変更なしで追加されました。
+  次のパッケージバージョンはマージ後にcoordinatorがサイトと合わせて
+  リリースします（0.19.0は#60が使用）。
 
 - done - REV-07 `ci/pipeline-hygiene`: アクションを現行メジャーへ更新、評価
   成果物は失敗時のみ、ユニットとブラウザーのスイートを並列ジョブに、

@@ -63,10 +63,20 @@ created the same day.
   well; only the home page, which needs none of the chip machinery, is
   unchanged. Added `test-page-weight.mjs` as a standing regression guard.
 
-- todo - REV-06 `refactor/package-playback`: `BufferPlayback` in TypeScript,
-  node tests for progressive playback, `node --test` instead of the 44-command
-  chain, the SN76489 noise sync checked against the reference, then the next
-  package version released with the site (0.19.0 is taken by #60).
+- done - REV-06 `refactor/package-playback`: `BufferPlayback` converted to
+  TypeScript alongside its sibling `ProgressivePlayback`, with the published
+  `.d.ts` a strictly more precise superset of the old inferred one. Node
+  tests for progressive playback and the `ProjectPlayer` preview path pin the
+  handoff extension, the underrun and reserve rules, seeking, pausing and
+  rapid reloads mid-load, and the worker cap, against a fake `AudioContext`
+  and the real preview worker. `test:unit`'s 44-command chain is now
+  `node --test` over every `test/*.mjs` file read from disk (decision 37).
+  The SN76489 noise channel's rate-3 ("clocked by tone 2") behavior was
+  checked against SMS Power's notes and MAME's public source; it already
+  matches both, down to the exact frequencies the notes give, so the tests
+  that pin it landed without a code change. The next package version is
+  released with the site by the coordinator after merge (0.19.0 is taken by
+  #60).
 
 - done - REV-07 `ci/pipeline-hygiene`: current action majors, the evaluation
   artifact only on failure, unit and browser suites in parallel jobs,

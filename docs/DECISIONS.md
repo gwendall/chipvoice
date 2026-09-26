@@ -879,3 +879,26 @@ first keeps a maintainer's own manual release from becoming a failed run.
 **What changes.** `publish.yml` needs `contents: write` (kept alongside the
 existing `id-token: write` for npm's OIDC exchange) to create the release. A
 release is still not created if `test:parity` or `npm publish` fails.
+
+## 37. Run the package's unit tests with node --test, not a chain of them (2026-09-27)
+
+`packages/chipvoice`'s `test:unit` script is now `node scripts/run-unit-tests.mjs`,
+which reads `test/*.mjs` from disk (all of it but `test/parity.mjs`, which keeps
+its own `test:parity` script) and hands the list to `node --test
+--allow-natives-syntax --test-concurrency=4`.
+
+**Why.** The old script was over forty commands, `node test/a.mjs && node
+test/b.mjs && ...`, one `&&` per file. That chain stopped at the first failing
+file and never ran, or reported on, anything after it, and a new test file only
+joined the suite if its author remembered to add a matching `&&` clause to that
+one line; nothing enforced it. `node --test` runs every file regardless of an
+earlier failure and reports every failure it finds, and reading the file list
+from disk means a new file joins the moment it exists, not the moment someone
+remembers to wire it in.
+
+**What changes.** `scripts/run-unit-tests.mjs` is the one place a file can be
+left out on purpose, by name, in its own exclusion list; that list holds one
+entry today. `--test-concurrency=4` matches CI's four vCPUs; wall time on the
+author's machine went from about 48s to about 20s for the same 49 files.
+`pnpm test:unit`, `pnpm test` and the release workflow's own call to
+`test:unit` are unaffected by name; only what runs underneath changed.
