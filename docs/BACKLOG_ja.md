@@ -121,7 +121,7 @@
 
 - オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P7-11。
 - done - P5-8: PR #85。MAMEの`sn76496.cpp`を`segapsg_device`として構成し、メガドライブのPSG向け第2の参照実装にしました（`packages/conform/oracles/sn76496`）。白色ノイズLFSRの57337シフト周期をMAME側でも直接確認し、`sn76489.ts`との3件の実際の相違（周期0または1のトーン、リロード前のチャンネルの極性、tone 3のノイズレート）を診断し、シートに記録しました。
-- doing - P2-1、第1段階：Mesenに対する2A03の相違を全て特定しました。1つはシム側（サイクルカウントの偶奇が逆の`$4017`遅延を選んでいた）で、修正して`song-e2e`のpulse 2が100%に。残りはMesenのsweepの電源投入状態、書込かタイマーのtickでしか出力を更新しないこと、reloadと同じサイクルの書込で、それぞれコアの試作ビルドで確かめてシートに記載しました。SIDはOSC3／ENV3の読み出しをデータバスに残すように（`busvalue`成功、14本中14本）。Game Boyの矩形波は無音から始めると最初のデューティの1段までデジタルのゼロを出します（Pan Docs、SameBoyも同じ）。Gb_Snd_Emuのベースラインはそれに合わせて書き直しました。第2段階：MAMEが見つけたPSGの相違（P5-8）と、取り込み後のSameBoyに対するGame Boy（P3-4）。
+- doing - P2-1、第1段階：Mesenに対する2A03の相違を全て特定しました。1つはシム側（サイクルカウントの偶奇が逆の`$4017`遅延を選んでいた）で、修正して`song-e2e`のpulse 2が100%に。残りはMesenのsweepの電源投入状態、書込かタイマーのtickでしか出力を更新しないこと、reloadと同じサイクルの書込で、それぞれコアの試作ビルドで確かめてシートに記載しました。SIDはOSC3／ENV3の読み出しをデータバスに残すように（`busvalue`成功、14本中14本）。Game Boyの矩形波は無音から始めると最初のデューティの1段までデジタルのゼロを出します（Pan Docs、SameBoyも同じ）。Gb_Snd_Emuのベースラインはそれに合わせて書き直しました。第2段階：MAMEが見つけたPSGの相違（P5-8）と、SameBoyに対するGame Boy（P3-4）。
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE_ja.md](HARDWARE-EVIDENCE_ja.md)が、5チップすべてについて既に存在する実機の公開録音・測定値をカタログ化しました。掲載前に各出典を開いて検証済みです（decision 38の無償証拠優先の順序）。「測定一つ」スクリプトの条件を満たした候補は1つだけで、C64の組み合わせ波形を実機6581 R4AR（`libsidplayfp/combined-waveforms`）と比較するものです。`pnpm --filter chipvoice-conform evidence:c64:sheet`で採点し、4つの組み合わせにわたり82.0〜94.1%のバイト一致率となり、[docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581)へ書き込みました。アナログ段については何も確定しません（DAC手前の波形ジェネレーターです）が、デジタルモデルが以前は持っていなかった独立したハードウェアによる確認が1つ得られました。他のどのチップにも、正確に既知で再現可能な入力を持つ候補はありませんでした。NESは既にblarggの`apu_mixer`を持っています。取得スクリプト`packages/conform/src/evidence/fetch.mjs`（`evidence:fetch`）は、ライセンスの許す範囲でgitignore対象の`.artifacts/hardware-evidence/`へダウンロードし、`packages/conform/src/evidence/manifest.json`のコミット済みSHA-256で検証します。
 - 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をP7-8／P7-10のレジスタログ不要なアナログ測定への道として見つけましたが未実装です。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。
 
@@ -242,7 +242,7 @@
 | P3-1 | Pan Docs／blargg資料からDMG APU、SM83でdmg_sound確認 | done | `packages/chipvoice/src/chips/gb`、`packages/conform/src/roms/{sm83,gb}.mjs` |
 | P3-2 | 2chipに基づく`ChipSpec`、`RegisterEvent`、楽器モデル | done | `ChipDriver`、`FrameState`、`ChipSpec.roles`、`chips/{nes,gb}/driver.ts`。2A03 golden不変 |
 | P3-3 | Game Boy自動sheet | done | `docs/chips/dmg.md` |
-| P3-4 | 強い参照：register log駆動SameBoy、またはSM83上のGBSから実曲log | todo | Gb_Snd_Emuは2005年製でtrigger時に初step |
+| P3-4 | 強い参照：register log駆動SameBoy、またはSM83上のGBSから実曲log | done | PR #83。SameBoyのDMG-B `apu.c`を第二参照として同梱（`packages/conform/oracles/sameboy`）。`main.c`の不要な`qsort`が同一サイクルの書き込み間の順序をgccとclangで異なる形に崩し、同一のソースをコンパイラ間で非決定的にしていた駆動系のバグを発見・修正。修正後に残った、より狭い2つの実在差分は今はP2-1が追跡（矩形波トリガー直後の最初のデューティエッジの遅れ、ノイズのコールドスタートが1ノート分丸ごと遅れる点）。ゾンビモードの複合ケースの差分は未解決のまま |
 | P3-5 | 既知scriptでDMG line-out測定 | todo | P2-3同様、実機が必要。NEXT-04はシートの仮モデルと一致するパブリックドメインの式（gbdev Pan Docs）とダイ解析を見つけましたが、どの実機の測定録音も見つかっていません。[HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg)参照 |
 | P3-6 | API／studio／skillで`chip: "dmg"`を受理しrender／再生、editor selectorと変更説明 | done | `apps/web`、skill 0.4.0 |
 

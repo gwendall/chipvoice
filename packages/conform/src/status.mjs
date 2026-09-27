@@ -56,7 +56,7 @@ const CHIPS = [
     notes: [
       'Analog: unmeasured; the output stage is a placeholder built to be replaced by a measurement.',
       'Driver: all four voices, the bass on the wave channel, drums as the hardware envelope.',
-      'Remains: a stronger oracle than Gb_Snd_Emu (SameBoy); a unit\'s line-out; the sweep and the length counters, which no instrument reaches.',
+      'Remains: a freshly-triggered pulse or noise voice is not instant on real hardware, which chipvoice does not model (P2-1, found by SameBoy, the second oracle); a unit\'s line-out; the sweep and the length counters, which no instrument reaches.',
     ],
   },
   {
