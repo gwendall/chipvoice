@@ -79,6 +79,29 @@ const okBody = await okCheck.json();
 check('a good song validates', okCheck.status === 200 && okBody.ok, JSON.stringify(okBody.issues));
 check('and comes back measured', typeof okBody.measured?.loopSeconds === 'number', JSON.stringify(okBody.measured));
 
+/*
+ * A song can be well-formed and still ask a machine for more voices than it
+ * has: two drums closer together than the first one's own decay, sharing the
+ * 2A03's one noise channel; a chord and a drum sharing the SID's v3. Those
+ * pass validation (level warning, not error) but must say so rather than let
+ * the render cut a hit in silence.
+ */
+const crowdedNoise = {
+  chip: '2a03', bpm: 300, order: [0],
+  patterns: [{ bass: 'C2 . . .', lead: 'C4 . . .', chord: 'C3 . . .', perc: 'K K . .', chordShape: [[0, 4, 7]] }],
+};
+const noiseCheck = await post('/api/validate', crowdedNoise);
+const noiseBody = await noiseCheck.json();
+check('two drums sharing the 2A03 noise channel warn rather than error', noiseCheck.status === 200, String(noiseCheck.status));
+const noiseIssue = noiseBody.issues?.find((i) => i.code === 'perc_voice');
+check('naming the shared voice and the measured against the limit, in seconds', !!noiseIssue && noiseIssue.voice === 'noi' && typeof noiseIssue.measured === 'number' && typeof noiseIssue.limit === 'number', JSON.stringify(noiseIssue));
+
+const sharedVoice = { ...SONG, chip: 'c64' };
+const sidCheck = await post('/api/validate', sharedVoice);
+const sidBody = await sidCheck.json();
+const shareIssue = sidBody.issues?.find((i) => i.code === 'voice_share');
+check('the SID names a chord and percussion clash over v3 rather than silently cutting it', !!shareIssue && shareIssue.voice === 'v3', JSON.stringify(shareIssue));
+
 // ---- storing
 const created = await post('/api/songs', SONG);
 const song = await created.json();
