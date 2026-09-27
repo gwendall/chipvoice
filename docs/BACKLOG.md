@@ -238,8 +238,18 @@ real game music, and a real unit.
 
 **Step 3. The machines' own music.**
 
-- P1-12: grow the NSF corpus from one complete song to many, each compared
-  command by command with its reference.
+- done - P1-12: the NSF corpus grew from Mario's one complete song to 8 real,
+  independently authored NSFs (7 FamiTracker, 1 Pently), each redistributable
+  under CC0, CC-BY or zlib and recorded with its source URL, licence, author
+  and SHA-256 in `scores/nsf-corpus/sources.json`. All 8 match a pinned
+  Game_Music_Emu oracle command by command, 31,083 commands with zero
+  divergence, on `docs/chips/2a03.md`'s generated sheet. Getting there needed
+  two real capture fixes: NSF2 (version 2) support for Pently's metadata-only
+  export, and Pently's own non-standard NTSC rate ($411a=16639, not the usual
+  16666), whose PLAY schedule starts one cycle later than a plain
+  `ceil(initEnd/period)*period` gives - the standard rate's own half-cycle
+  rounding lands on the right cycle already, so this only showed up on a
+  custom rate. `packages/chipvoice` was not touched.
 - todo - NEXT-06 GBS, NEXT-07 VGM import, NEXT-08 SPC playback, NEXT-09
   SID/PSID: each against its reference player (GME, snes_spc, sidplayfp),
   with a score per file.
@@ -369,7 +379,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P1-9 | `conform` in CI on the subset | done | PR #3, against a committed baseline |
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | done | PR #7. 29 of 29 pass, in CI |
-| P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | doing | First complete source: Mario Ground Theme, all 41,999 music commands match pinned GME at exact cycles; broader NSF corpus remains |
+| P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | done | Mario Ground Theme's 41,999 commands, then a corpus of 8 real, permissively licensed NSFs (7 FamiTracker, 1 Pently) added, 31,083 commands, all matched against pinned GME at exact cycles. `docs/chips/2a03.md`'s nsf-corpus sheet, `pnpm nsf-corpus:sheet` |
 | P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | done | #84. Mesen 2's APU, vendored under `packages/conform/oracles/mesen`; the sweep's divider timing disagrees, filed as P2-1 |
 | P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 

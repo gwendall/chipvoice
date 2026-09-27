@@ -163,3 +163,12 @@ jobs:
       - run: pnpm --filter chipvoice-conform roms:c64
       - run: pnpm --filter chipvoice-conform mixer
       - run: pnpm --filter chipvoice-conform bench:nes:selftest
+      # The real-NSF corpus (P1-12) builds the pinned Game_Music_Emu oracle
+      # from source; caching its clone+build by the pinned revision leaves
+      # only an incremental cmake build and the small render harness to
+      # compile on a cache hit.
+      - uses: actions/cache@v6
+        with:
+          path: .artifacts/nsf-corpus/gme-oracle/gme
+          key: gme-oracle-fe8da4b6d3876d7542c2fb69d94487e19836d678
+      - run: pnpm nsf-corpus:check
