@@ -216,7 +216,7 @@
             "oracle": "Gb_Snd_Emu 0.1.4 (blargg)",
             "files": 7,
             "cycles": 145122916,
-            "identical": 83100551,
+            "identical": 83100392,
             "diverging": 7,
             "firstDivergence": {
               "file": "script-envelopes",
@@ -231,7 +231,7 @@
             "oracle": "SameBoy (DMG-B)",
             "files": 7,
             "cycles": 145122916,
-            "identical": 137604380,
+            "identical": 137606353,
             "diverging": 6,
             "firstDivergence": {
               "file": "script-envelopes",
