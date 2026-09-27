@@ -139,7 +139,7 @@
 **ステップ3. 各機種固有の音楽。**
 
 - done - P1-12: NSFのコーパスをMarioの完全な1曲から、独立に作られた実在の8つのNSF（FamiTracker製7曲、Pently製1曲）へ広げました。各ファイルはCC0、CC-BY、zlibのいずれかで再配布可能で、そのsource URL、licence、author、SHA-256を`scores/nsf-corpus/sources.json`に記録しています。8曲すべてが固定したGame_Music_Emuオラクルとコマンド単位で一致し、31,083命令すべてに相違なしと`docs/chips/2a03.md`の生成済みシートに出ています。ここに至るには実際のcapture修正が2つ必要でした。Pentlyのmetadataのみのexportに対するNSF2（version 2）対応と、Pently固有の非標準NTSC rate（$411a=16639、通常の16666ではない）です。後者ではPLAYの開始が単純な`ceil(initEnd/period)*period`より1 cycle遅れていました。標準rateでは半cycleの丸めがたまたま正しいcycleに収まるため、これはcustom rateでだけ表面化していました。`packages/chipvoice`は変更していません。
-- todo - NEXT-06 GBS、NEXT-07 VGMの読み込み、NEXT-09 SID/PSID: それぞれ参照プレーヤー（GME、sidplayfp）と比べ、ファイルごとにスコアを出します。
+- done - NEXT-06: `importGbs`/`parseGbsHeader`が、独自のSM83 CPU上で`.gbs`を`dmg`で再生します。Pan Docs、gbdevのオペコード表、GBSフォーマット仕様書から書き起こしたもので、GPL/LGPLのエミュレータからの移植ではありません（決定41）。CB接頭辞を含む全オペコードを、Pan Docs自身のフラグとサイクル規則に対して単体テストしています（`test/cpu-gb.mjs`）。固定版Game_Music_Emuの`Gbs_Emu`に対して断定ではなく採点します（`scores/gbs-corpus`、`docs/chips/dmg.md#gbs-playback`）。今のところコーパスにある唯一のファイル（自作、パブリックドメイン。出典と再配布可能なライセンスが明確な実在のホームブリューGBSは、期限内には見つけて検証できませんでした）では、アドレス・値・順序のすべてでファイル全体を通して一致しますが、正確なサイクルのタイムスタンプは一致しません - GME自身のCPUコアとのオペコード別タイミングに関する、実在し、範囲が定まった、記録済みの相違であり、それを複製して直すようなものではありません。`packages/chipvoice`に加わったのは`src/chips/gb/cpu.ts`と`src/gbs-import.ts`だけで、既存のチップモジュールは変更していません。そのためcalibrationのmanifestは更新しましたが、mixerやそのgolden renderは何も動いていません。
 - done - NEXT-08: `importSpc`は`.spc`スナップショット（SPC700とS-DSP、SNES
   自身の音楽形式）を、fullsnes、AnomieのSPC700／S-DSPドキュメント、SNES
   開発者wikiから書いた新しいSPC700（S-SMP）、タイマー、I/Oポートで再生
@@ -152,6 +152,7 @@
   コーパスファイルで両方一致しました。このCPUは以下のP6-9の前提条件
   でもあります。実SPC700に対して検証できるembedded driverはこれなしでは
   作れません。
+- todo - NEXT-07 VGMの読み込み、NEXT-09 SID/PSID: それぞれ参照プレーヤー（GME、sidplayfp）と比べ、ファイルごとにスコアを出します。
 - P6-9（SPCの書き出し、NEXT-08のCPUにより着手可能に）とtodo - NEXT-10
   （NSFとGBSの書き出し）: フラッシュカートから実機で鳴る曲を、ステップ1の
   録音環境で録音します。
