@@ -40,10 +40,11 @@ function regs(writes) {
   check('power-on loads the bank into RAM, directory first', loaded.length === 1 && loaded[0].address === 0x0200 && loaded[0].bytes.length > 4000, `${loaded[0]?.bytes.length} bytes at ${loaded[0]?.address.toString(16)}`);
   const power = regs(writes.filter((w) => w.at < 100000));
   const by = Object.fromEntries(power.map(([r, v]) => [r, v]));
-  check('and sets the directory, the volumes, the echo and every voice\'s envelope, with echo writes off and every voice released first', power[1][0] === 0x5c && power[1][1] === 0xff && by[0x5c] === 0x00 && by[0x6c] === 0x20 && by[0x5d] === 0x02 && by[0x0c] === 0x60 && by[0x7d] === 3 && by[0x4d] === 0 && by[0x05] === 0xff && by[0x75] === 0xff, JSON.stringify(by));
+  // FLG's low bits are the noise clock ($1f, fastest): set in this very first write, alongside
+  // the echo-write-disable bit (0x20), since a note can start at the song's own time zero.
+  check('and sets the directory, the volumes, the echo and every voice\'s envelope, with echo writes off, the noise clock set and every voice released first', power[1][0] === 0x5c && power[1][1] === 0xff && by[0x5c] === 0x00 && by[0x6c] === 0x3f && by[0x5d] === 0x02 && by[0x0c] === 0x60 && by[0x7d] === 3 && by[0x4d] === 0 && by[0x05] === 0xff && by[0x75] === 0xff, JSON.stringify(by));
   const enable = regs(writes.filter((w) => w.at >= 200000 && w.at < CLOCK));
-  // FLG's low bits are the noise clock (fastest, $1f), set once here and never rewritten.
-  check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped', JSON.stringify(enable) === JSON.stringify([[0x2c,0],[0x3c,0],[0x6c,0x1f]]), JSON.stringify(enable));
+  check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped, repeating the same noise clock', JSON.stringify(enable) === JSON.stringify([[0x2c,0],[0x3c,0],[0x6c,0x1f]]), JSON.stringify(enable));
   const note = regs(writes.filter((w) => w.at >= CLOCK && w.at < CLOCK + CLOCK / 60));
   // A4 on the 32-sample triangle: pitch = 440 * 4096 / 1000 = 1802 = $70A.
   check('a note sets the source, the envelope, the pitch, the volumes, then keys on', note.map((p) => p[0]).join(',') === '4,5,6,2,3,0,1,76' && note[3][1] === 0x0a && note[4][1] === 0x07 && note[5][1] === 31 && note[7][1] === 0x01, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
@@ -104,6 +105,38 @@ function regs(writes) {
   const second = regs(writes.filter((w) => w.at >= secondAt + 1000 && w.at < secondAt + CLOCK / 60));
   const by = Object.fromEntries(second);
   check('a BRR drum after a noise hat on the same voice clears NON again', by[0x3d] === 0, second.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
+}
+
+{
+  // A hat at 100ms, well inside the 250ms power-on echo settling this driver
+  // gates other things behind, has to sound like real noise from the start:
+  // the DSP's own core, not the register-capturing stub, since this checks
+  // rendered samples rather than register writes. `sustain: true` holds the
+  // volume table's last frame instead of letting it fall to 0 after one
+  // frame, so a silenced voice's own decaying output-stage filter cannot be
+  // mistaken for noise. A frozen LFSR under a held envelope is a single step
+  // the DC-blocking high-pass then decays smoothly and monotonically to
+  // zero; real noise keeps flipping sign every few samples. Counting sign
+  // changes in the sample-to-sample difference tells those apart where a
+  // plain "how many distinct floats" count cannot, since a filter's smooth
+  // decay visits a different float almost every sample too.
+  const core = snesChip.create(44100);
+  core.setGain(0.78);
+  const driver = new OfflineDriver(core, snesChip);
+  driver.playNote('v3', { note: 13, instrument: { volume: [10], sample: 'hat', noiseMode: true, sustain: true }, duration: 0.4, at: 0.1 });
+  driver.flush();
+  const left = new Float32Array(Math.round(0.6 * 44100));
+  core.render(left, null, 0);
+  const from = Math.round(0.15 * 44100);
+  const to = Math.round(0.2 * 44100);
+  let signChanges = 0;
+  let last = left[from] - left[from - 1];
+  for (let i = from + 1; i < to; i++) {
+    const d = left[i] - left[i - 1];
+    if ((d > 0) !== (last > 0)) signChanges++;
+    last = d;
+  }
+  check('a hat played inside the power-on window still sounds like noise, not a frozen envelope step', signChanges > 100, `${signChanges} sign changes over ${to - from} samples`);
 }
 
 const SCORE = {

@@ -29,8 +29,12 @@ import { FACTORY_SAMPLES, FACTORY_RAM_HEX } from "./bank-inline.js";
  * table, the way they already did as BRR bursts. `FLG`'s low five bits
  * (`$6C`) are the noise's clock, and it is one clock for every voice routed
  * to noise at once - a hardware limit, not a driver one. This driver sets it
- * once at power-on, to its fastest rate, and never rewrites it: the DSP's
- * noise LFSR runs off the same 32-entry rate table as ADSR and GAIN, and a
+ * in the very first `FLG` write at power-on, alongside the bit that holds
+ * echo writes off, to its fastest rate, and never changes it again: a note
+ * can start as early as the song's own time zero, so the clock has to be
+ * live before the power-on sequence's first byte, not after its echo buffer
+ * has finished settling. The DSP's noise LFSR runs off the same 32-entry
+ * rate table as ADSR and GAIN, and a
  * slow clock makes it an audible, discrete buzz rather than a continuous
  * hiss - wrong for a hat at any rate this driver's single kit voice would
  * want. Because only the percussion voice's `notes: "period"` ChipSpec ever
@@ -83,7 +87,8 @@ const PAN_RIGHT = [1, .68, 1, 1, 1, .88, .72, 1];
 // from about 1 Hz (0) to 32000 Hz (31, every sample). One clock drives every
 // voice's noise at once, so this driver sets it once, at the fastest rate:
 // the broadest, most sample-rate-limited hiss, with no beat a slower rate
-// would add. Set once at power-on and never rewritten.
+// would add. Set in the first FLG write at power-on, before any note can
+// play, and never rewritten after.
 const NOISE_CLOCK = 0x1f;
 type BankEntry = (typeof FACTORY_SAMPLES)[number];
 const SAMPLE_BY_NAME = new Map(FACTORY_SAMPLES.map(entry => [entry.name,entry]));
@@ -140,8 +145,12 @@ export class SnesDriver implements ChipDriver {
     // when the old one wraps, and the register it powers on with means 28 KB
     // from wherever ESA points, which wraps round the top of RAM into the
     // samples. Every program disabled writes first, set ESA and EDL, and
-    // waited the old delay out before enabling them; so does this one.
-    reg(R_FLG, 0x20);
+    // waited the old delay out before enabling them; so does this one. The
+    // same write sets the noise clock (bits 0-4): a note can start at the
+    // song's own time zero, before the echo buffer below has finished
+    // settling, so the clock has to be live from this first byte, not from
+    // the later write that turns echo writes back on.
+    reg(R_FLG, 0x20 | NOISE_CLOCK);
     // Every voice released. The DSP powers on in a state captured from a
     // console with voices keyed on, the noise routed to some of them and its
     // clock stopped, which is a constant on the output; the IPL ROM keyed
@@ -173,8 +182,9 @@ export class SnesDriver implements ChipDriver {
     // KOFF released, once every voice has seen it, so KON can take again.
     reg(R_KOFF, 0x00);
     // Echo writes on, once the power-on buffer has wrapped: 240 ms of it.
-    // The same write sets the noise clock (bits 0-4): the reset and mute
-    // bits (7, 6) stay off, as they were meant to from here on.
+    // The noise clock (bits 0-4) has been live since the first FLG write
+    // above; this write repeats the same value, with the reset and mute
+    // bits (7, 6) staying off, as they were meant to from here on.
     t = Math.round(0.25 * 1024000);
     reg(R_EVOLL, 0);
     reg(R_EVOLR, 0);

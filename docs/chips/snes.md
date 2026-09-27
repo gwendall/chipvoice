@@ -121,7 +121,7 @@ is divided across its notes; pitched chord voices have moderate stereo spread.
 | Voice | Exercised | Not exercised |
 | --- | --- | --- |
 | v0, v1, v2, v4–v7 | original BRR attacks and separate sustain loops, per-family hardware ADSR, pitch and stereo volume per frame, key-on, note off as a fast GAIN decrease, echo; legacy periodic waveforms also available | GAIN's other modes, pitch modulation, hardware noise |
-| v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame; the kit's hats routed to the DSP's own noise through `NON`, at the one clock `FLG` sets once at power-on | a held drum note's noise clock changed mid-note (the corpus scripts this; the kit does not) |
+| v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame; the kit's hats routed to the DSP's own noise through `NON`, at the one clock `FLG`'s very first power-on write sets | a held drum note's noise clock changed mid-note (the corpus scripts this; the kit does not) |
 | the echo | on for the pitched voices: 48 ms, feedback `$38`, the low-pass FIR most games used, enabled once the power-on buffer has wrapped | other FIRs, other delays |
 
 ## Known deviations
@@ -131,7 +131,7 @@ is divided across its notes; pitched chord voices have moderate stereo spread.
 | A write to `$F3` lands before the clock it is stamped with; several on one clock land in order | yes | the SPC700 writes between DSP clocks; the oracle's driver takes the same convention | when a register lands, to within one clock |
 | Note off is the voice's GAIN, not KOFF | yes | KOFF is one register for eight voices, and a driver that writes notes out of time order cannot hold its state; GAIN is the voice's own | how a note fades: exponentially over about 8 ms rather than linearly |
 | The bank's samples are synthesised and encoded here, not recorded | yes | they are the arranger's instruments, not the chip's | what the intents sound like, not what the chip does |
-| `NON` is written whole, with only the percussion voice's bit, and the noise clock (`FLG`'s low five bits) is set once at power-on and never rewritten | yes | `NON` and the noise clock are each one register shared by every voice; only the percussion voice's `notes: "period"` ChipSpec ever carries `noiseMode`, and a driver that let a second voice carry noise would need to track the others' bits instead of overwriting them, and would need to pick one clock for whichever voices ask for different rates at once | a future second noise voice sharing the kit's own voice would need this register handled like KOFF, not extended as is; today it does not arise |
+| `NON` is written whole, with only the percussion voice's bit, and the noise clock (`FLG`'s low five bits) is set from the very first `FLG` write at power-on and never rewritten to a different value | yes | `NON` and the noise clock are each one register shared by every voice; only the percussion voice's `notes: "period"` ChipSpec ever carries `noiseMode`, and a driver that let a second voice carry noise would need to track the others' bits instead of overwriting them, and would need to pick one clock for whichever voices ask for different rates at once | a future second noise voice sharing the kit's own voice would need this register handled like KOFF, not extended as is; today it does not arise |
 
 ## Power-on state
 
@@ -142,9 +142,13 @@ power-on does what the IPL ROM and a program did: disables echo writes and
 mutes echo output (reads can initially wrap into sample RAM), keys
 every voice off, sets the directory, the volumes, the echo and every voice's
 envelope, then releases KOFF, and enables echo writes and echo output a quarter
-of a second later, once the power-on buffer has wrapped. The same write sets
-the noise clock, `FLG`'s low five bits, to its fastest rate - the one clock
-every voice routed to noise shares - and it is never rewritten after.
+of a second later, once the power-on buffer has wrapped. The very first of
+those writes - the one that disables echo writes - also sets the noise
+clock, `FLG`'s low five bits, to its fastest rate - the one clock every voice
+routed to noise shares - because a note can start as early as the song's own
+time zero, before the echo buffer has finished settling. The later write that
+turns echo writes back on repeats the same clock rather than setting it for
+the first time; it is never rewritten to a different value after.
 
 The factory bank occupies 21,472 bytes below the echo buffer at 57,344. Sample
 generation and BRR encoding happen at build time. Voice volume is capped at
