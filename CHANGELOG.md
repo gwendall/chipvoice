@@ -9,6 +9,16 @@ Notable changes to the `chipvoice` package and the SDK it exposes, newest
 first. See [README.md](README.md) for the current quickstart and feature
 overview.
 
+## Unreleased
+
+A Game Boy pulse note's trigger (ch1, ch2) keeps the low two bits of its
+frequency timer instead of zeroing them, as Pan Docs' "Obscure Behavior"
+describes ("When triggering Ch1 and Ch2, the low two bits of the frequency
+timer are NOT modified"). A triggered note's first duty step, and every edge
+after it, now lands up to 3 cycles later than before. See
+[docs/chips/dmg.md](docs/chips/dmg.md#known-deviations) for what of the
+remaining gap against the SameBoy oracle stays open.
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the
