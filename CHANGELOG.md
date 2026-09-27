@@ -37,6 +37,18 @@ carries `measured` and `limit` alongside its message, including the existing
 `limit` as optional fields; nothing existing changes shape. No render
 changes: these are diagnostics, not fixes.
 
+The SID's filter is now reachable from the arranger's own words, not a
+simulated substitute. A lead's `sweep` opens the cutoff across the note; a
+bass's `resonant` holds a fixed high resonance; both are low-pass. A voice
+sets and clears only its own routing bit in `$D417`; the shared resonance,
+cutoff and mode are whichever voice last wrote them, the same arbitration
+real hardware has, since the SID has one filter for all three voices. A new
+`Instrument.pulseWidth` field gives a per-frame pulse-width sweep at the
+driver level; no built-in preset uses it yet. `script-filter` and
+`song-filter` join the C64 conformance corpus; parity against reSID-fp holds
+at 100%, since the filter is an analog-stage model that never touches the
+digital trace the harness compares.
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the

@@ -15,6 +15,8 @@ Game Boyの矩形波ノート（ch1、ch2）のトリガーは、周波数タイ
 
 `validateSong`は、整った楽譜でもそのチップにはできないことを、ドライバーが黙ってクランプや打ち切りをする代わりに診断するようになりました。ボイスを音域外に振るビブラートやその音高で1レジスターステップ未満に潰れるビブラート（`vibrato_range`、`vibrato_resolution`）、ドライバーの60Hzフレームクロックが解決できないビブラートレート（`vibrato_rate`）、保持音を音域外へ運ぶスライドや周期テーブルの粗い区間を横切るスライド - 特に2A03とゲームボーイのテーブルの低音端（`slide_range`、`slide_resolution`）、レジスターに届く前にチップが丸める小数のボリュームステップ（`volume_step`）を報告します。声の予算の衝突も報告します。SIDの和音と打楽器がともにv3を使うような、物理ボイスを共有する役割（`voice_share`）、2A03の単一ノイズチャンネルのようにキットの1パートが1ボイスを共有するチップで、前の音の減衰が終わる前に次のドラムが来る場合（`perc_voice`）です。既存の`pitch_range`と`chord_capacity`を含め、すべての診断がメッセージに加えて`measured`と`limit`を持ちます。`Issue`は`voice`、`measured`、`limit`を任意フィールドとして追加し、既存の形は変わりません。出力音の変更はありません。これらは診断であり、修正ではありません。
 
+SIDのフィルターは、見た目だけの汎用代替ではなく、編曲器自身の言葉から到達できるようになりました。leadの`sweep`はノート全体でcutoffを開き、bassの`resonant`は高いresonanceを一定に保ちます。両方lowpassです。各voiceは`$D417`の自分のrouting bitだけを立てて消し、共有されるresonance、cutoff、modeは最後に書き込んだvoiceのものになります。SIDには3voice共通のフィルターが1つしかなく、実機と同じ調停です。新しい`Instrument.pulseWidth`フィールドはドライバー層でframe単位のpulse-width sweepを与えますが、内蔵presetはまだ使いません。`script-filter`と`song-filter`がC64のconformanceコーパスに加わり、reSID-fpとのparityは100%を保ちます。フィルターはアナログ段のモデルであり、harnessが比較するデジタルの軌跡には触れないからです。
+
 <a id="0191-console-changes-without-a-dropout"></a>
 ## 0.19.1：途切れないコンソール切り替え
 
