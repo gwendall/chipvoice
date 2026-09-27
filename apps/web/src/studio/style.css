@@ -142,6 +142,31 @@ button:disabled { opacity: .35; }
 .about-main p, .about-main li { font-size: var(--text-body); line-height: 1.8; color: #575c51; }
 .about-main a { text-underline-offset: 4px; }
 .about-main pre { padding: 22px; overflow-x: auto; background: #202721; color: #e9eadc; border-radius: 8px; font: var(--text-label)/1.8 var(--mono); }
+
+/* NEXT-12: the public accuracy page. `.chip-accuracy` is one of `.about-main`'s
+   own top-level sections (its border-top and vertical rhythm apply as-is);
+   the four levels inside it opt out of that rule and lay out as cards. */
+.accuracy-main .chip-accuracy-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin-bottom: 4px; }
+.accuracy-main .chip-accuracy-head h2 { margin: 0; font-size: var(--text-heading); letter-spacing: -.4px; }
+.accuracy-main .chip-accuracy-name { font-weight: 400; color: var(--muted); font-size: var(--text-body); }
+.accuracy-main .chip-accuracy-status { font: 600 var(--text-label)/1 var(--mono); letter-spacing: .04em; padding: 5px 10px; border-radius: 999px; background: var(--case); border: 1px solid var(--edge); white-space: nowrap; }
+.accuracy-main .status-verified { background: color-mix(in srgb, var(--chord) 35%, var(--paper)); border-color: var(--chord); }
+.accuracy-main .status-in-progress { background: color-mix(in srgb, var(--lead) 35%, var(--paper)); border-color: var(--lead); }
+.accuracy-main .status-unverified { background: var(--case); border-color: var(--edge); color: var(--muted); }
+.accuracy-main .accuracy-levels { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+.accuracy-main .accuracy-level { border: none; padding: 16px; margin: 0; background: var(--case); border-radius: 10px; min-width: 0; }
+.accuracy-main .accuracy-level h3 { margin: 0 0 8px; font-size: var(--text-label); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.accuracy-main .accuracy-level p, .accuracy-main .accuracy-level li { font-size: var(--text-label); line-height: 1.6; margin: 0 0 6px; word-break: break-word; }
+.accuracy-main .accuracy-level ul { margin: 6px 0 0; padding-left: 18px; }
+.accuracy-main .accuracy-oracle { margin-bottom: 10px; }
+.accuracy-main .accuracy-oracle:last-child { margin-bottom: 0; }
+.accuracy-main .accuracy-level details summary { cursor: pointer; }
+.accuracy-main .accuracy-sheet-link { display: inline-block; margin-top: 14px; font-size: var(--text-label); }
+.accuracy-main .accuracy-regenerate { color: var(--muted); font-size: var(--text-label); }
+.accuracy-main .accuracy-regenerate code { font: var(--text-label)/1.6 var(--mono); background: var(--case); padding: 1px 6px; border-radius: 4px; }
+@media (max-width: 760px) {
+ .accuracy-main .accuracy-levels { grid-template-columns: 1fr; }
+}
 @media (max-width: 760px) {
  .playground-intro { grid-template-columns: 1fr; gap: 17px; padding: 24px 3px; }
  .playground-intro h1 { font-size: var(--text-display); letter-spacing: -1.6px; }

@@ -13,7 +13,7 @@ assert.equal(t.source('Some unrelated words of this channel'),'Some unrelated wo
 assert.equal(t('Play'),'再生');assert.equal(t('  '),'  ');assert.equal(t('constructor'),'constructor');assert.equal(t('toString'),'toString');
 assert.equal(t('{v0} notes omitted.',{v0:7}),'7 個の音符を省略。');assert.equal(t.source('Channel 12: controller 10 is not reproduced'),'チャンネル 12：コントローラー 10 は再現していません');
 assert.equal(t('{elapsed} of {duration}',{elapsed:'0:03',duration:'1:28'}),'1:28 中 0:03');
-for(const locale of ['en','ja'])for(const path of ['/','/about#credits','/lab','/s/12345678?x=1#score'])assert.equal(localePath(localePath(path,locale),'en'),path);
+for(const locale of ['en','ja'])for(const path of ['/','/about#credits','/accuracy','/lab','/s/12345678?x=1#score'])assert.equal(localePath(localePath(path,locale),'en'),path);
 assert.equal(localePath('/ja#score','en'),'/#score');
 assert.equal(localePath('/?mode=compose','ja'),'/ja?mode=compose');
 assert.equal(localePath('https://example.org','ja'),'https://example.org');

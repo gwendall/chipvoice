@@ -12,10 +12,10 @@ await context.addInitScript(installOutputProbe);
 await context.addInitScript(()=>{const create=AudioContext.prototype.createBufferSource;window.sourceStarts=0;AudioContext.prototype.createBufferSource=function(){const source=create.call(this),start=source.start.bind(source);source.start=(...args)=>{window.sourceStarts++;window.activeSource=source;return start(...args);};return source;};});
 const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
 try{
- for(const path of ['/','/about','/lab','/lab/components'])assert.equal((await fetch(base+path,{redirect:'manual'})).status,200,`English canonical ${path}`);
+ for(const path of ['/','/about','/accuracy','/lab','/lab/components'])assert.equal((await fetch(base+path,{redirect:'manual'})).status,200,`English canonical ${path}`);
  const canonicalRedirect=await fetch(base+'/en/about',{redirect:'manual'});assert.equal(canonicalRedirect.status,307);assert.equal(new URL(canonicalRedirect.headers.get('location'),base).pathname,'/about');
  // Raw HTML, not just post-hydration text: crawlers receive Japanese metadata.
- for(const [path,title]of [['','懐かしいゲーム機'],['/about','chipvoice について'],['/lab','試聴ラボ'],['/lab/components','共通コンポーネント']]){
+ for(const [path,title]of [['','懐かしいゲーム機'],['/about','chipvoice について'],['/accuracy','精度'],['/lab','試聴ラボ'],['/lab/components','共通コンポーネント']]){
   const response=await fetch(base+'/ja'+path);assert.equal(response.status,200);const html=await response.text();assert.match(html,/<html lang="ja"/);assert.ok(html.includes(title));assert.ok(html.includes('ja_JP'));assert.ok(html.includes('hrefLang="ja"'));checks.push(`Japanese SSR ${path||'/'}`);
  }
  await page.goto(base+'/?source=language-test');await page.getByRole('button',{name:'Play',exact:true}).click();await ready(page);
@@ -54,7 +54,7 @@ try{
  await studio.getByRole('button',{name:'テキストで編集'}).click();await studio.locator('#raw-notes').fill('NOT_A_NOTE');await studio.getByRole('button',{name:'音符を適用'}).click();assert.ok(await studio.locator('.field-error').innerText());assert.doesNotMatch(await studio.locator('.field-error').innerText(),/not a note|not an object|tokens against/);
  await page.screenshot({path:new URL('composer-ja.png',out).pathname,fullPage:true});checks.push('Japanese composer, editable tempo, code sample, validation and unsaved state');
  // All route surfaces and their responsive geometry.
- for(const width of [320,390,768,1280])for(const path of ['/ja','/ja/about','/ja/lab','/ja/lab/components']){
+ for(const width of [320,390,768,1280])for(const path of ['/ja','/ja/about','/ja/accuracy','/ja/lab','/ja/lab/components']){
   await page.setViewportSize({width,height:900});await page.goto(base+path);await page.getByLabel('言語',{exact:true}).waitFor();
   if(path==='/ja/lab')await page.getByLabel('楽曲',{exact:true}).waitFor();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow ${path} at ${width}`);
@@ -62,9 +62,9 @@ try{
   if(width===390||width===1280)await page.screenshot({path:new URL(`${path.split('/').filter(Boolean).join('-')}-${width}.png`,out).pathname,fullPage:true});
  }
  await page.goto(base+'/ja/missing-i18n-page');await page.getByText('このページは見つかりませんでした。',{exact:false}).waitFor();
- await page.goto(base+'/ja/about#credits');assert.equal(await page.locator('.site-footer a[href="/ja/lab"]').count(),1);
+ await page.goto(base+'/ja/about#credits');assert.equal(await page.locator('.site-footer a[href="/ja/lab"]').count(),1);assert.equal(await page.locator('.site-footer a[href="/ja/accuracy"]').count(),1);
  await page.getByLabel('言語',{exact:true}).selectOption('en');await page.getByLabel('Language',{exact:true}).waitFor();assert.equal(new URL(page.url()).hash,'#credits');assert.equal(new URL(page.url()).pathname,'/about');
- const sitemap=await (await fetch(base+'/sitemap.xml')).text();assert.match(sitemap,/https:\/\/chipvoice.dev\/ja\/about/);assert.match(sitemap,/hreflang="ja"/);
+ const sitemap=await (await fetch(base+'/sitemap.xml')).text();assert.match(sitemap,/https:\/\/chipvoice.dev\/ja\/about/);assert.match(sitemap,/https:\/\/chipvoice.dev\/ja\/accuracy/);assert.match(sitemap,/hreflang="ja"/);
  // A real locally published Japanese song exercises SSR share tags and Satori.
  const song={title:'Midnight',chip:'dmg',bpm:144,order:[0],patterns:[{lead:'C4 . E4 .',chord:'C3 . . .',bass:'C2 . . .',perc:'K . H .',chordShape:[[0,4,7]]}]};
  const published=await fetch(base+'/api/songs',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(song)});assert.equal(published.status,201);const {id}=await published.json();

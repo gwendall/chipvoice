@@ -13,6 +13,7 @@ import { existsSync } from "node:fs";
 // engine's worklet source calls it once, and nothing else in this app does.
 const quiet = [
   "about",
+  "accuracy",
   "connect",
   "docs",
   "signin",
@@ -41,5 +42,5 @@ for (const page of quiet) {
   }
 }
 console.log(
-  "PASS pages with no audio feature ship no chip engine (about, connect, docs, signin, lab and its sub-pages)",
+  "PASS pages with no audio feature ship no chip engine (about, accuracy, connect, docs, signin, lab and its sub-pages)",
 );

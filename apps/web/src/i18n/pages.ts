@@ -46,6 +46,12 @@ export const pages = {
     description:
       "How chipvoice turns text scores into console sound, why hardware constraints matter, and how we check the music.",
   },
+  accuracy: {
+    path: "/accuracy",
+    title: "Accuracy · chipvoice",
+    description:
+      "Digital parity, test ROMs, the analog stage and driver coverage for every emulated sound chip, generated from the conformance harness.",
+  },
   lab: {
     path: "/lab",
     title: "Listening lab · chipvoice",
