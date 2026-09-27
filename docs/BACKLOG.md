@@ -167,10 +167,21 @@ real game music, and a real unit.
   readings stay open on the sheet's deviations: where the noise clock stands
   at a trigger (the gbdev wiki and Pan Docs disagree; a unit decides, P3-5) and a
   pulse's trigger delay of 4 or 8 cycles, of which Pan Docs' low two timer
-  bits are a later fix (P3-7). The zombie compound case is nondeterministic
-  on the hardware. The PSG's three divergences from MAME (P5-8) were already
-  traced on the sheet with deviation rows; none is contradicted by a
-  document, so nothing changes.
+  bits close up to 3 (P3-7, below). The zombie compound case is
+  nondeterministic on the hardware. The PSG's three divergences from MAME
+  (P5-8) were already traced on the sheet with deviation rows; none is
+  contradicted by a document, so nothing changes.
+- done - P3-7: this PR. A trigger on ch1 or ch2 keeps the low two bits of the
+  frequency timer instead of zeroing them, Pan Docs' "Obscure Behavior".
+  Looked further, in the documents alone, for what explains the rest of the
+  gap SameBoy showed (GBEDG has no APU page to check); none of them give a
+  cycle count for it, so only the low two bits are implemented and the rest
+  stays a known deviation, now up to 5 cycles instead of 4 or 8. Against
+  SameBoy, `script-lengths` and `script-sweep`'s ch1 rise (1973 cycles of the
+  corpus); against Gb_Snd_Emu, which does not model the rule, the same two
+  logs fall back slightly (159 cycles), the expected direction for a weaker
+  oracle. The golden moved and went through the calibration and the
+  arrangement eval.
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md) catalogues
   what published recordings and measurements of real hardware already exist
   for all five chips, each source opened and verified before being listed
@@ -359,7 +370,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | done | PR #83. SameBoy's DMG-B `apu.c` vendored as a second oracle (`packages/conform/oracles/sameboy`); found and fixed a driver bug where `main.c`'s redundant `qsort` broke ties between same-cycle writes differently on gcc and clang, making the identical source cross-compiler non-deterministic. Once fixed, two narrower real gaps remained, since settled by P2-1 (a pulse trigger's first duty edge lands late; noise's cold start is a full note late), plus an open zombie-mode compound-case divergence |
 | P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found a citable public-domain formula (gbdev Pan Docs) matching the sheet's placeholder and a die-level teardown, but no measured recording of any unit: see [HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg) |
 | P3-6 | The Game Boy in the API, the studio and the skill: `chip: "dmg"` accepted, rendered and played; a chip selector in the editor; the skill says what changes | done | `apps/web`, skill 0.4.0 |
-| P3-7 | A pulse trigger keeps the low two bits of its frequency timer, as Pan Docs says | todo | P2-1's second pass. At most 3 cycles on a note's first step; moves the golden, so it goes through the calibration and the eval |
+| P3-7 | A pulse trigger keeps the low two bits of its frequency timer, as Pan Docs says | done | this PR. P2-1's second pass. Closed up to 3 of a note's first-step gap against SameBoy; the rest, up to 5 cycles, is undocumented in the sources checked and stays a deviation |
 
 ## Phase 4. The portable score
 

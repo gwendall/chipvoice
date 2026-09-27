@@ -115,11 +115,16 @@ chipvoice, per voice, with cycles and both values, is on the sheet
 ([`docs/chips/dmg.md`](../../../../docs/chips/dmg.md), "Against SameBoy").
 In short:
 
-- A triggered pulse voice's first step comes 4 or 8 cycles after
-  chipvoice's: SameBoy's trigger adds a short delay (its `delay` field) to
-  the timer reload, and chipvoice reloads on the trigger's own cycle. The
-  whole-step gap this oracle first found, a pulse playing its pattern the
-  instant it was triggered, was chipvoice's and is fixed (P2-1, #86).
+- A triggered pulse voice's first step still comes before chipvoice's, now
+  by up to 5 cycles instead of 4 or 8: P3-7 gave chipvoice's own timer Pan
+  Docs' rule that a trigger keeps the frequency timer's low two bits rather
+  than zeroing them, which closed up to 3 cycles of the gap on this corpus.
+  What is left is SameBoy's trigger adding a short delay (its `delay` field)
+  to the timer reload that chipvoice's own documents do not give a cycle
+  count for; chipvoice reloads on the trigger's own cycle, keeping only its
+  timer's own leftover phase. The whole-step gap this oracle first found, a
+  pulse playing its pattern the instant it was triggered, was chipvoice's and
+  is fixed (P2-1, #86).
 - The noise channel's DMG start depends on `alignment`, the APU's 2 MHz
   phase: a trigger at an odd alignment waits 6 cycles and triggers again,
   for ever. Only a write between M-cycles can produce one, which a real CPU

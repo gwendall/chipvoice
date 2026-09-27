@@ -463,7 +463,13 @@ export class GbApu implements DigitalChip {
   private triggerPulse(ch: Pulse) {
     if (!ch.enabled) ch.starting = true;
     this.triggerLength(ch, 64);
-    ch.timer = (2048 - ch.frequency) * 4;
+    // Pan Docs, "Obscure Behavior": "When triggering Ch1 and Ch2, the low
+    // two bits of the frequency timer are NOT modified." The period below
+    // is always a multiple of four, so its own low two bits are always
+    // zero; keeping whatever the timer already held there (zero if the
+    // voice was never clocked before) is what carries the rule over into
+    // this flat, per-T-cycle countdown.
+    ch.timer = (ch.timer & 3) | ((2048 - ch.frequency) * 4);
     ch.env.trigger();
     if (ch.hasSweep) {
       ch.sweepShadow = ch.frequency;

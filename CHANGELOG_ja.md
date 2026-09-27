@@ -8,6 +8,11 @@
 
 `chipvoice`パッケージとそのSDKの主な変更点を新しい順に記載します。現在のクイックスタートと機能概要は[README_ja.md](README_ja.md)を参照してください。
 
+<a id="unreleased"></a>
+## 未リリース
+
+Game Boyの矩形波ノート（ch1、ch2）のトリガーは、周波数タイマーの下位2ビットをゼロにせず保持するようになりました。Pan Docsの「Obscure Behavior」（「When triggering Ch1 and Ch2, the low two bits of the frequency timer are NOT modified」）の通りです。トリガーされたノートの最初のデューティ段、そしてその後の全エッジは、以前より最大3サイクル遅く来るようになります。SameBoy参照実装に対して残る差の詳細は[docs/chips/dmg.md](docs/chips/dmg.md#known-deviations)を参照してください。
+
 <a id="0191-console-changes-without-a-dropout"></a>
 ## 0.19.1：途切れないコンソール切り替え
 
