@@ -202,8 +202,9 @@ real game music, and a real unit.
 - Hardware level: P2-3 first, with one purchased NES validating the capture
   bench; then P3-5, P5-9, P6-8 and P7-8 as recordings or units allow. NEXT-04
   found `filter.cc`'s op-amp transfer-curve tables (a named 6581 and a named
-  8580) as a register-log-free path to a P7-8/P7-10 analog measurement,
-  not yet implemented; and MDFourier as P5-9's strongest lead, blocked on
+  8580) as a register-log-free path to an analog measurement; P7-10 read the
+  8580's endpoint to endpoint, leaving the curve's shape between them, and the
+  6581's own kink, for P7-8; and MDFourier as P5-9's strongest lead, blocked on
   finding its test ROM's exact register sequence rather than on hardware
   access.
 
@@ -211,7 +212,22 @@ real game music, and a real unit.
 
 - P5-10 and P5-12 (FM drums, the LFO, channel 3's special mode), P6-10
   (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the SID's
-  filter and sweeps), P7-10 (the 8580).
+  filter and sweeps).
+- done - P7-10: a second SID model, `model: "8580"` on `Chip.create`,
+  `renderPerformance`, `renderProject` and a project's `settings.model`,
+  documented on [c64.md#the-8580](chips/c64.md#the-8580). Its combined
+  waveforms are fitted independently against reSID-fp's own 8580 tables
+  (decision 41: read from measurement, not from porting its `config[1]`),
+  landing short of the 6581's exact match (92.60-99.05% per combination,
+  against reSID-fp's own more detailed transistor model); its longer floating-
+  output and shift-register decays, its one-cycle OSC3 pipeline lag, its
+  near-linear DACs (`ladderRatio: 2.0`) and its filter (`filter.cc`'s exact
+  8580 R5 cutoff line and Q table) come from the documents. A second oracle
+  block, reSID-fp configured as an 8580 (`corpus/c64/parity-residfp-8580.json`,
+  `check:residfp-8580`, in CI under two minutes), is 99.28 % identical; both
+  divergences are the combined-waveform fit's own shortfall, confirmed against
+  the oracle's source, not a new bug. The 6581 default path is unchanged,
+  100 % identical as before.
 - todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
   with its measured envelope and spectrum, shown on the site, built only from
   what the chip really does.
@@ -440,7 +456,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | done | `packages/conform/roms/vice-sid`, `src/roms/c64.mjs`, `roms:c64` in CI; 13 of 14 pass, `busvalue` a P2-1 finding |
 | P7-8 | A 6581's line-out captured under a known script, and the analog profile fitted to it: the DAC's zero, the filter's curve, the output stage | todo | needs a unit. NEXT-04 found reSID's `filter.cc` already has a named 6581 R4AR's own op-amp transfer-curve tables, diffable against our filter model with no register log needed, not yet implemented: see [HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580). It also implemented a combined-waveform check against a second named 6581 (`libsidplayfp/combined-waveforms`); see [c64.md#combined-waveforms-against-a-real-6581](chips/c64.md#combined-waveforms-against-a-real-6581) |
 | P7-9 | The filter in the arranger: a word that opens it, a sweep for a lead | todo | |
-| P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | todo | NEXT-04 found a named 8580 R5 in reSID's `filter.cc` (its own op-amp transfer curve) and its DAC mismatch ratio (about 2.0) in reSID-fp's `Dac` docs, neither implemented yet: see [HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580) |
+| P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | done | `model: "8580"` on `Chip.create`/`renderPerformance`/`renderProject`; `SID_8580_PROFILE` and `COMBINED_8580` in `chips/c64/{dsp,sid}.ts`, fitted independently against reSID-fp's own 8580 tables (`fit:c64 -- --model 8580`), not ported from its `config[1]` (decision 41); reSID's `filter.cc` 8580 R5 curve and reSID-fp's `Dac` docs' 2.0 ladder ratio read as measurement data. A second oracle block, reSID-fp as an 8580 (`corpus/c64/parity-residfp-8580.json`, `check:residfp-8580`, in CI), 99.28 % identical; the two divergences are the combined-waveform fit's own shortfall, not a bug. See [c64.md#the-8580](chips/c64.md#the-8580) |
 | P7-11 | The harness holds every change of every stream in memory, and a SID sawtooth changes every cycle: the corpus keeps dense waveforms short. A streaming compare, or a change stream as typed arrays, would lift that | done | PR #79. A `ChangeStream` (typed-array columns, not one object per change) and a streaming oracle read (`spawn`, not `spawnSync` with a giant buffer) replace both; `bestShift`'s string-keyed map is gone too. Four dense c64 scripts added, all three voices held on a sawtooth, a triangle, a noise rate or a combined waveform at once; the eight-second three-sawtooth case that used to run the harness out of memory now runs on demand (`check:c64:dense`) and passes |
 
 ## Phase 8. The site as an instrument

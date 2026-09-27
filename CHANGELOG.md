@@ -11,6 +11,25 @@ overview.
 
 ## Unreleased
 
+The SID has a second model: `model: "8580"` on `Chip.create`, on
+`renderPerformance`/`renderProject`'s options, and on a project's
+`settings.model`, next to the default `"6581"`. Every 8580 fact comes from a
+document or a measurement against the oracle's own tables, never from porting
+its GPL source (decision 41): the combined waveforms are fitted independently
+against reSID-fp's own 8580 tables, landing short of the 6581's exact match
+since reSID-fp's own 8580 code uses a more detailed transistor model than
+this package's shared one; the floating-waveform output and the noise
+register's test-bit reset decay over a longer capacitor discharge; OSC3
+(`$D41B`) reads the sawtooth/triangle pipeline a cycle later than the
+waveform output; the DACs are near-linear instead of kinked; and the filter
+reads reSID's `filter.cc` 8580 R5 cutoff line and Q table directly, rather
+than the 6581's measured curve. A second oracle block, reSID-fp configured as
+an 8580, checks the digital side (`corpus/c64/parity-residfp-8580.json`,
+`check:residfp-8580`, in CI): 99.28 % identical, the two divergences both
+explained by the combined-waveform fit's own shortfall. See
+[docs/chips/c64.md#the-8580](docs/chips/c64.md#the-8580). The 6581 default is
+unchanged.
+
 A Game Boy pulse note's trigger (ch1, ch2) keeps the low two bits of its
 frequency timer instead of zeroing them, as Pan Docs' "Obscure Behavior"
 describes ("When triggering Ch1 and Ch2, the low two bits of the frequency
