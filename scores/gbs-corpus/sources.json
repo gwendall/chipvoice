@@ -1,0 +1,13 @@
+{
+  "pulse-sweep": {
+    "file": "pulse-sweep.gbs",
+    "title": "Pulse Sweep",
+    "author": "chipvoice project",
+    "driver": "self-produced (hand-assembled SM83)",
+    "url": "https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs",
+    "licence": "Public domain",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "16a0306099c735e52b8e7e3fe6b7a47d793a0db239020c01b3692fb91711cb8d",
+    "seconds": 6
+  }
+}
