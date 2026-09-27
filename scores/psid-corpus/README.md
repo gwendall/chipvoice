@@ -18,7 +18,7 @@ undefined) rather than reading it off the file format document's prose.
 ## What is in the corpus, and what is not
 
 `sources.json` lists every committed file: its title, author, licence,
-licence URL, source URL and SHA-256. Both files here are self-authored (CC0,
+licence URL, source URL and SHA-256. The first two are self-authored (CC0,
 this ticket's own), each purpose-built to put one narrow question to both
 engines at once rather than relying on a found tune's own incidental
 behaviour - see each entry's own `purpose`:
@@ -30,10 +30,40 @@ behaviour - see each entry's own `purpose`:
   register every PLAY call for many frames - PLAY's own cadence against a
   real per-line VIC-II's own raster IRQ.
 
-A real, independently-authored PSID corpus (mirroring nsf-corpus's own
-homebrew/demo NSFs) is future work once a redistributable, small-enough
-source is found; HVSC and commercial rips are never eligible, here or
-anywhere in this project (decision 41).
+The other four are real tunes exported by a real player's own command-line
+packer/relocator, not self-made: `gt2-dojo.sid`, `gt2-sanction-cia.sid`,
+`gt2-hyperspace-alt.sid` and `gt2-consultant-alt-cia.sid` are four of
+GoatTracker 2's own bundled example songs (official v2.77 distribution,
+SourceForge, GPL-2.0-or-later), run through `src/gt2reloc.c` - the
+`GT2RELOC`-guarded, non-interactive build of the same relocator the
+interactive editor's own F9 calls, `Usage: gt2reloc <songname> <outfile>
+[options]`, no UI automation involved. They cover a 2 driver by 2 timing
+matrix from that one tool: `gt2-dojo.sid` and `gt2-sanction-cia.sid` use
+GoatTracker 2's standard player (`player.s`); `gt2-hyperspace-alt.sid` and
+`gt2-consultant-alt-cia.sid` use its alternate one (`altplayer.s`, selected
+by `gt2reloc`'s own documented `-A` hardrestart-ADSR flag once its value
+reaches `$f000`, exactly as `greloc.c` implements it). `gt2-dojo.sid` and
+`gt2-hyperspace-alt.sid` are PAL, 1x speed, so the relocator writes an
+all-zero PSID speed word - VBI-timed. `gt2-sanction-cia.sid` and
+`gt2-consultant-alt-cia.sid` add `-S2` (a 2x speed multiplier), so the
+relocator writes an all-ones speed word instead - CIA #1-timed. See each
+entry's own `purpose` in `sources.json` for the exact command line and the
+distribution's own md5.
+
+Both VBI-timed files match libsidplayfp in full. Both CIA-timed files
+diverge within the first few PLAY-phase writes (`sources.json`'s own
+`purpose` names the exact command; the sheet below has the numbers) even
+though the register values written are identical on both sides and the
+cycle gap at that point is small (about 40 cycles) - a real, narrow
+divergence in how this project's own CIA 1 emulation (`psid-import.ts`)
+reconciles a non-default timer-A reload value against libsidplayfp's own,
+surfaced by a real player's own multispeed output rather than invented for
+the purpose. Left on the sheet as a finding, not silently patched over;
+see `packages/chipvoice/src/psid-import.ts`'s own CIA 1 model
+(`clockFor`/`cia1`) for where to start.
+
+HVSC and commercial rips are never eligible, here or anywhere in this
+project (decision 41).
 
 A gitignored `.artifacts/psid-private/` directory is scored the same way
 nsf-corpus's own `.artifacts/nsf-private/` is, for an owner's own local,

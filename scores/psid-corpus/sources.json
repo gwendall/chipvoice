@@ -22,5 +22,49 @@
     "sha256": "62afe92a3fb80c220044b50234398276e50baadafb4f38c305d5b2bd6fc0bfa2",
     "purpose": "PLAY's own cadence: a start marker in INIT, then one INC $D400 every call, for many frames - whether PLAY is called once a frame, at the tune's declared speed, and how closely its cycle lands against a real per-line VIC-II's own raster IRQ.",
     "seconds": 10
+  },
+  "gt2-dojo": {
+    "file": "gt2-dojo.sid",
+    "title": "Dojo",
+    "author": "Cadaver (Lasse Öörni)",
+    "driver": "GoatTracker 2 v2.77, standard player (player.s)",
+    "licence": "GPL-2.0-or-later",
+    "licenceUrl": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
+    "url": "https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download",
+    "sha256": "92faa491141f56e3def17a04010f67828b0ead0c660c6849c62c7d0ba8ceefc9",
+    "purpose": "A real tune (2002, Covert Bitops) exported by a real tool's own command-line packer/relocator instead of a self-made probe: `examples/dojo.sng`, one of GoatTracker 2's own bundled example songs, run through `src/gt2reloc.c` (the GT2RELOC-guarded, non-interactive build of the same relocator the interactive editor's own F9 calls - `GT2RELOC=1 gt2reloc dojo.sng gt2-dojo.sid`, default settings) from the official v2.77 distribution (SourceForge, md5 fdfdae268284bc175d94b8978822567f, matching the project's own published RSS hash). PAL timing and a 1x speed multiplier make GoatTracker 2's own relocator write an all-zero PSID speed word: VBI-timed, called from the vertical blank rather than a CIA timer. Never HVSC, never a commercial rip (decision 41)."
+  },
+  "gt2-sanction-cia": {
+    "file": "gt2-sanction-cia.sid",
+    "title": "On a sanction from CIA",
+    "author": "Cadaver (Lasse Öörni)",
+    "driver": "GoatTracker 2 v2.77, standard player (player.s)",
+    "licence": "GPL-2.0-or-later",
+    "licenceUrl": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
+    "url": "https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download",
+    "sha256": "93911d8e6c4e27dc6eca8de251fc9102c61f960e2ec682a88960cecd5dcd87af",
+    "purpose": "The corpus's own CIA-timed half of the same real player: `examples/sanction.sng` (2005, Covert Bitops) through the same `gt2reloc` with `-S2` (a 2x speed multiplier, `GT2RELOC=1 gt2reloc sanction.sng gt2-sanction-cia.sid -S2`), which makes the relocator write an all-ones PSID speed word instead - CIA #1 timer-A-timed, not vertical-blank. Same driver, same tool, same distribution as gt2-dojo, only the timing source and the tune differ, so a real divergence here isolates the CIA path specifically. Never HVSC, never a commercial rip (decision 41)."
+  },
+  "gt2-hyperspace-alt": {
+    "file": "gt2-hyperspace-alt.sid",
+    "title": "My Own Hyperspace",
+    "author": ":P",
+    "driver": "GoatTracker 2 v2.77, alternate player (altplayer.s)",
+    "licence": "GPL-2.0-or-later",
+    "licenceUrl": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
+    "url": "https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download",
+    "sha256": "6250e9db26de4db31c160bf038955d62973dd18b83b641664d2d712469cd7bb7",
+    "purpose": "The corpus's own second driver: `examples/hyperspace.sng` (2005) through `gt2reloc` with `-Af000` (`GT2RELOC=1 gt2reloc hyperspace.sng gt2-hyperspace-alt.sid -Af000`), which is the real, documented way gt2reloc's own hardrestart-ADSR flag selects `altplayer.s` (see greloc.c: `if (adparam >= 0xf000) playername = \"altplayer.s\"`) instead of the standard `player.s` used by gt2-dojo and gt2-sanction-cia - a second, structurally different real driver from the same bundled distribution, not a second copy of the first. PAL, 1x speed: VBI-timed. Never HVSC, never a commercial rip (decision 41)."
+  },
+  "gt2-consultant-alt-cia": {
+    "file": "gt2-consultant-alt-cia.sid",
+    "title": "The Consultant",
+    "author": "Cadaver (Lasse Öörni)",
+    "driver": "GoatTracker 2 v2.77, alternate player (altplayer.s)",
+    "licence": "GPL-2.0-or-later",
+    "licenceUrl": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
+    "url": "https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download",
+    "sha256": "95f687a814f4a79544c7c9000cf92cd20e2c467cb1667f80011f067478a9087b",
+    "purpose": "The second driver's own CIA-timed half: `examples/consultant.sng` (2002, Covert Bitops) through `gt2reloc -Af000 -S2` (`GT2RELOC=1 gt2reloc consultant.sng gt2-consultant-alt-cia.sid -Af000 -S2`) - altplayer.s again, this time CIA #1-timed. Completes a 2 driver x 2 timing matrix (gt2-dojo, gt2-sanction-cia, gt2-hyperspace-alt, gt2-consultant-alt-cia) from one real, redistributable tool's own two bundled playroutines. Never HVSC, never a commercial rip (decision 41)."
   }
 }

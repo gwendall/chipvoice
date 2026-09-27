@@ -273,6 +273,10 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 | --- | --- | --- | --- | --- |
 | [convention-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 54 | 52/52 | なし | A=0, X=仕様上未定義, Y=仕様上未定義, P=52 |
 | [frame-rate-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 1004 | 1004/1004 | なし | - |
+| [Dojo](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 3978 | 3978/3978 | なし | - |
+| [On a sanction from CIA](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 8218 | 4/8218 | PLAYフェーズ, サイクル 194326 対 194284, $16: 0 対 0 | - |
+| [My Own Hyperspace](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 3914 | 3914/3914 | なし | - |
+| [The Consultant](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 7766 | 10/7766 | PLAYフェーズ, サイクル 194326 対 194284, $16: 0 対 0 | - |
 <!-- psid-corpus:end -->
 
 <a id="known-deviations"></a>
