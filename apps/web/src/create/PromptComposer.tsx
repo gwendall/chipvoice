@@ -19,6 +19,19 @@ const failures: Record<string, string> = {
   render_failed: "The score was saved, but its audio could not be prepared.",
   authorization_expired: "Your composition authorization expired. Sign in again to continue.",
 };
+// Why a signed-in account cannot compose now (GET /api/v1/generations/access,
+// decision 42), and the same reasons when a POST is refused.
+const unavailable: Record<string, string> = {
+  invite_required: "Prompt composition is in a closed beta, by invitation. Your draft stays on this device.",
+  monthly_budget: "This month's composition budget is spent. Composition reopens on the first of next month.",
+  daily_limit: "You have reached today's composition allowance. Try again tomorrow.",
+  disabled: "Prompt composition is unavailable right now.",
+};
+const refusals: Record<string, string> = {
+  generation_invite_required: "invite_required",
+  generation_budget: "monthly_budget",
+  generation_limit: "daily_limit",
+};
 const stages: Record<string, string> = { queued: "Waiting to compose…", composing: "Composing your music…", validating: "Checking the arrangement…", saving: "Saving your song…", rendering: "Rendering the complete audio…", ready: "Your song is ready.", failed: "Could not generate this song. Try another prompt.", cancelled: "Composition cancelled." };
 export default function PromptComposer({ target }: { target: string }) {
   const t = useT(), { status: session, email: accountEmail } = useSession();
@@ -28,6 +41,7 @@ export default function PromptComposer({ target }: { target: string }) {
   const [job, setJob] = useState<Job | null>(null), [sending, setSending] = useState(false), [message, setMessage] = useState("");
   const [lookup, setLookup] = useState<string | null>(null), [retry, setRetry] = useState(0);
   const [clock, setClock] = useState(0);
+  const [access, setAccess] = useState<{ available: boolean; reason: string | null } | null>(null);
   const request = useRef<{ fingerprint: string; key: string } | null>(null);
   const busy = sending || !!job && !finished(job.status);
   useEffect(() => {
@@ -52,6 +66,12 @@ export default function PromptComposer({ target }: { target: string }) {
     }).catch(() => {});
     return () => abort.abort();
   }, [open, session, accountEmail]);
+  useEffect(() => {
+    if (session !== "signed-in" || !open) { setAccess(null); return; }
+    const abort = new AbortController();
+    void fetch("/api/v1/generations/access", { signal: abort.signal }).then(async r => { if (r.ok) setAccess(await r.json()); }).catch(() => {});
+    return () => abort.abort();
+  }, [open, session, accountEmail, job?.status]);
   useEffect(() => {
     if (!lookup) return;
     const abort = new AbortController();
@@ -123,7 +143,8 @@ export default function PromptComposer({ target }: { target: string }) {
       const value = await response.json();
       if (!response.ok) {
         if (response.status === 401) window.dispatchEvent(new Event("chipvoice-session"));
-        setMessage(response.status === 401 ? "Sign in to generate music." : response.status === 503 ? "Prompt composition is unavailable right now." : response.status === 429 ? "Composition is busy or your daily allowance is reached." : "Could not generate this song. Try another prompt.");
+        if (refusals[value?.error]) { setAccess({ available: false, reason: refusals[value.error] }); return; }
+        setMessage(response.status === 401 ? "Sign in to generate music." : value?.error === "generation_busy" ? "Finish or cancel your current composition first." : response.status === 503 ? "Prompt composition is unavailable right now." : response.status === 429 ? "Composition is busy or your daily allowance is reached." : "Could not generate this song. Try another prompt.");
         return;
       }
       setJob(value); setLookup(value.id);
@@ -149,8 +170,9 @@ export default function PromptComposer({ target }: { target: string }) {
         <RangeControl id="prompt-duration" label={t("Song duration")} unit={t("seconds")} min={10} max={90} value={seconds} disabled={busy} onChange={setSeconds} />
         {!!artists.length && <label>{t("Artist")}<select value={artist} disabled={busy} onChange={e => setArtist(e.target.value)}>{artists.map(p => <option key={p.id} value={p.id}>{p.displayName || p.handle || t("My artist")}</option>)}</select></label>}
       </div>
-      <div className="project-actions">{session === "signed-in" && <Button type="submit" disabled={busy || !prompt.trim()}>{t("Generate music")}</Button>}{busy && job && <Button type="button" onClick={() => void cancel()}>{t("Cancel composition")}</Button>}</div>
+      <div className="project-actions">{session === "signed-in" && <Button type="submit" disabled={busy || !prompt.trim() || access?.available === false}>{t("Generate music")}</Button>}{busy && job && <Button type="button" onClick={() => void cancel()}>{t("Cancel composition")}</Button>}</div>
     </form>
+    {session === "signed-in" && !busy && access?.reason && <p className="prompt-access" role="note">{t.source(unavailable[access.reason] ?? unavailable.disabled)}</p>}
     {session === "checking" && <p role="status">{t("Checking your account…")}</p>}
     {session === "anonymous" && <section className="prompt-signin"><h2>{t("Sign in to generate your song")}</h2><p>{t("Your prompt is saved on this device. Follow the email link, then generate your music.")}</p><SignInForm next="/create?compose=1#prompt"/></section>}
     {session === "unavailable" && <p role="alert">{t("Accounts are unavailable right now. Your local draft is safe.")}</p>}

@@ -23,6 +23,8 @@ COMPOSITION_DAILY_LIMIT=10
 
 `OPENAI_MODEL`で互換モデルを変更できます。任意の`OPENAI_REASONING_EFFORT`はそのモデルに対応する値にします。`OPENAI_BASE_URL`ではサーバー設定のResponses互換エンドポイントを指定でき、既定はOpenAIへの直接接続です。実装済みはOpenAIアダプターだけです。別プロバイダーは[model.ts](../apps/web/src/lib/composition/model.ts)の小さな`CompositionModel.generate`を実装します。保存とレンダリングは共通です。リクエスト本文からキー、モデル、接続先は変更できません。
 
+手元の環境では、サインインしたどのアカウントでも作曲でき、自分で設定しない限り月間上限はありません。chipvoice.devでは作曲はクローズドベータです（[決定42](DECISIONS_ja.md#42-the-server-enforces-the-closed-beta-invitations-and-a-monthly-budget-2026-09-27)）。そこでは`COMPOSITION_ACCESS`が`invite`で（未設定ならVercelのデプロイでは`invite`、ローカルでは`open`）、`composition_invites`に載ったアカウントだけが作曲でき、`COMPOSITION_MONTHLY_BUDGET_USD`が、各生成の記録済みトークン使用量から換算したその月の支出を制限します。本番はこの予算がなければ作曲を断ります。`GET /api/v1/generations/access`は、サインイン中のアカウントがいま作曲できるか、できない理由は何かを返します。招待は`pnpm --filter chipvoice-web composition:invites list`、`add <email> [note]`、`remove <email>`で管理し、本番に向ける方法はスクリプトの冒頭にあります。
+
 <a id="use-the-existing-account"></a>
 ## 既存アカウントを利用する
 
