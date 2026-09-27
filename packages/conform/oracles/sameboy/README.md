@@ -49,7 +49,15 @@ against a register log. Three files are ours:
   whenever the channel is not active, the same DAC-off convention
   `dsp.ts`'s own `output()` uses.
 
-The harness builds it with the system C compiler on first use, into `build/`.
+The harness builds it with the system C compiler on first use, into `build/`,
+as `-std=gnu11` rather than plain `-std=c11`: `vendor/apu.c` reaches for
+`M_PI`, a POSIX/BSD extension to `<math.h>`, not ISO C. Apple's libc exposes
+it regardless of `-std`, which is why building this locally on macOS never
+surfaced the gap; glibc hides it behind `-std=c11`'s `__STRICT_ANSI__` and
+fails the build outright on Linux. GNU C11 is a superset of ISO C11, so
+nothing `apu.c` itself relies on changes, only that one declaration becomes
+visible; the flag lives in `sameboy.mjs`'s `build()`, not in the vendored
+file, which stays untouched.
 
 ## The frame sequencer's phase
 

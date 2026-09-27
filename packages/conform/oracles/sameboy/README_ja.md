@@ -20,7 +20,14 @@ Lior HalphonによるサイクルアクシュレートなGame Boyエミュレー
 - `shim.c`は`apu.c`が外部に呼ぶ2関数、`GB_get_clock_rate`と`GB_is_cgb`を実装します。DMG-Bはモデルも速度も変わらないため、どちらも定数です。
 - `main.c`はchipvoiceのレジスターログを読み、APUを1 Tサイクルずつ駆動し、`GB_get_channel_amplitude(gb, voice)`の全変化を`<cycle> <voice> <value>`として出力します。これは既にDACへの入力そのもの、0〜15で、変換は不要です。`gb->apu.samples[voice]`を直接読まないのは、SameBoyがチャンネルのDACがオフの間にNR50またはNR51が書かれると無効化用の番兵値（`0x10`。DAC本来の0〜15の範囲外）をそこへ置き、DACがオフのままだとその番兵が上書きされないためです（`update_sample`のDMG分岐：`if (!GB_apu_is_DAC_enabled(...)) value = gb->apu.samples[index];`、つまり配列は番兵を保持したままになります）。`GB_get_channel_amplitude`はSameBoy自身が公開しているこの問いへのアクセサで、チャンネルが有効でなければ常に0を返します。これは`dsp.ts`自身の`output()`が使うのと同じ「DACオフなら0」という規約です。
 
-初回にシステムCコンパイラーで`build/`へ作ります。
+初回にシステムCコンパイラーで`build/`へ作ります。フラグは`-std=c11`でなく
+`-std=gnu11`です。`vendor/apu.c`が使う`M_PI`はISO Cでなく`<math.h>`への
+POSIX／BSD拡張で、AppleのlibcはstdによらずM_PIを公開するためmacOSでの
+ローカルビルドではこの差に気づけませんが、glibcは`-std=c11`の
+`__STRICT_ANSI__`下でこれを隠し、Linux上のビルドはそのまま失敗します。GNU
+C11はISO C11の上位互換なので、`apu.c`自体が依拠する挙動は変わらず、この一つ
+の宣言が見えるようになるだけです。フラグは`sameboy.mjs`の`build()`にあり、
+同梱ファイル自体は無変更のままです。
 
 <a id="the-frame-sequencers-phase"></a>
 ## フレームシーケンサーの位相

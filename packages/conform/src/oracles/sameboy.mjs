@@ -3,13 +3,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatLog } from '../log.mjs';
+import { traceProcess } from '../change-stream.mjs';
 
 /**
  * SameBoy's DMG-B APU (Lior Halphon's), built natively and driven over a
  * pipe, the same arrangement as the other oracles. Unlike Gb_Snd_Emu, its
  * `apu.samples[]` already is the DAC value chipvoice traces, 0 to 15, with
  * no folding. See `oracles/sameboy/README.md` for what is SameBoy's and what
- * is ours, the pinned commit, and the frame sequencer's phase.
+ * is ours, the pinned commit, and the frame sequencer's phase. `trace()`
+ * streams its stdout through `traceProcess` (change-stream.mjs) into a
+ * `ChangeStream` rather than buffering the whole run as one string.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/sameboy/main.c', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'sameboy');
@@ -33,7 +36,13 @@ export const sameboy = {
     const built = fs.existsSync(BINARY) ? fs.statSync(BINARY).mtimeMs : 0;
     if (built > newest) return;
     fs.mkdirSync(path.dirname(BINARY), { recursive: true });
-    const result = spawnSync('cc', ['-O2', '-std=c11', '-w', '-I.', '-o', BINARY, ...SOURCES, '-lm'], {
+    // `-std=gnu11`, not the stricter `-std=c11`: `vendor/apu.c` reaches for
+    // `M_PI`, a POSIX/BSD extension to `<math.h>`, not ISO C. Apple's libc
+    // exposes it either way, so this went unnoticed building locally; glibc
+    // hides it under `-std=c11`'s `__STRICT_ANSI__` and fails the build on
+    // Linux CI. GNU C11 is a superset of ISO C11, so this changes nothing
+    // `apu.c` relies on beyond that one declaration.
+    const result = spawnSync('cc', ['-O2', '-std=gnu11', '-w', '-I.', '-o', BINARY, ...SOURCES, '-lm'], {
       cwd: DIR,
       encoding: 'utf8',
     });
@@ -45,18 +54,11 @@ export const sameboy = {
   /**
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
+   * @returns {Promise<import('../change-stream.mjs').ChangeStream>}
    */
   trace(writes, cycles) {
     this.build();
     const input = formatLog({ chip: 'dmg', clock: 4194304, cycles }, writes);
-    const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
-    const changes = [];
-    for (const line of result.stdout.split('\n')) {
-      if (!line) continue;
-      const [cycle, voice, value] = line.split(' ').map(Number);
-      changes.push({ cycle, voice, value });
-    }
-    return changes;
+    return traceProcess(BINARY, [], input);
   },
 };
