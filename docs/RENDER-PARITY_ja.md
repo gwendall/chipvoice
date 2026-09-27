@@ -18,8 +18,8 @@ MIX-14: 固定した入力セットがNodeと、自動化できるすべての�
 
 ## 直近の実行
 
-- 日付: 2026-09-27T19:00:30.312Z
-- リビジョン: `f1c4325f18c7df2a67c5c4632d747e9e02b3339c`
+- 日付: 2026-09-27T19:49:34.956Z
+- リビジョン: `5af421f553ac068da881a7c18eaf3b1a3e494539`
 - Node: v22.22.3
 
 | エンジン | バージョン | 結果 |
@@ -74,4 +74,4 @@ PlaywrightのWebKitはCIやワークステーションで自動化できる中�
 
 ## CIで実行される内容
 
-`pnpm render-parity:check`（NodeとChromiumのみ）はすべてのpushとpull requestで実行されます。FirefoxとWebKitはCIがインストールしないバイナリを必要とするため、上記の完全なマトリクスは`pnpm render-parity:sheet`としてローカルで実行し、ここにコミットします。
+`pnpm render-parity:check`（Node対Chromium・Firefox・WebKitの3エンジンすべて）はすべてのpushとpull requestで実行されます。その直後に`pnpm render-parity:self-test`が実行され、ブラウザのレンダーに意図的な差を1つ仕込み、チェックがそれを捉えることを確認します。これによりゲートが実際に機能することを証明します（常にPASSを表示するだけではないことを）。上記のシート（本ファイル）は別のローカル限定のステップ - `pnpm render-parity:sheet` - で、数値が変わったときに手動で実行してコミットします。フィクスチャの更新だけが必要なエンジン作業には`pnpm render-parity:fixture`単体を実行します（ブラウザもシートも不要で、`check.mjs`が比較に使うNode側の抜粋のみを再生成します）。

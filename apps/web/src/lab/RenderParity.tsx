@@ -14,10 +14,11 @@ import './render-parity.css';
  * what nothing but a person can do - a real phone, and real Safari.
  *
  * `planFromJSON` below is a copy of `scores/render-parity/serialize.mjs`
- * (isomorphic on purpose: JSON, `btoa` and `atob` only - this component
- * cannot import that file, which lives outside `apps/web/src`). Keep the two
- * in sync by hand; `scores/render-parity/harness.html` keeps a third copy
- * for the same reason, for the Playwright side of the same comparison.
+ * (isomorphic on purpose: JSON, `DataView`, `btoa` and `atob` only - this
+ * component cannot import that file, which lives outside `apps/web/src`).
+ * Keep the two in sync by hand; `scores/render-parity/harness.html` keeps a
+ * third copy for the same reason, for the Playwright side of the same
+ * comparison.
  */
 
 type FixtureInput = {
@@ -26,16 +27,21 @@ type FixtureInput = {
   chip: string;
   title: string;
   seconds: number;
-  plan: {chip: string; seconds: number; events: number[]; memory: {address: number; bytes: string}[]};
+  plan: {chip: string; seconds: number; events: string; memory: {address: number; bytes: string}[]};
   node: {sha256: string; peak: number};
 };
-type Fixture = {version: number; revision: string; engineSha256: string; nodeVersion: string; sampleRate: number; createdAt: string; inputs: FixtureInput[]};
+type Fixture = {version: number; revision: string; engineSha256: string; nodeVersion: string; sampleRate: number; inputs: FixtureInput[]};
 type RowState = 'pending' | 'running' | 'match' | 'mismatch' | 'error';
 type Row = {input: FixtureInput; state: RowState; sha256?: string; error?: string};
 
-function unflattenEvents(flat: number[]) {
-  const events = new Array(flat.length / 3);
-  for (let i = 0; i < events.length; i++) events[i] = {at: flat[i * 3], addr: flat[i * 3 + 1], value: flat[i * 3 + 2]};
+// 9 bytes/event, base64-encoded: a 4-byte `at` (uint32 LE), a 4-byte `addr`
+// (uint32) and a 1-byte `value` (uint8). See serialize.mjs's `packEvents` for
+// why - a JSON number array costs a byte per digit and comma per field.
+function unpackEvents(text: string) {
+  const bytes = base64ToBytes(text);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const events = new Array(bytes.length / 9);
+  for (let i = 0; i < events.length; i++) events[i] = {at: view.getUint32(i * 9, true), addr: view.getUint32(i * 9 + 4, true), value: view.getUint8(i * 9 + 8)};
   return events;
 }
 function base64ToBytes(text: string) {
@@ -48,7 +54,7 @@ function planFromJSON(json: FixtureInput['plan']): PerformancePlan {
   return {
     chip: json.chip,
     seconds: json.seconds,
-    events: unflattenEvents(json.events),
+    events: unpackEvents(json.events),
     memory: json.memory.map(block => ({address: block.address, bytes: base64ToBytes(block.bytes)})),
     // renderPerformance never reads these three; the fixture never carries them.
     loopStartSeconds: 0, notes: [], losses: [],
@@ -130,7 +136,7 @@ export default function RenderParity() {
     {!fixture && !fixtureError && <p role="status">{t("Loading the fixed input set…")}</p>}
     {fixture && <>
       <div className="render-parity-summary">
-        <span>{t("Node reference: ")}{fixture.nodeVersion} · {fixture.revision.slice(0, 7)} · {new Date(fixture.createdAt).toLocaleDateString()}</span>
+        <span>{t("Node reference: ")}{fixture.nodeVersion} · {fixture.revision.slice(0, 7)}</span>
         {done && <span className={mismatches === 0 ? 'render-parity-pass' : 'render-parity-fail'}>{mismatches === 0 ? t("{count} of {total} match", {count: rows.length, total: rows.length}) : t("{count} of {total} mismatch", {count: mismatches, total: rows.length})}</span>}
         <Button onClick={run} disabled={running}>{running ? t("Rendering…") : t("Run again")}</Button>
       </div>

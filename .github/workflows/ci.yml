@@ -55,13 +55,19 @@ jobs:
       - run: pnpm --filter chipvoice-conform test:unit
       - run: pnpm --filter chipvoice-conform accuracy-data:check
 
-  # MIX-14: Node/Chromium render-hash parity for a fixed set of arrangement
-  # excerpts and instrument presets across all five chips. Its own job so a
-  # Playwright download never blocks the browser-free `unit` checks, and a
-  # slow full matrix never blocks either. Firefox and WebKit only run
-  # locally (`pnpm render-parity:sheet`), and the physical-phone/real-Safari
-  # leg stays a one-minute human check at /lab/render-parity; see
-  # docs/RENDER-PARITY.md.
+  # MIX-14: Node/Chromium/Firefox/WebKit render-hash parity for a fixed set
+  # of arrangement excerpts and instrument presets across all five chips.
+  # All three desktop engines run here, not only Chromium - Playwright's
+  # Linux WebKit still runs JavaScriptCore and Firefox runs SpiderMonkey,
+  # exactly the engines where a Math.* difference would show. Its own job so
+  # a Playwright download never blocks the browser-free `unit` checks, and
+  # this job never blocks them either. The physical-phone/real-Safari leg
+  # stays a one-minute human check at /lab/render-parity; see
+  # docs/RENDER-PARITY.md. The self-test right after the check proves the
+  # gate actually catches a real difference, by planting one and asserting
+  # it is caught. Measured locally: the three-engine check takes about a
+  # minute and the self-test about 30 seconds, comfortably inside this job's
+  # 15-minute budget even on CI's slower, colder hardware.
   render-parity:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -74,12 +80,16 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter chipvoice build
+      # A cache key of its own: the `browser` job below only ever installs
+      # Chromium, and sharing one key between a Chromium-only cache and this
+      # job's three-engine cache would race whichever job saves first.
       - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm exec playwright install --with-deps chromium
+          key: playwright-parity-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
       - run: pnpm render-parity:check
+      - run: pnpm render-parity:self-test
 
   # The web browser suite: production Next, anonymous API flows, measured
   # browser audio and editor recovery. Split from `unit` so a late failure

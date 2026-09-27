@@ -38,14 +38,27 @@ async function startServer() {
 const ENGINES = { chromium, firefox, webkit };
 
 /**
+ * The harness URL, carrying the self-test perturbation flag when one is
+ * given. `perturb` is `{id, sampleIndex, channel, delta}`: never set by a
+ * normal comparison run, only by `self-test.mjs` proving the gate actually
+ * fails on a real difference (see `harness.html`'s `selfTestPerturb`).
+ */
+function harnessUrl(port, perturb) {
+  const url = new URL(`http://127.0.0.1:${port}/`);
+  if (perturb) url.searchParams.set('selfTestPerturb', `${perturb.id}:${perturb.sampleIndex}:${perturb.channel ?? 'left'}:${perturb.delta}`);
+  return url.toString();
+}
+
+/**
  * Renders the fixed input set inside one Playwright browser engine and
  * returns each input's PCM hash, the same shape Node's own render produces.
- * `'firefox'` and `'webkit'` need their binaries installed locally
- * (`pnpm exec playwright install firefox webkit`); a missing one resolves
- * with `installed: false` rather than throwing, so a caller that only has
- * Chromium (CI) can still run the rest of the matrix (a local sheet run).
+ * A browser without a locally installed binary resolves with
+ * `installed: false` rather than throwing, so a caller that is missing one
+ * engine (a workstation without Firefox/WebKit installed yet) can still run
+ * the rest of the matrix; `check.mjs` decides whether that is a warning or a
+ * failure depending on whether it is running in CI.
  */
-export async function renderInBrowser(engineName, inputs) {
+export async function renderInBrowser(engineName, inputs, { perturb } = {}) {
   const engineType = ENGINES[engineName];
   if (!engineType) throw new Error(`unknown browser engine: ${engineName}`);
   const server = await startServer();
@@ -65,7 +78,7 @@ export async function renderInBrowser(engineName, inputs) {
     const page = await browser.newPage();
     // domcontentloaded, not networkidle: the harness page has no continuous
     // rendering, but networkidle is still the wrong default to reach for.
-    await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
+    await page.goto(harnessUrl(port, perturb), { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.renderParityReady === true, null, { timeout: 30000 });
     const payload = inputs.map(input => ({ id: input.id, chip: input.chip, plan: planToJSON(input.plan) }));
     const results = await page.evaluate(data => window.renderParityRun(data), payload);
@@ -82,8 +95,11 @@ export async function renderInBrowser(engineName, inputs) {
  * Re-renders one input in one browser engine and returns its raw PCM, for
  * diagnosing a hash that has already come back different from Node's -
  * `renderInBrowser` deliberately does not carry samples for the whole set.
+ * Takes the same optional `perturb` as `renderInBrowser` so a self-test's
+ * diagnosis pass reproduces the same corrupted sample the initial pass saw,
+ * instead of re-rendering a clean, misleadingly matching buffer.
  */
-export async function renderOneInBrowser(engineName, input) {
+export async function renderOneInBrowser(engineName, input, { perturb } = {}) {
   const engineType = ENGINES[engineName];
   if (!engineType) throw new Error(`unknown browser engine: ${engineName}`);
   const server = await startServer();
@@ -92,7 +108,7 @@ export async function renderOneInBrowser(engineName, input) {
   const guard = setTimeout(() => { void browser.close(); server.close(); }, 60000);
   try {
     const page = await browser.newPage();
-    await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
+    await page.goto(harnessUrl(port, perturb), { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.renderParityReady === true, null, { timeout: 30000 });
     const payload = { id: input.id, chip: input.chip, plan: planToJSON(input.plan) };
     const raw = await page.evaluate(data => window.renderParityRenderOne(data), payload);

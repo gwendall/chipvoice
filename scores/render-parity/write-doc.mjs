@@ -123,7 +123,7 @@ Open **${webUrl}** on the device to check. It fetches the same fixed inputs this
 
 ## What runs in CI
 
-\`pnpm render-parity:check\` (Node against Chromium only) runs on every push and pull request. Firefox and WebKit need binaries CI does not install, so the full matrix above is \`pnpm render-parity:sheet\`, run locally and committed here.
+\`pnpm render-parity:check\` (Node against all three: Chromium, Firefox and WebKit) runs on every push and pull request. Right after it, \`pnpm render-parity:self-test\` plants one deliberate difference in a browser render and asserts the check catches it, proving the gate actually bites rather than only ever printing PASS. The sheet above (this file) is a separate, local-only step - \`pnpm render-parity:sheet\` - run and committed by hand when the numbers change. Engine work that needs a fresh fixture runs \`pnpm render-parity:fixture\` alone (no browsers, no sheet, just the Node-side excerpt \`check.mjs\` compares against).
 `;
 
   const ja = `# レンダーの一致性
@@ -177,7 +177,7 @@ PlaywrightのWebKitはCIやワークステーションで自動化できる中�
 
 ## CIで実行される内容
 
-\`pnpm render-parity:check\`（NodeとChromiumのみ）はすべてのpushとpull requestで実行されます。FirefoxとWebKitはCIがインストールしないバイナリを必要とするため、上記の完全なマトリクスは\`pnpm render-parity:sheet\`としてローカルで実行し、ここにコミットします。
+\`pnpm render-parity:check\`（Node対Chromium・Firefox・WebKitの3エンジンすべて）はすべてのpushとpull requestで実行されます。その直後に\`pnpm render-parity:self-test\`が実行され、ブラウザのレンダーに意図的な差を1つ仕込み、チェックがそれを捉えることを確認します。これによりゲートが実際に機能することを証明します（常にPASSを表示するだけではないことを）。上記のシート（本ファイル）は別のローカル限定のステップ - \`pnpm render-parity:sheet\` - で、数値が変わったときに手動で実行してコミットします。フィクスチャの更新だけが必要なエンジン作業には\`pnpm render-parity:fixture\`単体を実行します（ブラウザもシートも不要で、\`check.mjs\`が比較に使うNode側の抜粋のみを再生成します）。
 `;
 
   await writeFile(resolve(root, 'docs/RENDER-PARITY.md'), en);

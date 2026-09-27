@@ -33,6 +33,8 @@
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
     "audio:push": "node apps/web/scripts/audio-store.mjs push",
     "render-parity:check": "node scores/render-parity/check.mjs",
+    "render-parity:fixture": "node scores/render-parity/build-fixture.mjs",
+    "render-parity:self-test": "node scores/render-parity/self-test.mjs",
     "render-parity:sheet": "node scores/render-parity/sheet.mjs"
   },
   "devDependencies": {

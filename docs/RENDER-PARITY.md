@@ -17,8 +17,8 @@ A fixed, small set of 22 inputs (a short excerpt of each published arrangement o
 
 ## Last run
 
-- Date: 2026-09-27T19:00:30.312Z
-- Revision: `f1c4325f18c7df2a67c5c4632d747e9e02b3339c`
+- Date: 2026-09-27T19:49:34.956Z
+- Revision: `5af421f553ac068da881a7c18eaf3b1a3e494539`
 - Node: v22.22.3
 
 | Engine | Version | Result |
@@ -73,4 +73,4 @@ Open **https://chipvoice.dev/lab/render-parity** on the device to check. It fetc
 
 ## What runs in CI
 
-`pnpm render-parity:check` (Node against Chromium only) runs on every push and pull request. Firefox and WebKit need binaries CI does not install, so the full matrix above is `pnpm render-parity:sheet`, run locally and committed here.
+`pnpm render-parity:check` (Node against all three: Chromium, Firefox and WebKit) runs on every push and pull request. Right after it, `pnpm render-parity:self-test` plants one deliberate difference in a browser render and asserts the check catches it, proving the gate actually bites rather than only ever printing PASS. The sheet above (this file) is a separate, local-only step - `pnpm render-parity:sheet` - run and committed by hand when the numbers change. Engine work that needs a fresh fixture runs `pnpm render-parity:fixture` alone (no browsers, no sheet, just the Node-side excerpt `check.mjs` compares against).

@@ -14,8 +14,13 @@ import { renderInBrowser, renderOneInBrowser } from './browser-render.mjs';
  * own fields, at zero tolerance, the same self-determinism check
  * `scores/arrangements/evaluate.mjs` already runs against a repeated Node
  * render.
+ *
+ * `options.perturb` is `self-test.mjs`'s hook only: forwarded to every
+ * browser call unchanged, it never fires in a normal `check.mjs`/`sheet.mjs`
+ * run (nothing here ever sets it on its own).
  */
-export async function compareEngines(inputs, engineNames) {
+export async function compareEngines(inputs, engineNames, options = {}) {
+  const { perturb } = options;
   const node = [];
   const selfCheckFailures = [];
   const nodeAudio = new Map();
@@ -30,7 +35,7 @@ export async function compareEngines(inputs, engineNames) {
 
   const engines = {};
   for (const engineName of engineNames) {
-    const result = await renderInBrowser(engineName, inputs);
+    const result = await renderInBrowser(engineName, inputs, { perturb });
     if (!result.installed) { engines[engineName] = result; continue; }
     const byId = new Map(result.results.map(r => [r.id, r]));
     const rows = [];
@@ -40,7 +45,7 @@ export async function compareEngines(inputs, engineNames) {
       const match = !!browserRow && browserRow.sha256 === nodeRow.sha256;
       const row = { id: input.id, sha256: browserRow?.sha256 ?? null, peak: browserRow?.peak ?? null, match };
       if (!match && browserRow) {
-        const browserAudio = await renderOneInBrowser(engineName, input);
+        const browserAudio = await renderOneInBrowser(engineName, input, { perturb });
         const diff = comparePcm(nodeAudio.get(input.id), browserAudio, 0);
         row.diagnosis = { firstSample: diff.firstSample, maxDelta: diff.maxDelta, rmsError: diff.rmsError };
       }

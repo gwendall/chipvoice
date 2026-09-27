@@ -25,14 +25,22 @@ const entries = inputs.map(input => {
 
 const fixture = {
   version: 1,
+  // The revision alone identifies exactly which build this fixture came
+  // from (it is what `check.mjs` compares against a fresh `renderParityEngineHash()`);
+  // a regeneration timestamp would churn on every run without saying
+  // anything the revision does not already say, so it is left out.
   revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
   engineSha256: await renderParityEngineHash(),
   nodeVersion: process.version,
   sampleRate: 44100,
-  createdAt: new Date().toISOString(),
   inputs: entries,
 };
 
 await mkdir(resolve(root, 'apps/web/public/render-parity-data'), { recursive: true });
-await writeFile(outFile, JSON.stringify(fixture, null, 2) + '\n');
-console.log(`PASS render-parity fixture: ${entries.length} inputs, ${(JSON.stringify(fixture).length / 1024).toFixed(0)}KB, written to ${outFile}`);
+// Unindented: a phone fetches this file, and one number per line (the
+// naive `JSON.stringify(fixture, null, 2)`) cost 166,000 lines and 3.1MB
+// for no reason a person reading it needed - nobody hand-edits it either
+// (build-fixture.mjs's own header says so).
+const json = JSON.stringify(fixture);
+await writeFile(outFile, json);
+console.log(`PASS render-parity fixture: ${entries.length} inputs, ${(json.length / 1024).toFixed(0)}KB, written to ${outFile}`);

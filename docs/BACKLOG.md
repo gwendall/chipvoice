@@ -542,11 +542,17 @@ real game music, and a real unit.
   produced byte-identical SHA-256 hashes for all 22 inputs: zero
   mismatches, so there was nothing to diagnose. `docs/RENDER-PARITY.md`/
   `_ja.md` record engine versions, the date and the per-input table;
-  `pnpm render-parity:check` reruns Node and Chromium in CI on every PR.
-  The physical-phone/real-Safari leg stays a one-minute human job:
-  `/lab/render-parity` renders the same fixed set in whatever browser
-  opens it and shows match/mismatch next to the Node reference.
-  `packages/chipvoice/src` is unchanged.
+  `pnpm render-parity:check` reruns Node against all three engines in CI on
+  every PR (not Chromium alone), and `pnpm render-parity:self-test` runs
+  right after it, planting one deliberate sample-level difference in a
+  browser render to prove the gate actually catches a real mismatch rather
+  than only ever printing PASS. The published fixture (`apps/web/public/
+  render-parity-data/inputs.json`) is base64/binary-packed rather than
+  indented JSON, 793KB rather than 3.1MB; `pnpm render-parity:fixture`
+  refreshes it alone, without a browser or the sheet. The physical-phone/
+  real-Safari leg stays a one-minute human job: `/lab/render-parity` renders
+  the same fixed set in whatever browser opens it and shows match/mismatch
+  next to the Node reference. `packages/chipvoice/src` is unchanged.
 - done - NEXT-12: `/accuracy` and `/ja/accuracy` show all five chips' digital
   parity (per oracle, plus c64's real-6581 combined-waveform check), test ROMs,
   analog stage and driver coverage, generated into
