@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|parity|roms|mixer):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|mixer):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -78,7 +78,7 @@ def localized_block(kind, body, templates):
         if not line.strip() or re.fullmatch(r'\|(?:\s*:?-+:?\s*\|)+', line):
             lines.append(line)
             continue
-        if kind == 'parity':
+        if kind == 'parity' or kind.startswith('parity-'):
             match = re.fullmatch(r'Written by `conform` on (.+), against (.+), on (.+)\.', line)
             if match:
                 lines.append(f'`conform`による生成：{match[1]}。参照：{match[2]}。比較対象：{match[3]}。')
@@ -156,7 +156,7 @@ def check(sync=False):
         if sync:
             target.write_text(translated)
         label = str(target.relative_to(ROOT))
-        if '\ufffd' in translated or re.search(r'\{\{(?:code\d+|parity|roms|mixer)\}\}', translated):
+        if '\ufffd' in translated or re.search(r'\{\{(?:code\d+|parity(?:-[\w-]+)?|roms|mixer)\}\}', translated):
             errors.append(f'{label}: replacement character or unexpanded template')
         if [h.count('#', 0, h.index(' ')) for h in headings(original)] != [h.count('#', 0, h.index(' ')) for h in headings(translated)]:
             errors.append(f'{label}: heading structure differs')

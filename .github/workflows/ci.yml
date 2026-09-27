@@ -147,6 +147,7 @@ jobs:
       # Independent from browser qualification: neither suite queues behind
       # the other, while keeping all five reference cores and hardware ROMs.
       - run: pnpm --filter chipvoice-conform check
+      - run: pnpm --filter chipvoice-conform check:mesen
       - run: pnpm --filter chipvoice-conform roms
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform roms:dmg

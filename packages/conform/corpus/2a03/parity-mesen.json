@@ -1,0 +1,1451 @@
+{
+  "chip": "2a03",
+  "oracle": {
+    "id": "mesen",
+    "name": "Mesen 2 (b9fa69d, 2026-06-04)"
+  },
+  "voices": [
+    "p1",
+    "p2",
+    "tri",
+    "noi",
+    "dmc"
+  ],
+  "date": "2026-09-27",
+  "files": 13,
+  "cycles": 92173307,
+  "identical": 60349925,
+  "diverging": 13,
+  "results": [
+    {
+      "name": "script-dmc",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 13,
+      "cycles": 5548296,
+      "identical": 0,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 0,
+          "a": 1,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 2882590,
+          "a": 26104,
+          "b": 26103,
+          "exact": 32,
+          "near": 0,
+          "onlyA": 26072,
+          "onlyB": 26071,
+          "shift": 0,
+          "aligned": 32,
+          "runs": {
+            "ours": 3,
+            "theirs": 3,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 54
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-envelope",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 16,
+      "cycles": 5548296,
+      "identical": 0,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5541596,
+          "a": 662,
+          "b": 659,
+          "exact": 638,
+          "near": 0,
+          "onlyA": 24,
+          "onlyB": 21,
+          "shift": 0,
+          "aligned": 638,
+          "runs": {
+            "ours": 3,
+            "theirs": 3,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5500530,
+          "a": 5237,
+          "b": 5147,
+          "exact": 4870,
+          "near": 0,
+          "onlyA": 367,
+          "onlyB": 277,
+          "shift": 0,
+          "aligned": 4870,
+          "runs": {
+            "ours": 45,
+            "theirs": 45,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 0,
+          "a": 1,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 5541117,
+          "a": 6726,
+          "b": 6719,
+          "exact": 0,
+          "near": 6716,
+          "onlyA": 10,
+          "onlyB": 3,
+          "shift": -1,
+          "aligned": 6716,
+          "runs": {
+            "ours": 3,
+            "theirs": 3,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-five-step",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 16,
+      "cycles": 5548296,
+      "identical": 5357892,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5545638,
+          "a": 229,
+          "b": 228,
+          "exact": 220,
+          "near": 0,
+          "onlyA": 9,
+          "onlyB": 8,
+          "shift": 0,
+          "aligned": 220,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5548198,
+          "a": 616,
+          "b": 616,
+          "exact": 615,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 1,
+          "shift": 0,
+          "aligned": 615,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 5360643,
+          "a": 441,
+          "b": 440,
+          "exact": 0,
+          "near": 440,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 440,
+          "runs": {
+            "ours": 3,
+            "theirs": 2,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-length",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 17,
+      "cycles": 5548296,
+      "identical": 5354798,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5548296,
+          "a": 1029,
+          "b": 1029,
+          "exact": 1029,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1029,
+          "runs": {
+            "ours": 3,
+            "theirs": 3,
+            "alignedTimes": 3,
+            "alignedValues": 3,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 5366906,
+          "a": 1397,
+          "b": 1396,
+          "exact": 0,
+          "near": 1396,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 1396,
+          "runs": {
+            "ours": 4,
+            "theirs": 3,
+            "alignedTimes": 1,
+            "alignedValues": 0,
+            "maxShift": 1788904
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 5536177,
+          "a": 12119,
+          "b": 12119,
+          "exact": 0,
+          "near": 12119,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 12119,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 1
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-linear",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 8,
+      "cycles": 5548296,
+      "identical": 5367434,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 5367434,
+          "a": 869,
+          "b": 868,
+          "exact": 0,
+          "near": 868,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 868,
+          "runs": {
+            "ours": 4,
+            "theirs": 3,
+            "alignedTimes": 1,
+            "alignedValues": 0,
+            "maxShift": 1789921
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-low-pulse",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 6,
+      "cycles": 3758523,
+      "identical": 0,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 3758523,
+          "a": 219,
+          "b": 219,
+          "exact": 219,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 219,
+          "runs": {
+            "ours": 219,
+            "theirs": 219,
+            "alignedTimes": 219,
+            "alignedValues": 219,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 0,
+          "a": 1,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-noise",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 9,
+      "cycles": 5548296,
+      "identical": 0,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 0,
+          "a": 1,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 5530213,
+          "a": 18083,
+          "b": 18083,
+          "exact": 0,
+          "near": 18083,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 18083,
+          "runs": {
+            "ours": 110,
+            "theirs": 110,
+            "alignedTimes": 110,
+            "alignedValues": 110,
+            "maxShift": 1
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5548296,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-restart",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 25,
+      "cycles": 1073864,
+      "identical": 0,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 1073864,
+          "a": 471,
+          "b": 471,
+          "exact": 471,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 471,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 1073864,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 0,
+          "a": 1,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 1073864,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 1073864,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-sweep-down",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 9,
+      "cycles": 3758523,
+      "identical": 0,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 3700365,
+          "a": 308,
+          "b": 310,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 307,
+          "onlyB": 309,
+          "shift": -8,
+          "aligned": 42,
+          "runs": {
+            "ours": 3,
+            "theirs": 5,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 4614
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 3700285,
+          "a": 292,
+          "b": 294,
+          "exact": 9,
+          "near": 0,
+          "onlyA": 283,
+          "onlyB": 285,
+          "shift": 0,
+          "aligned": 9,
+          "runs": {
+            "ours": 3,
+            "theirs": 5,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 4608
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 0,
+          "a": 1,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-sweep-up",
+      "source": "packages/conform/src/corpus/generate.mjs",
+      "writes": 9,
+      "cycles": 3758523,
+      "identical": 0,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 3669177,
+          "a": 724,
+          "b": 732,
+          "exact": 5,
+          "near": 0,
+          "onlyA": 719,
+          "onlyB": 727,
+          "shift": -2,
+          "aligned": 19,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 3296499,
+          "a": 4242,
+          "b": 4256,
+          "exact": 35,
+          "near": 0,
+          "onlyA": 4207,
+          "onlyB": 4221,
+          "shift": -10,
+          "aligned": 37,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 0,
+          "a": 1,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 3758523,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-e2e",
+      "source": "test-e2e.mjs, as chipvoice.dev renders it",
+      "writes": 2868,
+      "cycles": 17897730,
+      "identical": 17227240,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 17897730,
+          "a": 8590,
+          "b": 8590,
+          "exact": 8590,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 8590,
+          "runs": {
+            "ours": 32,
+            "theirs": 32,
+            "alignedTimes": 32,
+            "alignedValues": 32,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 17582584,
+          "a": 4876,
+          "b": 4876,
+          "exact": 1541,
+          "near": 0,
+          "onlyA": 3335,
+          "onlyB": 3335,
+          "shift": 0,
+          "aligned": 1541,
+          "runs": {
+            "ours": 2437,
+            "theirs": 2437,
+            "alignedTimes": 2437,
+            "alignedValues": 2437,
+            "maxShift": 770
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 17704574,
+          "a": 13980,
+          "b": 13979,
+          "exact": 0,
+          "near": 13979,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 13979,
+          "runs": {
+            "ours": 52,
+            "theirs": 51,
+            "alignedTimes": 13,
+            "alignedValues": 4,
+            "maxShift": 358681
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 17732509,
+          "a": 127092,
+          "b": 127018,
+          "exact": 0,
+          "near": 126920,
+          "onlyA": 172,
+          "onlyB": 98,
+          "shift": -1,
+          "aligned": 126920,
+          "runs": {
+            "ours": 137,
+            "theirs": 138,
+            "alignedTimes": 26,
+            "alignedValues": 23,
+            "maxShift": 32513
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 17897730,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-golden",
+      "source": "packages/chipvoice/test/golden.mjs",
+      "writes": 817,
+      "cycles": 7159092,
+      "identical": 6913462,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 7157194,
+          "a": 3185,
+          "b": 3186,
+          "exact": 2236,
+          "near": 1,
+          "onlyA": 948,
+          "onlyB": 949,
+          "shift": 0,
+          "aligned": 2236,
+          "runs": {
+            "ours": 13,
+            "theirs": 13,
+            "alignedTimes": 11,
+            "alignedValues": 11,
+            "maxShift": 2
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 7159092,
+          "a": 2077,
+          "b": 2077,
+          "exact": 2077,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 2077,
+          "runs": {
+            "ours": 1038,
+            "theirs": 1038,
+            "alignedTimes": 1038,
+            "alignedValues": 1038,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 6973989,
+          "a": 5927,
+          "b": 5926,
+          "exact": 0,
+          "near": 5926,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 5926,
+          "runs": {
+            "ours": 21,
+            "theirs": 20,
+            "alignedTimes": 10,
+            "alignedValues": 0,
+            "maxShift": 357985
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 7100408,
+          "a": 47103,
+          "b": 47083,
+          "exact": 0,
+          "near": 47055,
+          "onlyA": 48,
+          "onlyB": 28,
+          "shift": -1,
+          "aligned": 47055,
+          "runs": {
+            "ours": 44,
+            "theirs": 44,
+            "alignedTimes": 24,
+            "alignedValues": 23,
+            "maxShift": 1
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 7159092,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-studio",
+      "source": "apps/web/src/studio/song.ts, the default piece in the editor",
+      "writes": 3759,
+      "cycles": 21477276,
+      "identical": 20129099,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 21477276,
+          "a": 9845,
+          "b": 9845,
+          "exact": 9845,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 9845,
+          "runs": {
+            "ours": 32,
+            "theirs": 32,
+            "alignedTimes": 32,
+            "alignedValues": 32,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 20504610,
+          "a": 5660,
+          "b": 5659,
+          "exact": 1695,
+          "near": 0,
+          "onlyA": 3965,
+          "onlyB": 3964,
+          "shift": 0,
+          "aligned": 1695,
+          "runs": {
+            "ours": 2829,
+            "theirs": 2829,
+            "alignedTimes": 2829,
+            "alignedValues": 2829,
+            "maxShift": 1730
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 21281616,
+          "a": 16286,
+          "b": 16285,
+          "exact": 0,
+          "near": 16285,
+          "onlyA": 1,
+          "onlyB": 0,
+          "shift": -1,
+          "aligned": 16285,
+          "runs": {
+            "ours": 62,
+            "theirs": 61,
+            "alignedTimes": 23,
+            "alignedValues": 10,
+            "maxShift": 359962
+          }
+        },
+        {
+          "voice": "noi",
+          "identical": 21287880,
+          "a": 149657,
+          "b": 149591,
+          "exact": 0,
+          "near": 149475,
+          "onlyA": 182,
+          "onlyB": 116,
+          "shift": -1,
+          "aligned": 149475,
+          "runs": {
+            "ours": 149,
+            "theirs": 148,
+            "alignedTimes": 62,
+            "alignedValues": 58,
+            "maxShift": 22353
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 21477276,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

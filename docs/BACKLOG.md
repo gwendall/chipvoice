@@ -280,7 +280,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | done | PR #7. 29 of 29 pass, in CI |
 | P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | doing | First complete source: Mario Ground Theme, all 41,999 music commands match pinned GME at exact cycles; broader NSF corpus remains |
-| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | todo | found in P1-6; the frame timing is settled by the ROMs |
+| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | done | this PR. Mesen 2's APU, vendored under `packages/conform/oracles/mesen`; the sweep's divider timing disagrees, filed as P2-1 |
 | P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 
 ## Phase 2. NES to 100 %
@@ -433,6 +433,21 @@ accepted V1 on 2026-09-27 and reopened additions under its guards; the order
 is in [the next steps](#next-steps-2026-09-27) and the roadmap.
 
 ## Discoveries
+
+**2026-09-27, P1-13.** A second, current oracle - Mesen 2's APU, vendored
+under `packages/conform/oracles/mesen` - checks the envelope, the sweep and
+the noise's bit pattern against a modern reference, on all 13 corpus logs
+(65.4744 % identical overall). The envelope and the triangle's phase agree
+once a line is running, and the noise's bit pattern agrees throughout, once
+the pulses' own class-1 one-cycle shift is allowed for - the one thing the
+2005 oracle cannot settle. The sweep's target-period arithmetic agrees
+exactly; its divider's timing does not: nesdev's page checks the divider
+against zero before reloading or decrementing it, which this core's
+`clockSweep()` follows, while Mesen's vendored code decrements first and
+checks the result, landing a freshly-armed sweep's first period step one
+half-frame clock late. Filed as a finding for P2-1, not fixed here. See
+`docs/chips/2a03.md`'s second-oracle section and the oracle's own README for
+the numbers and the full diagnosis. No core change; no golden hash moved.
 
 **2026-09-07, Japanese documentation.** `docs/japanese` translates the root/SDK
 READMEs and all first-party documents using RTK-style `_ja.md` siblings. Validate

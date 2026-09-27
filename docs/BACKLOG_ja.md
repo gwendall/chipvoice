@@ -218,7 +218,7 @@
 | P1-10 | 5-step frameと`$4017`write timing | done | 0.5.0、P1-2と同時。decoderにも必要 |
 | P1-11 | blargg APU ROM用6502 fixture | done | PR #7、29/29、CI対象 |
 | P1-12 | corpus2：logger付き参照で実game NSFを再生 | doing | 最初の完全sourceはMario Ground Theme、41,999命令が固定GMEとexact cycle一致。広いNSF corpusは残件 |
-| P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | todo | P1-6で発見。frame timingはROMで確定 |
+| P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | done | 本PR。`packages/conform/oracles/mesen`に同梱したMesen 2 APU。sweep dividerのtimingは不一致でP2-1へ記録 |
 | P1-14 | triangleをrun別時間shiftとsequencer位置offsetで比較し、開始規約だけで低一致にならないmetric | done | PR #4。隠れたstepを復元し全triangle runがstep時刻で整合 |
 
 <a id="phase-2-nes-to-100-"></a>
@@ -369,6 +369,8 @@
 
 <a id="discoveries"></a>
 ## 発見
+
+**2026-09-27、P1-13。** 第二の、現行のoracle（`packages/conform/oracles/mesen`に同梱したMesen 2のAPU）で、envelope、sweep、noiseのbit patternを最新参照と照合し、コーパス全13ログ（合計65.4744%一致）で確認しました。envelopeとtriangleの位相は行が動き出せば一致し、noiseのbit patternは矩形波自身が持つクラス1の1サイクルシフトを差し引けば全体で一致します。これは2005年oracleには決着できない点です。sweepの目標周期の算術は完全に一致しますが、dividerのtimingは一致しません。nesdevのページはdividerをゼロと比較してからreloadか減算すると示しており、本コアの`clockSweep()`はそれに従いますが、Mesenの同梱コードはまず減算してから結果を比較するため、新しく設定されたsweepの最初の周期変化が半フレーム時計1回分遅れます。これは修正せずP2-1向けの所見として記録しました。数値と診断の全体は`docs/chips/2a03.md`の第二参照の節と参照自身のREADMEを参照してください。コア変更なし、golden hashも変わっていません。
 
 **2026-09-07、文書の日本語版。** `docs/japanese`でroot／SDK READMEと全first-party文書をRTK式`_ja.md`へ翻訳します。言語link、原文anchor、生成数値整合を検査します。第三者資料、license本文、agent命令は原文のままです。PR #37で完了：43文書、実行内容を保持した32例、GitHub Markdown描画、2軸レビューを確認。生成表の未知見出しは拒否し、レビューしたSNES説明は現在の同時和音機能を保持します。
 
