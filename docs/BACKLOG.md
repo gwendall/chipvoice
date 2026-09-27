@@ -276,9 +276,23 @@ real game music, and a real unit.
   clocked at rate 0 - an audible click rather than hiss; fixed by moving it
   into the first write.
 - P4-9 (the SNES palette).
-- todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
-  with its measured envelope and spectrum, shown on the site, built only from
-  what the chip really does.
+- done - NEXT-05: a measured instrument catalogue. `scores/instruments/generate.mjs`
+  plays all 89 presets a user can pick (2a03 15, dmg 18, md 18, snes 20, c64
+  18: every lead/chord/bass program group and the four-voice percussion kit)
+  through the real engine at one fixed probe (pitch C4, velocity 100, 700 ms
+  held of a 1200 ms render), measuring attack, decay, release, sustain and a
+  spectrum (centroid, a 64-band profile, tonal-vs-noise flatness) from the
+  render itself, never the instrument's declared envelope. Written to
+  `apps/web/src/data/instrument-catalogue.json` with the engine hash
+  `engineModules()` reaches (47 modules, the same provenance pattern as
+  NEXT-13/NEXT-23) and one short FLAC preview per preset (3.1 MB total for
+  89, so no lighter format was needed); `check-catalogue.mjs` proves the
+  hash in CI and `test-presets.mjs` proves the preset list is deterministic.
+  Shown at `/instruments` and `/ja/instruments`, linked from the footer next
+  to Accuracy and matching its layout; `test-instruments-layout.mjs` checks
+  390px and 1280px, English and Japanese, for a full card grid, both plots
+  and no horizontal overflow. `packages/chipvoice/src` was not touched:
+  `verify-publication.mjs` and `check-calibration.mjs` both pass unchanged.
 - P4-7 and MIX-12: human listening, kept separate from correctness.
 
 **Step 3. The machines' own music.**

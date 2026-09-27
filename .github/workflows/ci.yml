@@ -43,6 +43,8 @@ jobs:
       - run: node scores/mixing/check-calibration.mjs
       - run: node scores/mixing/acceptance.mjs
       - run: node scores/mixing/validate-profiles.mjs
+      - run: node scores/instruments/test-presets.mjs
+      - run: node scores/instruments/check-catalogue.mjs
       - name: Score import regressions
         run: |
           python3 -m venv /tmp/chipvoice-score-tools
