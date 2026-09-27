@@ -50,6 +50,8 @@ jobs:
           /tmp/chipvoice-score-tools/bin/python scores/test-import-midi.py
       - run: pnpm typecheck
       - run: pnpm test:unit
+      - run: pnpm --filter chipvoice-conform test:unit
+      - run: pnpm --filter chipvoice-conform accuracy-data:check
 
   # The web browser suite: production Next, anonymous API flows, measured
   # browser audio and editor recovery. Split from `unit` so a late failure

@@ -1,0 +1,518 @@
+{
+  "generatedAt": "2026-09-27",
+  "chips": [
+    {
+      "id": "2a03",
+      "machine": "NES, Famicom",
+      "chip": "Ricoh 2A03",
+      "sheetPath": "docs/chips/2a03.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "Nes_Snd_Emu 0.1.7 (blargg)",
+            "files": 13,
+            "cycles": 92173307,
+            "identical": 3577340,
+            "diverging": 13,
+            "firstDivergence": {
+              "file": "script-dmc",
+              "cycle": 0,
+              "voice": "tri",
+              "ours": 15,
+              "theirs": 0
+            }
+          },
+          {
+            "marker": "parity-mesen",
+            "oracle": "Mesen 2 (b9fa69d, 2026-06-04)",
+            "files": 13,
+            "cycles": 92173307,
+            "identical": 60662173,
+            "diverging": 13,
+            "firstDivergence": {
+              "file": "script-dmc",
+              "cycle": 0,
+              "voice": "tri",
+              "ours": 15,
+              "theirs": 0
+            }
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": {
+        "run": true,
+        "passed": 29,
+        "total": 29,
+        "date": "2026-09-04",
+        "results": [
+          {
+            "name": "apu_test/1-len_ctr",
+            "passed": true
+          },
+          {
+            "name": "apu_test/2-len_table",
+            "passed": true
+          },
+          {
+            "name": "apu_test/3-irq_flag",
+            "passed": true
+          },
+          {
+            "name": "apu_test/4-jitter",
+            "passed": true
+          },
+          {
+            "name": "apu_test/5-len_timing",
+            "passed": true
+          },
+          {
+            "name": "apu_test/6-irq_flag_timing",
+            "passed": true
+          },
+          {
+            "name": "apu_test/7-dmc_basics",
+            "passed": true
+          },
+          {
+            "name": "apu_test/8-dmc_rates",
+            "passed": true
+          },
+          {
+            "name": "apu_reset/4015_cleared",
+            "passed": true
+          },
+          {
+            "name": "apu_reset/4017_timing",
+            "passed": true
+          },
+          {
+            "name": "apu_reset/4017_written",
+            "passed": true
+          },
+          {
+            "name": "apu_reset/irq_flag_cleared",
+            "passed": true
+          },
+          {
+            "name": "apu_reset/len_ctrs_enabled",
+            "passed": true
+          },
+          {
+            "name": "apu_reset/works_immediately",
+            "passed": true
+          },
+          {
+            "name": "dmc_tests/buffer_retained",
+            "passed": true
+          },
+          {
+            "name": "dmc_tests/latency",
+            "passed": true
+          },
+          {
+            "name": "dmc_tests/status",
+            "passed": true
+          },
+          {
+            "name": "dmc_tests/status_irq",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/01.len_ctr",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/02.len_table",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/03.irq_flag",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/04.clock_jitter",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/05.len_timing_mode0",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/06.len_timing_mode1",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/07.irq_flag_timing",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/08.irq_timing",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/09.reset_timing",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/10.len_halt_timing",
+            "passed": true
+          },
+          {
+            "name": "apu_2005/11.len_reload_timing",
+            "passed": true
+          }
+        ]
+      },
+      "analogStage": {
+        "label": "mixer",
+        "measuredFraction": 0.5,
+        "mixer": {
+          "date": "2026-09-04",
+          "floorDb": -25,
+          "rows": [
+            {
+              "name": "square",
+              "oursResidualDb": -32.71880752734278,
+              "hardwareResidualDb": -32.20270680874458
+            },
+            {
+              "name": "triangle",
+              "oursResidualDb": -32.99856237660175,
+              "hardwareResidualDb": -30.926627496811435
+            },
+            {
+              "name": "noise",
+              "oursResidualDb": -13.78485703136501,
+              "hardwareResidualDb": -16.197085833811908
+            },
+            {
+              "name": "dmc",
+              "oursResidualDb": -30.98826126715067,
+              "hardwareResidualDb": -27.15549127388183
+            }
+          ]
+        }
+      },
+      "driverCoverage": {
+        "reached": 4,
+        "voices": 5
+      }
+    },
+    {
+      "id": "dmg",
+      "machine": "Game Boy",
+      "chip": "DMG APU",
+      "sheetPath": "docs/chips/dmg.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/dmg.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "Gb_Snd_Emu 0.1.4 (blargg)",
+            "files": 7,
+            "cycles": 145122916,
+            "identical": 83100392,
+            "diverging": 7,
+            "firstDivergence": {
+              "file": "script-envelopes",
+              "cycle": 419432,
+              "voice": "ch1",
+              "ours": 0,
+              "theirs": 15
+            }
+          },
+          {
+            "marker": "parity-sameboy",
+            "oracle": "SameBoy (DMG-B)",
+            "files": 7,
+            "cycles": 145122916,
+            "identical": 137606353,
+            "diverging": 6,
+            "firstDivergence": {
+              "file": "script-envelopes",
+              "cycle": 427391,
+              "voice": "ch1",
+              "ours": 15,
+              "theirs": 0
+            }
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": {
+        "run": true,
+        "passed": 12,
+        "total": 12,
+        "date": "2026-09-04",
+        "results": [
+          {
+            "name": "dmg_sound/01-registers",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/02-len_ctr",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/03-trigger",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/04-sweep",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/05-sweep_details",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/06-overflow_on_trigger",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/07-len_sweep_period_sync",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/08-len_ctr_during_power",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/09-wave_read_while_on",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/10-wave_trigger_while_on",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/11-regs_after_power",
+            "passed": true
+          },
+          {
+            "name": "dmg_sound/12-wave_write_while_on",
+            "passed": true
+          }
+        ]
+      },
+      "analogStage": {
+        "label": "none",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 4,
+        "voices": 4
+      }
+    },
+    {
+      "id": "md",
+      "machine": "Mega Drive, Genesis",
+      "chip": "YM2612 + SN76489",
+      "sheetPath": "docs/chips/md.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/md.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "Nuked-OPN2 1.0.12 (Nuke.YKT)",
+            "files": 8,
+            "cycles": 2233636083,
+            "identical": 2233636083,
+            "diverging": 0,
+            "firstDivergence": null
+          },
+          {
+            "marker": "parity-sn76496",
+            "oracle": "MAME sn76496 (Sega VDP PSG, 76c7d197)",
+            "files": 8,
+            "cycles": 2233636083,
+            "identical": 1990757028,
+            "diverging": 4,
+            "firstDivergence": {
+              "file": "script-psg-edges",
+              "cycle": 8054100,
+              "voice": "psg1",
+              "ours": 15,
+              "theirs": 0
+            }
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": null,
+      "analogStage": {
+        "label": "none",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 4,
+        "voices": 10
+      }
+    },
+    {
+      "id": "snes",
+      "machine": "Super Nintendo",
+      "chip": "S-DSP",
+      "sheetPath": "docs/chips/snes.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "snes_spc 0.9.0 (blargg)",
+            "files": 5,
+            "cycles": 23859200,
+            "identical": 23859200,
+            "diverging": 0,
+            "firstDivergence": null
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": null,
+      "analogStage": {
+        "label": "none",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 4,
+        "voices": 8
+      }
+    },
+    {
+      "id": "c64",
+      "machine": "Commodore 64",
+      "chip": "MOS 6581 SID",
+      "sheetPath": "docs/chips/c64.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/c64.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "reSID-fp (libsidplayfp, drfiemost), as a 6581",
+            "files": 11,
+            "cycles": 42759764,
+            "identical": 42759764,
+            "diverging": 0,
+            "firstDivergence": null
+          }
+        ],
+        "hardwareCombined": {
+          "unit": "6581R4AR_3789_14",
+          "date": "2026-09-27",
+          "totalEntries": 4096,
+          "combinations": [
+            {
+              "name": "saw+triangle",
+              "exactEntries": 3358,
+              "wrongBits": 1500,
+              "totalBits": 32768
+            },
+            {
+              "name": "pulse+triangle",
+              "exactEntries": 3404,
+              "wrongBits": 922,
+              "totalBits": 32768
+            },
+            {
+              "name": "pulse+saw",
+              "exactEntries": 3072,
+              "wrongBits": 1623,
+              "totalBits": 32768
+            },
+            {
+              "name": "pulse+saw+triangle",
+              "exactEntries": 3854,
+              "wrongBits": 457,
+              "totalBits": 32768
+            }
+          ]
+        }
+      },
+      "testRoms": {
+        "run": true,
+        "passed": 14,
+        "total": 14,
+        "date": "2026-09-27",
+        "results": [
+          {
+            "name": "busvalue/busvalue",
+            "passed": true
+          },
+          {
+            "name": "envelope/testADSRDelayBug",
+            "passed": true
+          },
+          {
+            "name": "osc_topbit/osc_topbit_test_noise_old",
+            "passed": true
+          },
+          {
+            "name": "osc_topbit/osc_topbit_test_pulse_old",
+            "passed": true
+          },
+          {
+            "name": "osc_topbit/osc_topbit_test_triangle_old",
+            "passed": true
+          },
+          {
+            "name": "osc3-wave0/osc3-wave0",
+            "passed": true
+          },
+          {
+            "name": "oscinit/allinit",
+            "passed": true
+          },
+          {
+            "name": "oscinit/noiseinit",
+            "passed": true
+          },
+          {
+            "name": "oscinit/oscinit",
+            "passed": true
+          },
+          {
+            "name": "resid-test/envrate",
+            "passed": true
+          },
+          {
+            "name": "resid-test/envsustain",
+            "passed": true
+          },
+          {
+            "name": "resid-test/envtime",
+            "passed": true
+          },
+          {
+            "name": "resid-test/noisetest",
+            "passed": true
+          },
+          {
+            "name": "ringmod/ringmodtest",
+            "passed": true
+          }
+        ]
+      },
+      "analogStage": {
+        "label": "profile",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 3,
+        "voices": 3
+      }
+    }
+  ]
+}
