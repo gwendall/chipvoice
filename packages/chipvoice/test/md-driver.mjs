@@ -99,6 +99,94 @@ function pairs(writes, port) {
   check('the noise sets tone 3 to the rate, white noise from tone 3, then its volume', bytes[0].startsWith('c') && bytes[2] === 'e7' && bytes[3] === 'f3', bytes.join(' '));
 }
 
+// ---- FM drums on channel 6 (perc: "punchy"): the noise voice, redirected
+
+const KICK_PATCH = {
+  algorithm: 7, feedback: 0,
+  ops: [
+    { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 10, sr: 0, sl: 2, rr: 8 },
+    { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 10, sr: 0, sl: 2, rr: 8 },
+    { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 10, sr: 0, sl: 2, rr: 8 },
+    { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 10, sr: 0, sl: 2, rr: 8 },
+  ],
+};
+/** A YM2612 F-number/block pair, decoded back to a frequency, to check the redirect's pitch without depending on the driver's own rounding. */
+function decodeFmFreq(hi, lo) {
+  const block = hi >> 3;
+  const fnum = ((hi & 7) << 8) | lo;
+  return (fnum * 7670453) / (144 * Math.pow(2, 21 - block));
+}
+
+{
+  const low = recorder();
+  low.driver.playNote('noise', { note: 0, instrument: { volume: [14], fm: KICK_PATCH }, duration: 0.05, at: 0 });
+  low.flush();
+  const high = recorder();
+  high.driver.playNote('noise', { note: 15, instrument: { volume: [14], fm: KICK_PATCH }, duration: 0.05, at: 0 });
+  high.flush();
+
+  const psg = low.writes.filter((w) => w.addr === PSG && w.at >= 100000);
+  check('an FM drum hit writes nothing to the PSG', psg.length === 0, `${psg.length} PSG writes`);
+
+  const keyedOn = (writes) => pairs(writes.filter((w) => w.at >= 100000), 0).some((p) => p[0] === 0x28 && p[1] === 0xf6);
+  check('it keys channel 6 (key index 6), the same channel the FM kit always plays', keyedOn(low.writes) && keyedOn(high.writes));
+
+  const freqOf = (writes) => {
+    const ch6 = pairs(writes.filter((w) => w.at >= 100000), 2);
+    return decodeFmFreq(ch6.find((p) => p[0] === 0xa6)[1], ch6.find((p) => p[0] === 0xa2)[1]);
+  };
+  const f0 = freqOf(low.writes);
+  const f15 = freqOf(high.writes);
+  // The kit's base MIDI note is 24 (C1, 32.70 Hz) and each step is 3 semitones: period 15 lands on 24 + 45 = 69, A4, 440 Hz exactly.
+  check('period 0 is a real low pitch, about C1', Math.abs(f0 - 32.7032) < 0.1, `${f0.toFixed(2)} Hz`);
+  check('period 15 is a real pitch four octaves and a bit up, A4 at 440 Hz, not a fixed placeholder', Math.abs(f15 - 440) < 0.5, `${f15.toFixed(2)} Hz`);
+}
+
+// ---- the LFO: $22, ams/pms in $B4, and an operator's own am in $60
+
+const LFO_OPS = [
+  { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 0, sr: 0, sl: 0, rr: 15 },
+  { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 0, sr: 0, sl: 0, rr: 15 },
+  { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 0, sr: 0, sl: 0, rr: 15 },
+  { dt: 0, mul: 1, tl: 0, ks: 0, ar: 31, dr: 0, sr: 0, sl: 0, rr: 15 },
+];
+const lfoPatch = (freq) => ({ algorithm: 0, feedback: 0, ops: LFO_OPS, pms: 5, lfoFrequency: freq });
+const PLAIN_PATCH = { algorithm: 0, feedback: 0, ops: LFO_OPS };
+
+{
+  const { driver, writes, flush } = recorder();
+  driver.playNote('fm1', { note: 'A4', instrument: { volume: [15], fm: lfoPatch(5) }, duration: 0.05, at: 0 });
+  flush();
+  const on = pairs(writes.filter((w) => w.at >= 100000), 0).find((p) => p[0] === 0x22);
+  check('a patch with a pitch sensitivity turns the LFO on, at its own rate', on && on[1] === (0x08 | 5), on && on[1].toString(16));
+}
+
+{
+  const { driver, writes, flush } = recorder();
+  driver.playNote('fm2', { note: 'A4', instrument: { volume: [15], fm: lfoPatch(5) }, duration: 0.05, at: 0 });
+  driver.playNote('fm1', { note: 'A4', instrument: { volume: [15], fm: lfoPatch(1) }, duration: 0.05, at: 1 });
+  driver.playNote('fm1', { note: 'A4', instrument: { volume: [15], fm: PLAIN_PATCH }, duration: 0.05, at: 2 });
+  driver.playNote('fm2', { note: 'A4', instrument: { volume: [15], fm: PLAIN_PATCH }, duration: 0.05, at: 3 });
+  flush();
+  const lfoWrites = (from, to) => pairs(writes.filter((w) => w.at >= from && w.at < to), 0).filter((p) => p[0] === 0x22).map((p) => p[1]);
+  check('one channel wanting it sets the chip-wide rate to its own', JSON.stringify(lfoWrites(100000, MASTER)) === JSON.stringify([0x08 | 5]), lfoWrites(100000, MASTER).join());
+  check('a lower-numbered channel that also wants it takes the rate over: the LFO is one oscillator for the chip', JSON.stringify(lfoWrites(MASTER, 2 * MASTER)) === JSON.stringify([0x08 | 1]), lfoWrites(MASTER, 2 * MASTER).join());
+  check('once it gives the LFO up, the still-loaded channel below it keeps it going', JSON.stringify(lfoWrites(2 * MASTER, 3 * MASTER)) === JSON.stringify([0x08 | 5]), lfoWrites(2 * MASTER, 3 * MASTER).join());
+  check('and it turns off once nothing loaded asks for it', JSON.stringify(lfoWrites(3 * MASTER, 4 * MASTER)) === JSON.stringify([0]), lfoWrites(3 * MASTER, 4 * MASTER).join());
+}
+
+{
+  const { driver, writes, flush } = recorder();
+  const patch = { algorithm: 0, feedback: 0, ops: [{ ...LFO_OPS[0], am: true }, LFO_OPS[1], LFO_OPS[2], LFO_OPS[3]], ams: 3, lfoFrequency: 2 };
+  driver.playNote('fm1', { note: 'A4', instrument: { volume: [15], fm: patch }, duration: 0.05, at: 1 });
+  flush();
+  const p0 = pairs(writes.filter((w) => w.at >= MASTER), 0);
+  const op1 = p0.find((p) => p[0] === 0x60);
+  check('an operator\'s own am sets bit 7 of $60', op1 && (op1[1] & 0x80) !== 0, op1 && op1[1].toString(16));
+  const pan = p0.find((p) => p[0] === 0xb4);
+  check('and ams is written into $B4 alongside pan', pan && ((pan[1] >> 4) & 3) === 3, pan && pan[1].toString(16));
+}
+
 // ---- the whole path
 
 const SCORE = {

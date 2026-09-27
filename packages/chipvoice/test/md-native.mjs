@@ -138,6 +138,49 @@ const note = (at, until, pitch, o = {}) => ({ at, until, pitch, patch: MD_PATCHE
   check('notes out of time order are refused', throws(() => compileMdVoices([{ voice: 'psg1', notes: [{ ...note(1, 2), envelope: [0] }, { ...note(0, 0.5), envelope: [0] }] }])));
   check('a note that ends before it starts is refused', throws(() => compileMdVoices([{ voice: 'fm1', notes: [note(1, 1)] }])));
   check('touching notes are allowed (legato)', !throws(() => compileMdVoices([{ voice: 'fm1', notes: [note(0, 0.5), { ...note(0.5, 1), glide: 4 }] }])));
+  check('ch3 on a channel other than fm3 is refused: channel 3\'s special mode is fm3\'s alone', throws(() => compileMdVoices([{ voice: 'fm1', notes: [{ ...note(0, 0.5), ch3: [60, 64, 67] }] }])));
+}
+
+// ---- the LFO: decided once for the whole compile, from the first patch (in voice and note order) that asks for it
+
+{
+  const { events } = compileMdVoices([{ voice: 'fm1', notes: [note(0, 0.1, 69)] }]);
+  check('without a patch asking for it, the LFO stays off at power-on', pairs(events, 0).find(([r]) => r === 0x22)[1] === 0);
+}
+{
+  const { events } = compileMdVoices([{ voice: 'fm2', notes: [note(0, 0.1, 64, { patch: MD_PATCHES.shimmer })] }]);
+  const lfo = pairs(events, 0).find(([r]) => r === 0x22);
+  check('a patch that asks for ams, pms or an operator\'s own am turns it on at power-on, at its own rate', lfo && lfo[1] === (0x08 | (MD_PATCHES.shimmer.lfoFrequency ?? 3)), lfo && lfo[1].toString(16));
+}
+{
+  const { events } = compileMdVoices([
+    { voice: 'fm1', notes: [note(0, 0.1, 69)] },
+    { voice: 'fm2', notes: [note(0, 0.1, 64, { patch: MD_PATCHES.shimmer })] },
+  ]);
+  const lfo = pairs(events, 0).find(([r]) => r === 0x22);
+  check('the scan looks past a voice with no lfo-wanting patch to a later one that has', lfo[1] === (0x08 | (MD_PATCHES.shimmer.lfoFrequency ?? 3)));
+}
+
+// ---- channel 3's special mode: $27, and per-operator frequencies in $A8-$AE
+
+{
+  const { events } = compileMdVoices([{
+    voice: 'fm3',
+    notes: [
+      note(0, 0.3, 48),
+      { ...note(0.3, 0.6, 48), ch3: [48, 52, 55] },
+      note(0.6, 0.9, 48),
+    ],
+  }]);
+  const p0 = pairs(events, 0);
+  const modeAt = (seconds) => p0.filter(([r, , at]) => r === 0x27 && at <= seconds * MD_MASTER_HZ).at(-1)[1];
+  check('channel 3 plays normally until a note sets ch3', modeAt(0.1) === 0);
+  check('ch3 switches channel 3 into its special mode ($27 bit 6)', modeAt(0.4) === 0x40);
+  check('and the next note without it switches it back to normal', modeAt(0.7) === 0);
+  const specialRegs = new Set(p0.filter(([r, , at]) => r >= 0xa8 && r <= 0xae && at >= 0.3 * MD_MASTER_HZ && at < 0.31 * MD_MASTER_HZ).map(([r]) => r));
+  check('the ch3 note writes all three operators\' own frequencies, $A8 to $AE, once each', specialRegs.size === 6, [...specialRegs].map((r) => r.toString(16)).join(' '));
+  const normalFreq = p0.filter(([r, , at]) => (r === 0xa2 || r === 0xa6) && at >= 0.3 * MD_MASTER_HZ && at < 0.31 * MD_MASTER_HZ);
+  check('operator 4 keeps using the normal frequency registers, $A2/$A6, even in ch3\'s special mode', normalFreq.length === 2, normalFreq.map(([r]) => r.toString(16)).join(' '));
 }
 
 // ---- the bank

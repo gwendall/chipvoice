@@ -105,12 +105,15 @@ export class MdDriver implements ChipDriver {
   /** Whether `$22`'s enable bit is set, and at which of its eight rates, so it is rewritten only when that changes. */
   private lfoOn = false;
   private lfoFreq = 0;
+  /** Whether the noise voice's last note was the FM drum kit (channel 6), so its `noteOff` keys that channel off instead of silencing the PSG it never touched. */
+  private noiseIsFm = false;
 
   powerOn(): RegisterEvent[] {
     this.loaded.fill(null);
     this.lastVolume.fill(-1);
     this.lfoOn = false;
     this.lfoFreq = 0;
+    this.noiseIsFm = false;
     const out: RegisterEvent[] = [];
     let t = 0;
     const reg = (port: number, address: number, value: number) => {
@@ -136,9 +139,15 @@ export class MdDriver implements ChipDriver {
     else if (index < 9) this.psgNote(index - 6, frames, offset, out);
     // An FM drum kit (perc: "punchy") shares the noise role's voice id but
     // plays channel 6, not the PSG: its frames carry a `fm` patch the noise
-    // kit never sets, which is how this tells the two apart.
-    else if (frames[0].fm) this.fmNote(5, frames.map(fmDrumFrame), offset, out);
-    else this.noiseNote(frames, offset, out);
+    // kit never sets, which is how this tells the two apart. `noteOff` has
+    // no frame to look at, so it is told here which one to release.
+    else if (frames[0].fm) {
+      this.noiseIsFm = true;
+      this.fmNote(5, frames.map(fmDrumFrame), offset, out);
+    } else {
+      this.noiseIsFm = false;
+      this.noiseNote(frames, offset, out);
+    }
     return out;
   }
 
@@ -290,8 +299,10 @@ export class MdDriver implements ChipDriver {
     const index = VOICES.indexOf(voice);
     if (index < 0) return [];
     const t = at + (index + 1) * STAGGER;
-    if (index < 6) {
-      const keyIndex = index < 3 ? index : index + 1;
+    // The noise voice's last note may have been the FM drum kit instead:
+    // channel 6's own key-off, in the noise voice's stagger slot, not a PSG write.
+    if (index < 6 || (index === 9 && this.noiseIsFm)) {
+      const keyIndex = index < 6 ? (index < 3 ? index : index + 1) : 6;
       return [
         { at: t, addr: YM_PORT, value: 0x28 },
         { at: t + PAIR, addr: YM_PORT + 1, value: keyIndex },
