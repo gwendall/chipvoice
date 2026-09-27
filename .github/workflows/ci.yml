@@ -162,3 +162,4 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:residfp-8580
       - run: pnpm --filter chipvoice-conform roms:c64
       - run: pnpm --filter chipvoice-conform mixer
+      - run: pnpm --filter chipvoice-conform bench:nes:selftest

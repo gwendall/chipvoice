@@ -43,6 +43,10 @@
     "evidence:fetch": "node src/evidence/fetch.mjs",
     "evidence:c64": "node src/evidence/c64-combined.mjs",
     "evidence:c64:sheet": "node src/evidence/c64-combined.mjs --sheet ../../docs/chips/c64.md --json corpus/c64/hardware-combined.json && node src/status.mjs",
+    "bench:nes:build": "node src/bench/build-rom.mjs",
+    "bench:nes:render": "node src/bench/render.mjs",
+    "bench:nes:compare": "node src/bench/compare.mjs",
+    "bench:nes:selftest": "node src/bench/selftest.mjs",
     "test:listening": "node src/listening/test.mjs && node src/listening/test-snes.mjs",
     "test:unit": "node test/accuracy-data.mjs",
     "accuracy-data:check": "node src/accuracy-data.mjs --check"

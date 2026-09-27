@@ -206,7 +206,10 @@ real game music, and a real unit.
   8580's endpoint to endpoint, leaving the curve's shape between them, and the
   6581's own kink, for P7-8; and MDFourier as P5-9's strongest lead, blocked on
   finding its test ROM's exact register sequence rather than on hardware
-  access.
+  access. P2-3's bench is ready in software (test ROM, render, compare, a
+  synthetic self-test in CI); [HARDWARE-BENCH.md](HARDWARE-BENCH.md) has the
+  unit and interface to buy and the capture-day procedure, still to be
+  bought and run.
 
 **Step 2. Every instrument each chip has.**
 
@@ -376,7 +379,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | --- | --- | --- | --- |
 | P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | done | #86: 2A03 against Mesen traced and documented (a shim fix), SID bus latch, Game Boy pulse start. Second pass: the DMG corpus on whole M-cycles; SameBoy's noise clock and pulse trigger delay recorded as deviations; the PSG's MAME divergences reviewed |
 | P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
-| P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output. NEXT-04 traced the filter corners' provenance to blargg's own capture and lidnariq's analysis of it, but the files are gone and no revision was named: see [HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03) |
+| P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output. NEXT-04 traced the filter corners' provenance to blargg's own capture and lidnariq's analysis of it, but the files are gone and no revision was named: see [HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03). The capture bench is now ready in software and proven without hardware: a committed test ROM, `bench:nes:render`/`bench:nes:compare` (sync marker, drift correction, per-band error, corner fit), and a synthetic CI self-test (`bench:nes:selftest`) that recovers deliberately wrong corners, gain, latency, drift, DC and noise within stated tolerance. [HARDWARE-BENCH.md](HARDWARE-BENCH.md) has what unit and interface to buy and the capture-day procedure; no unit is bought yet |
 | P2-4 | Release with the sheet linked from the package README and the skill | done | The README links every sheet; the skill links each target's |
 
 ## Phase 3. Game Boy
