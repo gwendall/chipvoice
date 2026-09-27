@@ -22,7 +22,7 @@ import { ProjectHttpError } from "../projects";
  *   model was called), so concurrent admissions cannot overshoot the cap.
  */
 
-type Prices = { input: number; cachedInput: number; output: number };
+export type Prices = { input: number; cachedInput: number; output: number };
 
 /** USD per million tokens, standard tier, from OpenAI's pricing page
  * (developers.openai.com/api/docs/pricing, read 2026-09-27). A model missing
@@ -65,6 +65,17 @@ export function modelPrices(model: string): Prices | null {
   return PRICES[model] ?? null;
 }
 
+/** One generation's cost in USD at a given model's prices: the same sum
+ * `monthSpend` totals across a month of rows, pulled out so the generation
+ * benchmark (`scripts/gen-bench.mjs`) prices each sample exactly the way the
+ * budget prices it, rather than a second formula that could drift from this
+ * one. `cached` is clamped to `input` here too, so a caller need not repeat
+ * that guard. */
+export function priceUsage(prices: Prices, usage: { input: number; cached: number; output: number }): number {
+  const cached = Math.min(usage.input, usage.cached);
+  return ((usage.input - cached) * prices.input + cached * prices.cachedInput + usage.output * prices.output) / 1e6;
+}
+
 export type CompositionBudget = { monthlyUsd: number; prices: Prices; reserveUsd: number };
 
 /** The month's cap and the model's prices, or null where no cap is configured
@@ -102,8 +113,7 @@ export async function monthSpend(db: Client | Transaction, now: number, budget: 
   let usd = 0, unmetered = 0;
   for (const row of rows) {
     const prices = modelPrices(String(row.model)) ?? budget.prices;
-    const input = Number(row.input), cached = Math.min(input, Number(row.cached)), output = Number(row.output);
-    usd += ((input - cached) * prices.input + cached * prices.cachedInput + output * prices.output) / 1e6;
+    usd += priceUsage(prices, { input: Number(row.input), cached: Number(row.cached), output: Number(row.output) });
     unmetered += Number(row.unmetered);
   }
   return { usd: usd + unmetered * budget.reserveUsd, unmetered };
