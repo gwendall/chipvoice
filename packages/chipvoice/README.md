@@ -376,10 +376,16 @@ writeFileSync("theme.nsf", exportNsf(events, cycles, { title: "Theme", author: "
 ```
 
 Its player replays one frame's writes per 60 Hz PLAY call, so timing is
-quantized to the frame (about 16.7 ms); DMC/DPCM sample playback needs a
-real mid-frame DMA read this replay has no way to carry, and `exportNsf`
-throws a named `NsfExportError('dmc_unsupported', ...)` rather than drop or
-approximate it. See
+quantized to the frame (about 16.7 ms). DMC/DPCM sample playback is
+autonomous hardware DMA needing no mid-frame code, only the sample bytes
+present in a fixed upper bank; pass them as `options.memory` (the same
+shape as `PerformancePlan.memory`) and DMC plays back normally. A capture
+that enables DMC without that memory throws a named
+`NsfExportError('dmc_sample_missing', ...)`, and the one case this player
+truly cannot carry - raw `$4011` PCM streamed through the DAC many times
+within a frame, not DMA sample playback - throws
+`NsfExportError('dmc_unsupported', ...)` rather than drop or approximate
+it. See
 [`docs/chips/2a03.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md#nsf-export)
 for the full design and its conformance numbers against a real NSF player.
 

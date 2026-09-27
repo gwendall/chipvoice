@@ -100,5 +100,23 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
     call(view.getUint16(12, true));
     calls.push({at: Math.round(origin + frame * period), first, end: events.length});
   }
-  return {chip: '2a03', clockHz, period, events, calls, cycles: Math.round(origin + frames * period)};
+  // DMC/DPCM sample playback reads cartridge memory at $C000-$FFFF directly
+  // via DMA, driven by $4012/$4013/$4015 rather than any instruction this
+  // capture ever sees; the register trace alone loses the sample bytes.
+  // When the capture used DMC ($4015 written with bit 4 set), snapshot that
+  // whole 16 KiB window through the same `bus.read` the CPU itself used, so
+  // callers get the bytes back in `PerformancePlan.memory`'s own shape. This
+  // is a snapshot at the end of the run, not a change log: for a file whose
+  // bank registers move $C000-$FFFF's contents over time, an earlier DMC
+  // read could have seen different bytes than this reflects. None of the
+  // real NSFs this repo's corpus plays DMC from are bank-switched (checked
+  // against their own headers), so that gap is a known, narrow limitation
+  // rather than a silent one.
+  let memory = [];
+  if (events.some((e) => e.addr === 0x4015 && (e.value & 0x10) !== 0)) {
+    const dmcBytes = new Uint8Array(0x4000);
+    for (let i = 0; i < dmcBytes.length; i++) dmcBytes[i] = bus.read(0xc000 + i);
+    memory = [{address: 0xc000, bytes: dmcBytes}];
+  }
+  return {chip: '2a03', clockHz, period, events, calls, cycles: Math.round(origin + frames * period), memory};
 }

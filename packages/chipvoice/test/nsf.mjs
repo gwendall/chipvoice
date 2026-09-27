@@ -49,7 +49,7 @@ check('init and play addresses are in ROM', initAddr >= 0x8000 && initAddr < 0x9
 check('the title, author and copyright round-trip', ascii(14, 32) === 'nsf test' && ascii(46, 32) === 'the test' && ascii(78, 32) === '2026 test');
 check('the NTSC speed is the standard $411a rate', view.getUint16(110, true) === 16666);
 check('NTSC only, no expansion sound chip', file[122] === 0 && file[123] === 0);
-check('bank register 6 starts on the first data page, the rest on the code page', file[112 + 6] === 1 && [0, 1, 2, 3, 4, 5, 7].every((r) => file[112 + r] === 0));
+check('bank register 1 starts on the first data page, the rest on the code page', file[112 + 1] === 1 && [0, 2, 3, 4, 5, 6, 7].every((r) => file[112 + r] === 0));
 check('the file is a whole number of 4 KiB banks after the header', (file.length - 128) % 4096 === 0);
 
 // -- Actually run it: our own offline 6502, the same tool the oracle proof uses.
@@ -94,19 +94,45 @@ for (let k = 0; k < 5; k++) {
 check('past the end, playback repeats from the loop point forever', loopOk, loopDetail);
 
 // -- Guard rails: named errors, never a silent approximation.
+
+// DMC/DPCM sample playback is autonomous hardware DMA: the player does not
+// need to do anything mid-frame for it, only the sample bytes physically
+// present where the DMA will read them. Reads a byte back through the
+// file's own header bank table, generically - not nsf.ts's internal
+// register/page choices - the same way a real NSF player would.
+const readDmcAddr = (file, addr) => file[128 + file[112 + ((addr - 0x8000) >> 12)] * 4096 + (addr & 0xfff)];
+
 const dmcEvents = [...events, { at: cycles / 2, addr: 0x4015, value: 0x1f }];
 let dmcError = null;
 try { exportNsf(dmcEvents, cycles, {}); } catch (error) { dmcError = error; }
-check('enabling DMC via $4015 is rejected loudly, not silently dropped', dmcError instanceof NsfExportError && dmcError.code === 'dmc_unsupported', dmcError?.message);
+check('enabling DMC via $4015 without sample memory is rejected loudly, not silently dropped', dmcError instanceof NsfExportError && dmcError.code === 'dmc_sample_missing', dmcError?.message);
 
 const harmlessDmcClear = [...events, { at: cycles / 2, addr: 0x4010, value: 0 }, { at: cycles / 2, addr: 0x4011, value: 0 }, { at: cycles / 2, addr: 0x4012, value: 0 }, { at: cycles / 2, addr: 0x4013, value: 0 }];
 let harmlessError = null;
 try { exportNsf(harmlessDmcClear, cycles, {}); } catch (error) { harmlessError = error; }
 check('clearing $4010-$4013 without enabling DMC is not DMC playback and exports cleanly', harmlessError === null, harmlessError?.message);
 
-let memError = null;
-try { exportNsf(events, cycles, { memory: [{ address: 0xc000, bytes: new Uint8Array(16) }] }); } catch (error) { memError = error; }
-check('DMC sample memory is rejected loudly too', memError instanceof NsfExportError && memError.code === 'dmc_unsupported' && memError.limit === 0);
+// A capture that carries its DMC sample memory exports normally: the bytes
+// land at their real address in the fixed upper bank, readable through the
+// file's own header exactly like the player's DMA read would find them.
+const dmcSample = new Uint8Array(48).map((_, i) => (i * 7 + 3) & 0xff);
+const dmcFile = exportNsf(dmcEvents, cycles, { memory: [{ address: 0xc100, bytes: dmcSample }] });
+let sampleRoundTrips = true, sampleMismatch = -1;
+for (let i = 0; i < dmcSample.length; i++) {
+  if (readDmcAddr(dmcFile, 0xc100 + i) !== dmcSample[i]) { sampleRoundTrips = false; sampleMismatch = i; break; }
+}
+check('DMC sample memory is embedded at its real address in a fixed upper bank', sampleRoundTrips, `first mismatch at offset ${sampleMismatch}`);
+check('the fixed upper bank is zero outside the supplied sample bytes', readDmcAddr(dmcFile, 0xffff) === 0 && readDmcAddr(dmcFile, 0xc000) === 0);
+
+let streamError = null;
+const streamingEvents = [...events];
+for (let i = 0; i < 10; i++) streamingEvents.push({ at: i * 10, addr: 0x4011, value: i * 8 });
+try { exportNsf(streamingEvents, cycles, {}); } catch (error) { streamError = error; }
+check('raw $4011 PCM streaming within a frame is rejected by name, not exported as a slow-motion approximation', streamError instanceof NsfExportError && streamError.code === 'dmc_unsupported' && streamError.measured === 10 && streamError.limit === 4, streamError?.message);
+
+let rangeError = null;
+try { exportNsf(events, cycles, { memory: [{ address: 0xb000, bytes: new Uint8Array(16) }] }); } catch (error) { rangeError = error; }
+check('DMC sample memory outside $C000-$FFFF is rejected, not silently relocated', rangeError instanceof NsfExportError && rangeError.code === 'dmc_unsupported' && rangeError.measured === 0xb000 && rangeError.limit === 0xc000, rangeError?.message);
 
 let loopError = null;
 try { exportNsf(events, cycles, { loopAtCycle: cycles }); } catch (error) { loopError = error; }

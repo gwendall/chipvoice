@@ -21,12 +21,31 @@
  * Write timing is quantized to the frame: a capture stamps every write in
  * CPU cycles, but PLAY can only place writes at its own call, once per
  * frame. A pitch or volume change mid-frame lands at the start of the frame
- * it falls in instead, at most one frame (~16.7 ms) early. `scores/
- * nsf-export/corpus.mjs` measures what that costs in rendered audio, on the
- * repo's own NES content, and states a threshold; nothing here approximates
- * silently; DMC/DPCM playback (a real DMA read of cartridge memory, timed
- * inside the frame) has no representation in this player at all and fails
- * loudly instead.
+ * it falls in instead, at most one frame (~16.7 ms) early, and a burst of
+ * writes a source driver spaced a few cycles apart (a vibrato trick, say)
+ * collapses to however far apart PLAY's own instructions land them.
+ * `scores/nsf-export/corpus.mjs` measures exactly that cost - nothing else
+ * - by rendering GME's own trace of the exported file and comparing it
+ * against a render of the untouched capture, both through this project's
+ * own DSP, and states a threshold from the measured band; nothing here
+ * approximates silently.
+ *
+ * DMC/DPCM sample playback is autonomous hardware DMA: the 2A03 itself,
+ * not PLAY's own code, steals CPU cycles to read cartridge memory at
+ * $C000-$FFFF while the CPU stalls, driven purely by $4012 (sample
+ * address), $4013 (sample length) and $4015 bit 4 (start/restart). None of
+ * that needs a mid-frame instruction from PLAY, so a capture that carries
+ * its sample memory (`NsfOptions.memory`) exports normally: the sample
+ * bytes are placed at their real addresses in a fixed upper bank that is
+ * never bank-switched away, and the $4010-$4013/$4015 writes replay at
+ * frame start like any other register write. A capture that enables DMC
+ * without carrying its sample bytes is rejected by name
+ * (`dmc_sample_missing`) rather than exported silently short a sample. The
+ * one DMC-adjacent case this player genuinely cannot carry is raw $4011
+ * streaming - writing the direct-load DAC many times within a single frame
+ * to reconstruct a waveform without ever touching the DMA channel - since
+ * that needs each write timed to a fraction of a frame; it is rejected as
+ * `dmc_unsupported`.
  */
 
 import type { RegisterEvent } from "./chip.js";
@@ -46,19 +65,31 @@ const REG_LAST = 0x4017;
  * each mapping a 4 KiB CPU window starting at $8000 + 0x1000*index to a
  * 4 KiB page of the file's program data. This player only ever needs one
  * data page resident at a time, so it uses a single fixed window - bank
- * register 6, the $E000-$EFFF window - for all of it, and mirrors the code
+ * register 1, the $9000-$9FFF window - for all of it, and mirrors the code
  * page into every other register so a player that resets all eight
  * registers to the header's `BankSwitchInit` values before the first INIT
  * call still finds the code at $8000 regardless of which window it reads
- * fetch bytes through. */
+ * fetch bytes through.
+ *
+ * Registers 4-7 ($C000-$FFFF) are reserved, whole, for DMC/DPCM sample
+ * memory: real DMA hardware reads that range directly, at any moment, so
+ * whatever is mapped there has to hold the song's sample bytes for the
+ * entire time DMC might fire, never swapped for the write log's own use
+ * the way a bank-switched NSF might otherwise reuse it. When a capture
+ * carries no sample memory, these four registers just mirror the code
+ * page too, same as any other unused window. */
 const CODE_PAGE = 0;
-const DATA_WINDOW_REG = 6; // $5FFE, mapping $E000-$EFFF
-const DATA_WINDOW_BASE = 0xe000;
+const DATA_WINDOW_REG = 1; // $5FF9, mapping $9000-$9FFF
+const DATA_WINDOW_BASE = 0x9000;
+const DMC_FIRST_REG = 4; // $5FFC-$5FFF, mapping $C000-$FFFF across four consecutive registers
+const DMC_REG_COUNT = 4;
+const DMC_BASE = 0xc000; // the only range the DMC's hardware DMA can read from
+const DMC_DAC_STREAM_LIMIT = 4; // $4011 writes within one 60 Hz frame before it's PCM streaming, not driver bookkeeping
 const PAGE_SIZE = 4096;
 const MAX_PAGES = 256; // one byte per bank register value
 
 export class NsfExportError extends Error {
-  readonly code: "dmc_unsupported" | "frame_overflow" | "rom_too_large" | "invalid_loop_point" | "metadata_too_long" | "metadata_not_ascii";
+  readonly code: "dmc_unsupported" | "dmc_sample_missing" | "frame_overflow" | "rom_too_large" | "invalid_loop_point" | "metadata_too_long" | "metadata_not_ascii";
   readonly measured?: number;
   readonly limit?: number;
   constructor(code: NsfExportError["code"], message: string, detail: { measured?: number; limit?: number } = {}) {
@@ -84,15 +115,41 @@ export interface NsfOptions {
   loopAtCycle?: number;
   /**
    * DMC sample memory a capture loaded, if any (`RecordedSong.memory` /
-   * `PerformancePlan.memory`). Always rejected today (see the module
-   * comment); accepted as an option so a caller that has it gets a named
-   * error instead of silent silence where a sample should be.
+   * `PerformancePlan.memory`). Every block must fall within $C000-$FFFF -
+   * the only range the DMC's hardware DMA can read from - and is embedded
+   * in a fixed upper bank of the file that is never bank-switched away, so
+   * a real DMA read always finds the right bytes no matter when it fires.
+   * A capture that enables DMC ($4015 bit 4) without supplying the memory
+   * that carries its samples is rejected (`dmc_sample_missing`) rather
+   * than exported silently short a sample.
    */
   memory?: { address: number; bytes: Uint8Array }[];
 }
 
 /** One frame's worth of register writes, in the order they happened. */
 type Frame = { addr: number; value: number }[];
+
+/**
+ * The most times a single register is written within any one 60 Hz frame -
+ * a coarse, approximate bucketing (`Math.floor`, not `quantizeToFrames`'s
+ * exact rounding) that only needs to be right at the scale genuine PCM
+ * streaming shows up at: dozens to hundreds of writes per frame, far past
+ * anything a driver's own bookkeeping would ever produce for one register.
+ */
+function maxWritesPerFrame(events: RegisterEvent[], addr: number): number {
+  let max = 0, frame = -1, count = 0;
+  for (const e of events) {
+    if (e.addr !== addr) continue;
+    const f = Math.floor(e.at / NTSC_FRAME_PERIOD);
+    if (f !== frame) {
+      frame = f;
+      count = 0;
+    }
+    count++;
+    if (count > max) max = count;
+  }
+  return max;
+}
 
 /**
  * Buckets writes into 60 Hz frames using the same boundary rule the NSF
@@ -259,7 +316,7 @@ class Asm6502 {
  */
 function assemblePlayer(firstDataPage: number, loopPage: number, loopPtrHi: number, loopPtrLo: number): { bytes: number[]; initAddr: number; playAddr: number } {
   const ZP_PTR_LO = 0x00, ZP_PTR_HI = 0x01, ZP_PAGE = 0x02, ZP_REPEAT = 0x03, ZP_OFFSET = 0x04;
-  const BANK6_REG = 0x5ffe; // $5FF8 + 6: the register mapping $E000-$EFFF
+  const DATA_REG_ADDR = 0x5ff8 + DATA_WINDOW_REG; // the register mapping the data window
 
   const asm = new Asm6502(0x8000);
 
@@ -314,7 +371,7 @@ function assemblePlayer(firstDataPage: number, loopPage: number, loopPtrHi: numb
   asm.branchTo(BNE, "isRepeat");
   asm.imm(LDA_IMM, loopPage);
   asm.zp(STA_ZP, ZP_PAGE);
-  asm.abs(STA_ABS, BANK6_REG);
+  asm.abs(STA_ABS, DATA_REG_ADDR);
   asm.imm(LDA_IMM, loopPtrHi);
   asm.zp(STA_ZP, ZP_PTR_HI);
   asm.imm(LDA_IMM, loopPtrLo);
@@ -343,7 +400,7 @@ function assemblePlayer(firstDataPage: number, loopPage: number, loopPtrHi: numb
   asm.zp(STA_ZP, ZP_PTR_HI);
   asm.zp(INC_ZP, ZP_PAGE);
   asm.zp(LDA_ZP, ZP_PAGE);
-  asm.abs(STA_ABS, BANK6_REG);
+  asm.abs(STA_ABS, DATA_REG_ADDR);
   asm.label("readDone");
   asm.op(PLA);
   asm.op(RTS);
@@ -372,23 +429,38 @@ function asciiField(bytes: Uint8Array, offset: number, length: number, text: str
 export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfOptions = {}): Uint8Array<ArrayBuffer> {
   if (!Number.isFinite(cycles) || cycles <= 0) throw new Error("nsf: invalid capture length");
 
-  if (options.memory && options.memory.length) {
-    throw new NsfExportError("dmc_unsupported", "This capture loaded DMC/DPCM sample memory; this player only replays register writes in 60 Hz bursts and has no mechanism to serve sample bytes through a real DMA read during playback.", { measured: options.memory.length, limit: 0 });
-  }
   // $4010-$4013 alone configure the DMC's rate, its direct-load DAC value,
   // and a sample's address/length; a driver clearing them to 0 at power-on
   // (this project's own capture-nsf.mjs ceremony does exactly that, and
   // real drivers commonly mirror it) is not DMC playback and is carried
-  // like any other register write. What actually starts a DMA sample read
-  // - the CPU stalling while the cartridge serves bytes mid-frame, which
-  // this burst-per-PLAY-call replay has no way to carry - is $4015 written
-  // with bit 4 set (`Nes_Apu`'s own enable/restart convention). A bare
-  // $4011 write (writing straight to the DAC, never enabling the DMA
-  // channel) is an ordinary register write this player already carries,
-  // subject to the same frame quantization as every other write.
-  const dmcWrites = events.filter((e) => e.addr === 0x4015 && (e.value & 0x10) !== 0);
-  if (dmcWrites.length) {
-    throw new NsfExportError("dmc_unsupported", "This capture enables DMC/DPCM sample playback ($4015 written with bit 4 set); that needs its sample bytes served sub-frame, from cartridge memory, during the CPU's own stall on a real DMA read - this player only replays writes once per 60 Hz frame and cannot carry it.", { measured: dmcWrites.length, limit: 0 });
+  // like any other register write, same as $4015 bit 4 clear. Starting a
+  // DMA sample read ($4015 written with bit 4 set) is autonomous hardware:
+  // the 2A03 itself stalls the CPU and reads cartridge memory directly, so
+  // PLAY does not need to do anything mid-frame for it either - it only
+  // needs the sample bytes physically present where the DMA will look.
+  //
+  // The one case that genuinely cannot be carried is raw $4011 streaming:
+  // writing the direct-load DAC many times within a single frame to
+  // reconstruct a waveform without ever touching the DMA channel. That
+  // needs each write timed to a fraction of a frame, which a once-per-60 Hz
+  // PLAY call structurally cannot give it, so it is rejected outright
+  // regardless of whether sample memory is available.
+  const dacWritesPerFrame = maxWritesPerFrame(events, 0x4011);
+  if (dacWritesPerFrame > DMC_DAC_STREAM_LIMIT) {
+    throw new NsfExportError("dmc_unsupported", `This capture writes $4011 (the DMC's direct-load DAC) up to ${dacWritesPerFrame} times within a single 60 Hz frame - raw PCM streamed straight through the DAC, not DMA sample playback. That needs each write timed to a fraction of a frame, which this player's once-per-frame PLAY call cannot carry.`, { measured: dacWritesPerFrame, limit: DMC_DAC_STREAM_LIMIT });
+  }
+
+  const hasDmcMemory = !!(options.memory && options.memory.length);
+  const dmcStarts = events.some((e) => e.addr === 0x4015 && (e.value & 0x10) !== 0);
+  if (dmcStarts && !hasDmcMemory) {
+    throw new NsfExportError("dmc_sample_missing", "This capture enables DMC/DPCM sample playback ($4015 written with bit 4 set) but carries no sample memory (RecordedSong.memory / PerformancePlan.memory); the export needs the sample bytes physically present at the addresses $4012/$4013 point to, and this capture has none to place there.", { measured: 0, limit: 1 });
+  }
+  if (hasDmcMemory) {
+    for (const block of options.memory!) {
+      if (block.address < DMC_BASE || block.address + block.bytes.length > 0x10000) {
+        throw new NsfExportError("dmc_unsupported", `A DMC sample memory block at $${block.address.toString(16)} (${block.bytes.length} bytes) falls outside $C000-$FFFF, the only range the DMC's hardware DMA can read from; this player can only place sample bytes there.`, { measured: block.address, limit: DMC_BASE });
+      }
+    }
   }
 
   const loopAtCycle = options.loopAtCycle ?? 0;
@@ -403,16 +475,23 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
   const FIRST_DATA_PAGE = 1;
   const { page: loopPage, ptrHi: loopPtrHi, ptrLo: loopPtrLo } = toPagePointer(loopOffset, FIRST_DATA_PAGE);
   const dataPages = Math.max(1, Math.ceil(data.length / PAGE_SIZE));
-  if (1 + dataPages > MAX_PAGES) {
-    throw new NsfExportError("rom_too_large", `The encoded write stream needs ${dataPages} 4 KiB banks plus the code bank, more than NSF's ${MAX_PAGES}-bank limit (one byte per bank register).`, { measured: (1 + dataPages) * PAGE_SIZE, limit: MAX_PAGES * PAGE_SIZE });
+  const dmcPageCount = hasDmcMemory ? DMC_REG_COUNT : 0;
+  const totalPages = 1 + dataPages + dmcPageCount;
+  if (totalPages > MAX_PAGES) {
+    throw new NsfExportError("rom_too_large", `The encoded write stream${hasDmcMemory ? " plus its DMC sample memory" : ""} needs ${totalPages - 1} 4 KiB banks plus the code bank, more than NSF's ${MAX_PAGES}-bank limit (one byte per bank register).`, { measured: totalPages * PAGE_SIZE, limit: MAX_PAGES * PAGE_SIZE });
   }
 
   const player = assemblePlayer(FIRST_DATA_PAGE, loopPage, loopPtrHi, loopPtrLo);
 
-  const totalPages = 1 + dataPages;
+  const dmcFirstPage = FIRST_DATA_PAGE + dataPages;
   const pool = new Uint8Array(totalPages * PAGE_SIZE);
   pool.set(player.bytes, CODE_PAGE * PAGE_SIZE);
   pool.set(data, FIRST_DATA_PAGE * PAGE_SIZE);
+  if (hasDmcMemory) {
+    for (const block of options.memory!) {
+      pool.set(block.bytes, dmcFirstPage * PAGE_SIZE + (block.address - DMC_BASE));
+    }
+  }
 
   const HEADER = 128;
   const file = new Uint8Array(HEADER + pool.length);
@@ -429,7 +508,10 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
   asciiField(file, 78, 32, options.copyright ?? "", "copyright");
   view.setUint16(110, 16666, true); // NTSC speed, the standard $411a rate
   for (let reg = 0; reg < 8; reg++) file[112 + reg] = CODE_PAGE; // mirror code into every window...
-  file[112 + DATA_WINDOW_REG] = FIRST_DATA_PAGE; // ...except the one window PLAY reads data through
+  file[112 + DATA_WINDOW_REG] = FIRST_DATA_PAGE; // ...except the one window PLAY reads data through...
+  if (hasDmcMemory) {
+    for (let i = 0; i < DMC_REG_COUNT; i++) file[112 + DMC_FIRST_REG + i] = dmcFirstPage + i; // ...and the fixed upper bank, when there is DMC sample memory to place there
+  }
   view.setUint16(120, 19997, true); // PAL speed, unused (NTSC-only below) but set to the standard value
   file[122] = 0; // NTSC only
   file[123] = 0; // no expansion sound chip

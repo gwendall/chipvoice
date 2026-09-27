@@ -258,7 +258,7 @@ const { events, cycles } = recordSong(THEME, { seconds: 30 });
 writeFileSync("theme.nsf", exportNsf(events, cycles, { title: "Theme", author: "me" }));
 ```
 
-このプレイヤーは60HzのPLAY呼び出しごとに1フレーム分の書き込みを再生するため、タイミングはフレーム単位（約16.7ms）に量子化されます。DMC/DPCMのサンプル再生はフレーム内の実際のDMA読み出しを必要とし、この再生方式には運ぶ手段がないため、`exportNsf`は落としたり近似したりせず、名前付きの`NsfExportError('dmc_unsupported', ...)`を投げます。設計の全体と実際のNSFプレイヤーに対する適合性の数値は
+このプレイヤーは60HzのPLAY呼び出しごとに1フレーム分の書き込みを再生するため、タイミングはフレーム単位（約16.7ms）に量子化されます。DMC/DPCMのサンプル再生は自律的なハードウェアDMAなのでフレーム途中のコードは一切不要で、固定の上位バンクにサンプルバイトが存在してさえいればよく、`options.memory`（`PerformancePlan.memory`と同じ形）として渡せばDMCは普通に再生されます。そのメモリなしでDMCを有効にしたキャプチャは名前付きの`NsfExportError('dmc_sample_missing', ...)`を投げ、このプレイヤーが本当に運べない唯一のケース - DMAサンプル再生ではなく、単一フレーム内で直接ロードDACへ何度も生のPCMを`$4011`でストリーミングするもの - は落としたり近似したりせず`NsfExportError('dmc_unsupported', ...)`を投げます。設計の全体と実際のNSFプレイヤーに対する適合性の数値は
 [`docs/chips/2a03.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03_ja.md#nsf-export)
 を参照してください。
 

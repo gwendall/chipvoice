@@ -167,46 +167,92 @@ def localized_block(kind, body, templates):
             else:
                 raise ValueError(f'Unknown gbs-corpus line: {line}')
         elif kind == 'nsf-export':
-            match = re.fullmatch(r"Written by `nsf-export:sheet` on (.+), against Game_Music_Emu revision `(.+)`\. Audio column: relative RMS error between the two renders' per-frame loudness envelopes, each peak-normalized and lead-in aligned \(see above\); threshold (\d+)%\.", line)
+            match = re.fullmatch(
+                r"Written by `nsf-export:sheet` on (.+), against Game_Music_Emu revision `(.+)`\. "
+                r"Export loss: relative RMS error, after peak-normalizing and lead-in aligning, between two same-DSP renders "
+                r"\(GME's trace of the export, replayed; the untouched source\) - this is the pass/fail column, threshold (\d+)%\. "
+                r"GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - "
+                r"two independent emulators, reported for visibility, not gated\.", line)
             if match:
-                line = f'`nsf-export:sheet`による生成：{match[1]}。参照：Game_Music_Emu revision `{match[2]}`。オーディオ列：両者のフレーム単位ラウドネス包絡線（それぞれ正規化・無音区間整列済み、詳細は本文参照）間の相対RMS誤差。しきい値：{match[3]}%。'
+                line = (f'`nsf-export:sheet`による生成：{match[1]}。参照：Game_Music_Emu revision `{match[2]}`。'
+                         f'エクスポート損失：ピーク正規化と無音区間整列を行った後の、同一DSPによる2つのレンダー'
+                         f'（GMEによるエクスポートの再生トレースをレンダーしたものと、手つかずの元ソースをレンダーしたもの）'
+                         f'間の相対RMS誤差 - これが合否を決める列で、しきい値{match[3]}%。'
+                         f'GMEミキサー：GME自身によるエクスポートのPCMと本プロジェクトによる元ソースのレンダーとの間で同じ指標を'
+                         f'取ったもの - 独立した2つのエミュレーターの比較であり、可視化のために報告するだけでゲートにはなりません。')
                 lines.append(line)
                 continue
-            if line == '| Song | Commands | Audio | First divergence |':
-                lines.append('| 曲 | コマンド | オーディオ | 最初の相違 |')
+            if line == '| Song | Commands | Export loss | GME mixer | First divergence |':
+                lines.append('| 曲 | コマンド | エクスポート損失 | GMEミキサー | 最初の相違 |')
                 continue
-            row = re.fullmatch(r'\| (.+) \| (.+) \| (.+) \| (.+) \|', line)
+            row = re.fullmatch(r'\| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \|', line)
             if not row:
                 raise ValueError(f'Unknown nsf-export line: {line}')
-            title, commands, audio, note = row.groups()
+            title, commands, loss, mixer, note = row.groups()
             # Title (a proper noun, plain or a Markdown link) and any
-            # matched/total or byte counts pass through unchanged; only the
-            # small fixed vocabulary `corpus.mjs`'s `formatResult` produces
-            # is translated. Unrecognized shapes fail closed.
+            # matched/total, byte or percentage counts pass through
+            # unchanged; only the small fixed vocabulary `corpus.mjs`'s
+            # `formatResult` produces is translated. Unrecognized shapes
+            # fail closed.
             if not re.fullmatch(r'\d+/\d+|not exportable: \w+|not rendered|\d+ bytes', commands):
                 raise ValueError(f'Unknown nsf-export commands cell: {commands}')
-            if not re.fullmatch(r'-|not compared|\d+(?:\.\d+)?%(?: \(over threshold\))?', audio):
-                raise ValueError(f'Unknown nsf-export audio cell: {audio}')
+            if not re.fullmatch(r'-|not compared|\d+(?:\.\d+)?%(?: \(over threshold\))?', loss):
+                raise ValueError(f'Unknown nsf-export loss cell: {loss}')
+            mixer_match = re.fullmatch(r"-|not compared|GME's mixer differs from ours by (\d+(?:\.\d+)?)%", mixer)
+            if not mixer_match:
+                raise ValueError(f'Unknown nsf-export mixer cell: {mixer}')
+            # Error messages that carry a measured number (dacWritesPerFrame,
+            # a memory block's address/length) are translated with a regex so
+            # the number passes through unchanged; everything else is a
+            # small fixed vocabulary translated by substring replacement.
+            note_regex_replacements = [
+                (r"This capture writes \$4011 \(the DMC's direct-load DAC\) up to (\d+) times within a single 60 Hz frame - "
+                 r"raw PCM streamed straight through the DAC, not DMA sample playback\. That needs each write timed to a "
+                 r"fraction of a frame, which this player's once-per-frame PLAY call cannot carry\.",
+                 lambda m: f'このキャプチャは$4011（DMCの直接ロードDAC）を単一の60Hzフレーム内で最大{m[1]}回書き込んでいます - '
+                           'DMAサンプル再生ではなく、DACへ直接ストリーミングされる生のPCMです。各書き込みをフレームの端数'
+                           'タイミングに合わせる必要があり、このプレイヤーの1フレームに1回のPLAY呼び出しでは表現できません。'),
+                (r"This capture enables DMC/DPCM sample playback \(\$4015 written with bit 4 set\) but carries no sample memory "
+                 r"\(RecordedSong\.memory / PerformancePlan\.memory\); the export needs the sample bytes physically present at "
+                 r"the addresses \$4012/\$4013 point to, and this capture has none to place there\.",
+                 lambda m: 'このキャプチャはDMC/DPCMサンプル再生を有効にしています（$4015のビット4が立っています）が、'
+                           'サンプルメモリ（RecordedSong.memory / PerformancePlan.memory）を運んでいません。エクスポートには'
+                           '$4012/$4013が指すアドレスにサンプルバイトが物理的に存在している必要がありますが、このキャプチャ'
+                           'には配置するものがありません。'),
+                (r"A DMC sample memory block at \$([0-9a-f]+) \((\d+) bytes\) falls outside \$C000-\$FFFF, the only range the "
+                 r"DMC's hardware DMA can read from; this player can only place sample bytes there\.",
+                 lambda m: f'アドレス${m[1]}のDMCサンプルメモリブロック（{m[2]}バイト）は、DMCのハードウェアDMAが読み出せる'
+                           f'唯一の範囲である$C000-$FFFF外にあります。このプレイヤーはその範囲にしかサンプルバイトを配置'
+                           'できません。'),
+            ]
+            translated_note = note
+            for pattern, template in note_regex_replacements:
+                regex_match = re.fullmatch(pattern, note)
+                if regex_match:
+                    translated_note = template(regex_match)
+                    break
             note_replacements = {
                 'not exportable: dmc_unsupported': 'エクスポート不可: dmc_unsupported',
+                'not exportable: dmc_sample_missing': 'エクスポート不可: dmc_sample_missing',
                 'not rendered': '未レンダリング',
                 'not compared': '未比較',
                 ' (over threshold)': '（しきい値超過）',
-                "This capture enables DMC/DPCM sample playback ($4015 written with bit 4 set); that needs its sample bytes served sub-frame, from cartridge memory, during the CPU's own stall on a real DMA read - this player only replays writes once per 60 Hz frame and cannot carry it.":
-                    'このキャプチャはDMC/DPCMサンプル再生を有効にしています（$4015のビット4が立っています）。これはサンプルバイトをカートリッジメモリからフレーム未満の粒度で、CPU自身が実際のDMA読み出しでストールしている間に供給する必要があり、このプレイヤーは60Hzのフレーム単位でしか書き込みを再生できないため、表現できません。',
-                "This capture loaded DMC/DPCM sample memory; this player only replays register writes in 60 Hz bursts and has no mechanism to serve sample bytes through a real DMA read during playback.":
-                    'このキャプチャはDMC/DPCMサンプルメモリを読み込んでいます。このプレイヤーは60Hzのバースト単位でレジスタ書き込みを再生するだけで、再生中に実際のDMA読み出しでサンプルバイトを供給する仕組みを持ちません。',
                 'none': 'なし', ' vs ': ' 対 ', 'cycle ': 'サイクル ',
                 ': one side has no more commands': '：一方にそれ以上のコマンドがありません',
             }
-            translated_commands, translated_audio, translated_note = commands, audio, note
+            translated_commands, translated_loss = commands, loss
             for before, after in note_replacements.items():
                 translated_commands = translated_commands.replace(before, after)
-                translated_audio = translated_audio.replace(before, after)
-                translated_note = translated_note.replace(before, after)
+                translated_loss = translated_loss.replace(before, after)
+                if translated_note == note:
+                    translated_note = translated_note.replace(before, after)
+            if mixer_match[1] is not None:
+                translated_mixer = f'GMEのミキサーは本プロジェクトと{mixer_match[1]}%異なる'
+            else:
+                translated_mixer = note_replacements.get(mixer, mixer)
             if translated_note == note and note not in ('none',) and not re.fullmatch(r'サイクル \d+ 対 \d+, \$[0-9a-f]+: \d+ 対 \d+|サイクル \d+：一方にそれ以上のコマンドがありません', translated_note):
                 raise ValueError(f'Unknown nsf-export note: {note}')
-            lines.append(f'| {title} | {translated_commands} | {translated_audio} | {translated_note} |')
+            lines.append(f'| {title} | {translated_commands} | {translated_loss} | {translated_mixer} | {translated_note} |')
             continue
         lines.append(line)
     return '\n'.join(lines) + '\n'

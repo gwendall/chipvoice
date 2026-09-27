@@ -378,18 +378,26 @@ real game music, and a real unit.
   (`Asm6502`, `packages/chipvoice/src/nsf.ts`), reproducible from committed
   source, never an opaque blob. PLAY replays one frame's writes per 60 Hz
   call from a bank-switched, run-length-encoded write log, quantizing write
-  timing to the frame (~16.7 ms); DMC/DPCM, which needs a real mid-frame DMA
-  read this replay cannot carry, is rejected with a named
-  `NsfExportError('dmc_unsupported', ...)` rather than dropped or
-  approximated. Proven against the same pinned GME oracle `nsf-corpus`
-  uses: the command stream matches exactly on every exportable corpus file,
-  and a per-frame loudness-envelope audio comparison measures 21-52% against
-  this project's own render (two independent 2A03 emulators' DAC/mixer
-  curves, not a quantization loss - proof #1 already shows the writes
-  landed exactly), under a 60% threshold with real margin over that whole
-  band. `docs/chips/2a03.md#nsf-export`, `pnpm nsf-export:sheet`. Reachable
-  from the package (`exportNsf`, `NsfExportError`) and the studio (a
-  Download NSF button next to VGM's, for `2a03` songs). NEXT-10's GBS half
+  timing to the frame (~16.7 ms). DMC/DPCM sample playback is autonomous
+  hardware DMA needing no mid-frame code, only the sample bytes present in a
+  fixed upper bank (`$C000-$FFFF`); a capture carrying its sample memory
+  (`options.memory`) exports normally, DMC enabled without that memory is
+  rejected by name (`dmc_sample_missing`), and only raw `$4011` PCM
+  streaming or out-of-range sample memory is rejected as `dmc_unsupported`.
+  Proven three ways against the same pinned GME oracle `nsf-corpus` uses:
+  the command stream matches exactly on every exportable corpus file
+  (including the three DMC-using ones, now that sample memory is carried
+  through); a same-DSP export-loss gate - GME's replay of the export vs.
+  this project's own untouched render, both through this project's own
+  renderer - isolates the export's own frame-quantization cost, measuring
+  4.5-8.9% on native/driver sources and 13.3-50.7% on tracker-driven ones
+  (sub-60Hz effects genuinely collapsed by frame quantization), under a 55%
+  threshold with a small margin over that whole band; a GME-vs-ours mixer
+  comparison (21-52%, two independent 2A03 emulators' DAC/mixer curves) is
+  reported for visibility but does not gate. `docs/chips/2a03.md#nsf-export`,
+  `pnpm nsf-export:sheet`. Reachable from the package (`exportNsf`,
+  `NsfExportError`) and the studio (a Download NSF button next to VGM's,
+  for `2a03` songs). NEXT-10's GBS half
   stays todo - NEXT-06's GBS importer (PR #103) has since merged, so it is
   unblocked, but is not part of this PR. A flash-cart recording on real
   hardware (from the step 1 bench) stays out of scope for both halves for

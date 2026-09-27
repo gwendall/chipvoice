@@ -39,17 +39,28 @@ in-file mnemonic assembler rather than a build tool, so the bytes it emits
 are exactly what that source says. PLAY replays one 60 Hz frame's writes at
 a time from a compact, bank-switched write log, looping at the capture's own
 loop point forever; write timing is quantized to the frame (up to ~16.7 ms
-late). DMC/DPCM sample playback needs a real mid-frame DMA read this
-replay has no way to carry, and is rejected with a named
-`NsfExportError('dmc_unsupported', ...)` - as is a loop point outside the
-capture, over-length or non-ASCII metadata, and a frame with more writes
-than the encoding can address - rather than silently dropped or
-approximated. Proven against the same pinned Game_Music_Emu oracle
-`nsf-corpus` uses: the exported command stream matches exactly on every
-exportable file in a corpus of real hardware recordings, this project's own
-2A03 driver output and independently authored, redistribution-licensed
-NSFs; a per-frame loudness-envelope audio comparison against this project's
-own render stays under a stated threshold. See
+late). DMC/DPCM sample playback is autonomous hardware DMA, so it needs no
+mid-frame code at all - only the sample bytes physically present in a fixed
+upper bank (`$C000-$FFFF`) for the real DMA read to find; a capture that
+carries its sample memory (`options.memory`, the same shape as
+`PerformancePlan.memory`) exports normally. A capture that enables DMC
+without supplying that memory is rejected by name
+(`NsfExportError('dmc_sample_missing', ...)`), and the one case this player
+genuinely cannot carry - raw `$4011` PCM streamed straight through the DAC
+many times within a single frame, not DMA sample playback - is rejected as
+`NsfExportError('dmc_unsupported', ...)`, as is sample memory outside
+`$C000-$FFFF`, a loop point outside the capture, over-length or non-ASCII
+metadata, and a frame with more writes than the encoding can address -
+rather than silently dropped or approximated. Proven three ways against the
+same pinned Game_Music_Emu oracle `nsf-corpus` uses: the exported command
+stream matches exactly on every exportable file in a corpus of real
+hardware recordings, this project's own 2A03 driver output and
+independently authored, redistribution-licensed NSFs (including the three
+DMC-using files, now that sample memory is carried through); a same-DSP
+export-loss gate compares GME's replay of the export against this
+project's own untouched render, both through this project's own renderer,
+isolating the export's own frame-quantization cost; a GME-vs-ours mixer
+comparison is reported for visibility but does not gate. See
 [docs/chips/2a03.md#nsf-export](docs/chips/2a03.md#nsf-export). The studio
 now offers a Download NSF button next to VGM's, for NES songs.
 
