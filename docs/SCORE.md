@@ -120,9 +120,24 @@ Two levels, and the `silent` flag survives both.
   the catalogue and names a role that exists.
 - **Arrangement level**, per chip: what this chip cannot do with this score.
   Base notes and chord/instrument arpeggio extremes outside the voice's register
-  range produce `pitch_range` warnings with role, pattern and step. The score is
-  unchanged. Time-varying slides/vibrato and unknown sample banks are not fully
-  diagnosed; voice sharing remains an arrangement constraint.
+  range produce `pitch_range` warnings with role, pattern and step; a
+  chord shape wider than the chip's chord voices produces `chord_capacity`.
+  Both carry `measured` and `limit` alongside the message. Modulation that the
+  register cannot express is diagnosed rather than silently clamped: a
+  vibrato that swings a voice out of range (`vibrato_range`) or below one
+  register step at that pitch (`vibrato_resolution`), a vibrato rate the
+  driver's 60Hz frame clock cannot resolve (`vibrato_rate`), a slide that
+  carries a held note out of range (`slide_range`) or across a coarse run of
+  the period table - the low end of the 2A03 and Game Boy tables in
+  particular (`slide_resolution`) - and a fractional volume step the chip
+  rounds before it reaches a register (`volume_step`). Voice budgets are
+  diagnosed the same way: a percussion hit landing on a role that shares its
+  physical voice, such as the SID's chord and percussion both on v3
+  (`voice_share`), and a drum arriving before the previous one's own decay
+  has finished on a chip with one shared voice per kit part, such as the
+  2A03's single noise channel (`perc_voice`). The score and the render are
+  both unchanged; every one of these is a diagnostic, not a fix. Unknown
+  sample banks are not fully diagnosed.
 
 ## Export
 

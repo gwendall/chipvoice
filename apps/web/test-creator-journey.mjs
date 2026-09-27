@@ -22,7 +22,10 @@ await mkdir(out, { recursive: true });
 await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/composition/score';", resolveDir: process.cwd() }, outfile: 'generated/creator-journey.mjs', bundle: true, platform: 'node', format: 'esm', packages: 'external', logLevel: 'silent' });
 const internal = await import('./generated/creator-journey.mjs');
 const suffix = randomUUID().slice(0, 8), handle = 'soundcheck_' + suffix;
-const owner = await internal.createKey('chipvoice-e2e-' + suffix + '@example.test', 'Temporary authorized end-to-end test');
+const ownerEmail = 'chipvoice-e2e-' + suffix + '@example.test';
+const owner = await internal.createKey(ownerEmail, 'Temporary authorized end-to-end test');
+// Composition is a closed beta in production (decision 42): this run's owner is invited for the run only.
+await (await internal.db()).execute({ sql: 'insert or ignore into composition_invites(email,created_at,note) values(?,?,?)', args: [ownerEmail, Date.now(), 'creator journey, removed after the run'] });
 let cookie, agentToken, agentId, browser;
 const created = new Set();
 async function http(method, path, body, credential = agentToken, extra = {}) {
@@ -179,6 +182,7 @@ try {
   for (const id of created) { try { await http('DELETE', '/api/v1/projects/' + id, undefined, cookie); } catch {} }
   if (agentId && cookie) { try { await http('DELETE', '/api/v1/agents/' + agentId, undefined, cookie); } catch {} }
   if (cookie) { try { await http('DELETE', '/api/keys/' + owner.id, undefined, cookie); await http('DELETE', '/api/auth/session', undefined, cookie); } catch {} }
+  try { await (await internal.db()).execute({ sql: 'delete from composition_invites where email=?', args: [ownerEmail] }); } catch {}
   await browser?.close();
   await (await internal.db()).close();
   await server?.close();

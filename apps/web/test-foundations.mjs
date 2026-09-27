@@ -66,7 +66,7 @@ try {
   await api.migrate(legacy);
   assert.equal(
     (await legacy.execute("select * from schema_migrations")).rows.length,
-    9,
+    10,
   );
   assert.equal(
     Number(
@@ -187,7 +187,24 @@ try {
   await api.migrate(fresh);
   assert.equal(
     (await fresh.execute("select * from schema_migrations")).rows.length,
-    9,
+    10,
+  );
+  // Decision 42: whoever composed before invitations began keeps composing.
+  await fresh.batch(
+    [
+      "delete from schema_migrations where version=10",
+      "drop table composition_invites",
+      "insert into users values('early-composer','early@example.test',1),('never-composed','idle@example.test',1)",
+      "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at) values('early-generation','early-composer','early-artist','early','early','{}','gpt-6-astra','ready',1)",
+    ],
+    "write",
+  );
+  await api.migrate(fresh);
+  assert.deepEqual(
+    (await fresh.execute("select email from composition_invites")).rows.map(
+      (row) => row.email,
+    ),
+    ["early@example.test"],
   );
   fresh.close();
   // Frozen v4 publication tables exercise the real profile/data upgrade.
@@ -206,6 +223,7 @@ try {
         sql: "insert into schema_migrations values(?,?,?)",
         args: [i + 1, name, now],
       })),
+      "create table users(id text primary key,email text not null unique,created_at integer not null)",
       "create table profiles(id text primary key,user_id text not null unique,handle text unique collate nocase,display_name text not null default '',bio text not null default '',created_at integer not null)",
       "create table projects(id text primary key,user_id text not null,parent_id text,root_id text not null,document text not null,content_hash text not null,title text not null,chip text not null,tags text not null,visibility text not null,created_at integer not null,deleted_at integer,request_key text,unique(user_id,request_key))",
       "create table project_jobs(id text primary key,project_id text not null,kind text not null,status text not null,engine text not null,created_at integer not null,started_at integer,finished_at integer,error text,bytes integer,etag text,progress real not null default 0,unique(project_id,kind))",
@@ -285,6 +303,7 @@ try {
   await published.batch([
     "delete from schema_migrations where version>=7",
     "drop table worker_time_budget",
+    "drop table composition_invites",
     "alter table projects drop column origin",
     "alter table projects drop column origin_model",
     "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at,project_id) values('old-generation','stable-owner','stable-artist','old-generation','hash','{}','recorded-model','ready',0,'stable-song')",

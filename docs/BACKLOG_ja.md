@@ -113,7 +113,7 @@
 - done - 決定38: V1を受け入れ、その条件のもとで新チップを再開しました。
 - done - NEXT-01: スキルのインストール行は`chipvoice@${engineVersion}`を固定していましたが、これは公開パッケージのバージョンではなく`PROJECT_ENGINE_VERSION`（0.17.0）でした。この定数はパッケージのバージョンになり、単体テストが両者を一致させ、本番e2eはスキルがnpmの配布するバージョンをインストールすることを確かめます。
 - done - P2-4: パッケージのREADMEは5つの仕様書すべてにリンクし、スキルは各ターゲットの仕様書にリンクします。`test-agent-guide.mjs`が確かめます。
-- doing - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、書き込みにはシークレット`CHIPVOICE_E2E_KEY`があればそれを使います。専用テストアカウントとそのキーはまだ作成していません。
+- done - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、その書き込みはシークレット`CHIPVOICE_E2E_KEY`を通じて専用テストアカウント`e2e@chipvoice.dev`のものになります。キーを使った最初の実行は、匿名書き込みの警告なしに通過しました。
 - done - NEXT-03: `test-creation-browser.mjs`が失敗したのはロードアベレージ70のときだけで、原因はPlaywrightの既定の30秒待機でした。すべての待機にテストの準備時間と同じ2分を与えます。エディター自体は、ページのCPUを6倍遅くしてもテンポ変更の間Pauseを表示し続けました。
 - done - P7-7: 最小限の6510・VIC-IIラスタ行・CIA1（`src/roms/c64.mjs`）でVICEの`testprogs/SID`から14本を実行します。KERNALなしで判定を出せるものを選び、13本が成功、CIでも実行します（`roms:c64`）。`busvalue`は失敗します。OSC3またはENV3の読み出しが実機のように内部バスラッチを更新しないためで、P2-1の知見として残し、ここでは直しません。`envrate`はDag Lemの実機検証済みレート表と完全に一致しました。
 
@@ -121,13 +121,14 @@
 
 - オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P7-11。
 - done - P5-8: PR #85。MAMEの`sn76496.cpp`を`segapsg_device`として構成し、メガドライブのPSG向け第2の参照実装にしました（`packages/conform/oracles/sn76496`）。白色ノイズLFSRの57337シフト周期をMAME側でも直接確認し、`sn76489.ts`との3件の実際の相違（周期0または1のトーン、リロード前のチャンネルの極性、tone 3のノイズレート）を診断し、シートに記録しました。
-- done - P2-1：このステップの参照実装が見つけた相違は、全て資料から修正するか、特定して記載しました。第1段階（#86）：Mesenに対する2A03の相違を全て特定しました。1つはシム側（サイクルカウントの偶奇が逆の`$4017`遅延を選んでいた）で、修正して`song-e2e`のpulse 2が100%に。残りはMesenのsweepの電源投入状態、書込かタイマーのtickでしか出力を更新しないこと、reloadと同じサイクルの書込で、それぞれコアの試作ビルドで確かめてシートに記載しました。SIDはOSC3／ENV3の読み出しをデータバスに残すように（`busvalue`成功、14本中14本）。Game Boyの矩形波は無音から始めると最初のデューティの1段までデジタルのゼロを出します（Pan Docs、SameBoyも同じ）。第2段階：SameBoyに対するGame Boy（P3-4）。ノイズのノートが丸ごと欠けていたのは、コーパスがM-cycleの間に書き込んでいたためで、そうするCPUはありません。コーパスをM-cycle単位で書くようにし、SameBoyとの一致率は88.15%から94.82%に。シートの差異には2つの読み方を未解決として残します。トリガー時にノイズのクロックがどこにあるか（gbdev wikiとPan Docsが食い違い、実機が決める、P3-5）と、4または8サイクルの矩形波のトリガー遅延で、そのうちPan Docsのタイマー下位2ビットは後日修正します（P3-7）。ゾンビの複合ケースは実機で非決定的です。MAMEに対するPSGの3つの相違（P5-8）は既にシートに差異の行として記載済みで、資料と矛盾するものはなく、変更はありません。
+- done - P2-1：このステップの参照実装が見つけた相違は、全て資料から修正するか、特定して記載しました。第1段階（#86）：Mesenに対する2A03の相違を全て特定しました。1つはシム側（サイクルカウントの偶奇が逆の`$4017`遅延を選んでいた）で、修正して`song-e2e`のpulse 2が100%に。残りはMesenのsweepの電源投入状態、書込かタイマーのtickでしか出力を更新しないこと、reloadと同じサイクルの書込で、それぞれコアの試作ビルドで確かめてシートに記載しました。SIDはOSC3／ENV3の読み出しをデータバスに残すように（`busvalue`成功、14本中14本）。Game Boyの矩形波は無音から始めると最初のデューティの1段までデジタルのゼロを出します（Pan Docs、SameBoyも同じ）。第2段階：SameBoyに対するGame Boy（P3-4）。ノイズのノートが丸ごと欠けていたのは、コーパスがM-cycleの間に書き込んでいたためで、そうするCPUはありません。コーパスをM-cycle単位で書くようにし、SameBoyとの一致率は88.15%から94.82%に。シートの差異には2つの読み方を未解決として残します。トリガー時にノイズのクロックがどこにあるか（gbdev wikiとPan Docsが食い違い、実機が決める、P3-5）と、4または8サイクルの矩形波のトリガー遅延で、そのうちPan Docsのタイマー下位2ビット分は最大3サイクルを解消します（P3-7、後述）。ゾンビの複合ケースは実機で非決定的です。MAMEに対するPSGの3つの相違（P5-8）は既にシートに差異の行として記載済みで、資料と矛盾するものはなく、変更はありません。
+- done - P3-7: 本PR。ch1とch2のトリガーで周波数タイマーの下位2ビットをゼロにせず保持するようにしました（Pan Docsの「Obscure Behavior」）。SameBoyが示す残りの遅れの説明を資料だけで追加調査しましたが（GBEDGにはAPUのページがありません）、サイクル数を示す資料は見つからず、下位2ビットのみ実装し、残りは既知の差異として残します（4または8サイクルだったものが、今は最大5サイクル）。SameBoyに対しては`script-lengths`と`script-sweep`のch1の一致数が上昇（コーパス全体で1973サイクル）、このルールを実装していないGb_Snd_Emuに対しては同じ2本のログがわずかに後退（159サイクル）、弱いオラクルとしては想定どおりの方向です。goldenが動いたため、較正と編曲評価を通しました。
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE_ja.md](HARDWARE-EVIDENCE_ja.md)が、5チップすべてについて既に存在する実機の公開録音・測定値をカタログ化しました。掲載前に各出典を開いて検証済みです（decision 38の無償証拠優先の順序）。「測定一つ」スクリプトの条件を満たした候補は1つだけで、C64の組み合わせ波形を実機6581 R4AR（`libsidplayfp/combined-waveforms`）と比較するものです。`pnpm --filter chipvoice-conform evidence:c64:sheet`で採点し、4つの組み合わせにわたり82.0〜94.1%のバイト一致率となり、[docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581)へ書き込みました。アナログ段については何も確定しません（DAC手前の波形ジェネレーターです）が、デジタルモデルが以前は持っていなかった独立したハードウェアによる確認が1つ得られました。他のどのチップにも、正確に既知で再現可能な入力を持つ候補はありませんでした。NESは既にblarggの`apu_mixer`を持っています。取得スクリプト`packages/conform/src/evidence/fetch.mjs`（`evidence:fetch`）は、ライセンスの許す範囲でgitignore対象の`.artifacts/hardware-evidence/`へダウンロードし、`packages/conform/src/evidence/manifest.json`のコミット済みSHA-256で検証します。
 - 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をP7-8／P7-10のレジスタログ不要なアナログ測定への道として見つけましたが未実装です。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。
 
 **ステップ2. 各チップが持つすべての楽器。**
 
-- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P8-13（SIDのフィルターとスイープ）、P7-10（8580）、AUD-4（演奏可能な音域と診断）。
+- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P8-13（SIDのフィルターとスイープ）、P7-10（8580）。
 - done - P7-9: SIDのfilterがarranger自身の単語から到達可能になりました。leadの`sweep`はノート全体でcutoffを開き、bassの`resonant`は高いresonanceに固定します。両方lowpassです。各voiceは`$D417`の自分のrouting bitだけを立てて消し、共有するresonance／cutoff／modeは最後に書いたvoiceの値になります。実機と同じ調停で、filterは3voice共通で1つしかないためです。公開`Instrument.pulseWidth`フィールドがdriver層でframe単位のpulse-width sweepを可能にしますが、標準presetはまだ使いません。`script-filter`と`song-filter`をC64 corpusへ追加。filterはanalog段のみでdigital traceを動かさないため、reSID-fp parityは100%を保ちます。
 - todo - NEXT-05: 計測済みの楽器カタログ。プリセットごとにゴールデンのレンダーと、計測したエンベロープとスペクトルを持ち、サイトで見られ、チップが実際にできることだけで作ります。
 - P4-7とMIX-12: 人による試聴。正確さとは分けて扱います。
@@ -158,9 +159,9 @@
 - GEN-04: 修復の呼び出し。計測した失敗がそれを正当化する場合だけです。
 - todo - NEXT-18: スタイル、テンポ、構成の指定。GEN-11とGEN-12: 対象を絞った改訂とコンソール別の変奏。
 - todo - NEXT-19: デプロイ規模での永続的なジョブキュー。AUD-2のキャッシュと重複排除と合わせます。
-- todo - NEXT-20: 利用上限と課金。NEXT-21: プロンプトのモデレーションと、旋律の類似度で計測した既知の旋律の拒否。
+- doing - NEXT-20: 利用上限と課金。ベータ向けの利用上限は整いました（決定42）。招待制、1日上限、そしてサーバーが記録済みの使用量から換算する月間予算（本番は110 USD）です。課金は残ります。NEXT-21: プロンプトのモデレーションと、旋律の類似度で計測した既知の旋律の拒否。
 - P8-9とP8-14。todo - NEXT-22: 利用規約、生成した曲の権利、プロンプトのプライバシー。
-- GEN-13: クローズドベータを行い、その計測から価格を決めます。
+- GEN-13: クローズドベータを行い、その計測から価格を決めます。ベータの招待制と予算はサーバーが守るようになりました（決定42）。人を招待することと計測が残ります。
 
 <a id="generative-composition--specification-2026-09-08"></a>
 ## 生成による作曲 — 仕様（2026-09-08）
@@ -222,7 +223,7 @@
 | P1-10 | 5-step frameと`$4017`write timing | done | 0.5.0、P1-2と同時。decoderにも必要 |
 | P1-11 | blargg APU ROM用6502 fixture | done | PR #7、29/29、CI対象 |
 | P1-12 | corpus2：logger付き参照で実game NSFを再生 | doing | 最初の完全sourceはMario Ground Theme、41,999命令が固定GMEとexact cycle一致。広いNSF corpusは残件 |
-| P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | done | 本PR。`packages/conform/oracles/mesen`に同梱したMesen 2 APU。sweep dividerのtimingは不一致でP2-1へ記録 |
+| P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | done | #84。`packages/conform/oracles/mesen`に同梱したMesen 2 APU。sweep dividerのtimingは不一致でP2-1へ記録 |
 | P1-14 | triangleをrun別時間shiftとsequencer位置offsetで比較し、開始規約だけで低一致にならないmetric | done | PR #4。隠れたstepを復元し全triangle runがstep時刻で整合 |
 
 <a id="phase-2-nes-to-100-"></a>
@@ -246,7 +247,7 @@
 | P3-4 | 強い参照：register log駆動SameBoy、またはSM83上のGBSから実曲log | done | PR #83。SameBoyのDMG-B `apu.c`を第二参照として同梱（`packages/conform/oracles/sameboy`）。`main.c`の不要な`qsort`が同一サイクルの書き込み間の順序をgccとclangで異なる形に崩し、同一のソースをコンパイラ間で非決定的にしていた駆動系のバグを発見・修正。修正後に残った、より狭い2つの実在差分はその後P2-1で決着（矩形波トリガー直後の最初のデューティエッジの遅れ、ノイズのコールドスタートが1ノート分丸ごと遅れる点）。ゾンビモードの複合ケースの差分は未解決のまま |
 | P3-5 | 既知scriptでDMG line-out測定 | todo | P2-3同様、実機が必要。NEXT-04はシートの仮モデルと一致するパブリックドメインの式（gbdev Pan Docs）とダイ解析を見つけましたが、どの実機の測定録音も見つかっていません。[HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg)参照 |
 | P3-6 | API／studio／skillで`chip: "dmg"`を受理しrender／再生、editor selectorと変更説明 | done | `apps/web`、skill 0.4.0 |
-| P3-7 | 矩形波のトリガーでPan Docsの通り周波数タイマーの下位2ビットを保持 | todo | P2-1の第2段階。ノートの最初のステップで最大3サイクル。goldenが動くため、較正と評価を通す |
+| P3-7 | 矩形波のトリガーでPan Docsの通り周波数タイマーの下位2ビットを保持 | done | 本PR。P2-1の第2段階。SameBoyに対するノート最初のステップの差を最大3サイクル解消。残り最大5サイクルは調査した資料に記載がなく、既知の差異として残る |
 
 <a id="phase-4-the-portable-score"></a>
 ## フェーズ4. 移植可能な楽譜
@@ -362,7 +363,7 @@
 | AUD-1 | stable user、API key、browser session分離。再login復元、atomic token、agent key不変 | implemented | account所有、独立key／session、atomic login、失効、UI。決定28 |
 | AUD-2 | render CPU測定、variant上限／cache、同時dedup。worker／storageは測定に応じる | partial | workerと時間／同時／頻度／cache上限、version key、dedup、条件GET実装。代表CPU／分散は未完、決定27 |
 | AUD-3 | 低sample rate予約、readerなしtimeline上限、beatDelay契約修復 | partial | 予約、host時計expiry、直接shared bus queue実装（決定23）。低rate性能は別 |
-| AUD-4 | 機種／voice音域とarrange診断、明示target保持 | partial | target、基音／arpeggio範囲、不正pattern実装。全変調／voice budgetは残件 |
+| AUD-4 | 機種／voice音域とarrange診断、明示target保持 | implemented | target保持、基音／arpeggio範囲とchord容量の警告に加え、変調（ビブラート範囲／解像度／レート、スライド範囲／解像度、ボリュームステップ）とvoice budget（voice共有、打楽器voice）診断、いずれもmeasured／limit付きで`validateSong`と両APIルートに後方互換で実装 |
 | AUD-5 | 正確なerror処理のversioned DB migration | implemented | atomic version移行、新旧／冪等／失敗rollback、決定28 |
 | AUD-6 | root／npm README、metadata、能力、licenseを整合しcorpusと実機証拠を分離 | implemented | 5機種、実編曲、license、version音声、証拠をREADME／SCORE／OpenAPI／skill／generatorで整合 |
 | AUD-7 | 5core、driver、encode、animationのhot-path allocation／copy監査と所有scratch | implemented | [監査と検証](evals/HOT-PATHS-2026-09-06_ja.md)。代表CPU／GCはAUD-3と残件 |

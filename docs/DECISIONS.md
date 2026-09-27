@@ -1023,3 +1023,48 @@ cite the best evidence there is.
 **What changes.** A reviewer rejects any change that moves code from a GPL
 oracle into the package. A divergence a GPL oracle finds is fixed from the
 documents, the way decision 14 wrote the Game Boy's chip, not from its code.
+
+## 42. The server enforces the closed beta: invitations and a monthly budget (2026-09-27)
+
+Decision 39 opened prompt composition as a closed beta with a monthly spend cap
+"set at the model provider". Production had neither: any signed-in account
+could compose, and nothing counted money. The server now enforces both.
+
+- **Invitations.** With `COMPOSITION_ACCESS=invite`, the default on every
+  Vercel deployment, only accounts whose email is in `composition_invites`
+  compose; the others get `403 generation_invite_required`. An invitation
+  names an email, so it can come before the account.
+  `apps/web/scripts/composition-invites.mjs` lists, adds and removes them.
+  The migration that creates the table invites everyone who had already
+  composed, so nobody loses access they had.
+- **A monthly budget.** `COMPOSITION_MONTHLY_BUDGET_USD` caps the calendar
+  month (UTC). The month's spend is every generation's recorded token usage at
+  the model's list prices (GPT-6 Astra: 10, 1 and 50 USD per million input,
+  cached input and output tokens, from OpenAI's pricing page, read
+  2026-09-27), plus a worst case (32,768 input tokens and the output cap) for
+  each generation still running, or failed after reaching the model, with no
+  usage recorded. Admission adds one more worst case and checks the sum in the
+  same write transaction as the daily limit, so concurrent requests cannot
+  overshoot. A spent budget returns `429 generation_budget` with a
+  `Retry-After` until the first of next month. Production refuses to compose
+  without the variable, or with a model that has no known price.
+- **Saying why.** `GET /api/v1/generations/access` tells the signed-in account
+  whether it can compose now and, if not, why (`invite_required`,
+  `monthly_budget`, `daily_limit`, `disabled`), without revealing the budget
+  or the spend. The composer shows the reason and disables its button.
+
+Production starts at 110 USD a month, about decision 39's 100 EUR. The six
+generations recorded before this decision averaged about 6,800 input and 4,100
+output tokens, about 0.28 USD each, so the cap covers some 350 songs a month.
+The worst case, about 1.5 USD with the 24,000-token output cap, only counts
+while a request runs.
+
+**Why.** A cap at the provider acts after the bill and covers every use of the
+key. The server knows each call's usage: it can refuse before a call, say why,
+and be tested with the rest of the API. Prices live in code because the
+Responses API reports tokens, not money; a new model without a price stops
+composition instead of spending uncounted. A limit in the provider's dashboard
+remains a useful second fence.
+
+**What changes.** Decision 39's cap moves from the provider to the server.
+NEXT-20's quotas are in place for the beta; billing remains.

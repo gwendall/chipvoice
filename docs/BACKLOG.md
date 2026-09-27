@@ -125,10 +125,10 @@ Work without a ticket takes a NEXT id.
   skill installs the version npm serves.
 - done - P2-4: the package README links all five sheets, and the skill links
   each target's sheet, checked by `test-agent-guide.mjs`.
-- doing - NEXT-02: `.github/workflows/e2e.yml` runs the production e2e after
-  every successful production deployment, and its writes use the
-  `CHIPVOICE_E2E_KEY` secret when set. The dedicated test account and its key
-  are still to be created.
+- done - NEXT-02: `.github/workflows/e2e.yml` runs the production e2e after
+  every successful production deployment, and its writes belong to a dedicated
+  test account, `e2e@chipvoice.dev`, through the `CHIPVOICE_E2E_KEY` secret.
+  The first run with the key passed without the anonymous-write warning.
 - done - NEXT-03: `test-creation-browser.mjs` failed only at a load average of
   70, on Playwright's 30-second default wait. Every wait now gets the test's
   two-minute preparation budget. The editor itself kept Pause visible through
@@ -167,10 +167,21 @@ real game music, and a real unit.
   readings stay open on the sheet's deviations: where the noise clock stands
   at a trigger (the gbdev wiki and Pan Docs disagree; a unit decides, P3-5) and a
   pulse's trigger delay of 4 or 8 cycles, of which Pan Docs' low two timer
-  bits are a later fix (P3-7). The zombie compound case is nondeterministic
-  on the hardware. The PSG's three divergences from MAME (P5-8) were already
-  traced on the sheet with deviation rows; none is contradicted by a
-  document, so nothing changes.
+  bits close up to 3 (P3-7, below). The zombie compound case is
+  nondeterministic on the hardware. The PSG's three divergences from MAME
+  (P5-8) were already traced on the sheet with deviation rows; none is
+  contradicted by a document, so nothing changes.
+- done - P3-7: this PR. A trigger on ch1 or ch2 keeps the low two bits of the
+  frequency timer instead of zeroing them, Pan Docs' "Obscure Behavior".
+  Looked further, in the documents alone, for what explains the rest of the
+  gap SameBoy showed (GBEDG has no APU page to check); none of them give a
+  cycle count for it, so only the low two bits are implemented and the rest
+  stays a known deviation, now up to 5 cycles instead of 4 or 8. Against
+  SameBoy, `script-lengths` and `script-sweep`'s ch1 rise (1973 cycles of the
+  corpus); against Gb_Snd_Emu, which does not model the rule, the same two
+  logs fall back slightly (159 cycles), the expected direction for a weaker
+  oracle. The golden moved and went through the calibration and the
+  arrangement eval.
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md) catalogues
   what published recordings and measurements of real hardware already exist
   for all five chips, each source opened and verified before being listed
@@ -200,7 +211,7 @@ real game music, and a real unit.
 
 - P5-10 and P5-12 (FM drums, the LFO, channel 3's special mode), P6-10
   (hardware-noise hats), P4-9 (the SNES palette), P8-13 (the SID's filter and
-  sweeps), P7-10 (the 8580), AUD-4 (playable ranges and diagnostics).
+  sweeps), P7-10 (the 8580).
 - done - P7-9: the SID's filter is reachable from the arranger's own words. A
   lead's `sweep` opens the cutoff across the note; a bass's `resonant` sets a
   fixed high resonance; both are low-pass. A voice sets and clears only its
@@ -259,11 +270,16 @@ real game music, and a real unit.
   targeted revisions and console variants.
 - todo - NEXT-19: a durable job queue at deployment scale, with AUD-2's cache
   and deduplication.
-- todo - NEXT-20: quotas and billing. NEXT-21: prompt moderation and refusal
-  of known melodies, measured by melodic similarity.
+- doing - NEXT-20: quotas and billing. Quotas are in place for the beta
+  (decision 42): invitations, the daily limit and a monthly budget the server
+  prices from recorded usage, 110 USD in production. Billing remains.
+  NEXT-21: prompt moderation and refusal of known melodies, measured by
+  melodic similarity.
 - P8-9 and P8-14. todo - NEXT-22: terms, ownership of generated songs and
   prompt privacy.
-- GEN-13: the closed beta, then pricing from its measurements.
+- GEN-13: the closed beta, then pricing from its measurements. The server
+  now enforces the beta's invitation and budget (decision 42); inviting
+  people and measuring remain.
 
 ## Generative composition — specification (2026-09-08)
 
@@ -341,7 +357,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | done | PR #7. 29 of 29 pass, in CI |
 | P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | doing | First complete source: Mario Ground Theme, all 41,999 music commands match pinned GME at exact cycles; broader NSF corpus remains |
-| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | done | this PR. Mesen 2's APU, vendored under `packages/conform/oracles/mesen`; the sweep's divider timing disagrees, filed as P2-1 |
+| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | done | #84. Mesen 2's APU, vendored under `packages/conform/oracles/mesen`; the sweep's divider timing disagrees, filed as P2-1 |
 | P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 
 ## Phase 2. NES to 100 %
@@ -363,7 +379,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | done | PR #83. SameBoy's DMG-B `apu.c` vendored as a second oracle (`packages/conform/oracles/sameboy`); found and fixed a driver bug where `main.c`'s redundant `qsort` broke ties between same-cycle writes differently on gcc and clang, making the identical source cross-compiler non-deterministic. Once fixed, two narrower real gaps remained, since settled by P2-1 (a pulse trigger's first duty edge lands late; noise's cold start is a full note late), plus an open zombie-mode compound-case divergence |
 | P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found a citable public-domain formula (gbdev Pan Docs) matching the sheet's placeholder and a die-level teardown, but no measured recording of any unit: see [HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg) |
 | P3-6 | The Game Boy in the API, the studio and the skill: `chip: "dmg"` accepted, rendered and played; a chip selector in the editor; the skill says what changes | done | `apps/web`, skill 0.4.0 |
-| P3-7 | A pulse trigger keeps the low two bits of its frequency timer, as Pan Docs says | todo | P2-1's second pass. At most 3 cycles on a note's first step; moves the golden, so it goes through the calibration and the eval |
+| P3-7 | A pulse trigger keeps the low two bits of its frequency timer, as Pan Docs says | done | this PR. P2-1's second pass. Closed up to 3 of a note's first-step gap against SameBoy; the rest, up to 5 cycles, is undocumented in the sources checked and stays a deviation |
 
 ## Phase 4. The portable score
 
@@ -483,7 +499,7 @@ rewrite.
 | AUD-1 | Separate stable user identity, API keys and browser sessions; recover publications across logins, consume magic tokens atomically, and do not rotate an agent key on browser login | implemented | Stable account ownership, independent keys/sessions, atomic login consumption, revocation and account UI; decision 28 |
 | AUD-2 | Profile render CPU, bound/cache request variants and deduplicate concurrent renders; add worker/storage only as measurements justify | partial | Worker, duration/concurrency/rate/cache bounds, versioned keys, deduplication and conditional GET implemented; representative CPU profiling and distributed capacity remain open; decision 27 |
 | AUD-3 | Make low-sample-rate offline scheduling correct, bound the timeline without a position reader and fix beatDelay's contract | partial | Scheduling fixes, host-driven offline expiry and direct shared bus queues included (decision 23); low-rate performance qualification remains separate |
-| AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | partial | Target identity preserved; base-pitch/arpeggio range warnings and malformed-pattern checks implemented. Full modulation/voice-budget diagnostics remain open |
+| AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | implemented | Target identity preserved; base-pitch/arpeggio range and chord-capacity warnings, plus modulation (vibrato range/resolution/rate, slide range/resolution, volume step) and voice-budget (voice share, percussion voice) diagnostics, all with measured/limit fields, backward-compatible in `validateSong` and both API routes |
 | AUD-5 | Use versioned database migrations with precise error handling | implemented | Versioned atomic migrations; legacy/fresh/idempotence/failure rollback covered; decision 28 |
 | AUD-6 | Align root/npm README, package metadata, capabilities and licence statements; distinguish corpus parity from physical verification, remove misleading global completeness claims | implemented | Root/npm README, score spec, OpenAPI, agent skill and status generator aligned on five machines, actual arrangements, licensing, versioned audio and corpus versus hardware evidence |
 | AUD-7 | Audit hot-path allocation/copy sites in five cores, drivers, encoding and demo animation; reuse scratch with explicit ownership | implemented | [Audit and qualification](evals/HOT-PATHS-2026-09-06.md); representative-device CPU/GC measurements remain alongside AUD-3 |

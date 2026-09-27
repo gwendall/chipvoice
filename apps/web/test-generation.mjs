@@ -4,7 +4,9 @@ import { chromium } from "playwright";
 import { mkdir, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { compositionServer } from "./test/composition-server.mjs";
-const server = await compositionServer();
+// The closed beta (decision 42): invitations, and a budget large enough for
+// every paid call below until the test spends it on purpose.
+const server = await compositionServer({ access: "invite", budgetUsd: 50 });
 Object.assign(process.env, server.env);
 await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from './src/lib/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
 const api = await import("./generated/test-generation.mjs");
@@ -19,6 +21,7 @@ const query = async (path, options = {}) => {
   return { status: response.status, body: await response.json() };
 };
 const post = (body, keyId, auth = headers) => ({ method: "POST", headers: { ...auth, "Idempotency-Key": keyId }, body: JSON.stringify(body) });
+const pick = ({ access, invited, available, reason }) => ({ access, invited, available, reason });
 async function completed(id) {
   const deadline = Date.now() + 300000;
   let last;
@@ -41,6 +44,14 @@ try {
   assert.equal((await query("/api/v1/generations", post({ ...request, target: "unknown" }, "bad-target"))).status, 422);
   assert.equal((await query("/api/v1/generations", post({ ...request, apiKey: "ignored?" }, "bad-field"))).status, 422);
   assert.equal(server.calls.length, 0);
+  const uninvited = await query("/api/v1/generations", post(request, "not-invited"));
+  assert.equal(uninvited.status, 403);
+  assert.equal(uninvited.body.error, "generation_invite_required");
+  assert.deepEqual(pick((await query("/api/v1/generations/access", { headers })).body), { access: "invite", invited: false, available: false, reason: "invite_required" });
+  assert.equal(server.calls.length, 0, "an uninvited account never reaches the provider");
+  await (await api.db()).execute({ sql: "insert into composition_invites(email,created_at) values(?,?)", args: ["composition-test@example.test", Date.now()] });
+  assert.deepEqual(pick((await query("/api/v1/generations/access", { headers })).body), { access: "invite", invited: true, available: true, reason: null });
+  assert.equal((await query("/api/v1/generations/access")).status, 401);
   const submissions = await Promise.all(Array.from({ length: 3 }, () => query("/api/v1/generations", post(request, "same-request"))));
   submissions.forEach(result => assert.equal(result.status, 202));
   assert.equal(new Set(submissions.map(result => result.body.id)).size, 1);
@@ -71,6 +82,7 @@ try {
   }
   const otherKey = await api.createKey("other-composer@example.test", "test");
   assert.equal((await query(`/api/v1/generations/${id}`, { headers: { Authorization: `Bearer ${otherKey.key}` } })).status, 404);
+  assert.equal((await query("/api/v1/generations", post(request, "other-not-invited", { ...headers, Authorization: `Bearer ${otherKey.key}` }))).body.error, "generation_invite_required");
   const publicCopy = await api.publishProject(caller.userId, { project: result.project.project, visibility: "public", requestKey: "public-copy", parentId: result.projectId });
   assert.equal((await query(`/api/v1/projects/${publicCopy.id}`)).body.generation, undefined, "private prompt is not copied into a public score");
 
@@ -205,11 +217,35 @@ finally:
   assert.equal(revokedResult.status, "failed");
   assert.equal(revokedResult.projectId, null);
   assert.match(revokedResult.error, /authorization/i);
+  // The month's budget: priced usage plus a worst case for each unmetered call
+  // (failed after the model was reached) stays under 50 USD so far; one more
+  // month's worth of output tokens elsewhere spends it.
+  const budgetCalls = server.calls.length, spender = api.newId();
+  await client.execute({ sql: "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at,started_at,usage) values(?,?,?,?,?,?,?,'ready',?,?,?)", args: [spender, "another-account", "another-artist", "spent", "spent", "{}", "gpt-6-astra", Date.now(), Date.now(), JSON.stringify({ input_tokens: 0, output_tokens: 1000000 })] });
+  const overBudget = await fetch(server.base + "/api/v1/generations", post(request, "over-month-budget"));
+  assert.equal(overBudget.status, 429);
+  assert.equal((await overBudget.json()).error, "generation_budget");
+  assert.ok(Number(overBudget.headers.get("retry-after")) >= 60);
+  assert.equal(pick((await query("/api/v1/generations/access", { headers })).body).reason, "monthly_budget");
+  assert.equal(server.calls.length, budgetCalls, "a spent budget never reaches the provider");
+  await client.execute({ sql: "delete from generations where id=?", args: [spender] });
   const count = Number((await client.execute({ sql: "select count(*) as n from generations where user_id=?", args: [caller.userId] })).rows[0].n);
   for (let i = count; i < 10; i++) await client.execute({ sql: "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at) values(?,?,?,?,?,?,?,'failed',?)", args: [api.newId(), caller.userId, artist.id, `quota-${i}`, "test", JSON.stringify(request), "test", Date.now()] });
   const callsBeforeLimit = server.calls.length;
   assert.equal((await query("/api/v1/generations", post(request, "over-day-limit"))).status, 429);
+  assert.equal(pick((await query("/api/v1/generations/access", { headers })).body).reason, "daily_limit");
   assert.equal(server.calls.length, callsBeforeLimit);
+  // The composer says why before anyone types, and offers no button to press.
+  const limited = await chromium.launch({ headless: true });
+  try {
+    const context = await limited.newContext();
+    await context.addCookies([{ name: api.SESSION_COOKIE, value: token, url: server.base }]);
+    const page = await context.newPage();
+    await page.goto(`${server.base}/create?compose=1#prompt`);
+    await page.locator(".prompt-composer .prompt-access").getByText("You have reached today's composition allowance. Try again tomorrow.").waitFor();
+    await page.locator(".prompt-composer textarea").fill("Anything at all");
+    assert.ok(await page.locator(".prompt-composer").getByRole("button", { name: "Generate music", exact: true }).isDisabled());
+  } finally { await limited.close(); }
   // A terminal encoder error must not leave generation spinning until its deadline.
   const heldJob = (await completed(held.body.id)).renderJobId;
   await client.execute({ sql: "update project_jobs set mp3_status='failed' where id=?", args: [heldJob] });
