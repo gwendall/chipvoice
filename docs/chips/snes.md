@@ -182,27 +182,56 @@ own round trip (`importSpc(exportSpc(...))`, run through this package's own
 SPC700, against a direct render of the plan it was built from - the audio a
 listener would actually hear from the file), and the real oracle (the same
 file played by `play-spc`, blargg's SPC700, exactly like `check:spc` above).
-Both compare the DSP write sequence (register and value, in order - gating)
-and the output samples, scored by each side's per-voice RMS envelope
-correlation in short windows (gating, `ENVELOPE_MATCH_THRESHOLD` below) - not
-a raw cycle-exact sample match, reported alongside but not gated, since a
-write correctly rounded to its own tick still shifts the S-DSP's own
-audio-rate waveform out of phase with an unquantized render, and phase alone
-scores two copies of the identical tone as almost entirely different; see
-the doc comment on `envelopeMatch` in `check-export.mjs` for the window size
-chosen and the reasoning, including the shape a real content bug leaves in
-this same measurement (used, in this file's own history, to find and fix
-two of them).
+
+Both compare the DSP write sequence: register, value, and order, gated at
+exact equality; the oracle side also gates the write *cycles*, exactly, up to
+a single, named, proven offset (`T0_STAGE1_PERIOD`). Blargg's own vendored
+snes_spc has a one-time "phantom period" quirk in its lazy timer model at
+snapshot load (`next_time` reset to 1 combined with an unconditional `+1` in
+its elapsed-periods formula), which puts every write after the first live
+timer tick exactly one 128-cycle timer-0 prescaler period ahead of ours, for
+the rest of the file - a known simplification in blargg's own reference
+implementation, not a bug in either side, and now named and gated exactly
+instead of ignored (see `compareOracleWrites`'s doc comment in
+`check-export.mjs`). The round trip additionally gates on timing: the
+largest deviation between any write's actual cycle and the tick `exportSpc`
+rounded it to, bounded at three ticks and measured live on these same real
+songs (`packages/chipvoice/test/spc-export.mjs` derives the margin).
+
+The output samples are compared two ways: per-voice RMS envelope correlation
+in short windows (gating, `ENVELOPE_MATCH_THRESHOLD` below), and, on the
+oracle side, per-note timing alignment (gating,
+`NOTE_TIMING_ALIGNMENT_THRESHOLD`) - the fraction of notes whose steps land
+at the right relative cycle once each note is given its own constant shift, a
+genuinely exact, not correlation, bar. Neither side gates on a raw
+cycle-exact sample match, reported alongside but not gated: a write correctly
+rounded to its own tick still shifts the S-DSP's own audio-rate waveform out
+of phase with an unquantized render, and phase alone scores two copies of the
+identical tone as almost entirely different. On the oracle side this gap is
+no longer just "phase" left unexplained - even correcting for the proven
+phantom-period offset above only raises raw cycle-exact samples to 29-40% on
+this corpus, because note-relative *timing* lines up 92-97% of the time while
+the exact sample values inside a note essentially never match bit for bit
+(the S-DSP core is a direct port of blargg's own, so the two do not diverge in
+what it computes; they diverge in the few cycles of write timing that seed a
+continuously-evolving, chaotic pipeline). Note timing is the tighter,
+genuinely exact rule that survives instead. See the doc comments on
+`envelopeMatch`, `compareOracleWrites`, and `noteTimingAlignment` in
+`check-export.mjs` for the full reasoning and measurements, including the
+shape a real content bug leaves in this same measurement (used, in this
+file's own history, to find and fix two of them).
 
 <!-- spc-export:begin -->
 Written by `check:spc-export` on 2026-09-27, against play-spc (blargg's SPC700, vendored snes_spc).
 
-Samples: envelope correlation: both streams' per-voice RMS loudness in 4096-cycle (four ticks, 4 ms) windows, pooled across voices, compared by Pearson correlation; gated at 0.95. relativeRmsError is the same envelopes' RMS difference relative to the oracle's own RMS, reported but not gated. cycleExact is compare()'s raw, unwindowed cycle-exact percentage, reported but not gated - see envelopeMatch's doc comment in this file for why a raw sample comparison, or even a too-fine windowed one, is the wrong tool for audio this close to correct.
+Writes: oracle writes are gated on content (register, value, order - exact) AND cycle (exact, up to the single named T0_STAGE1_PERIOD offset blargg's own snes_spc introduces at snapshot load - see compareOracleWrites's doc comment). roundTripDrift is the round trip's own timing gate (item 3): the largest |actual cycle - tick-rounded plan cycle| over every write, gated at 3 ticks (3072 cycles) - see roundTripTimingDrift's doc comment for the derivation.
 
-| Song | ARAM used | Round trip (own CPU): writes | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes | play-spc: samples (envelope corr, rel RMS error, cycle-exact) |
+Samples: envelope correlation: both streams' per-voice RMS loudness in 4096-cycle (four ticks, 4 ms) windows, pooled across voices, compared by Pearson correlation; gated at 0.95. relativeRmsError is the same envelopes' RMS difference relative to the oracle's own RMS, reported but not gated. cycleExact is compare()'s raw, unwindowed cycle-exact percentage, reported but not gated - see envelopeMatch's doc comment in this file for why a raw sample comparison, or even a too-fine windowed one, is the wrong tool for audio this close to correct. noteTiming (oracle side only) is compare()'s runs()-based per-note alignment: the fraction of notes whose steps land at the right relative cycle once each note is given its own constant shift - a genuinely exact (not correlation) bar, gated at 0.85; see compareOracleWrites's and noteTimingAlignment's doc comments for why this, not raw sample identity, is the tightest exact rule that survives blargg's own proven timer quirk.
+
+| Song | ARAM used | Round trip (own CPU): writes, max drift | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes (cycleOk, phantom periods) | play-spc: samples (envelope corr, rel RMS error, cycle-exact, note timing) |
 | --- | --- | --- | --- | --- | --- |
-| mario | 52991 / 65472 bytes | 24092/24092 | 0.9586 (18.3478 %, 31.3879 % cycle-exact) | 24092/24092 | 0.9987 (3.2309 %, 31.4303 % cycle-exact) |
-| zelda | 29623 / 65472 bytes | 12665/12665 | 0.9661 (10.9897 %, 15.2763 % cycle-exact) | 12665/12665 | 0.9980 (2.6981 %, 16.7870 % cycle-exact) |
+| mario | 52991 / 65472 bytes | 24092/24092, 1998c (1.95t) | 0.9586 (18.3478 %, 31.3879 % cycle-exact) | 24092/24092, cycleOk true, 1 period(s) | 0.9987 (3.2309 %, 31.4303 % cycle-exact, 97.2125 % note timing) |
+| zelda | 29623 / 65472 bytes | 12665/12665, 1993c (1.95t) | 0.9661 (10.9897 %, 15.2763 % cycle-exact) | 12665/12665, cycleOk true, 1 period(s) | 0.9980 (2.6981 %, 16.7870 % cycle-exact, 92.3077 % note timing) |
 | sonic | does not fit: 82896 / 57344 bytes | - | - | - | - |
 <!-- spc-export:end -->
 
