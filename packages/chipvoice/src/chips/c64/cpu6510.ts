@@ -7,12 +7,16 @@
  * Every documented opcode and addressing mode is here, with NMOS decimal
  * (BCD) mode for ADC and SBC: the algorithm and the flag table are Bruce
  * Clark's "Decimal Mode" (6502.org/tutorials/decimal_mode.html), Appendix A,
- * Sequence 1 (ADC) and Sequence 3 (SBC). That document states plainly that
- * on a real NMOS 6502, decimal ADC's N, V and Z are whatever the *binary*
- * addition would have set (undocumented but deterministic, since nothing
- * decimal-corrects them on the die), and decimal SBC's C, N, V and Z are all
- * the binary subtraction's; only the accumulator's decimal digits and ADC's
- * carry are the corrected sequence. That is what is implemented below.
+ * Sequence 1 (ADC) and Sequence 3 (SBC), checked against that document's own
+ * reference test (Klaus Dormann's `6502_decimal_test.a65`, run in
+ * `packages/conform` - see `check:6510` - with every one of its 130,050
+ * cases matching). On a real NMOS 6502, decimal ADC's Z is whatever the
+ * *binary* addition would have set, but its N and V come from the ALU's own
+ * high-nibble adder mid-correction (undocumented but deterministic, since
+ * nothing decimal-corrects them on the die before that adder's result is
+ * latched into the flags); decimal SBC's C, N, V and Z are all the binary
+ * subtraction's. Only the accumulator's decimal digits and ADC's carry are
+ * the fully corrected sequence. That is what is implemented below.
  *
  * The stable illegal (undocumented) opcodes real music occasionally uses -
  * SLO, RLA, SRE, RRA, SAX, LAX, DCP, ISC, ANC, ALR, ARR, SBX, the NOP
@@ -147,21 +151,39 @@ export class Cpu6510 {
     const binCarry = this.a + m + carryIn > 0xff;
     const binOverflow = ((this.a ^ bin) & (m ^ bin) & 0x80) !== 0;
     if (this.p & D) {
+      // The ALU is two nibble adders with a BCD adjustment, not a binary
+      // adder with one: Z follows the plain binary sum (below), but N and V
+      // come from the *high*-nibble adder's own 8-bit result - operand1
+      // being the low nibble's BCD-corrected sum merged with A's original
+      // high nibble, operand2 being M's high nibble (plus $0F when the low
+      // nibble carried), with that same carry as this add's carry-in - one
+      // step before the top nibble's own ">= $a0" correction. Bruce Clark's
+      // "Decimal Mode" (6502.org/tutorials/decimal_mode.html), Appendix A,
+      // Sequence 1, and its own reference test (`6502_decimal_test.a65`,
+      // vendored at `packages/conform/roms/klaus-6502/`) are both explicit
+      // that this is a distinct 8-bit add from the plain binary sum used for
+      // the accumulator's low-nibble path, not a simplification of it.
       let al = (this.a & 0x0f) + (m & 0x0f) + carryIn;
-      if (al >= 0x0a) al = ((al + 0x06) & 0x0f) + 0x10;
-      let full = (this.a & 0xf0) + (m & 0xf0) + al;
+      const lowCarry = al >= 0x0a;
+      if (lowCarry) al = (al + 0x06) & 0x0f;
+      const highA = (this.a & 0xf0) | al;
+      const highM = (m & 0xf0) + (lowCarry ? 0x0f : 0);
+      const highSum = highA + highM + (lowCarry ? 1 : 0);
+      this.setFlag(N, (highSum & 0x80) !== 0);
+      this.setFlag(V, ((highA ^ highSum) & (highM ^ highSum) & 0x80) !== 0);
+      let full = highSum;
       if (full >= 0xa0) full += 0x60;
       this.setFlag(C, full >= 0x100);
       this.a = full & 0xff;
     } else {
       this.setFlag(C, binCarry);
+      this.setFlag(N, (bin & 0x80) !== 0);
+      this.setFlag(V, binOverflow);
       this.a = bin;
     }
-    // N, V and Z always follow the binary sum: documented for decimal SBC's
-    // flags, undocumented-but-deterministic for decimal ADC's N and V (see
-    // the file header); in binary mode this is simply the ordinary result.
-    this.setFlag(N, (bin & 0x80) !== 0);
-    this.setFlag(V, binOverflow);
+    // Z always follows the plain binary sum: documented for decimal SBC's
+    // flags too (see `sbc`, below), and simply the ordinary result in binary
+    // mode.
     this.setFlag(Z, bin === 0);
   }
 
