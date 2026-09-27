@@ -28,6 +28,7 @@ export const INTENTS = {
     soft: "the default: a 25 % pulse with a slow decay and a late vibrato",
     bright: "a thin 12.5 % pulse that cuts through; the classic NES lead",
     round: "a 50 % pulse, fuller and hollower",
+    sweep: "a filter cutoff that opens across the note, closed to bright; the SID's classic filter sweep, reused as the brightest existing lead on a chip with no filter",
   },
   chord: {
     plucked: "the default: a short 12.5 % pluck on every step of the arpeggio",
@@ -37,6 +38,7 @@ export const INTENTS = {
     round: "the default: the triangle on a NES, a triangle wave on a Game Boy or a C64",
     hollow: "a square wave on the Game Boy's wave channel or a SID voice; a NES has only the triangle",
     bright: "a sawtooth on the Game Boy's wave channel or a SID voice; a NES has only the triangle",
+    resonant: "a pulse through the SID's filter at a high resonance, a narrow, squelchy low end; reused as the nearest existing bass on a chip with no filter",
   },
   perc: {
     tight: "the default kit: a kick, a snare, a closed and an open hat",

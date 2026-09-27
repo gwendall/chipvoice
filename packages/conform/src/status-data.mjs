@@ -95,8 +95,8 @@ export const CHIPS = [
     notes: [
       'The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter. Also compared with reSID-fp configured as an 8580: 99.3 % identical, diverging only in the two logs that select a combined waveform, where the model\'s own fit to that chip falls short of the 6581\'s exact match.',
       'Analog: a profile from the documents, unmeasured: the 6581\'s non-linear DAC ladders, the filter on a measured cutoff curve, the output stage\'s corners; the 8580\'s own near-linear DACs and filter curve, from reSID-fp\'s Dac docs and reSID\'s filter.cc, also unmeasured.',
-      'Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did.',
-      'Remains: the filter in the arranger; a unit\'s line-out, for either model.',
+      'Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did; the filter reachable from the arranger, a lead\'s sweep and a bass\'s resonance, on either model.',
+      'Remains: a unit\'s line-out, for either model.',
     ],
   },
 ];

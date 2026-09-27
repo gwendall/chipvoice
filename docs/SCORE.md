@@ -60,9 +60,9 @@ OpenAPI schema and the skill's table (`INTENTS` in `score.ts`):
 
 | Role | Words |
 | --- | --- |
-| `lead` | `soft` (default), `bright`, `round` |
+| `lead` | `soft` (default), `bright`, `round`, `sweep` |
 | `chord` | `plucked` (default), `held` |
-| `bass` | `round` (default), `hollow`, `bright` |
+| `bass` | `round` (default), `hollow`, `bright`, `resonant` |
 | `perc` | `tight` (default), `soft`, `punchy` |
 
 Words, not parameters. The lean was decided by writing both down: an agent
@@ -94,7 +94,7 @@ What the shipped arrangers and drivers currently do:
 | DMG | Pulse 1, duty as timbre, retriggered on volume changes | Pulse 2, arpeggiated | Wave channel, the word as its waveform | Noise, the kit fitted to the hardware envelope | The wave channel's bass |
 | YM2612 + SN76489 | FM patch, the LFO on `"bright"` | PSG arpeggios | FM patch | PSG noise clocked by tone 3, or FM drums on channel 6 (`"punchy"`) | FM timbres |
 | S-DSP | A sample | One sample voice, arpeggiated | A sample | The kick and the snare a sampled kit; the hats the DSP's own hardware noise | BRR samples, hardware noise and echo |
-| SID | One voice | Fast arpeggio on one voice, at 50 Hz | One voice | Waveform switches on one voice | Three voices; chord/drums share one |
+| SID | One voice; `sweep` opens the filter across the note | Fast arpeggio on one voice, at 50 Hz | One voice; `resonant` routes it through the filter at a high resonance | Waveform switches on one voice | Three voices sharing a filter; chord/drums share the third |
 
 ## The voice budget
 
@@ -143,9 +143,17 @@ Two levels, and the `silent` flag survives both.
   physical voice, such as the SID's chord and percussion both on v3
   (`voice_share`), and a drum arriving before the previous one's own decay
   has finished on a chip with one shared voice per kit part, such as the
-  2A03's single noise channel (`perc_voice`). The score and the render are
-  both unchanged; every one of these is a diagnostic, not a fix. Unknown
-  sample banks are not fully diagnosed.
+  2A03's single noise channel (`perc_voice`). A shared register is diagnosed
+  the same way too: the SID's filter is one cutoff, one resonance and one
+  mode for every voice that asks for it, so a lead's `sweep` and a bass's
+  `resonant` sounding together are not two filters but one, and whichever
+  voice's write actually lands later in time is what plays. `filter_conflict`
+  names the first step where two tracks that ask for different filter
+  settings both sound at once, rather than leaving the loser to be found by
+  ear; the rule itself - later write wins, nothing arbitrates it - is
+  unchanged and is `SidDriver`'s to keep straight, not the score's. The score
+  and the render are both unchanged; every one of these is a diagnostic, not
+  a fix. Unknown sample banks are not fully diagnosed.
 
 ## Export
 
@@ -155,7 +163,8 @@ like need a driver embedded in the file and come later, chip by chip.
 
 ## What comes next
 
-SNES triads across spare voices, FM percussion, and exposed SID filter/sweep
-controls remain P8-13. NES smooth vibrato through the sweep unit is implemented.
-New machines remain demand-driven; finishing these arrangements and physical
-verification does not require another chip.
+SNES triads across spare voices and FM percussion remain P8-13; the SID's
+filter is exposed now, a lead's `sweep` and a bass's `resonant` (P7-9). NES
+smooth vibrato through the sweep unit is implemented. New machines remain
+demand-driven; finishing these arrangements and physical verification does
+not require another chip.

@@ -14,12 +14,18 @@ import { formatLog } from '../log.mjs';
  * and its reset by the test bit, every attack, decay and release rate, the
  * sustain levels, the ADSR delay bug, gate changes a few cycles apart, sync
  * and ring modulation at several ratios, the test bit on a sync source, the
- * floating output, and now (P7-11) a sawtooth, a triangle, a noise rate and a
- * combined waveform held on all three voices at once for several seconds -
- * the harness's densest change streams, now that a compact `ChangeStream`
+ * floating output, a sawtooth, a triangle, a noise rate and a combined
+ * waveform held on all three voices at once for several seconds (P7-11) - the
+ * harness's densest change streams, now that a compact `ChangeStream`
  * (`change-stream.mjs`) and a streaming compare no longer hold the corpus's
- * size against its memory. A log is in PAL cycles; writes are four apart, as
- * a 6510 makes them.
+ * size against its memory - and now (P7-9) the filter registers themselves:
+ * `script-filter` writes `$D415`-`$D418` directly, two voices sharing the
+ * filter while its resonance and cutoff move, a third cycling its modes; a
+ * driver song, `song-filter`, plays the two arranger words that reach it,
+ * `lead: "sweep"` and `bass: "resonant"`. Neither moves a digital trace - the
+ * filter is analog-stage only - but both are here so the corpus carries
+ * writes to every register the driver reaches. A log is in PAL cycles;
+ * writes are four apart, as a 6510 makes them.
  */
 const CLOCK = 985248;
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'corpus', 'c64');
@@ -283,6 +289,45 @@ const SCRIPTS = [
     })(),
   },
   {
+    name: 'script-filter',
+    notes: 'The filter registers written directly: voice 1 and voice 2 routed through it together while a shared resonance climbs its full range and an eleven-bit cutoff ramps from the bottom to the top; voice 3 cycles the three modes on its own, then clears its own routing bit. None of it moves a digital trace - the filter is analog-stage only, after the DACs - but the corpus carries writes to every register the driver reaches, and P7-9\'s arranger words are what write these in practice.',
+    cycles: second(3.4),
+    writes: (() => {
+      const w = writer();
+      w.at(second(0));
+      w.voice(0, { f: F(note(48)), control: 0x41 });
+      w.at(second(0));
+      w.voice(1, { f: F(note(55)), control: 0x21 });
+      // Voice 1 and voice 2 share the filter: one resonance for both, a
+      // cutoff ramp from the bottom of its eleven bits to the top.
+      for (let k = 0; k <= 15; k++) {
+        w.at(second(k * 0.1));
+        w.w(0xd417, (k << 4) | 0x03);
+        const cutoff = Math.round((k / 15) * 2047);
+        w.w(0xd415, cutoff & 0x07);
+        w.w(0xd416, cutoff >> 3);
+      }
+      w.at(second(1.6));
+      w.w(V(0) + 4, 0x40);
+      w.at(second(1.6));
+      w.w(V(1) + 4, 0x20);
+      // Voice 3 alone: low-pass, band-pass, then high-pass, then released.
+      w.at(second(1.8));
+      w.voice(2, { f: F(note(64)), control: 0x41 });
+      w.w(0xd417, 0x84);
+      w.w(0xd418, 0x1f);
+      w.at(second(2.2));
+      w.w(0xd418, 0x2f);
+      w.at(second(2.6));
+      w.w(0xd418, 0x4f);
+      w.at(second(3.0));
+      w.w(0xd417, 0x80);
+      w.at(second(3.2));
+      w.w(V(2) + 4, 0x40);
+      return w.writes;
+    })(),
+  },
+  {
     name: 'script-dense-combined',
     notes: 'All three voices a combined waveform at once, held for the whole log: pulse and triangle, pulse and sawtooth, pulse and sawtooth and triangle, each at its own pitch and pulse width.',
     cycles: second(3),
@@ -345,6 +390,12 @@ const SONGS = [
     source: 'the same lines with a bright lead, a bright bass and a held chord',
     seconds: 4,
     score: { id: 'bright', bpm: 152, order: [0], gain: 1, intent: { lead: 'bright', bass: 'bright', chord: 'held' }, patterns: [PATTERN] },
+  },
+  {
+    name: 'song-filter',
+    source: 'the same lines with a sweeping lead and a resonant bass, the two P7-9 intents that reach the filter',
+    seconds: 4,
+    score: { id: 'filter', bpm: 152, order: [0], gain: 1, intent: { lead: 'sweep', bass: 'resonant' }, patterns: [PATTERN] },
   },
 ];
 

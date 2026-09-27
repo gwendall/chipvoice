@@ -56,6 +56,7 @@ export const CHIP_IDS = ["2a03", "dmg", "md", "snes", "c64"] as const;
 export type ProjectChip = (typeof CHIP_IDS)[number];
 const chip = choice(...CHIP_IDS);
 const waveform = choice("pulse", "triangle", "sawtooth", "noise");
+const filterMode = choice("lowpass", "bandpass", "highpass");
 const operator = obj(
   {
     dt: num(0, 7, true),
@@ -99,6 +100,15 @@ const instrument = obj(
       ["algorithm", "feedback", "ops"],
     ),
     sample: str(80, 1),
+    filter: obj(
+      {
+        mode: filterMode,
+        resonance: num(0, 15),
+        cutoff: { oneOf: [num(0, 2047), arr(num(0, 2047), 4096, 1)] },
+      },
+      ["mode", "resonance", "cutoff"],
+    ),
+    pulseWidth: arr(num(0, 4095), 4096, 1),
   },
   ["volume"],
 );
@@ -120,9 +130,9 @@ export const SCORE_DATA_SCHEMA = obj(
     chip,
     intent: optional(
       obj({
-        lead: choice("soft", "bright", "round"),
+        lead: choice("soft", "bright", "round", "sweep"),
         chord: choice("plucked", "held"),
-        bass: choice("round", "hollow", "bright"),
+        bass: choice("round", "hollow", "bright", "resonant"),
         perc: choice("tight", "soft", "punchy"),
       }),
     ),

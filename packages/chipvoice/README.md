@@ -363,9 +363,10 @@ The portable score keeps four musical roles. Arrangers map them onto each machin
 FM lead/bass and PSG chord/drums on Mega Drive (or FM drums on channel 6,
 `perc: "punchy"`, with the chip's own LFO available to any patch that asks for
 it), four sample voices on SNES, and shared chord/percussion on the C64's third
-voice. SID filter controls remain a backlog item. VGM export supports NES,
-Game Boy and Mega Drive; SNES and C64 register logs do not yet have a shipped
-file exporter.
+voice. The C64's filter is reachable too: `lead: "sweep"` opens its cutoff
+across a note, `bass: "resonant"` routes a pulse through it at a high
+resonance. VGM export supports NES, Game Boy and Mega Drive; SNES and C64
+register logs do not yet have a shipped file exporter.
 
 `validateSong` reports machine-specific base-pitch and arpeggio range warnings.
 It preserves the score; it does not guarantee every modulation stays representable.

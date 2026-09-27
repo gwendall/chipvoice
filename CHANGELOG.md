@@ -77,6 +77,26 @@ carries `measured` and `limit` alongside its message, including the existing
 `limit` as optional fields; nothing existing changes shape. No render
 changes: these are diagnostics, not fixes.
 
+The SID's filter is now reachable from the arranger's own words, not a
+simulated substitute. A lead's `sweep` opens the cutoff across the note; a
+bass's `resonant` holds a fixed high resonance; both are low-pass. A voice
+sets and clears only its own routing bit in `$D417`; the shared resonance,
+cutoff and mode are whichever voice's write actually lands later in time,
+the same arbitration real hardware has, since the SID has one filter for
+all three voices. `SidDriver` dedups a filtered voice's writes against that
+voice's own last frame only, never against another voice's: a note is
+dispatched whole, and notes are dispatched in the order they start rather
+than the order their writes land in time, so comparing against a shared,
+cross-voice last-written value could skip a write that was actually needed.
+`validateSong` gains `filter_conflict`, naming the first step where two
+tracks that ask for the filter with different settings both sound at once,
+so the one that loses is named rather than just heard. A new
+`Instrument.pulseWidth` field gives a per-frame pulse-width sweep at the
+driver level; no built-in preset uses it yet. `script-filter` and
+`song-filter` join the C64 conformance corpus; parity against reSID-fp holds
+at 100%, since the filter is an analog-stage model that never touches the
+digital trace the harness compares.
+
 The SNES kit's closed and open hats now default to the S-DSP's own hardware
 noise generator (`NON`, and `FLG`'s noise clock set once at power-on) instead
 of a BRR sample, the way the NES, Game Boy, Mega Drive and C64 kits already
