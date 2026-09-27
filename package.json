@@ -31,7 +31,8 @@
     "gbs-export:sheet": "node scores/gbs-export/corpus.mjs --json .artifacts/gbs-export/report.json --sheet docs/chips/dmg.md",
     "audio:pull": "node apps/web/scripts/audio-store.mjs pull",
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
-    "audio:push": "node apps/web/scripts/audio-store.mjs push"
+    "audio:push": "node apps/web/scripts/audio-store.mjs push",
+    "gen-bench": "node apps/web/scripts/gen-bench.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

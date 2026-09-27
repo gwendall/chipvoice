@@ -62,7 +62,7 @@ Keep the earlier ticket identifiers for continuity; the acceptance scope is simp
 | Tickets | State and next action |
 | --- | --- |
 | GEN-02, GEN-06–08 | Local adapter, normal song saving, bounded execution and three routes implemented; first real local Astra trial passed |
-| GEN-01, GEN-05 | Compare a small varied set of original prompts, record latency/usage and listen to the complete songs; expand the benchmark only when useful |
+| GEN-01, GEN-05 | Harness implemented: [the benchmark doc](GENERATION-BENCHMARK.md), `pnpm gen-bench`, a committed 250-prompt set (50 per console) drives the real generation path, prices cost exactly like the budget and runs the GEN-03 checks; `--mock` covers it in CI with no network or cost. The one-per-console paid sample is blocked on a missing `OPENAI_API_KEY`; the full run is estimated at 70.00 USD and needs the owner's approval |
 | GEN-03 | Implemented: whole-song acoustic checks (clipping, level jumps, silence gaps, an unresolved ending, a loop seam, a duration mismatch), recorded on the generation and never rejecting; see "Whole-song checks" above |
 | GEN-04 | Deferred: add a bounded repair call only if measured failures justify it, preserving exact candidate source and cost visibility |
 | GEN-09 | Implemented: prompt form in `/create`, artist/duration controls, progress/reload/cancel, preserved editor draft and links to the saved song |
