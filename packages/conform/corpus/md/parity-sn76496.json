@@ -1,0 +1,728 @@
+{
+  "chip": "md",
+  "oracle": {
+    "id": "sn76496",
+    "name": "MAME sn76496 (Sega VDP PSG), pinned at 76c7d197"
+  },
+  "voices": [
+    "psg1",
+    "psg2",
+    "psg3",
+    "noise"
+  ],
+  "date": "2026-09-27",
+  "files": 8,
+  "cycles": 2233636083,
+  "identical": 1990757028,
+  "diverging": 4,
+  "results": [
+    {
+      "name": "script-algorithms",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 1640,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-detune-lfo",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 1314,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-envelopes",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 414,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-psg-edges",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 98,
+      "cycles": 434914718,
+      "identical": 396774428,
+      "first": {
+        "cycle": 8054100,
+        "voice": 6,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 423102218,
+          "a": 69789,
+          "b": 168225,
+          "exact": 69782,
+          "near": 0,
+          "onlyA": 7,
+          "onlyB": 98443,
+          "shift": 0,
+          "aligned": 69782,
+          "runs": {
+            "ours": 7235,
+            "theirs": 7234,
+            "alignedTimes": 7232,
+            "alignedValues": 7232,
+            "maxShift": 83239440
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 424176128,
+          "a": 4,
+          "b": 89490,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 4,
+          "onlyB": 89490,
+          "shift": -15,
+          "aligned": 1,
+          "runs": {
+            "ours": 4,
+            "theirs": 2,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 424176218,
+          "a": 4,
+          "b": 89488,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 4,
+          "onlyB": 89488,
+          "shift": -15,
+          "aligned": 1,
+          "runs": {
+            "ours": 4,
+            "theirs": 2,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 430064018,
+          "a": 1885,
+          "b": 1885,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1885,
+          "onlyB": 1885,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1885,
+            "theirs": 1885,
+            "alignedTimes": 1885,
+            "alignedValues": 1885,
+            "maxShift": 9840
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-psg",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 123,
+      "cycles": 273835193,
+      "identical": 121483313,
+      "first": {
+        "cycle": 5369445,
+        "voice": 6,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 153025523,
+          "a": 1936,
+          "b": 1938,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1936,
+          "onlyB": 1938,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1935,
+            "theirs": 1938,
+            "alignedTimes": 1935,
+            "alignedValues": 1935,
+            "maxShift": 243840
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 141831653,
+          "a": 1162,
+          "b": 1162,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1162,
+          "onlyB": 1162,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1162,
+            "theirs": 1161,
+            "alignedTimes": 1161,
+            "alignedValues": 1161,
+            "maxShift": 2010
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 255339863,
+          "a": 2366,
+          "b": 2364,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 1940,
+          "onlyB": 1938,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2366,
+            "theirs": 2364,
+            "alignedTimes": 2364,
+            "alignedValues": 2364,
+            "maxShift": 564465
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-ssg-ch3-dac",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 1038,
+      "cycles": 273835193,
+      "identical": 273835193,
+      "first": null,
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-bright",
+      "source": "the same lines with a bright lead and a bright bass",
+      "writes": 2038,
+      "cycles": 214772700,
+      "identical": 188579310,
+      "first": {
+        "cycle": 6223425,
+        "voice": 9,
+        "a": 0,
+        "b": 13
+      },
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 214772580,
+          "a": 2071,
+          "b": 2071,
+          "exact": 2066,
+          "near": 0,
+          "onlyA": 5,
+          "onlyB": 5,
+          "shift": 0,
+          "aligned": 2066,
+          "runs": {
+            "ours": 2071,
+            "theirs": 2071,
+            "alignedTimes": 2071,
+            "alignedValues": 2071,
+            "maxShift": 30
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 188579415,
+          "a": 20691,
+          "b": 20692,
+          "exact": 3116,
+          "near": 0,
+          "onlyA": 17575,
+          "onlyB": 17576,
+          "shift": 0,
+          "aligned": 3116,
+          "runs": {
+            "ours": 2840,
+            "theirs": 2834,
+            "alignedTimes": 2377,
+            "alignedValues": 2303,
+            "maxShift": 8695680
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-golden",
+      "source": "packages/chipvoice/test/golden-md.mjs",
+      "writes": 1900,
+      "cycles": 214772700,
+      "identical": 188579205,
+      "first": {
+        "cycle": 6223425,
+        "voice": 9,
+        "a": 0,
+        "b": 13
+      },
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 214772475,
+          "a": 2075,
+          "b": 2075,
+          "exact": 2066,
+          "near": 0,
+          "onlyA": 9,
+          "onlyB": 9,
+          "shift": 0,
+          "aligned": 2066,
+          "runs": {
+            "ours": 2074,
+            "theirs": 2074,
+            "alignedTimes": 2074,
+            "alignedValues": 2074,
+            "maxShift": 30
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 188579415,
+          "a": 20691,
+          "b": 20692,
+          "exact": 3116,
+          "near": 0,
+          "onlyA": 17575,
+          "onlyB": 17576,
+          "shift": 0,
+          "aligned": 3116,
+          "runs": {
+            "ours": 2840,
+            "theirs": 2834,
+            "alignedTimes": 2377,
+            "alignedValues": 2303,
+            "maxShift": 8695680
+          }
+        }
+      ]
+    }
+  ]
+}

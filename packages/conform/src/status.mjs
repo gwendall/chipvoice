@@ -68,10 +68,10 @@ const CHIPS = [
     analog: { done: 0, label: 'none' },
     driver: { reached: 4, voices: 10 },
     notes: [
-      'The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the reference on this corpus, not a direct silicon capture. The PSG is from the documents and has no oracle yet.',
+      'The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the reference on this corpus, not a direct silicon capture. The PSG is also compared against MAME\'s sn76496, with three diagnosed divergences: a tone period of 0 or 1, the polarity a channel starts at before its first reload, and tone 3\'s noise rate.',
       'Analog: unmeasured; Nuked\'s own DAC model is marked unverified, the mix and the Model 1 filter are placeholders.',
       'Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten.',
-      'Remains: a PSG oracle; the LFO, SSG-EG and the DAC in the arranger; a unit\'s line-out.',
+      'Remains: the LFO, SSG-EG and the DAC in the arranger; a unit\'s line-out.',
     ],
   },
   {
