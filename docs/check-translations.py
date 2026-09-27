@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus|nsf-export):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -166,6 +166,48 @@ def localized_block(kind, body, templates):
                     line = line.replace(before, after)
             else:
                 raise ValueError(f'Unknown gbs-corpus line: {line}')
+        elif kind == 'nsf-export':
+            match = re.fullmatch(r"Written by `nsf-export:sheet` on (.+), against Game_Music_Emu revision `(.+)`\. Audio column: relative RMS error between the two renders' per-frame loudness envelopes, each peak-normalized and lead-in aligned \(see above\); threshold (\d+)%\.", line)
+            if match:
+                line = f'`nsf-export:sheet`による生成：{match[1]}。参照：Game_Music_Emu revision `{match[2]}`。オーディオ列：両者のフレーム単位ラウドネス包絡線（それぞれ正規化・無音区間整列済み、詳細は本文参照）間の相対RMS誤差。しきい値：{match[3]}%。'
+                lines.append(line)
+                continue
+            if line == '| Song | Commands | Audio | First divergence |':
+                lines.append('| 曲 | コマンド | オーディオ | 最初の相違 |')
+                continue
+            row = re.fullmatch(r'\| (.+) \| (.+) \| (.+) \| (.+) \|', line)
+            if not row:
+                raise ValueError(f'Unknown nsf-export line: {line}')
+            title, commands, audio, note = row.groups()
+            # Title (a proper noun, plain or a Markdown link) and any
+            # matched/total or byte counts pass through unchanged; only the
+            # small fixed vocabulary `corpus.mjs`'s `formatResult` produces
+            # is translated. Unrecognized shapes fail closed.
+            if not re.fullmatch(r'\d+/\d+|not exportable: \w+|not rendered|\d+ bytes', commands):
+                raise ValueError(f'Unknown nsf-export commands cell: {commands}')
+            if not re.fullmatch(r'-|not compared|\d+(?:\.\d+)?%(?: \(over threshold\))?', audio):
+                raise ValueError(f'Unknown nsf-export audio cell: {audio}')
+            note_replacements = {
+                'not exportable: dmc_unsupported': 'エクスポート不可: dmc_unsupported',
+                'not rendered': '未レンダリング',
+                'not compared': '未比較',
+                ' (over threshold)': '（しきい値超過）',
+                "This capture enables DMC/DPCM sample playback ($4015 written with bit 4 set); that needs its sample bytes served sub-frame, from cartridge memory, during the CPU's own stall on a real DMA read - this player only replays writes once per 60 Hz frame and cannot carry it.":
+                    'このキャプチャはDMC/DPCMサンプル再生を有効にしています（$4015のビット4が立っています）。これはサンプルバイトをカートリッジメモリからフレーム未満の粒度で、CPU自身が実際のDMA読み出しでストールしている間に供給する必要があり、このプレイヤーは60Hzのフレーム単位でしか書き込みを再生できないため、表現できません。',
+                "This capture loaded DMC/DPCM sample memory; this player only replays register writes in 60 Hz bursts and has no mechanism to serve sample bytes through a real DMA read during playback.":
+                    'このキャプチャはDMC/DPCMサンプルメモリを読み込んでいます。このプレイヤーは60Hzのバースト単位でレジスタ書き込みを再生するだけで、再生中に実際のDMA読み出しでサンプルバイトを供給する仕組みを持ちません。',
+                'none': 'なし', ' vs ': ' 対 ', 'cycle ': 'サイクル ',
+                ': one side has no more commands': '：一方にそれ以上のコマンドがありません',
+            }
+            translated_commands, translated_audio, translated_note = commands, audio, note
+            for before, after in note_replacements.items():
+                translated_commands = translated_commands.replace(before, after)
+                translated_audio = translated_audio.replace(before, after)
+                translated_note = translated_note.replace(before, after)
+            if translated_note == note and note not in ('none',) and not re.fullmatch(r'サイクル \d+ 対 \d+, \$[0-9a-f]+: \d+ 対 \d+|サイクル \d+：一方にそれ以上のコマンドがありません', translated_note):
+                raise ValueError(f'Unknown nsf-export note: {note}')
+            lines.append(f'| {title} | {translated_commands} | {translated_audio} | {translated_note} |')
+            continue
         lines.append(line)
     return '\n'.join(lines) + '\n'
 

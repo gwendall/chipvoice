@@ -249,6 +249,19 @@ writeFileSync("theme.vgm", toVgm(events, cycles, { title: "Theme", author: "me" 
 
 `recordSong`は`renderSong`と同じドライバーとシーケンサーを実行し、鳴らす代わりに書き込みを保存します。`toVgm`は形式の時計である44100 Hzのサンプルへ丸め、プレイヤーに名前を出すGD3タグを書きます。`loopAtCycle`を渡すとそこへループします。
 
+NESの曲にはもう一つ`exportNsf`があります。生の書き込み列の代わりに、自前の小さな手組み6502プレイヤーを積んだ標準NSF v1ファイルを出力するので、本ライブラリだけでなく実機やあらゆるNSFプレイヤーで再生できます。
+
+```ts
+import { recordSong, exportNsf } from "chipvoice";
+
+const { events, cycles } = recordSong(THEME, { seconds: 30 });
+writeFileSync("theme.nsf", exportNsf(events, cycles, { title: "Theme", author: "me" }));
+```
+
+このプレイヤーは60HzのPLAY呼び出しごとに1フレーム分の書き込みを再生するため、タイミングはフレーム単位（約16.7ms）に量子化されます。DMC/DPCMのサンプル再生はフレーム内の実際のDMA読み出しを必要とし、この再生方式には運ぶ手段がないため、`exportNsf`は落としたり近似したりせず、名前付きの`NsfExportError('dmc_unsupported', ...)`を投げます。設計の全体と実際のNSFプレイヤーに対する適合性の数値は
+[`docs/chips/2a03.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03_ja.md#nsf-export)
+を参照してください。
+
 <a id="checking-a-song-before-playing-it"></a>
 ## 再生前に曲を検証する
 

@@ -1,9 +1,10 @@
-import { arrange, loopSeconds, recordSong, renderSong, toVgm, toWav } from 'chipvoice';
+import { arrange, exportNsf, loopSeconds, recordSong, renderSong, toVgm, toWav } from 'chipvoice';
 import { ROLES, tokens, type SongDocument } from './document';
 import { zip } from './zip';
 
-export type ExportKind = 'wav' | 'stems' | 'machines' | 'vgm';
+export type ExportKind = 'wav' | 'stems' | 'machines' | 'vgm' | 'nsf';
 export const VGM_CHIPS = ['2a03', 'dmg', 'md'];
+export const NSF_CHIPS = ['2a03'];
 export function exportSong(song: SongDocument, kind: ExportKind, progress: (done: number, total: number) => void = () => {}) {
   const arranged = arrange(song);
   const seconds = Math.min(300, loopSeconds(arranged) * 2);
@@ -12,6 +13,11 @@ export function exportSong(song: SongDocument, kind: ExportKind, progress: (done
     if (!VGM_CHIPS.includes(song.chip)) throw new Error('VGM is available for NES, Game Boy and Mega Drive.');
     const capture = recordSong(arranged);
     return { bytes: toVgm(capture.events, capture.cycles, { chip: song.chip, title: song.title, author: song.author }), extension: 'vgm', type: 'audio/x-vgm' };
+  }
+  if (kind === 'nsf') {
+    if (!NSF_CHIPS.includes(song.chip)) throw new Error('NSF is available for NES only.');
+    const capture = recordSong(arranged);
+    return { bytes: exportNsf(capture.events, capture.cycles, { title: song.title, author: song.author, memory: capture.memory }), extension: 'nsf', type: 'audio/x-nsf' };
   }
   if (kind === 'wav') return { bytes: toWav(renderSong(arranged, { stereo: true })), extension: 'wav', type: 'audio/wav' };
   const files: { name: string; bytes: Uint8Array }[] = [];

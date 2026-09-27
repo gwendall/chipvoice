@@ -162,9 +162,28 @@
   （市販ゲームのリップはここにコミットできません）。各シートの「VGMインポート」節を
   参照してください。
 - todo - NEXT-09 SID/PSID: 参照プレーヤー（sidplayfp）と比べ、ファイルごとにスコアを出します。
-- P6-9（SPCの書き出し、NEXT-08のCPUにより着手可能に）とtodo - NEXT-10
-  （NSFとGBSの書き出し）: フラッシュカートから実機で鳴る曲を、ステップ1の
-  録音環境で録音します。
+- P6-9（SPCの書き出し、NEXT-08のCPUにより着手可能に）。
+- done - NEXT-10のNSF半分（このPR）：`exportNsf`は2A03のキャプチャを、自前
+  の小さな手組み6502プレイヤー（`Asm6502`、`packages/chipvoice/src/nsf.ts`）
+  を積んだ標準NSF v1ファイルに変換します。コミット済みソースから再現でき、
+  不透明なブロブにはなりません。PLAYは60Hz呼び出しごとに、バンク切り替え
+  式でラン長符号化された書き込みログから1フレーム分の書き込みを再生し、
+  書き込みタイミングをフレーム単位（約16.7ms）に量子化します。この再生
+  方式では運べない、フレーム内の実際のDMA読み出しを必要とするDMC/DPCMは、
+  落としたり近似したりせず、名前付きの`NsfExportError('dmc_unsupported', ...)`
+  で拒否します。`nsf-corpus`が使うのと同じ固定revisionのGMEオラクルに対して
+  証明済み：コマンド列はエクスポート可能な全コーパスファイルで完全一致し、
+  フレーム単位ラウドネス包絡線によるオーディオ比較は本プロジェクト自身の
+  レンダーに対して21〜52%（独立した2つの2A03エミュレーターのDAC／ミキサー
+  カーブの差であり、量子化による損失ではありません。証明1がすでに書き込み
+  が正確に届いていることを示しています）、しきい値60%に対して十分な余裕
+  があります。`docs/chips/2a03_ja.md#nsf-export`、`pnpm nsf-export:sheet`。
+  パッケージ（`exportNsf`、`NsfExportError`）とstudio（`2a03`の曲でVGMの隣に
+  NSFダウンロードボタン）の両方から到達できます。NEXT-10のGBS半分はtodoの
+  ままです。NEXT-06のGBSインポーター（PR #103）はすでにマージ済みで着手
+  可能になりましたが、このPRには含まれません。実機フラッシュカートへの
+  録音（ステップ1の録音環境で）はハードウェアがないため両半分とも対象外
+  です。
 - 商用のリッピングは配布しません。計測用コーパスは非公開にするか、自由に再配布できるものに限ります。
 
 **ステップ4. 後になっても、別の場所でも同じバイト列。**
@@ -381,7 +400,7 @@
 | P8-10 | palette／drumの量子化live重ね録りとUndo | implemented | D、audio-clock capture、固定伴奏、1take1Undo、draft。[評価](evals/RECORDING-2026-09-06_ja.md)。実携帯はP8-9 |
 | P8-23 | role変奏、他lock、Undo。作成済み／規則ベース、remote AI不要 | implemented | seed melody／drum／timbre、lock、Undo、無音pattern保持。決定26 |
 | P8-11 | 同じtransport／所有モデルのWeb MIDI | implemented | opt-in tap、channel10 drum、模擬port cleanup。実latency未測定 |
-| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM。独立ZIPとbyte比較、決定26 |
+| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM、さらにNES NSF（NEXT-10、このPR）。独立ZIPとbyte比較、決定26 |
 | P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | done | D、P7-9 done：SIDのfilterはarrangerから到達可能。P5-10 done：MD arrangerのFM drumとLFO。P6-10 done：SNES triadとハードウェアノイズのハット。見た目だけの汎用代替なし |
 
 <a id="audit-follow-ups"></a>

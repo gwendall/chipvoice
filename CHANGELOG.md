@@ -32,6 +32,27 @@ passes blargg's `cpu_instrs` and `instr_timing` test ROMs (`packages/conform`,
 Game Boy hardware, independently of any reference emulator. Package-only for
 now; there is no chipvoice.dev counterpart.
 
+A NES song can now be exported as a standard NSF v1 file: `exportNsf(events,
+cycles, options)`, next to `toVgm`. The file carries its own tiny 6502
+player, hand-assembled in `packages/chipvoice/src/nsf.ts` from a small
+in-file mnemonic assembler rather than a build tool, so the bytes it emits
+are exactly what that source says. PLAY replays one 60 Hz frame's writes at
+a time from a compact, bank-switched write log, looping at the capture's own
+loop point forever; write timing is quantized to the frame (up to ~16.7 ms
+late). DMC/DPCM sample playback needs a real mid-frame DMA read this
+replay has no way to carry, and is rejected with a named
+`NsfExportError('dmc_unsupported', ...)` - as is a loop point outside the
+capture, over-length or non-ASCII metadata, and a frame with more writes
+than the encoding can address - rather than silently dropped or
+approximated. Proven against the same pinned Game_Music_Emu oracle
+`nsf-corpus` uses: the exported command stream matches exactly on every
+exportable file in a corpus of real hardware recordings, this project's own
+2A03 driver output and independently authored, redistribution-licensed
+NSFs; a per-frame loudness-envelope audio comparison against this project's
+own render stays under a stated threshold. See
+[docs/chips/2a03.md#nsf-export](docs/chips/2a03.md#nsf-export). The studio
+now offers a Download NSF button next to VGM's, for NES songs.
+
 The SID has a second model: `model: "8580"` on `Chip.create`, on
 `renderPerformance`/`renderProject`'s options, and on a project's
 `settings.model`, next to the default `"6581"`. Every 8580 fact comes from a

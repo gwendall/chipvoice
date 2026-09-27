@@ -23,6 +23,8 @@
     "instruments:build": "node scores/instruments/generate.mjs",
     "instruments:check": "node scores/instruments/check-catalogue.mjs",
     "instruments:test": "node scores/instruments/test-presets.mjs",
+    "nsf-export:check": "node scores/nsf-export/corpus.mjs --json .artifacts/nsf-export/report.json",
+    "nsf-export:sheet": "node scores/nsf-export/corpus.mjs --json .artifacts/nsf-export/report.json --sheet docs/chips/2a03.md",
     "audio:pull": "node apps/web/scripts/audio-store.mjs pull",
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
     "audio:push": "node apps/web/scripts/audio-store.mjs push"
