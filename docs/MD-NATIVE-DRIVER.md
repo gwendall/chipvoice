@@ -38,7 +38,7 @@ pitches MIDI semitones (fractions detune), volumes linear.
 
 | Voice | Takes | Notes |
 | --- | --- | --- |
-| `fm1` to `fm6` | `pan` (`L`, `R`, `C`), `gain`, `notes` | each note has an `FmPatch`; `levels` shapes it a frame at a time |
+| `fm1` to `fm6` | `pan` (`L`, `R`, `C`), `gain`, `notes` | each note has an `FmPatch`; `levels` shapes it a frame at a time; `fm3`'s notes may also set `ch3`, channel 3's special mode |
 | `psg1` to `psg3` | `gain`, `notes` | each note has an `envelope` in dB per frame and a `hold` |
 | `noise` | `gain`, `hits` | a hit has an `envelope`, and a `rate` (tone 3's period) or a `fixed` rate; `white: false` is the periodic buzz |
 | `dac` | `pan`, `stream` | a PCM stream at `MD_DAC_HZ`, about 13.3 kHz; it takes FM 6 |
@@ -75,8 +75,13 @@ master cycles (`MD_MASTER_HZ` a second). Punk Force's songs, DAC streaming,
 peak between 2.8 and 4.5 ms.
 
 A patch is written once per channel, and a new one writes only the registers
-that differ. The LFO is off (power-on writes `$22` = 0), so a patch's `ams`,
-`pms` and an operator's `am` have no effect yet; `ssg` reaches register `$90`.
+that differ. `ssg` reaches register `$90`. The LFO (`$22`) is one oscillator
+for the whole chip: it turns on, at whichever loaded patch's own
+`lfoFrequency` asked for it first, the moment any patch's `ams`, `pms` or an
+operator's `am` wants it, and off again once none do; `MD_PATCHES.shimmer` is
+a patch built to show it. Channel 3's special mode is `fm3`'s alone: a note's
+`ch3` field gives operators 1 to 3 their own fixed pitch and toggles register
+`$27`'s bits 6 to 7, while operator 4 keeps following the note itself.
 
 ## The tracker
 

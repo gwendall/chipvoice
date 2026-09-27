@@ -356,10 +356,12 @@ voices and role allocation; `ChipCore` consumes timestamped register writes and
 fills buffers. Instruments support frame tables, FM patches and samples.
 
 The portable score keeps four musical roles. Arrangers map them onto each machine:
-FM lead/bass and PSG chord/drums on Mega Drive, four sample voices on SNES, and
-shared chord/percussion on the C64's third voice. SNES triads, FM percussion and
-SID filter controls remain backlog items. VGM export supports NES, Game Boy and
-Mega Drive; SNES and C64 register logs do not yet have a shipped file exporter.
+FM lead/bass and PSG chord/drums on Mega Drive (or FM drums on channel 6,
+`perc: "punchy"`, with the chip's own LFO available to any patch that asks for
+it), four sample voices on SNES, and shared chord/percussion on the C64's third
+voice. SNES triads and SID filter controls remain backlog items. VGM export
+supports NES, Game Boy and Mega Drive; SNES and C64 register logs do not yet
+have a shipped file exporter.
 
 `validateSong` reports machine-specific base-pitch and arpeggio range warnings.
 It preserves the score; it does not guarantee every modulation stays representable.

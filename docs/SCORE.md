@@ -63,7 +63,7 @@ OpenAPI schema and the skill's table (`INTENTS` in `score.ts`):
 | `lead` | `soft` (default), `bright`, `round` |
 | `chord` | `plucked` (default), `held` |
 | `bass` | `round` (default), `hollow`, `bright` |
-| `perc` | `tight` (default), `soft` |
+| `perc` | `tight` (default), `soft`, `punchy` |
 
 Words, not parameters. The lean was decided by writing both down: an agent
 writes "a bright lead" more reliably than `brightness: 0.8`, and a word leaves
@@ -77,6 +77,13 @@ plays it whatever the word; a Game Boy's bass is its wave channel, and the word
 names the waveform in its RAM. `"hollow"` changes the Game Boy version and
 not the NES one, and the skill says so, because that is the machine.
 
+`"punchy"` is where the percussion idiom shows the same way: on a chip whose
+own synthesis can play a kit, it does, in place of noise or a sample. On a
+Mega Drive that is FM drums on channel 6, not a sampled or a generic
+substitute; a chip with no such synthesis of its own falls back to its usual
+kit. The word names an outcome, not a mechanism, so a chip gaining the same
+capability later needs no new word.
+
 ## Idioms per chip
 
 What the shipped arrangers and drivers currently do:
@@ -85,7 +92,7 @@ What the shipped arrangers and drivers currently do:
 | --- | --- | --- | --- | --- | --- |
 | 2A03 | Pulse 1, duty as timbre | Pulse 2, arpeggiated at frame rate | Triangle | Noise; DMC samples when present | Arpeggiated chords, triangle bass |
 | DMG | Pulse 1, duty as timbre, retriggered on volume changes | Pulse 2, arpeggiated | Wave channel, the word as its waveform | Noise, the kit fitted to the hardware envelope | The wave channel's bass |
-| YM2612 + SN76489 | FM patch | PSG arpeggios | FM patch | PSG noise clocked by tone 3 | FM timbres |
+| YM2612 + SN76489 | FM patch, the LFO on `"bright"` | PSG arpeggios | FM patch | PSG noise clocked by tone 3, or FM drums on channel 6 (`"punchy"`) | FM timbres |
 | S-DSP | A sample | One sample voice, arpeggiated | A sample | A sampled kit | BRR samples and echo |
 | SID | One voice | Fast arpeggio on one voice, at 50 Hz | One voice | Waveform switches on one voice | Three voices; chord/drums share one |
 

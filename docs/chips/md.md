@@ -14,7 +14,7 @@ noise, inside the video chip. The method behind every section is in
 | | |
 | --- | --- |
 | **Machine** | Mega Drive, Genesis (NTSC master clock 53693175 Hz; the YM2612 at a seventh, the PSG at a fifteenth) |
-| **Status** | **in progress**: the FM chip is identical to the die-derived reference on every script, the driver plays every role, the PSG is compared against MAME's `sn76496` with three diagnosed divergences (period 0/1, reset polarity, tone-3-rate noise phase), the analog stage is unmeasured |
+| **Status** | **in progress**: the FM chip is identical to the die-derived reference on every script, the driver plays every role including an FM drum kit and the LFO in both drivers, channel 3's special mode in the native one, the PSG is compared against MAME's `sn76496` with three diagnosed divergences (period 0/1, reset polarity, tone-3-rate noise phase), the analog stage is unmeasured |
 | **Core** | the YM2612 ported line for line from Nuked-OPN2 (`packages/chipvoice/src/chips/md/ym2612.ts`); the SN76489 written from SMS Power's notes (`sn76489.ts`) |
 | **Licence of the core** | `ym2612.ts` is a line-for-line port of Nuked-OPN2 and carries its LGPL 2.1; everything else in the package is MIT. The package's licence field says both |
 | **Sheet updated** | 2026-09-27, by hand and by `conform` |
@@ -35,8 +35,8 @@ Written by `conform` on 2026-09-27, against Nuked-OPN2 1.0.12 (Nuke.YKT), on fm1
 | | |
 | --- | --- |
 | Oracle | Nuked-OPN2 1.0.12 (Nuke.YKT) |
-| Corpus | 8 logs, 2233636083 cycles |
-| Identical cycles | 2233636083 / 2233636083 (100.0000 %) |
+| Corpus | 10 logs, 2566533768 cycles |
+| Identical cycles | 2566533768 / 2566533768 (100.0000 %) |
 | Logs with a divergence | 0 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
@@ -44,11 +44,13 @@ Written by `conform` on 2026-09-27, against Nuked-OPN2 1.0.12 (Nuke.YKT), on fm1
 | script-algorithms | 100.0000 % | none | fm1 100.0000 %, 241084/0/0; runs 1182: 1182 on times, 1182 on values, shift <= 0; fm2 100.0000 %, 0/0/0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
 | script-detune-lfo | 100.0000 % | none | fm1 100.0000 %, 235695/0/0; runs 1785: 1785 on times, 1785 on values, shift <= 0; fm2 100.0000 %, 195942/0/0; runs 106: 106 on times, 106 on values, shift <= 0; fm3 100.0000 %, 84832/0/0; runs 1862: 1862 on times, 1862 on values, shift <= 0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
 | script-envelopes | 100.0000 % | none | fm1 100.0000 %, 171195/0/0; runs 6412: 6412 on times, 6412 on values, shift <= 0; fm2 100.0000 %, 126874/0/0; runs 3205: 3205 on times, 3205 on values, shift <= 0; fm3 100.0000 %, 10802/0/0; runs 1391: 1391 on times, 1391 on values, shift <= 0; fm4 100.0000 %, 125994/0/0; runs 872: 872 on times, 872 on values, shift <= 0; fm5 100.0000 %, 69981/0/0; runs 7353: 7353 on times, 7353 on values, shift <= 0; fm6 100.0000 %, 112/0/0; runs 9: 9 on times, 9 on values, shift <= 0 |
+| script-native-lfo-ch3 | 100.0000 % | none | fm1 100.0000 %, 106772/0/0; runs 550: 550 on times, 550 on values, shift <= 0; fm2 100.0000 %, 80491/0/0; runs 1166: 1166 on times, 1166 on values, shift <= 0; fm3 100.0000 %, 69634/0/0; runs 584: 584 on times, 584 on values, shift <= 0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
 | script-psg-edges | 100.0000 % | none | fm1 100.0000 %, 0/0/0; fm2 100.0000 %, 0/0/0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
 | script-psg | 100.0000 % | none | fm1 100.0000 %, 0/0/0; fm2 100.0000 %, 0/0/0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
 | script-ssg-ch3-dac | 100.0000 % | none | fm1 100.0000 %, 101843/0/0; runs 7162: 7162 on times, 7162 on values, shift <= 0; fm2 100.0000 %, 0/0/0; fm3 100.0000 %, 65431/0/0; runs 1211: 1211 on times, 1211 on values, shift <= 0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
-| song-bright | 100.0000 % | none | fm1 100.0000 %, 191137/0/0; runs 462: 462 on times, 462 on values, shift <= 0; fm2 100.0000 %, 166647/0/0; runs 1852: 1852 on times, 1852 on values, shift <= 0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
-| song-golden | 100.0000 % | none | fm1 100.0000 %, 169736/0/0; runs 1151: 1151 on times, 1151 on values, shift <= 0; fm2 100.0000 %, 97120/0/0; runs 565: 565 on times, 565 on values, shift <= 0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
+| song-bright | 100.0000 % | none | fm1 100.0000 %, 196019/0/0; runs 478: 478 on times, 478 on values, shift <= 0; fm2 100.0000 %, 170424/0/0; runs 1906: 1906 on times, 1906 on values, shift <= 0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
+| song-golden | 100.0000 % | none | fm1 100.0000 %, 174832/0/0; runs 1135: 1135 on times, 1135 on values, shift <= 0; fm2 100.0000 %, 99648/0/0; runs 604: 604 on times, 604 on values, shift <= 0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 0/0/0 |
+| song-punchy | 100.0000 % | none | fm1 100.0000 %, 196019/0/0; runs 478: 478 on times, 478 on values, shift <= 0; fm2 100.0000 %, 99648/0/0; runs 604: 604 on times, 604 on values, shift <= 0; fm3 100.0000 %, 0/0/0; fm4 100.0000 %, 0/0/0; fm5 100.0000 %, 0/0/0; fm6 100.0000 %, 53521/0/0; runs 3324: 3324 on times, 3324 on values, shift <= 0 |
 <!-- parity:end -->
 
 **What the numbers say.** Nuked-OPN2 is a reading of the YM3438's die, and the
@@ -80,20 +82,22 @@ Written by `conform` on 2026-09-27, against MAME sn76496 (Sega VDP PSG, 76c7d197
 | | |
 | --- | --- |
 | Oracle | MAME sn76496 (Sega VDP PSG, 76c7d197) |
-| Corpus | 8 logs, 2233636083 cycles |
-| Identical cycles | 1990757028 / 2233636083 (89.1263 %) |
-| Logs with a divergence | 4 |
+| Corpus | 10 logs, 2566533768 cycles |
+| Identical cycles | 2321902638 / 2566533768 (90.4684 %) |
+| Logs with a divergence | 5 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
 | script-algorithms | 100.0000 % | none | psg1 100.0000 %, 0/0/0; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 100.0000 %, 0/0/0 |
 | script-detune-lfo | 100.0000 % | none | psg1 100.0000 %, 0/0/0; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 100.0000 %, 0/0/0 |
 | script-envelopes | 100.0000 % | none | psg1 100.0000 %, 0/0/0; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 100.0000 %, 0/0/0 |
+| script-native-lfo-ch3 | 100.0000 % | none | psg1 100.0000 %, 0/0/0; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 100.0000 %, 0/0/0 |
 | script-psg-edges | 91.2304 % | cycle 8054100, psg1: ours 15, oracle 0 | psg1 97.2840 %, 69782/0/98450; runs 7235: 7232 on times, 7232 on values, shift <= 83239440; psg2 97.5309 %, 0/0/89494 (1 at -15); runs 4: 0 on times, 0 on values, shift <= 0; psg3 97.5309 %, 0/0/89492 (1 at -15); runs 4: 0 on times, 0 on values, shift <= 0; noise 98.8847 %, 0/0/3770; runs 1885: 1885 on times, 1885 on values, shift <= 9840 |
 | script-psg | 44.3637 % | cycle 5369445, psg1: ours 15, oracle 0 | psg1 55.8823 %, 0/0/3874; runs 1935: 1935 on times, 1935 on values, shift <= 243840; psg2 51.7945 %, 0/0/2324; runs 1162: 1161 on times, 1161 on values, shift <= 2010; psg3 100.0000 %, 0/0/0; noise 93.2458 %, 426/0/3878; runs 2366: 2364 on times, 2364 on values, shift <= 564465 |
 | script-ssg-ch3-dac | 100.0000 % | none | psg1 100.0000 %, 0/0/0; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 100.0000 %, 0/0/0 |
-| song-bright | 87.8041 % | cycle 6223425, noise: ours 0, oracle 13 | psg1 99.9999 %, 2066/0/10; runs 2071: 2071 on times, 2071 on values, shift <= 30; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 87.8042 %, 3116/0/35151; runs 2840: 2377 on times, 2303 on values, shift <= 8695680 |
-| song-golden | 87.8041 % | cycle 6223425, noise: ours 0, oracle 13 | psg1 99.9999 %, 2066/0/18; runs 2074: 2074 on times, 2074 on values, shift <= 30; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 87.8042 %, 3116/0/35151; runs 2840: 2377 on times, 2303 on values, shift <= 8695680 |
+| song-bright | 87.3963 % | cycle 560130, psg1: ours 9, oracle 0 | psg1 99.9999 %, 2120/0/12; runs 2126: 2125 on times, 2125 on values, shift <= 1597590; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 87.3963 %, 139/0/42019; runs 2938: 2490 on times, 2409 on values, shift <= 8311920 |
+| song-golden | 87.3963 % | cycle 560130, psg1: ours 11, oracle 0 | psg1 99.9999 %, 2120/0/20; runs 2129: 2128 on times, 2128 on values, shift <= 1597590; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 87.3963 %, 139/0/42019; runs 2938: 2490 on times, 2409 on values, shift <= 8311920 |
+| song-punchy | 99.9999 % | cycle 560130, psg1: ours 11, oracle 0 | psg1 99.9999 %, 2120/0/20; runs 2129: 2128 on times, 2128 on values, shift <= 1597590; psg2 100.0000 %, 0/0/0; psg3 100.0000 %, 0/0/0; noise 100.0000 %, 0/0/0 |
 <!-- parity-sn76496:end -->
 
 **What the numbers say.** `script-algorithms`, `script-detune-lfo`,
@@ -161,11 +165,12 @@ disagreement traces to a real difference between `sn76489.ts` and MAME's
   unsilenced, so never touched by the polarity divergence), reads identical
   to MAME cycle for cycle.
 
-One open question was not chased further: `song-bright` and `song-golden`
-unsilence psg1 for the first time since reset exactly like `script-psg`'s
-first note does, yet psg1 reads 99.9999 % identical in both songs (all but 10
-and 18 of about 2070 edges exact) while `script-psg`'s psg1 lands near 56 %.
-The songs likely write frequency and volume in a different order, or
+One open question was not chased further: `song-bright`, `song-golden` and
+`song-punchy` (the same two songs, `perc: "punchy"` in the third) unsilence
+psg1 for the first time since reset exactly like `script-psg`'s first note
+does, yet psg1 reads 99.9999 % identical in all three (all but 12, 20 and 20
+of about 2130 edges exact) while `script-psg`'s psg1 lands near 56 %. The
+songs likely write frequency and volume in a different order, or
 resynchronise some other way, before the note the driver plays first; this
 was not traced further.
 
@@ -212,13 +217,30 @@ render the same input against.
 
 `MdDriver` in `packages/chipvoice/src/chips/md/driver.ts`, checked by
 `test/md-driver.mjs`. The song's lead goes to FM 1, its bass to FM 2, its chord
-to PSG 1, its percussion to the noise with tone 3 as its clock.
+to PSG 1, its percussion to the noise with tone 3 as its clock, or, on
+`perc: "punchy"`, to FM 6 instead: the noise voice's frames carry an `FmPatch`
+when the kit is the FM one, which `note()` reads to redirect both the note and
+its eventual key-off. The LFO turns on whenever the lead's own patch
+(`"bright"`) or the FM kit's hats ask for it, at the lowest-indexed channel
+that still does; `syncLfo()` re-checks every note. The noise kit stays the
+default: it already does what a kit needs to here at no cost to the other
+five roles, and it is what every other chip's kit already sounds like, which
+keeps a score portable in fact as well as in name. `"punchy"` is for a piece
+that wants the FM chip to carry its own rhythm section too.
 
 | Voice | Exercised | Not exercised |
 | --- | --- | --- |
-| fm1, fm2 | a patch per intent, loaded once per channel; block and F-number per frame; the carriers' total levels per frame for the volume; key-on and key-off | the LFO, SSG-EG, channel 3's mode, the DAC, key scaling in the patches, four of the six channels |
+| fm1, fm2 | a patch per intent, loaded once per channel; block and F-number per frame; the carriers' total levels per frame for the volume; key-on and key-off; the LFO (`"bright"`'s own `pms`) | SSG-EG, channel 3's mode, the DAC, key scaling in the patches, four of the six channels |
+| fm6 (via the noise voice, `perc: "punchy"`) | the same FM drum patches as the native kit, key-on and key-off, the LFO (the hats' `ams`) | pan, a patch per note (the kit is fixed) |
 | psg1 | the tone's period and attenuation per frame | psg2, psg3 as tones |
 | noise | white noise clocked by tone 3 at the 2A03's sixteen rates; the attenuation per frame | periodic noise, the three fixed rates |
+
+Channel 3's special mode stays out of the portable arranger: it trades one
+FM voice's single pitch for three independent ones, which only pays off for a
+detuned unison, a chord spread across one channel's four operators, or a
+fast split arpeggio - none of them a shape the four-role score (one lead, one
+bass) asks for. The native driver reaches it because a game's own composer
+can ask for that shape directly; see below.
 
 The native driver, `compileMdVoices` in `native-driver.ts`, checked by
 `test/md-native.mjs` and `test/golden-md-native.mjs`, reaches what `MdDriver`
@@ -226,7 +248,7 @@ leaves out; a game writes for it directly ([MD-NATIVE-DRIVER.md](../MD-NATIVE-DR
 
 | Voice | Exercised | Not exercised |
 | --- | --- | --- |
-| fm1 to fm6 | a patch per note, written as a diff of the last; hard pan; per-frame levels, bends, glides, vibrato and sweeps; legato; SSG-EG through `ssg`; key scaling | the LFO, channel 3's mode |
+| fm1 to fm6 | a patch per note, written as a diff of the last; hard pan; per-frame levels, bends, glides, vibrato and sweeps; legato; SSG-EG through `ssg`; key scaling; the LFO (`ams`, `pms`, an operator's `am`, `lfoFrequency`); channel 3's special mode on fm3 (`ch3`) | - |
 | psg1 to psg3 | tones with a per-frame envelope in dB | - |
 | noise | white and periodic noise, clocked by tone 3 or at the three fixed rates | - |
 | dac | a PCM stream on FM 6 at about 13.3 kHz, one sample per write on the bus | - |
@@ -261,6 +283,15 @@ DAC off and every key off, which is what a game's driver did first.
   white noise LFSR's 57337-shift period against MAME directly; diagnosed three
   real divergences (period 0/1, reset polarity, tone-3-rate noise phase),
   recorded above and in the Known deviations table.
+- 2026-09-27: FM drums on channel 6 (`perc: "punchy"`), the LFO wired up in
+  both drivers (it was already correct in the core; power-on's `$22` = 0 had
+  just left `ams`, `pms` and an operator's `am` inert), and channel 3's
+  special mode in the native driver (`ch3`, fm3 only). `song-punchy` and
+  `script-native-lfo-ch3` added to the corpus; both parity baselines
+  rebaselined, still 100 % against Nuked-OPN2. A driver bug found while
+  writing the new tests - `MdDriver.noteOff()` had no way to tell an FM drum
+  hit from a noise one, so it always sent a spurious PSG silence byte and
+  never keyed channel 6 off - is fixed alongside.
 
 ## Sources
 
