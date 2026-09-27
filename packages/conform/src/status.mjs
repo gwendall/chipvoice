@@ -101,8 +101,8 @@ const CHIPS = [
     notes: [
       'The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter.',
       'Analog: a profile from the documents, unmeasured: the 6581\'s non-linear DAC ladders, the filter on a measured cutoff curve, the output stage\'s corners. The 8580 is not modelled.',
-      'Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did.',
-      'Remains: the filter in the arranger; the 8580; a unit\'s line-out.',
+      'Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did; the filter reachable from the arranger, a lead\'s sweep and a bass\'s resonance.',
+      'Remains: the 8580; a unit\'s line-out.',
     ],
   },
 ];

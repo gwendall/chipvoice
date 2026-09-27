@@ -60,9 +60,9 @@ OpenAPI schema and the skill's table (`INTENTS` in `score.ts`):
 
 | Role | Words |
 | --- | --- |
-| `lead` | `soft` (default), `bright`, `round` |
+| `lead` | `soft` (default), `bright`, `round`, `sweep` |
 | `chord` | `plucked` (default), `held` |
-| `bass` | `round` (default), `hollow`, `bright` |
+| `bass` | `round` (default), `hollow`, `bright`, `resonant` |
 | `perc` | `tight` (default), `soft` |
 
 Words, not parameters. The lean was decided by writing both down: an agent
@@ -87,7 +87,7 @@ What the shipped arrangers and drivers currently do:
 | DMG | Pulse 1, duty as timbre, retriggered on volume changes | Pulse 2, arpeggiated | Wave channel, the word as its waveform | Noise, the kit fitted to the hardware envelope | The wave channel's bass |
 | YM2612 + SN76489 | FM patch | PSG arpeggios | FM patch | PSG noise clocked by tone 3 | FM timbres |
 | S-DSP | A sample | One sample voice, arpeggiated | A sample | A sampled kit | BRR samples and echo |
-| SID | One voice | Fast arpeggio on one voice, at 50 Hz | One voice | Waveform switches on one voice | Three voices; chord/drums share one |
+| SID | One voice; `sweep` opens the filter across the note | Fast arpeggio on one voice, at 50 Hz | One voice; `resonant` routes it through the filter at a high resonance | Waveform switches on one voice | Three voices sharing a filter; chord/drums share the third |
 
 ## The voice budget
 
@@ -132,7 +132,8 @@ like need a driver embedded in the file and come later, chip by chip.
 
 ## What comes next
 
-SNES triads across spare voices, FM percussion, and exposed SID filter/sweep
-controls remain P8-13. NES smooth vibrato through the sweep unit is implemented.
-New machines remain demand-driven; finishing these arrangements and physical
-verification does not require another chip.
+SNES triads across spare voices and FM percussion remain P8-13; the SID's
+filter is exposed now, a lead's `sweep` and a bass's `resonant` (P7-9). NES
+smooth vibrato through the sweep unit is implemented. New machines remain
+demand-driven; finishing these arrangements and physical verification does
+not require another chip.

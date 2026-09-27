@@ -11,6 +11,9 @@ const LEADS: Record<Required<Intent>["lead"], Instrument> = {
   soft: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "flute" },
   bright: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "brass" },
   round: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "mallet" },
+  // The S-DSP has no filter to sweep a sample's cutoff through; the brass
+  // sample stands in, honestly: no simulated substitute.
+  sweep: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, sample: "brass" },
 };
 
 const CHORDS: Record<Required<Intent>["chord"], Instrument> = {
@@ -22,6 +25,9 @@ const BASSES: Record<Required<Intent>["bass"], Instrument> = {
   round: { volume: [15], sustain: true, sample: "picked-bass" },
   hollow: { volume: [13], sustain: true, sample: "reed-bass" },
   bright: { volume: [13], sustain: true, sample: "synth-bass" },
+  // No filter here either; the reed sample's own narrow, nasal timbre is the
+  // nearest thing this chip has to a resonant low end, reused honestly.
+  resonant: { volume: [13], sustain: true, sample: "reed-bass" },
 };
 
 const KIT: PercussionKit = {

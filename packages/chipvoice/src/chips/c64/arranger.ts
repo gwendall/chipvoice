@@ -14,14 +14,28 @@ import type { PercussionKit } from "../../sequencer.js";
  * here, and a drum on a C64 was a pitch that moved. Every drum is shorter
  * than a step at any tempo the score allows, since its note off lands where
  * its duration says and the next drum shares the voice.
+ *
+ * The SID's filter is one filter for three voices; `SidDriver`'s own doc
+ * comment says who wins its shared registers when two ask for it at once.
+ * Two intents reach it: `lead: "sweep"`, a cutoff opening across the note,
+ * and `bass: "resonant"`, a pulse held closed at a high resonance for a
+ * narrow, squelchy low end. A "sweep" lead and a "resonant" bass together do
+ * not fight over the filter's registers - a chord or a drum played at the
+ * same time as either would, and the later write is what plays.
  */
 const LEAD_VOLUME = [15, 15, 14, 13, 12, 12, 11, 11, 10, 10, 10, 9, 9, 9, 8];
 const LEAD_VIBRATO = { depth: 0.18, rate: 8, delay: 12 };
+/** The "sweep" lead's cutoff: closed to fully open over half a second, then held. */
+const LEAD_SWEEP_CUTOFF = Array.from({ length: 30 }, (_, i) => Math.round(60 + (2047 - 60) * (i / 29)));
 
 const LEADS: Record<Required<Intent>["lead"], Instrument> = {
   soft: { waveform: "pulse", duty: 1, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
   bright: { waveform: "pulse", duty: 0, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
   round: { waveform: "pulse", duty: 2, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
+  sweep: {
+    waveform: "pulse", duty: 1, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO,
+    filter: { mode: "lowpass", resonance: 8, cutoff: LEAD_SWEEP_CUTOFF },
+  },
 };
 
 const CHORDS: Record<Required<Intent>["chord"], Instrument> = {
@@ -33,6 +47,7 @@ const BASSES: Record<Required<Intent>["bass"], Instrument> = {
   round: { waveform: "triangle", volume: [13], sustain: true },
   hollow: { waveform: "pulse", duty: 2, volume: [9], sustain: true },
   bright: { waveform: "sawtooth", volume: [11], sustain: true },
+  resonant: { waveform: "pulse", duty: 2, volume: [12], sustain: true, filter: { mode: "lowpass", resonance: 15, cutoff: 480 } },
 };
 
 const scaled = (volume: number[], scale: number) => volume.map((v) => Math.round(v * scale));

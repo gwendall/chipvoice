@@ -70,6 +70,9 @@ const LEADS: Record<Required<Intent>["lead"], Instrument> = {
   soft: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, fm: LEAD_SOFT },
   bright: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, fm: LEAD_BRIGHT },
   round: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, fm: LEAD_ROUND },
+  // The YM2612 has no filter to sweep; its brightest existing patch stands
+  // in, honestly: no simulated substitute.
+  sweep: { volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO, fm: LEAD_BRIGHT },
 };
 
 /** The chord on the PSG: its attenuator is the whole instrument. */
@@ -82,6 +85,9 @@ const BASSES: Record<Required<Intent>["bass"], Instrument> = {
   round: { volume: [15], sustain: true, fm: BASS_ROUND },
   hollow: { volume: [15], sustain: true, fm: BASS_HOLLOW },
   bright: { volume: [15], sustain: true, fm: BASS_BRIGHT },
+  // No filter here either; the hollow patch's own narrowed timbre is the
+  // nearest thing this chip has to a resonant low end, reused honestly.
+  resonant: { volume: [15], sustain: true, fm: BASS_HOLLOW },
 };
 
 export function mdInstruments(intent: Required<Intent>): Instruments {

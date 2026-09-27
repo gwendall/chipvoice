@@ -165,6 +165,13 @@ export interface DigitalChip {
 export type Waveform = "pulse" | "triangle" | "sawtooth" | "noise";
 
 /**
+ * Which of a shared filter's outputs reach the mix: the SID's low-pass,
+ * band-pass and high-pass, each its own bit on `$D418`. A chip with no
+ * filter, or a voice not routed through one, ignores this.
+ */
+export type FilterMode = "lowpass" | "bandpass" | "highpass";
+
+/**
  * One frame of a note, after the instrument has been read: what the voice
  * should be doing for the next sixtieth of a second, in terms no chip owns.
  *
@@ -197,6 +204,22 @@ export interface FrameState {
   fm: FmPatch | null;
   /** For a sample voice: the name of a sample in the chip's bank; null for the chip's own default. */
   sample: string | null;
+  /**
+   * Routes this frame through a filter shared by more than one voice: its
+   * mode, a resonance 0-15, and this frame's cutoff in the chip's own
+   * units (the SID's eleven bits, 0-2047), so a lead can sweep it frame by
+   * frame. null for no filter, and for a chip that has none. The SID has
+   * one filter for three voices; its driver's own doc comment says who
+   * wins the shared registers when two voices ask for different settings
+   * at once.
+   */
+  filter: { mode: FilterMode; resonance: number; cutoff: number } | null;
+  /**
+   * A pulse voice's width this frame, in the chip's own finer units (the
+   * SID's twelve bits, 0-4095), for a sweep beyond `duty`'s four fixed
+   * steps. null to leave `duty` as the only width control.
+   */
+  pulseWidth: number | null;
 }
 
 /**

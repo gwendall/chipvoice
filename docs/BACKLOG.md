@@ -199,9 +199,18 @@ real game music, and a real unit.
 **Step 2. Every instrument each chip has.**
 
 - P5-10 and P5-12 (FM drums, the LFO, channel 3's special mode), P6-10
-  (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the SID's
-  filter and sweeps), P7-10 (the 8580), AUD-4 (playable ranges and
-  diagnostics).
+  (hardware-noise hats), P4-9 (the SNES palette), P8-13 (the SID's filter and
+  sweeps), P7-10 (the 8580), AUD-4 (playable ranges and diagnostics).
+- done - P7-9: the SID's filter is reachable from the arranger's own words. A
+  lead's `sweep` opens the cutoff across the note; a bass's `resonant` sets a
+  fixed high resonance; both are low-pass. A voice sets and clears only its
+  own routing bit in `$D417`; the shared resonance, cutoff and mode are
+  whichever voice last wrote them, the same arbitration real hardware has,
+  since there is only one filter for all three voices. A public
+  `Instrument.pulseWidth` field gives a per-frame pulse-width sweep at the
+  driver level; no built-in preset asks for it yet. `script-filter` and
+  `song-filter` join the C64 corpus; reSID-fp parity holds at 100%, since the
+  filter is analog-stage-only and never moves the digital trace.
 - todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
   with its measured envelope and spectrum, shown on the site, built only from
   what the chip really does.
@@ -420,7 +429,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P7-6 | The C64 sheet: parity with reSID-fp on the digital voices, a corpus of scripts and songs | done | `docs/chips/c64.md`, `corpus/c64`, `check:c64` in CI |
 | P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | done | `packages/conform/roms/vice-sid`, `src/roms/c64.mjs`, `roms:c64` in CI; 13 of 14 pass, `busvalue` a P2-1 finding |
 | P7-8 | A 6581's line-out captured under a known script, and the analog profile fitted to it: the DAC's zero, the filter's curve, the output stage | todo | needs a unit. NEXT-04 found reSID's `filter.cc` already has a named 6581 R4AR's own op-amp transfer-curve tables, diffable against our filter model with no register log needed, not yet implemented: see [HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580). It also implemented a combined-waveform check against a second named 6581 (`libsidplayfp/combined-waveforms`); see [c64.md#combined-waveforms-against-a-real-6581](chips/c64.md#combined-waveforms-against-a-real-6581) |
-| P7-9 | The filter in the arranger: a word that opens it, a sweep for a lead | todo | |
+| P7-9 | The filter in the arranger: a word that opens it, a sweep for a lead | done | `chips/c64/arranger.ts`, `chips/c64/driver.ts`; a lead's `sweep` opens the cutoff across the note, a bass's `resonant` holds a high resonance, both low-pass; a voice sets only its own routing bit in `$D417`, the shared registers last-write-wins; `Instrument.pulseWidth` gives a per-frame pulse-width sweep, unused by any preset yet |
 | P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | todo | NEXT-04 found a named 8580 R5 in reSID's `filter.cc` (its own op-amp transfer curve) and its DAC mismatch ratio (about 2.0) in reSID-fp's `Dac` docs, neither implemented yet: see [HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580) |
 | P7-11 | The harness holds every change of every stream in memory, and a SID sawtooth changes every cycle: the corpus keeps dense waveforms short. A streaming compare, or a change stream as typed arrays, would lift that | done | PR #79. A `ChangeStream` (typed-array columns, not one object per change) and a streaming oracle read (`spawn`, not `spawnSync` with a giant buffer) replace both; `bestShift`'s string-keyed map is gone too. Four dense c64 scripts added, all three voices held on a sawtooth, a triangle, a noise rate or a combined waveform at once; the eight-second three-sawtooth case that used to run the harness out of memory now runs on demand (`check:c64:dense`) and passes |
 
@@ -459,7 +468,7 @@ it.
 | P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | implemented | Seeded local melody/drum/timbre transforms, locked roles and Undo; silent patterns preserved; decision 26 |
 | P8-11 | Web MIDI input using the same tested transport and ownership model | implemented | Opt-in MIDI taps share audition/recording; channel-10 drums and cleanup tested with simulated ports. Physical MIDI latency remains unmeasured |
 | P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM; independent ZIP reader and byte parity; decision 26 |
-| P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | todo | D. P7-9, P6-10, P5-10; no simulated generic substitute |
+| P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | doing | D. P7-9 done: the SID's filter is reachable from the arranger. P6-10 (SNES triads) doing; P5-10 (FM drums) todo; no simulated generic substitute |
 
 ## Audit follow-ups
 

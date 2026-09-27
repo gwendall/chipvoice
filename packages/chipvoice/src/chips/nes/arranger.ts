@@ -18,6 +18,9 @@ const LEADS: Record<Required<Intent>["lead"], Instrument> = {
   soft: { duty: 1, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
   bright: { duty: 0, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
   round: { duty: 2, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
+  // The 2A03 has no filter to sweep. Its brightest existing lead stands in,
+  // honestly: no simulated substitute, just the nearest sound it has.
+  sweep: { duty: 0, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
 };
 
 const CHORDS: Record<Required<Intent>["chord"], Instrument> = {

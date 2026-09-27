@@ -20,6 +20,7 @@ import {
   type ChipCore,
   type ChipDefinition,
   type ChipDriver,
+  type FilterMode,
   type FmPatch,
   type NoteFrame,
   type RegisterEvent,
@@ -109,6 +110,21 @@ export interface Instrument {
    * default for the role.
    */
   sample?: string;
+  /**
+   * Routes this voice through a filter shared by more than one voice: the
+   * mode, a resonance 0-15, and a cutoff, one value or one per frame for a
+   * sweep, the last held once the table runs out - a lead that opens up
+   * across the note. In the chip's own units (the SID's eleven bits,
+   * 0-2047). A chip with no filter ignores it.
+   */
+  filter?: { mode: FilterMode; resonance: number; cutoff: number | number[] };
+  /**
+   * A pulse voice's width, frame by frame, in the chip's own finer units
+   * (the SID's twelve bits, 0-4095), looped if the note outlasts the
+   * table: a PWM sweep, independent of and finer than `duty`'s four fixed
+   * widths. A chip without it ignores it.
+   */
+  pulseWidth?: number[];
 }
 
 /**
@@ -315,6 +331,7 @@ export class APU implements NoteSink {
     const waveforms = inst.waveform === undefined ? null : Array.isArray(inst.waveform) ? inst.waveform : [inst.waveform];
     const fm = inst.fm ?? null;
     const sample = inst.sample ?? null;
+    const filterCutoff = inst.filter === undefined ? null : Array.isArray(inst.filter.cutoff) ? inst.filter.cutoff : [inst.filter.cutoff];
     let pitchAcc = 0;
 
     const states: NoteFrames = [];
@@ -355,6 +372,10 @@ export class APU implements NoteSink {
         wave,
         fm,
         sample,
+        filter: filterCutoff && inst.filter
+          ? { mode: inst.filter.mode, resonance: inst.filter.resonance, cutoff: filterCutoff[Math.min(f, filterCutoff.length - 1)] }
+          : null,
+        pulseWidth: inst.pulseWidth && inst.pulseWidth.length > 0 ? inst.pulseWidth[f % inst.pulseWidth.length] : null,
       });
     }
 

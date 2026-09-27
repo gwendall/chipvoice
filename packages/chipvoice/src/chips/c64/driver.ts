@@ -1,4 +1,4 @@
-import type { ChipDriver, NoteFrame, RegisterEvent, Waveform } from "../../chip.js";
+import type { ChipDriver, FilterMode, NoteFrame, RegisterEvent, Waveform } from "../../chip.js";
 import { CLOCK_HZ } from "./dsp.js";
 
 /**
@@ -18,10 +18,23 @@ import { CLOCK_HZ } from "./dsp.js";
  * widths, and the instrument names the waveform: the same score's bass is a
  * triangle or a sawtooth here where a NES had only the triangle. A noise
  * voice takes its pitch too: the register clocks the noise at sixteen times
- * the frequency it would give a tone.
+ * the frequency it would give a tone. `pulseWidth` overrides `duty`'s four
+ * steps with the raw twelve-bit register, frame by frame, for a PWM sweep.
  *
- * Writes are spaced as a 6510 makes them, four cycles apart, and each
- * voice's are staggered so a frame's bursts do not interleave.
+ * The filter is `$D415`-`$D418`: an eleven-bit cutoff split high/low, a
+ * resonance and three routing bits in `$D417`, a mode and the master volume
+ * in `$D418`. It is one filter for three voices, so those four registers are
+ * chip-wide rather than per-voice, and this class keeps the last byte written
+ * to each as instance state, across every voice's calls, the way the rest of
+ * this file keeps `waveBits`. A voice asking for the filter sets its own
+ * routing bit and writes whatever cutoff, resonance and mode its instrument
+ * names; a voice not asking for it clears its own bit and leaves the other
+ * three registers alone. When two voices ask for different cutoffs,
+ * resonances or modes at once, there is only one register for each and the
+ * later write wins - exactly as real hardware would, a byte at a time - so
+ * the earlier voice stays routed through the filter but is heard through
+ * whatever the later voice set, until it writes its own again. A note off
+ * touches only the gate; the filter is left as it was.
  */
 
 const BASE = 0xd400;
@@ -36,6 +49,8 @@ const WAVE_BITS: Record<Waveform, number> = { triangle: 0x10, sawtooth: 0x20, pu
 const PULSE_WIDTH = [0xe00, 0xc00, 0x800, 0x400];
 /** The release rate: 32 cycles a step, about twenty milliseconds from a mid level. */
 const RELEASE = 1;
+/** `$D418`'s high nibble: which of the filter's outputs reach the mix. */
+const FILTER_MODE_BITS: Record<FilterMode, number> = { lowpass: 0x10, bandpass: 0x20, highpass: 0x40 };
 
 /** f = F * clock / 2^24. */
 function frequencyRegister(freq: number): number {
@@ -56,10 +71,19 @@ function bent(freq: number, offset: number): number {
 export class SidDriver implements ChipDriver {
   /** Each voice's waveform bits, for a note off that keeps the waveform. */
   private waveBits = [0x40, 0x40, 0x40];
+  /** The last byte written to `$D417`: resonance, and the three routing bits. */
+  private lastResonanceRouting = 0x00;
+  /** The last byte written to `$D418`: the filter mode, and the master volume. */
+  private lastModeVolume = 0x0f;
+  /** The last eleven-bit cutoff written across `$D415`-`$D416`. */
+  private lastCutoff = 0;
 
   /** Volume full, nothing filtered, the cutoff at the bottom. */
   powerOn(): RegisterEvent[] {
     this.waveBits = [0x40, 0x40, 0x40];
+    this.lastResonanceRouting = 0x00;
+    this.lastModeVolume = 0x0f;
+    this.lastCutoff = 0;
     return [
       { at: 0, addr: 0xd418, value: 0x0f },
       { at: GAP, addr: 0xd417, value: 0x00 },
@@ -86,7 +110,8 @@ export class SidDriver implements ChipDriver {
       t = s.at + STAGGER * index;
       const wave = WAVE_BITS[s.waveform ?? "pulse"];
       const freq = frequencyRegister(bent(s.freq, s.pitchOffset));
-      const pw = PULSE_WIDTH[s.duty & 3];
+      // A per-frame pulse-width sweep overrides the four fixed duty steps.
+      const pw = s.pulseWidth != null ? Math.max(0, Math.min(0xfff, Math.round(s.pulseWidth))) : PULSE_WIDTH[s.duty & 3];
       const volume = Math.max(0, Math.min(15, s.volume));
       if (f === 0) {
         write(base + 0, freq & 0xff);
@@ -119,6 +144,35 @@ export class SidDriver implements ChipDriver {
       lastPw = pw;
       lastVolume = volume;
       lastWave = wave;
+
+      // The filter: chip-wide, shared by three voices. This voice's own
+      // routing bit follows whether this frame asks for the filter; the
+      // resonance, cutoff and mode - one register each for the whole chip -
+      // follow whichever voice last asked, so two voices fighting over them
+      // resolve the way two writes to one byte always do.
+      const bit = 1 << index;
+      const routing = (this.lastResonanceRouting & 0x07 & ~bit) | (s.filter ? bit : 0);
+      const resonance = s.filter
+        ? Math.max(0, Math.min(15, Math.round(s.filter.resonance))) << 4
+        : this.lastResonanceRouting & 0xf0;
+      const resonanceRouting = resonance | routing;
+      if (resonanceRouting !== this.lastResonanceRouting) {
+        write(0xd417, resonanceRouting);
+        this.lastResonanceRouting = resonanceRouting;
+      }
+      if (s.filter) {
+        const modeVolume = FILTER_MODE_BITS[s.filter.mode] | (this.lastModeVolume & 0x0f);
+        if (modeVolume !== this.lastModeVolume) {
+          write(0xd418, modeVolume);
+          this.lastModeVolume = modeVolume;
+        }
+        const cutoff = Math.max(0, Math.min(0x7ff, Math.round(s.filter.cutoff)));
+        if (cutoff !== this.lastCutoff) {
+          if ((cutoff & 0x07) !== (this.lastCutoff & 0x07)) write(0xd415, cutoff & 0x07);
+          if (cutoff >> 3 !== this.lastCutoff >> 3) write(0xd416, cutoff >> 3);
+          this.lastCutoff = cutoff;
+        }
+      }
     });
     this.waveBits[index] = lastWave;
     return out;

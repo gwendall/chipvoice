@@ -19,6 +19,9 @@ const LEADS: Record<Required<Intent>["lead"], Instrument> = {
   soft: { duty: 1, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
   bright: { duty: 0, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
   round: { duty: 2, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
+  // The DMG's two pulses have no filter to sweep. Its brightest existing
+  // lead stands in, honestly: no simulated substitute.
+  sweep: { duty: 0, volume: LEAD_VOLUME, sustain: true, vibrato: LEAD_VIBRATO },
 };
 
 const CHORDS: Record<Required<Intent>["chord"], Instrument> = {
@@ -39,6 +42,9 @@ const BASSES: Record<Required<Intent>["bass"], Instrument> = {
   // where the triangle did.
   hollow: { volume: [8], sustain: true, wave: WAVEFORMS.square },
   bright: { volume: [12], sustain: true, wave: WAVEFORMS.saw },
+  // The wave channel has no filter either. The square stands in, honestly:
+  // the nearest existing timbre to a narrowed, resonant low end this chip has.
+  resonant: { volume: [8], sustain: true, wave: WAVEFORMS.square },
 };
 
 export function gbInstruments(intent: Required<Intent>): Instruments {

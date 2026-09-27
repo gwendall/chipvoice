@@ -127,7 +127,8 @@
 
 **ステップ2. 各チップが持つすべての楽器。**
 
-- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P7-9とP8-13（SIDのフィルターとスイープ）、P7-10（8580）、AUD-4（演奏可能な音域と診断）。
+- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P8-13（SIDのフィルターとスイープ）、P7-10（8580）、AUD-4（演奏可能な音域と診断）。
+- done - P7-9: SIDのfilterがarranger自身の単語から到達可能になりました。leadの`sweep`はノート全体でcutoffを開き、bassの`resonant`は高いresonanceに固定します。両方lowpassです。各voiceは`$D417`の自分のrouting bitだけを立てて消し、共有するresonance／cutoff／modeは最後に書いたvoiceの値になります。実機と同じ調停で、filterは3voice共通で1つしかないためです。公開`Instrument.pulseWidth`フィールドがdriver層でframe単位のpulse-width sweepを可能にしますが、標準presetはまだ使いません。`script-filter`と`song-filter`をC64 corpusへ追加。filterはanalog段のみでdigital traceを動かさないため、reSID-fp parityは100%を保ちます。
 - todo - NEXT-05: 計測済みの楽器カタログ。プリセットごとにゴールデンのレンダーと、計測したエンベロープとスペクトルを持ち、サイトで見られ、チップが実際にできることだけで作ります。
 - P4-7とMIX-12: 人による試聴。正確さとは分けて扱います。
 
@@ -316,7 +317,7 @@
 | P7-6 | reSID-fp digital比較sheetとcorpus | done | `docs/chips/c64.md`、`corpus/c64`、CI `check:c64` |
 | P7-7 | 6510でVICE `testprogs/SID`を実行しOSC3／ENV3を読む第2検証 | done | `packages/conform/roms/vice-sid`、`src/roms/c64.mjs`、CI `roms:c64`。14本中13本成功、`busvalue`はP2-1の知見 |
 | P7-8 | 6581 line-out captureでDAC zero、filter curve、出力をfit | todo | 実機必要。NEXT-04はreSIDの`filter.cc`に既に名前付き6581 R4AR自身のオペアンプ伝達曲線表があり、レジスタログ不要でモデルと比較できることを見つけましたが未実装です。[HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580)参照。もう1つの名前付き6581（`libsidplayfp/combined-waveforms`）に対する組み合わせ波形の比較も実装しました。[c64_ja.md#combined-waveforms-against-a-real-6581](chips/c64_ja.md#combined-waveforms-against-a-real-6581)参照 |
-| P7-9 | filterを開くintentとlead sweep | todo | |
+| P7-9 | filterを開くintentとlead sweep | done | `chips/c64/arranger.ts`、`chips/c64/driver.ts`。leadの`sweep`はノート全体でcutoffを開き、bassの`resonant`は高resonanceを保持、両方lowpass。各voiceは`$D417`の自分のrouting bitだけを立て、共有レジスタはlast-write-wins。`Instrument.pulseWidth`はframe単位のpulse-width sweepを与えるが、presetは未使用 |
 | P7-10 | 8580の合成波形、triangle／saw遅延、線形DAC、独自filterの第2profile／table | todo | NEXT-04はreSIDの`filter.cc`に名前付き8580 R5（自身のオペアンプ伝達曲線）を、reSID-fpの`Dac`ドキュメントにそのDACミスマッチ比（約2.0）を見つけましたが、どちらも未実装です。[HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580)参照 |
 | P7-11 | 全trace変化をmemory保持するharnessをstream比較／typed arrayへ | done | PR #79。`ChangeStream`（object単位でなくtyped array列）とstreaming oracle読み取り（巨大bufferの`spawnSync`でなく`spawn`）で置換。`bestShift`の文字列key Mapも廃止。c64 corpusへdense script4本追加、sawtooth・triangle・noise rate・combined waveformを3voice同時保持。旧harnessをOOMさせた3 sawtooth×8秒はオンデマンド（`check:c64:dense`）で実行でき成功 |
 
@@ -349,7 +350,7 @@
 | P8-23 | role変奏、他lock、Undo。作成済み／規則ベース、remote AI不要 | implemented | seed melody／drum／timbre、lock、Undo、無音pattern保持。決定26 |
 | P8-11 | 同じtransport／所有モデルのWeb MIDI | implemented | opt-in tap、channel10 drum、模擬port cleanup。実latency未測定 |
 | P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM。独立ZIPとbyte比較、決定26 |
-| P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | todo | D、P7-9/P6-10/P5-10。見た目だけの汎用代替なし |
+| P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | doing | D、P7-9 done：SIDのfilterはarrangerから到達可能。P6-10（SNES triad）doing、P5-10（FM drum）todo。見た目だけの汎用代替なし |
 
 <a id="audit-follow-ups"></a>
 ## 監査の後続
