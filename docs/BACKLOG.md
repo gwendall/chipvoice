@@ -384,22 +384,31 @@ real game music, and a real unit.
   (`options.memory`) exports normally, DMC enabled without that memory is
   rejected by name (`dmc_sample_missing`), and only raw `$4011` PCM
   streaming or out-of-range sample memory is rejected as `dmc_unsupported`.
-  Proven four ways against the same pinned GME oracle `nsf-corpus` uses:
-  the command stream matches exactly on every exportable corpus file
-  (including the three DMC-using ones, now that sample memory is carried
-  through); the source capture's own writes and GME's trace of the export
-  match exactly, frame for frame, after one constant frame offset (a
-  deterministic proof, `compareFrameWrites`, not an audio one - 100% on
-  every corpus file but a single harmless loop-boundary frame on
-  `zelda-rendition`); a same-DSP export-loss gate - GME's replay of the
-  export vs. this project's own untouched render, both through this
-  project's own renderer - isolates the residual cost of a write landing at
-  its frame's start rather than its own real cycle, measuring 4.5-21.9%
-  across all twelve files (an earlier version of this metric, without a
-  frame-offset search, measured 13.3-50.7% on the tracker-driven files and
-  wrongly wrote that up as sub-60Hz quantization loss - it was two
-  independently onset-aligned envelopes landing one frame apart), under a
-  30% threshold with a real margin over that whole corrected band; a
+  Proven four ways against the same pinned GME oracle `nsf-corpus` uses, the
+  first two gating CI on an exact match (`matched === total`), not a count
+  or percentage: the command stream matches exactly on every exportable
+  corpus file (including the three DMC-using ones, now that sample memory
+  is carried through); the source capture's own writes and GME's trace of
+  the export match exactly, frame for frame, after one constant frame
+  offset (a deterministic proof, `compareFrameWrites`, not an audio one -
+  100% on every comparable frame, on all twelve files, once a source
+  frame stops counting past the point where the exported player wraps back
+  to its own loop frame - `frameCountFor(cycles)` - which excludes a
+  handful of frames on `zelda-native` (1), `zelda-rendition` (2) and
+  `pently-demo` (1), each landing within a frame or two of its own loop
+  point, a principled exclusion documented and tested, not an excuse; a
+  cheap negative check in `packages/chipvoice/test/nsf.mjs`, no GME needed,
+  corrupts one write and asserts the gate reports it). A same-DSP
+  export-loss gate - GME's replay of the export vs. this project's own
+  untouched render, both through this project's own renderer - isolates the
+  residual cost of a write landing at its frame's start rather than its own
+  real cycle, measuring 4.5-21.9% across all twelve files (an earlier
+  version of this metric, without a frame-offset search, measured
+  13.3-50.7% on the tracker-driven files and wrongly wrote that up as
+  sub-60Hz quantization loss - it was two independently onset-aligned
+  envelopes landing one frame apart), under a 30% threshold with a real
+  margin over that whole corrected band, kept as a coarse secondary gate
+  now that the two exact proofs above cover content fidelity; a
   GME-vs-ours mixer comparison (21.3-51.6%, two independent 2A03 emulators'
   DAC/mixer curves) is reported for visibility but does not gate.
   `docs/chips/2a03.md#nsf-export`,

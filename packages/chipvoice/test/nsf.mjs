@@ -1,5 +1,6 @@
 import { recordSong, exportNsf, NsfExportError } from '../dist/index.js';
 import { captureNsf } from '../../../scores/capture-nsf.mjs';
+import { compareFrameWrites } from '../../../scores/nsf-export/corpus.mjs';
 
 /**
  * The NSF file, read back two ways: by its own header grammar (like
@@ -75,6 +76,25 @@ for (let f = 0; f < frameCount; f++) {
   if (!same) { firstMismatch = f; break; }
 }
 check('every frame up to the export replays the source capture\'s own writes, in order', firstMismatch === -1, `first mismatch at frame ${firstMismatch}`);
+
+// The same exact-match gate `nsf-export:check` runs against GME's trace
+// (round 3): here it runs against our own offline replay instead, so this
+// stays a fast unit test (no network, no GME build) while still exercising
+// the real `compareFrameWrites` from `scores/nsf-export/corpus.mjs`, not a
+// hand-rolled stand-in for it.
+const gate = compareFrameWrites(events, played.events, cycles);
+check('compareFrameWrites (the same function nsf-export:check gates CI with) matches every comparable frame exactly', gate.matched === gate.total, `${gate.matched}/${gate.total}${gate.excludedFrames ? `, ${gate.excludedFrames} excluded past the loop wrap` : ''}`);
+
+// Negative check (round 3 item 4): a clean pass alone does not prove the
+// gate would catch a real defect. Corrupt a single write in the replay -
+// the same shape of corruption a wrong opcode or a bad table byte in the
+// assembled player would produce - and confirm compareFrameWrites reports
+// exactly that one frame as a mismatch, not a silent pass.
+const corruptedCallIndex = played.calls.findIndex((c) => c.end > c.first);
+const corruptedWriteIndex = played.calls[corruptedCallIndex].first;
+const corruptedEvents = played.events.map((e, i) => (i === corruptedWriteIndex ? { ...e, value: (e.value + 1) & 0xff } : e));
+const corruptedGate = compareFrameWrites(events, corruptedEvents, cycles);
+check('compareFrameWrites catches a single corrupted write as exactly one mismatched frame', corruptedGate.total === gate.total && corruptedGate.matched === gate.total - 1 && corruptedGate.mismatchedFrames.length === 1, `${corruptedGate.matched}/${corruptedGate.total}, mismatched frames ${corruptedGate.mismatchedFrames.join(', ')}`);
 
 // Looping: frames past the source's own length must repeat from the loop point.
 const loopFrame = (() => {

@@ -169,25 +169,36 @@ def localized_block(kind, body, templates):
         elif kind == 'nsf-export':
             match = re.fullmatch(
                 r"Written by `nsf-export:sheet` on (.+), against Game_Music_Emu revision `(.+)`\. "
+                r"Commands and frame writes both gate CI exactly \(matched must equal total, not just be nonzero or \"close\"\)\. "
+                r"Commands: the export, replayed by GME, against this project's own offline replay of the same export - "
+                r"identical bytes on both sides, so anything short of an exact match is a player bug\. "
                 r"Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into "
                 r"60 Hz frames and compared for exact address/value/order equality after one constant frame offset "
                 r"\(an expected, fixed PLAY-call latency - every NSF player's own INIT-to-first-PLAY overhead differs\) - "
-                r"this is a deterministic command-content proof, not an audio measurement\. "
+                r"a deterministic command-content proof, not an audio measurement; a source frame stops counting once its "
+                r"own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "
+                r"\"excluding N frame\(s\) past the loop wrap\" when that applies\. "
                 r"Export loss: relative RMS error, after peak-normalizing and offset-aligning \(searched, not assumed\), "
                 r"between two same-DSP renders \(GME's trace of the export, replayed; the untouched source\) - "
-                r"this is the pass/fail column, threshold (\d+)%\. "
+                r"the coarse secondary gate, threshold (\d+)%\. "
                 r"GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - "
                 r"two independent emulators, reported for visibility, not gated\.", line)
             if match:
                 line = (f'`nsf-export:sheet`による生成：{match[1]}。参照：Game_Music_Emu revision `{match[2]}`。'
+                         f'コマンドとフレーム書き込みはどちらもCIを完全一致でゲートします'
+                         f'（一致数が総数と等しくなければならず、非ゼロや「近い」では足りません）。'
+                         f'コマンド：エクスポートをGMEで再生したものと、本プロジェクト自身によるオフライン再生とを比較したもの - '
+                         f'両者は同一のバイト列なので、完全一致に届かなければプレイヤーのバグです。'
                          f'フレーム書き込み：元キャプチャ自身のレジスター書き込みとGMEによるエクスポートのトレースを、'
                          f'それぞれ60Hzフレーム単位でバケット化し、一定のフレームオフセット1つを挟んでアドレス・値・順序の'
                          f'完全一致を比較したもの（これは想定内の固定PLAY呼び出し遅延です - NSFプレイヤーごとにINITから'
-                         f'最初のPLAYまでのオーバーヘッドが異なります） - これは音声測定ではなく決定的なコマンド内容の証明です。'
+                         f'最初のPLAYまでのオーバーヘッドが異なります） - 音声測定ではなく決定的なコマンド内容の証明です。'
+                         f'元のフレームは、自身の実時間上の位置がエクスポートしたプレイヤーの折り返し地点（ループフレームへ戻る地点）'
+                         f'を過ぎた時点で比較対象から外れ、該当する場合はシートに「ループ折り返し後のNフレームを除外」と表記されます。'
                          f'エクスポート損失：ピーク正規化と（決め打ちではなく探索した）オフセット位置合わせを行った後の、'
                          f'同一DSPによる2つのレンダー'
                          f'（GMEによるエクスポートの再生トレースをレンダーしたものと、手つかずの元ソースをレンダーしたもの）'
-                         f'間の相対RMS誤差 - これが合否を決める列で、しきい値{match[3]}%。'
+                         f'間の相対RMS誤差 - 粗い二次ゲートで、しきい値{match[3]}%。'
                          f'GMEミキサー：GME自身によるエクスポートのPCMと本プロジェクトによる元ソースのレンダーとの間で同じ指標を'
                          f'取ったもの - 独立した2つのエミュレーターの比較であり、可視化のために報告するだけでゲートにはなりません。')
                 lines.append(line)
@@ -207,7 +218,9 @@ def localized_block(kind, body, templates):
             if not re.fullmatch(r'\d+/\d+|not exportable: \w+|not rendered|\d+ bytes', commands):
                 raise ValueError(f'Unknown nsf-export commands cell: {commands}')
             frame_writes_match = re.fullmatch(
-                r'-|not compared|(\d+)/(\d+) \(offset ([+-]\d+)\)(?:, frames ((?:\d+, )*\d+(?:, \.\.\.)?) differ)?',
+                r'-|not compared|(\d+)/(\d+) \(offset ([+-]\d+)\)'
+                r'(?:, excluding (\d+) frames? past the loop wrap)?'
+                r'(?:, frames ((?:\d+, )*\d+(?:, \.\.\.)?) differ)?',
                 frame_writes)
             if not frame_writes_match:
                 raise ValueError(f'Unknown nsf-export frame-writes cell: {frame_writes}')
@@ -219,8 +232,10 @@ def localized_block(kind, body, templates):
             if frame_writes in ('-', 'not compared'):
                 translated_frame_writes = {'-': '-', 'not compared': '未比較'}[frame_writes]
             else:
-                matched, total, offset, mismatched = frame_writes_match.groups()[0:4]
+                matched, total, offset, excluded, mismatched = frame_writes_match.groups()[0:5]
                 translated_frame_writes = f'{matched}/{total}（オフセット{offset}）'
+                if excluded:
+                    translated_frame_writes += f'、ループ折り返し後の{excluded}フレームを除外'
                 if mismatched:
                     translated_frame_writes += f'、フレーム{mismatched}が不一致'
             # Error messages that carry a measured number (dacWritesPerFrame,

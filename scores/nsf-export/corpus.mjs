@@ -20,29 +20,48 @@ import {loadArrangement} from '../arrangements/check.mjs';
  *
  * Four proofs, per file:
  *
- *   1. Command stream: the export, replayed by GME, must produce the exact
- *      write stream `scores/capture-nsf.mjs` (this project's own offline
- *      6502) gets from replaying the very same export. Both sides execute
- *      identical bytes; disagreeing means the player program itself is
- *      wrong, not a quantization question. This is a player-correctness
- *      check - the export against itself - and says nothing on its own
- *      about whether the export reproduces the *source*; proof #2 does.
- *   2. Frame writes (deterministic, tests fidelity to the source): the
+ *   1. Command stream (gates CI, exact): the export, replayed by GME, must
+ *      produce the exact write stream `scores/capture-nsf.mjs` (this
+ *      project's own offline 6502) gets from replaying the very same
+ *      export - `matched === total`, not just "matched some". Both sides
+ *      execute identical bytes, so anything short of an exact match is a
+ *      player bug, not a quantization question. This is a player-
+ *      correctness check - the export against itself - and says nothing on
+ *      its own about whether the export reproduces the *source*; proof #2
+ *      does.
+ *   2. Frame writes (gates CI, exact, tests fidelity to the source): the
  *      source capture's own register writes and GME's trace of the export,
  *      each bucketed into 60 Hz frames (`Math.floor(at / PERIOD)`), must
  *      list the exact same writes - address, value, order - frame for
  *      frame, after one constant frame offset (`compareFrameWrites`, found
- *      by the same small search `compareEnvelopes` uses). This is not an
+ *      by the same small search `compareEnvelopes` uses) - `matched ===
+ *      total`, again exactly, not by count or percentage. This is not an
  *      audio measurement, so it cannot be fooled by a mixer or an alignment
- *      choice: on every one of this corpus's 12 files it is 100% (one
- *      harmless exception, noted on its row - the last captured frame of
- *      `zelda-rendition` lands exactly on the loop point, where GME's trace
- *      has already wrapped to the next lap by the time our fixed-length
- *      capture stops watching; `corpus.mjs`'s own comment on `runOracle`
- *      already documents that GME's trace legitimately outlives the
- *      capture). It is the reason proof #3's threshold can be trusted: it
- *      proves the export carries every command, in the right frame, with
- *      nothing dropped or reordered, independent of anyone's mixer.
+ *      choice.
+ *
+ *      A source frame is only counted (and only required to match) while
+ *      its own real-time position, `sourceFrame + offset`, still falls
+ *      inside the export's one-shot pass through the content - strictly
+ *      before `frameCountFor(cycles)`, the same frame count
+ *      `quantizeToFrames` (`nsf.ts`) uses to decide when to wrap PLAY back
+ *      to `loopFrame`. Past that point the exported player has already
+ *      looped, so GME's trace at that real-time position holds the *loop
+ *      frame's* content, not the tail source frame's - comparing the two
+ *      would fail for a reason that has nothing to do with export fidelity.
+ *      This is a principled exclusion, not an excuse: it can only ever drop
+ *      frames within `MAX_FRAME_OFFSET_SEARCH` of the very end of the
+ *      capture, and only when the capture's last written frame lands within
+ *      that same short window of the loop point, so it cannot hide a real
+ *      mismatch anywhere else. On this corpus it excludes a handful of
+ *      frames on three files whose last captured writes land within a frame
+ *      or two of their own loop point - `zelda-native` (1), `zelda-
+ *      rendition` (2), `pently-demo` (1) - and every file's comparable
+ *      frames, on all twelve, match 100%: `matched === total`.
+ *
+ *      Together, proofs #1 and #2 are the reason proof #3's threshold can
+ *      be trusted: they prove the export carries every command, in the
+ *      right frame, with nothing dropped or reordered, independent of
+ *      anyone's mixer.
  *   3. Export loss (the pass/fail audio gate): GME's own trace of playing
  *      the export, parsed back into register writes and rendered through
  *      this project's own `renderPerformance`, against a render of the
@@ -316,6 +335,20 @@ function compareExportLoss(replayed, original) {
   return compareEnvelopes(renderedEnvelope(replayed), renderedEnvelope(original));
 }
 
+/** The number of frames `exportNsf` actually encodes for a `cycles`-long
+ * capture - `quantizeToFrames` (`nsf.ts`) 's own `frameCount`. The exported
+ * player runs through frames `0 .. frameCount - 1` once and then wraps PLAY
+ * back to `loopFrame` forever; a real-time frame index at or past this
+ * point is playing looped content, not the tail of the one-shot pass, no
+ * matter what source frame it lines up with after an offset. Kept in sync
+ * with `nsf.ts` by the same formula, not imported, because this file has no
+ * access to `quantizeToFrames` itself (only the exported bytes and traces
+ * of them) - `packages/chipvoice/test/nsf.mjs` checks the two independently
+ * against the same real export. */
+function frameCountFor(cycles) {
+  return Math.max(1, Math.ceil(cycles / PERIOD));
+}
+
 /** The new deterministic proof (round 2 item 2): buckets the source
  * capture's own register writes and GME's trace of the export by 60 Hz
  * frame (`Math.floor(at / PERIOD)`, this format's own replay granularity -
@@ -325,16 +358,34 @@ function compareExportLoss(replayed, original) {
  * (address, value, order) to match exactly, frame by frame, after one
  * constant frame offset - the same kind of offset search `compareEnvelopes`
  * does, but on exact command content instead of loudness, so unlike proofs
- * #2 and #3 it says nothing about the mixer or the DSP and cannot be
- * fooled by one. For a once-per-frame source (every file in this corpus)
- * this is expected to be 100%: this project's own exported player replays
- * whatever `quantizeToFrames` bucketed the source into, one bucket per PLAY
- * call, byte for byte. A source that genuinely bursts writes from more than
- * one frame into a single PLAY call (a burst of updates a few cycles apart,
- * inside one frame boundary - `quantizeToFrames`'s own doc comment) would
- * show as one source frame's writes appearing merged into a neighbouring
- * frame here, which this proof reports by frame number rather than folding
- * into a percentage. */
+ * #3 and #4 it says nothing about the mixer or the DSP and cannot be fooled
+ * by one. This gates CI exactly (`matched === total`, `main`), not by count
+ * or percentage: this project's own exported player replays whatever
+ * `quantizeToFrames` bucketed the source into, one bucket per PLAY call,
+ * byte for byte, so anything less than every comparable frame matching is a
+ * real defect, not expected loss.
+ *
+ * "Comparable" excludes a source frame once its own real-time position
+ * (`sourceFrame + offset`) reaches or passes `frameCountFor(cycles)`
+ * (round 3 item 1): past that point the exported player has already
+ * finished its one-shot pass and wrapped back to `loopFrame`, so GME's
+ * trace there holds the *loop frame's* content, which has no reason to
+ * equal a *different*, later source frame's content - that is not a defect
+ * in the export, it is asking the wrong question of the trace. This can
+ * only ever drop frames within `MAX_FRAME_OFFSET_SEARCH` of the very end of
+ * the capture (the exclusion test is `sourceFrame + offset >=
+ * frameCountFor(cycles)`, and `sourceFrame` itself never reaches
+ * `frameCountFor(cycles)`), so it cannot hide a mismatch anywhere earlier in
+ * a file, and `excludedFrames` is always reported alongside `total` so the
+ * exclusion is visible, not silent.
+ *
+ * A source that genuinely bursts writes from more than one frame into a
+ * single PLAY call (a burst of updates a few cycles apart, inside one frame
+ * boundary - `quantizeToFrames`'s own doc comment) would show as one source
+ * frame's writes appearing merged into a neighbouring frame here, reported
+ * by frame number in `mismatchedFrames`, still failing the gate: this
+ * corpus has no such source, but a future one would be caught, not
+ * averaged away. */
 function bucketWritesByFrame(events) {
   const buckets = new Map();
   for (const e of events) {
@@ -352,19 +403,20 @@ function writeListsEqual(a, b) {
   return true;
 }
 
-function compareFrameWrites(sourceEvents, gmeEvents) {
+function compareFrameWrites(sourceEvents, gmeEvents, cycles) {
   const source = bucketWritesByFrame(sourceEvents);
   const gme = bucketWritesByFrame(gmeEvents);
   const frameNumbers = [...source.keys()].sort((a, b) => a - b);
-  const total = frameNumbers.length;
-  let best = {offset: 0, matched: -1};
+  const frameCount = frameCountFor(cycles);
+  const comparableAt = offset => frameNumbers.filter(f => f + offset >= 0 && f + offset < frameCount);
+  let best = {offset: 0, matched: -1, comparable: []};
   for (let offset = -MAX_FRAME_OFFSET_SEARCH; offset <= MAX_FRAME_OFFSET_SEARCH; offset++) {
-    let matched = 0;
-    for (const f of frameNumbers) if (writeListsEqual(source.get(f), gme.get(f + offset))) matched++;
-    if (matched > best.matched) best = {offset, matched};
+    const comparable = comparableAt(offset);
+    const matched = comparable.filter(f => writeListsEqual(source.get(f), gme.get(f + offset))).length;
+    if (matched > best.matched || (matched === best.matched && comparable.length > best.comparable.length)) best = {offset, matched, comparable};
   }
-  const mismatchedFrames = frameNumbers.filter(f => !writeListsEqual(source.get(f), gme.get(f + best.offset)));
-  return {total, matched: best.matched, offset: best.offset, mismatchedFrames};
+  const mismatchedFrames = best.comparable.filter(f => !writeListsEqual(source.get(f), gme.get(f + best.offset)));
+  return {total: best.comparable.length, matched: best.matched, offset: best.offset, mismatchedFrames, excludedFrames: frameNumbers.length - best.comparable.length};
 }
 
 function renderReference(events, seconds, memory = []) {
@@ -428,7 +480,7 @@ async function scoreSource(source) {
     // Proof #4 (new, deterministic, not audio-based): the source capture's
     // own writes against GME's trace of the export, bucketed by frame -
     // exact command content, not loudness (module comment).
-    frameWrites = compareFrameWrites(source.events, gmeEvents);
+    frameWrites = compareFrameWrites(source.events, gmeEvents, source.cycles);
     const original = renderReference(source.events, source.cycles / CPU_HZ, source.memory ?? []);
     // Proof #2: what GME actually played back from the export, rendered by
     // our own DSP, against our own render of the untouched source - both
@@ -456,7 +508,9 @@ function formatResult(r) {
     : 'none';
   const lossText = `${(r.exportLoss.relativeRmsError * 100).toFixed(1)}%${r.exportLoss.relativeRmsError > EXPORT_LOSS_RMS_THRESHOLD ? ' (over threshold)' : ''}`;
   const mixerText = `GME's mixer differs from ours by ${(r.mixerDiff.relativeRmsError * 100).toFixed(1)}%`;
-  const frameWritesText = `${r.frameWrites.matched}/${r.frameWrites.total} (offset ${r.frameWrites.offset >= 0 ? '+' : ''}${r.frameWrites.offset})${r.frameWrites.mismatchedFrames.length ? `, frames ${r.frameWrites.mismatchedFrames.slice(0, 8).join(', ')}${r.frameWrites.mismatchedFrames.length > 8 ? ', ...' : ''} differ` : ''}`;
+  const frameWritesText = `${r.frameWrites.matched}/${r.frameWrites.total} (offset ${r.frameWrites.offset >= 0 ? '+' : ''}${r.frameWrites.offset})` +
+    (r.frameWrites.excludedFrames ? `, excluding ${r.frameWrites.excludedFrames} frame${r.frameWrites.excludedFrames === 1 ? '' : 's'} past the loop wrap` : '') +
+    (r.frameWrites.mismatchedFrames.length ? `, frames ${r.frameWrites.mismatchedFrames.slice(0, 8).join(', ')}${r.frameWrites.mismatchedFrames.length > 8 ? ', ...' : ''} differ` : '');
   return {commands: `${r.comparison.matched}/${r.comparison.total}`, frameWrites: frameWritesText, loss: lossText, mixer: mixerText, note: divergence};
 }
 
@@ -483,7 +537,7 @@ async function main() {
     if (begin < 0 || end < 0) throw new Error(`${sheetPath} has no nsf-export markers`);
     const lines = [
       '<!-- nsf-export:begin -->',
-      `Written by \`nsf-export:sheet\` on ${new Date().toISOString().slice(0, 10)}, against Game_Music_Emu revision \`${ORACLE_REVISION}\`. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into 60 Hz frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency - every NSF player's own INIT-to-first-PLAY overhead differs) - this is a deterministic command-content proof, not an audio measurement. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - this is the pass/fail column, threshold ${(EXPORT_LOSS_RMS_THRESHOLD * 100).toFixed(0)}%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated.`,
+      `Written by \`nsf-export:sheet\` on ${new Date().toISOString().slice(0, 10)}, against Game_Music_Emu revision \`${ORACLE_REVISION}\`. Commands and frame writes both gate CI exactly (matched must equal total, not just be nonzero or "close"). Commands: the export, replayed by GME, against this project's own offline replay of the same export - identical bytes on both sides, so anything short of an exact match is a player bug. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into 60 Hz frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency - every NSF player's own INIT-to-first-PLAY overhead differs) - a deterministic command-content proof, not an audio measurement; a source frame stops counting once its own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "excluding N frame(s) past the loop wrap" when that applies. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - the coarse secondary gate, threshold ${(EXPORT_LOSS_RMS_THRESHOLD * 100).toFixed(0)}%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated.`,
       '',
       '| Song | Commands | Frame writes | Export loss | GME mixer | First divergence |',
       '| --- | --- | --- | --- | --- | --- |',
@@ -493,10 +547,21 @@ async function main() {
     fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- nsf-export:end -->'.length));
   }
 
-  const broken = results.filter(r => r.comparison && r.comparison.matched === 0 && r.comparison.total > 0);
+  // Proofs #1 and #2 (module comment) are exact gates: both sides run
+  // identical bytes (commands) or the same once-per-frame source
+  // (frame writes, past the loop-wrap exclusion), so anything short of
+  // `matched === total` is a real defect, not a matter of degree.
+  const commandsBroken = results.filter(r => r.comparison && r.comparison.matched !== r.comparison.total);
+  const frameWritesBroken = results.filter(r => r.frameWrites && r.frameWrites.matched !== r.frameWrites.total);
+  // Proof #3, the coarse secondary gate (round 3 item 3): kept as a margin
+  // check on top of the two exact proofs above, not a substitute for them.
   const overThreshold = results.filter(r => r.exportLoss && r.exportLoss.relativeRmsError > EXPORT_LOSS_RMS_THRESHOLD);
-  if (broken.length) {
-    console.error(`${broken.length} export(s) matched zero commands against GME: ${broken.map(r => r.id).join(', ')}`);
+  if (commandsBroken.length) {
+    console.error(`${commandsBroken.length} export(s) did not match GME's command stream exactly (both sides run identical bytes, so this is a player bug): ${commandsBroken.map(r => `${r.id} (${r.comparison.matched}/${r.comparison.total})`).join(', ')}`);
+    process.exitCode = 1;
+  }
+  if (frameWritesBroken.length) {
+    console.error(`${frameWritesBroken.length} export(s) did not match the source's own writes frame for frame (after excluding frames past the loop wrap): ${frameWritesBroken.map(r => `${r.id} (${r.frameWrites.matched}/${r.frameWrites.total}, frames ${r.frameWrites.mismatchedFrames.join(', ')} differ)`).join(', ')}`);
     process.exitCode = 1;
   }
   if (overThreshold.length) {
@@ -505,4 +570,11 @@ async function main() {
   }
 }
 
-main();
+if (import.meta.url === `file://${process.argv[1]}`) main();
+
+// Exported for `packages/chipvoice/test/nsf.mjs`'s own negative check (round
+// 3 item 4): that gates CI on the same real export/replay pipeline this
+// file uses, driven entirely through `captureNsf` (no GME, no network), so
+// it can assert the exact-match gates above actually catch a corrupted
+// write without paying for the oracle.
+export {compareFrameWrites, frameCountFor};
