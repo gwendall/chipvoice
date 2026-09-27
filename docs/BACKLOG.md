@@ -125,10 +125,10 @@ Work without a ticket takes a NEXT id.
   skill installs the version npm serves.
 - done - P2-4: the package README links all five sheets, and the skill links
   each target's sheet, checked by `test-agent-guide.mjs`.
-- doing - NEXT-02: `.github/workflows/e2e.yml` runs the production e2e after
-  every successful production deployment, and its writes use the
-  `CHIPVOICE_E2E_KEY` secret when set. The dedicated test account and its key
-  are still to be created.
+- done - NEXT-02: `.github/workflows/e2e.yml` runs the production e2e after
+  every successful production deployment, and its writes belong to a dedicated
+  test account, `e2e@chipvoice.dev`, through the `CHIPVOICE_E2E_KEY` secret.
+  The first run with the key passed without the anonymous-write warning.
 - done - NEXT-03: `test-creation-browser.mjs` failed only at a load average of
   70, on Playwright's 30-second default wait. Every wait now gets the test's
   two-minute preparation budget. The editor itself kept Pause visible through
@@ -250,11 +250,16 @@ real game music, and a real unit.
   targeted revisions and console variants.
 - todo - NEXT-19: a durable job queue at deployment scale, with AUD-2's cache
   and deduplication.
-- todo - NEXT-20: quotas and billing. NEXT-21: prompt moderation and refusal
-  of known melodies, measured by melodic similarity.
+- doing - NEXT-20: quotas and billing. Quotas are in place for the beta
+  (decision 42): invitations, the daily limit and a monthly budget the server
+  prices from recorded usage, 110 USD in production. Billing remains.
+  NEXT-21: prompt moderation and refusal of known melodies, measured by
+  melodic similarity.
 - P8-9 and P8-14. todo - NEXT-22: terms, ownership of generated songs and
   prompt privacy.
-- GEN-13: the closed beta, then pricing from its measurements.
+- GEN-13: the closed beta, then pricing from its measurements. The server
+  now enforces the beta's invitation and budget (decision 42); inviting
+  people and measuring remain.
 
 ## Generative composition — specification (2026-09-08)
 
@@ -332,7 +337,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | done | PR #7. 29 of 29 pass, in CI |
 | P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | doing | First complete source: Mario Ground Theme, all 41,999 music commands match pinned GME at exact cycles; broader NSF corpus remains |
-| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | done | this PR. Mesen 2's APU, vendored under `packages/conform/oracles/mesen`; the sweep's divider timing disagrees, filed as P2-1 |
+| P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | done | #84. Mesen 2's APU, vendored under `packages/conform/oracles/mesen`; the sweep's divider timing disagrees, filed as P2-1 |
 | P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 
 ## Phase 2. NES to 100 %

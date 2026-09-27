@@ -113,7 +113,7 @@
 - done - 決定38: V1を受け入れ、その条件のもとで新チップを再開しました。
 - done - NEXT-01: スキルのインストール行は`chipvoice@${engineVersion}`を固定していましたが、これは公開パッケージのバージョンではなく`PROJECT_ENGINE_VERSION`（0.17.0）でした。この定数はパッケージのバージョンになり、単体テストが両者を一致させ、本番e2eはスキルがnpmの配布するバージョンをインストールすることを確かめます。
 - done - P2-4: パッケージのREADMEは5つの仕様書すべてにリンクし、スキルは各ターゲットの仕様書にリンクします。`test-agent-guide.mjs`が確かめます。
-- doing - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、書き込みにはシークレット`CHIPVOICE_E2E_KEY`があればそれを使います。専用テストアカウントとそのキーはまだ作成していません。
+- done - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、その書き込みはシークレット`CHIPVOICE_E2E_KEY`を通じて専用テストアカウント`e2e@chipvoice.dev`のものになります。キーを使った最初の実行は、匿名書き込みの警告なしに通過しました。
 - done - NEXT-03: `test-creation-browser.mjs`が失敗したのはロードアベレージ70のときだけで、原因はPlaywrightの既定の30秒待機でした。すべての待機にテストの準備時間と同じ2分を与えます。エディター自体は、ページのCPUを6倍遅くしてもテンポ変更の間Pauseを表示し続けました。
 - done - P7-7: 最小限の6510・VIC-IIラスタ行・CIA1（`src/roms/c64.mjs`）でVICEの`testprogs/SID`から14本を実行します。KERNALなしで判定を出せるものを選び、13本が成功、CIでも実行します（`roms:c64`）。`busvalue`は失敗します。OSC3またはENV3の読み出しが実機のように内部バスラッチを更新しないためで、P2-1の知見として残し、ここでは直しません。`envrate`はDag Lemの実機検証済みレート表と完全に一致しました。
 
@@ -157,9 +157,9 @@
 - GEN-04: 修復の呼び出し。計測した失敗がそれを正当化する場合だけです。
 - todo - NEXT-18: スタイル、テンポ、構成の指定。GEN-11とGEN-12: 対象を絞った改訂とコンソール別の変奏。
 - todo - NEXT-19: デプロイ規模での永続的なジョブキュー。AUD-2のキャッシュと重複排除と合わせます。
-- todo - NEXT-20: 利用上限と課金。NEXT-21: プロンプトのモデレーションと、旋律の類似度で計測した既知の旋律の拒否。
+- doing - NEXT-20: 利用上限と課金。ベータ向けの利用上限は整いました（決定42）。招待制、1日上限、そしてサーバーが記録済みの使用量から換算する月間予算（本番は110 USD）です。課金は残ります。NEXT-21: プロンプトのモデレーションと、旋律の類似度で計測した既知の旋律の拒否。
 - P8-9とP8-14。todo - NEXT-22: 利用規約、生成した曲の権利、プロンプトのプライバシー。
-- GEN-13: クローズドベータを行い、その計測から価格を決めます。
+- GEN-13: クローズドベータを行い、その計測から価格を決めます。ベータの招待制と予算はサーバーが守るようになりました（決定42）。人を招待することと計測が残ります。
 
 <a id="generative-composition--specification-2026-09-08"></a>
 ## 生成による作曲 — 仕様（2026-09-08）
@@ -221,7 +221,7 @@
 | P1-10 | 5-step frameと`$4017`write timing | done | 0.5.0、P1-2と同時。decoderにも必要 |
 | P1-11 | blargg APU ROM用6502 fixture | done | PR #7、29/29、CI対象 |
 | P1-12 | corpus2：logger付き参照で実game NSFを再生 | doing | 最初の完全sourceはMario Ground Theme、41,999命令が固定GMEとexact cycle一致。広いNSF corpusは残件 |
-| P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | done | 本PR。`packages/conform/oracles/mesen`に同梱したMesen 2 APU。sweep dividerのtimingは不一致でP2-1へ記録 |
+| P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | done | #84。`packages/conform/oracles/mesen`に同梱したMesen 2 APU。sweep dividerのtimingは不一致でP2-1へ記録 |
 | P1-14 | triangleをrun別時間shiftとsequencer位置offsetで比較し、開始規約だけで低一致にならないmetric | done | PR #4。隠れたstepを復元し全triangle runがstep時刻で整合 |
 
 <a id="phase-2-nes-to-100-"></a>
