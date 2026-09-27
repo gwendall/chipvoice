@@ -139,15 +139,21 @@ header/DSP-dump/extra-RAM struct `spc-import.ts` also reads:
   too would give it a bogus entry of its own, reading whatever the capture's
   memory happens to hold at a slot nothing really uses.
 - The write stream: every `$F2`/`$F3` pair the capture made, as tick-delta,
-  register, value - a run of same-tick writes shares one delta byte. One
-  tick is Timer 0's own period, `TIMER_TARGET=8` against the SPC700's
-  1024000 Hz clock, 1000 Hz, 1024 cycles. A write's original cycle stamp is
-  rounded to the nearest tick, and that target is chased by *simulating* the
-  assembled player for real during export (a second, scratch SPC700) so the
-  wait loop's and the dispatch's own real cost is accounted for exactly, not
-  estimated - the write itself then lands within a stated, small, bounded
-  number of ticks of that rounding, not just the half-tick the rounding
-  alone would promise (see `spc-export.ts`'s own doc comment and
+  register, value - a run of same-tick writes shares one delta byte and can
+  be stored as a `$FE count (reg value)*count` burst; a run of groups that
+  repeats an earlier run (the same chord retriggered, the same instrument's
+  envelope replayed) can instead be a `$FD` back-reference pointing at
+  stream bytes already written, found by a greedy LZ77-style match over the
+  grouped writes and decoded by the player's own copy loop rather than
+  inflating the assembled program. One tick is Timer 0's own period,
+  `TIMER_TARGET=8` against the SPC700's 1024000 Hz clock, 1000 Hz, 1024
+  cycles. A write's original cycle stamp is rounded to the nearest tick, and
+  that target is chased by *simulating* the assembled player for real during
+  export (a second, scratch SPC700) so the wait loop's and the dispatch's
+  own real cost is accounted for exactly, not estimated - the write itself
+  then lands within a stated, small, bounded number of ticks of that
+  rounding, not just the half-tick the rounding alone would promise (see
+  `spc-export.ts`'s own doc comment and
   `packages/chipvoice/test/spc-export.mjs` for the figure and why).
 - The song's loop point, so playback repeats forever the way a game's own
   track does, the same way `.spc` files are normally authored.
@@ -160,12 +166,14 @@ could ever land on the player, the directory, a sample, the write stream, or
 the IPL ROM's reserved region (`$FFC0`-`$FFFF`) - `SpcExportSizeError`, never
 a truncated or silently corrupt file. The same error, naming `measured` and
 `limit`, covers the plain case: a song whose player, directory, samples and
-write stream together do not fit under `$FFC0`. Both of the repo's published
-SNES arrangements measured big enough to hit exactly this (their SNES
-rendition, several minutes at this driver's note density, well over the
-~64 KB budget); there is no SNES-native song in `scores/` yet to measure
-against instead (`native-sources.mjs` only has NES and Mega Drive sources) -
-when one exists it joins this corpus.
+write stream together do not fit under `$FFC0`. One of the repo's three
+published SNES arrangements, `sonic`, measures big enough to hit exactly
+this (its SNES rendition, several minutes at this driver's note density and
+instrument variety, well over the ~64 KB budget even after the write
+stream's own back-reference compaction); `mario` and `zelda` both fit. There
+is no SNES-native song in `scores/` yet to measure against instead
+(`native-sources.mjs` only has NES and Mega Drive sources) - when one exists
+it joins this corpus.
 
 Measured by
 [`check:spc-export`](../../packages/conform/src/spc/check-export.mjs)
@@ -193,9 +201,9 @@ Samples: envelope correlation: both streams' per-voice RMS loudness in 4096-cycl
 
 | Song | ARAM used | Round trip (own CPU): writes | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes | play-spc: samples (envelope corr, rel RMS error, cycle-exact) |
 | --- | --- | --- | --- | --- | --- |
-| mario | does not fit: 65473 / 65472 bytes | - | - | - | - |
-| zelda | 39813 / 65472 bytes | 12665/12665 | 0.9623 (11.5888 %, 14.4857 % cycle-exact) | 12665/12665 | 0.9962 (3.7169 %, 16.8968 % cycle-exact) |
-| sonic | does not fit: 65473 / 65472 bytes | - | - | - | - |
+| mario | 52991 / 65472 bytes | 24092/24092 | 0.9586 (18.3478 %, 31.3879 % cycle-exact) | 24092/24092 | 0.9987 (3.2309 %, 31.4303 % cycle-exact) |
+| zelda | 29623 / 65472 bytes | 12665/12665 | 0.9661 (10.9897 %, 15.2763 % cycle-exact) | 12665/12665 | 0.9980 (2.6981 %, 16.7870 % cycle-exact) |
+| sonic | does not fit: 82896 / 57344 bytes | - | - | - | - |
 <!-- spc-export:end -->
 
 ## Test ROMs

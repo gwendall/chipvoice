@@ -1326,15 +1326,70 @@ that ships is the one that actually reproduces each write's target tick when
 a real SPC700 executes the wait loop and dispatch, not an estimate that
 ignores the player's own instruction cost.
 
-**Encoding.** The write stream is tick-deltas plus `{reg, value}` pairs, with
-no run-length or dictionary compaction: the simplest encoding that fits
-comfortably inside 64 KB for the corpus tested so far except the two dense,
-multi-instrument arrangements (mario, sonic), which fail loudly with
-`SpcExportSizeError { measured, limit }` rather than truncating, matching
-how `validateSong` already reports capacity elsewhere. A denser encoding
-(run lengths, a value dictionary) was considered and set aside, not ruled
-out: today's failures are named and measured, not silent, which was the
-ticket's bar.
+**How close a write lands to its own rounded tick.** Rounding alone promises
+half a tick; the real player also spends real cycles walking its own
+dispatch loop before a write actually reaches the DSP, and a dense same-tick
+burst (a chord, an instrument retrigger touching many voices' registers at
+once) makes many writes queue behind a single real CPU with no DMA to share
+the load. Measured on both the synthetic unit test and on real songs
+(`packages/chipvoice/test/spc-export.mjs`; mario and zelda both converge on
+the same figure independently), the worst case is about 1993-1998 cycles,
+just under two ticks, and does not grow with a song's length - it is bounded
+by how many registers one originally-simultaneous group can touch, not by
+how long the song runs. A back-of-envelope bound on the burst loop itself
+(about 12 cycles per register touched, a 1024-cycle tick) shows one tick
+would need a group under roughly 85 registers wide with zero rounding
+margin left over - not a target this driver's own dispatch cost can reach
+for real content, not a bug to chase further. The test's own bound is set at
+3 ticks: a real margin over the measured ~2-tick ceiling, not the tighter
+figure hoped for at the start of this ticket, kept honest rather than forced.
+
+**Encoding.** The write stream is tick-deltas plus `{reg, value}` pairs,
+`$FE count (reg value)*count` bursts for same-tick register groups, and (new
+since the ticket's first pass) `$FD` back-references: a greedy LZ77-style
+match (`MATCH_MIN_GROUPS = 2` consecutive groups) lets a repeated run of
+groups - the same chord retriggered, the same instrument's envelope
+replayed - point back at stream bytes already written instead of repeating
+them, decoded by the player's own `L_COPY_START` section rather than
+inflating the assembled program with per-song logic. This closed most of the
+gap the first pass's plain encoding left: `mario` (52991/65472 bytes) and
+`zelda` (29623/65472 bytes) both now fit; `sonic` still does not (82896
+needed against 57344 available for its own memory layout) and fails loudly
+with `SpcExportSizeError { measured, limit }` naming its real size, rather
+than truncating - matching how `validateSong` already reports capacity
+elsewhere. A denser encoding (a value dictionary, cross-song matching) was
+considered and set aside, not ruled out: today's one remaining failure is
+named and measured, not silent, which was the ticket's bar.
+
+**Two bugs the oracle comparison found, both fixed.** First, the live S-DSP
+echo buffer (`ESA`/`EDL`) writes into the export's own scratch ARAM on the
+DSP's own initiative while the second, scratch SPC700 re-simulates the
+player program - a back-reference pass reading stream bytes back out of
+that same RAM could read a byte the echo hardware had since overwritten.
+Fixed by tracking every footprint the capture's own `ESA`/`EDL`/`FLG`
+writes could ever put echo into (`inEchoFootprint`) and refusing, in
+`pokeStream`, to trust or reuse any byte inside one - the same
+`SpcExportSizeError` path a plain overflow takes, not a silent misread.
+Second, the final pre-loop wait (the tail between the last write and the
+loop point) rounded its own tick count with `Math.round`, which could round
+down and leave the simulated player waiting fractionally short of the loop
+point it was told to reach; changed to `Math.ceil`, matching what "wait at
+least until the loop point" actually requires.
+
+**Envelope correlation window.** `check-export.mjs` scores audio fidelity by
+per-voice RMS envelope correlation rather than a raw cycle-exact sample
+match, because a write correctly rounded to its own tick still shifts the
+DSP's audio-rate waveform out of phase with an unquantized render, and phase
+alone scores two identical tones as almost entirely different. The window
+width matters: measured at 1, 2 and 4 ticks on both real songs
+(`ENVELOPE_WINDOWS_TICKS`, reported every run, not just historically), a
+correct export climbs from about 0.72-0.85 at 1 tick to 0.91-0.96 at 4,
+still far below anything a listener could perceive as separately timed, and
+climbing - the signature of an under-resolved phase effect, not a real
+mismatch (a real mismatch instead falls or flattens as the window widens).
+Four ticks is kept as the gate (`ENVELOPE_MATCH_THRESHOLD = 0.95` would be
+too tight at the finer windows for the reason above, not because the export
+is wrong at 1 or 2 ticks).
 
 **What changes.** `packages/chipvoice/src/spc-export.ts` and
 `chips/snes/spc-player.ts` are new; `exportSpc` and `SpcExportSizeError` are
@@ -1343,4 +1398,5 @@ the SNES `registerExportFormats` entry; `apps/web/src/studio/exports.ts`
 gains an `spc` export kind. None of this touches `spc-import.ts`,
 `spc700.ts` or `ssmp.ts` from decision 45; a round trip through `importSpc`
 is how the CI check in `packages/conform/src/spc/check-export.mjs` proves
-the player's writes land where the capture put them.
+the player's writes land where the capture put them, alongside a direct
+comparison against `play-spc`'s own playback of the same exported file.
