@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatLog } from '../log.mjs';
+import { traceProcess } from '../change-stream.mjs';
 
 /**
  * MAME's sn76496, built natively and driven over a pipe, configured as
@@ -10,7 +11,10 @@ import { formatLog } from '../log.mjs';
  * instantiates. See `oracles/sn76496/README.md` for the pinned commit, the
  * constructor parameters and their file:line citations, and the value
  * mapping. This is the PSG's second oracle, beside the documents nuked-opn2
- * is compared against for the FM half of this chip.
+ * is compared against for the FM half of this chip. `trace()` streams its
+ * stdout through `traceProcess` (change-stream.mjs) into a `ChangeStream`
+ * rather than buffering the whole run as one string - this corpus's longest
+ * runs are the same song logs nuked-opn2 traces, over 2 billion cycles.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/sn76496/main.cpp', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'sn76496');
@@ -36,18 +40,11 @@ export const sn76496 = {
   /**
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
+   * @returns {Promise<import('../change-stream.mjs').ChangeStream>}
    */
   trace(writes, cycles) {
     this.build();
     const input = formatLog({ chip: 'md', clock: 53693175, cycles }, writes);
-    const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
-    const changes = [];
-    for (const line of result.stdout.split('\n')) {
-      if (!line) continue;
-      const [cycle, voice, value] = line.split(' ').map(Number);
-      changes.push({ cycle, voice, value });
-    }
-    return changes;
+    return traceProcess(BINARY, [], input);
   },
 };
