@@ -595,8 +595,23 @@ real game music, and a real unit.
 
 **Step 6. Generation for everyone, in parallel (decision 39).**
 
-- GEN-01 and GEN-05: a benchmark of about 50 prompts per console, with
-  latency, cost and a listening grid, rerun on every model change.
+- doing - GEN-01 and GEN-05: harness done, full run pending the owner's
+  approval. `pnpm gen-bench` (`apps/web/scripts/gen-bench.mjs`, see
+  [the benchmark doc](GENERATION-BENCHMARK.md)) drives the same generation
+  path the server uses over a committed set of 250 original prompts, 50 per
+  console, varied in genre, mood, tempo, duration and structure, none naming
+  a known work (decision 39 applies to the benchmark's own prompts too); it
+  records latency (model call and render, separately), usage-priced cost
+  (`admission.ts`'s own `priceUsage`, so it cannot drift from the budget),
+  the GEN-03 whole-song checks and the rendered WAV, and writes a summary
+  and a listening-grid template. `--mock` runs the whole harness with no
+  network or cost, covered by `test-gen-bench.mjs` in CI; a real run refuses
+  more than 5 calls without `--confirm-paid-run`. The one-per-console paid
+  sample the harness was built for did not run: `OPENAI_API_KEY` is absent
+  from the main checkout's `.env.local`, so nothing was spent and, per the
+  ticket, no other key was tried. The full 250-prompt run is estimated at
+  70.00 USD (decision 42's 0.28 USD/generation fallback average; no measured
+  run exists yet) and needs the owner's approval before it runs.
 - done - GEN-03: whole-song checks (late clipping, level jumps, silence
   gaps, an unresolved ending, a loop seam, a duration mismatch), pure and
   tested in `apps/web/src/lib/composition/checks.ts`, run once a generation's
