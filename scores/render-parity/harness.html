@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>render-parity harness</title></head>
+<body>
+<!--
+  A Playwright-only fixture, never linked from the site: renders the fixed
+  MIX-14 input set through the real package, in whichever engine loaded this
+  page, and hashes the PCM it produces. `browser-render.mjs` serves this file
+  and `packages/chipvoice/dist` next to it, then calls `window.renderParityRun`
+  with the same inputs Node just rendered.
+
+  `planFromJSON` and its helpers are a copy of `scores/render-parity/serialize.mjs`
+  (isomorphic on purpose: JSON, DataView, btoa and atob only) - this page
+  cannot import that file as a module without its own bundler step, so keep
+  the two in sync by hand. `apps/web/src/lab/RenderParity.tsx` keeps a third
+  copy for the same reason.
+
+  `selfTestPerturb` is the negative-test hook (`scores/render-parity/self-test.mjs`):
+  a query flag never set by a normal `browser-render.mjs` navigation, read
+  once at load, that corrupts one sample of one named input before it is
+  hashed - proving the comparison actually fails on a real difference rather
+  than passing by construction.
+-->
+<script type="module">
+import { renderPerformance, nesChip, gbChip, mdChip, snesChip, c64Chip } from './dist/index.js';
+
+const CHIPS = { '2a03': nesChip, dmg: gbChip, md: mdChip, snes: snesChip, c64: c64Chip };
+
+function unpackEvents(text) {
+  const bytes = base64ToBytes(text);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const events = new Array(bytes.length / 9);
+  for (let i = 0; i < events.length; i++) events[i] = { at: view.getUint32(i * 9, true), addr: view.getUint32(i * 9 + 4, true), value: view.getUint8(i * 9 + 8) };
+  return events;
+}
+function base64ToBytes(text) {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+function planFromJSON(json) {
+  return {
+    chip: json.chip,
+    seconds: json.seconds,
+    events: unpackEvents(json.events),
+    memory: json.memory.map(block => ({ address: block.address, bytes: base64ToBytes(block.bytes) })),
+  };
+}
+
+const selfTestPerturb = (() => {
+  const raw = new URLSearchParams(location.search).get('selfTestPerturb');
+  if (!raw) return null;
+  const [id, sampleIndex, channel, delta] = raw.split(':');
+  return { id, sampleIndex: Number(sampleIndex), channel, delta: Number(delta) };
+})();
+function applySelfTestPerturb(id, audio) {
+  if (!selfTestPerturb || selfTestPerturb.id !== id) return audio;
+  const samples = selfTestPerturb.channel === 'right' ? audio.right : audio.left;
+  if (samples) samples[selfTestPerturb.sampleIndex] += selfTestPerturb.delta;
+  return audio;
+}
+function pcmBytes({ left, right }) {
+  const bytes = new Uint8Array(left.byteLength + (right ? right.byteLength : 0));
+  bytes.set(new Uint8Array(left.buffer, left.byteOffset, left.byteLength), 0);
+  if (right) bytes.set(new Uint8Array(right.buffer, right.byteOffset, right.byteLength), left.byteLength);
+  return bytes;
+}
+async function sha256Hex(bytes) {
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+window.renderParityRun = async (inputs) => {
+  const results = [];
+  for (const input of inputs) {
+    const chip = CHIPS[input.chip];
+    if (!chip) throw new Error(`unknown chip: ${input.chip}`);
+    const plan = planFromJSON(input.plan);
+    const audio = applySelfTestPerturb(input.id, renderPerformance(plan, chip));
+    results.push({ id: input.id, sha256: await sha256Hex(pcmBytes(audio)), peak: audio.peak });
+  }
+  return results;
+};
+
+// Only called for an input whose hash already came back different: the raw
+// samples are what a diagnosis needs (the first differing sample and the
+// largest gap), and there is no reason to pay for shipping them back over
+// Playwright's evaluate channel for the whole set on every run.
+window.renderParityRenderOne = async (input) => {
+  const chip = CHIPS[input.chip];
+  const audio = applySelfTestPerturb(input.id, renderPerformance(planFromJSON(input.plan), chip));
+  return { left: Array.from(audio.left), right: audio.right ? Array.from(audio.right) : null, sampleRate: audio.sampleRate };
+};
+window.renderParityReady = true;
+</script>
+</body>
+</html>

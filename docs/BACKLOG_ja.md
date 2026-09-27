@@ -253,7 +253,28 @@
 **ステップ4. 後になっても、別の場所でも同じバイト列。**
 
 - done - NEXT-11: 本PR。決定43。`songs`、`projects`、`project_jobs`はそれぞれ、行を書いた時点で動いていた`PROJECT_ENGINE_VERSION`を記録します。レンダーは常にサーバーのいまのエンジンを使い、ジョブは自分自身のバージョンを記録するので、レンディションの`engineVersion`は公開作品のものと食い違うことがあります(両方をAPIと公開ページの両方に表示し、食い違うときは「chipvoice x.y.zで公開、chipvoice a.b.cでレンダー」)。本PR以前に書かれた行は推測せず`null`のままです。`/s/{id}`は変わらず、今デプロイされているエンジンでその都度再検証します（決定21が明記した制限で、AUD-2の後続）。
-- MIX-14: ブラウザ、Node、実機のスマートフォンの間でレンダーのハッシュを比べます。
+- done - MIX-14: 本PR。`pnpm render-parity:sheet`は22個の固定入力セット
+  (mario/zelda/sonicのVGMネイティブな4チップ - 2A03、DMG、MD、SNES -
+  それぞれの6秒抜粋12個、加えてチップごとに保持したleadとkickのプリセット
+  各1個、C64を含む)を、Node、Chromium、Firefox、WebKit(WebKitはPlaywrightで
+  自動化できる中でSafariに最も近い代用であり、Safari自体ではありません)で
+  同じパッケージを通して同じようにレンダーし、生のPCMバイト列をハッシュし
+  ます(16bit WAVではないため、耳では聞こえない差でもハッシュが動きます)。
+  Node v22.22.3、Chromium 151.0.7922.34、Firefox 153.0、WebKit 26.5は
+  22個すべての入力でバイト単位で一致するSHA-256ハッシュを出し、不一致は
+  ゼロでした。診断すべきものはありませんでした。`docs/RENDER-PARITY.md`/
+  `_ja.md`にエンジンのバージョン、日付、入力ごとの表を記録し、
+  `pnpm render-parity:check`はNodeと3エンジンすべて(Chromiumだけではない)
+  をCIで毎回のPRで再実行します。その直後に`pnpm render-parity:self-test`
+  が実行され、ブラウザのレンダーにサンプル単位の意図的な差を1つ仕込み、
+  ゲートが常にPASSを表示するだけでなく実際に不一致を捉えることを証明し
+  ます。公開されているフィクスチャ(`apps/web/public/render-parity-data/
+  inputs.json`)はインデント付きJSONではなくbase64・バイナリ圧縮され、
+  3.1MBではなく793KBです。`pnpm render-parity:fixture`はブラウザもシート
+  も使わずこれだけを再生成します。実機のスマートフォン・実Safariの部分は、
+  1分でできる人手の確認として残ります。`/lab/render-parity`が開いたブラ
+  ウザーで同じ固定セットをレンダーし、Nodeの参照値との一致・不一致を表示
+  します。`packages/chipvoice/src`は変更していません。
 - done - NEXT-12: `/accuracy`と`/ja/accuracy`は5つのチップすべてについて、デジタル一致度（オラクルごと、加えてc64の実機6581との複合波形比較）、テストROM、アナログ段、ドライバの網羅率を示します。`packages/conform/src/accuracy-data.mjs`が`status.mjs`が仕様書に書き込むのと同じ集計から`apps/web/src/data/accuracy-data.json`を生成するため、数値を手で入力することはありません。このファイルが仕様書とずれるとCIが失敗します。
 - done - NEXT-13: 編曲の`report.json`は`evaluate.mjs`から到達できるエンジンのモジュール（109個中43個）だけをハッシュするため、再生だけの変更で`pnpm arrangements:eval`全体をやり直す必要はなくなりました。
 - done - NEXT-23: 本PR。ミキシング校正のハッシュも同じ考え方で絞り込みました。`scores/mixing/provenance.mjs`の`calibrationEngineHash()`は、以前は`chips/**`配下の全`.js`と名前を指定した3個のモジュール(合計37ファイル、プローブ用の音色や測定コード自体は含まない)をハッシュしていたため、校正が実行しないチップのファイル形式プレイヤー、たとえば`.spc`再生用のSPC700コア(#101)のようなものが、ハッシュを動かし、他のPRがマージされるたびにあらゆる進行中のエンジンPRへ全校正のやり直しを強いていました。いまは`scores/mixing/calibrate.mjs`が実際に到達するモジュール(77個中39個)だけをハッシュします。到達判定はNEXT-13が`evaluate.mjs`のために使うのと同じ方法で、`scores/arrangements/engine.mjs`の`engineModules(entry)`として共有されています。これに測定方法を表す`MIX_PROFILE_VERSION`を加えます。`mix-profiles.js`は名前で明示的に除外します(`calibrate.mjs`自身が生成する出力であり、現時点では到達可能なものの中にこれを読み込むものはないため、この除外は今のところ何も取り除いていない安全策です)。`mix-calibration.js`自体がハッシュ対象のモジュール集合に入ったことで、`calibrateMixInstrument.toString()`/`mixInstrumentSignature.toString()`の項は不要になったため削除しました(ファイル全体のバイト列が両関数をすでに覆っています)。`check-calibration.mjs`は、モジュール一覧が各チップのコアとドライバ、`performance-palette.js`、`mix-calibration.js`に到達すること、そして`chips/**`配下にあって何からも読み込まれないファイルがハッシュを動かさないことを検証します。測定済みのプロファイルは変わりません(`profileSha256`と`src/mix-profiles.ts`は以前と同一で、`engineSha256`だけが変わります)。
@@ -307,7 +328,7 @@
 <a id="general-automatic-mixing--priority-plan-2026-09-07"></a>
 ## 汎用自動ミックス — 優先計画（2026-09-07）
 
-今後のリリースと機能でも、音の正しさと汎用移植を優先します。**MIX-01〜MIX-18** の自動実装・検証は、API・コーパスの明示した制約内で **0.16.1** として提供済みです（[PR #40](https://github.com/gwendall/chipvoice/pull/40)、[公開ワークフロー修正 #41](https://github.com/gwendall/chipvoice/pull/41)）。MIX-12 の人間による試聴と MIX-14 の実スマートフォン・Safari の受け入れ確認は未完了です。本番ファイルと実際の npm 利用側を検証し、[リリース証拠](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1)に最終結果を記録します。
+今後のリリースと機能でも、音の正しさと汎用移植を優先します。**MIX-01〜MIX-18** の自動実装・検証は、API・コーパスの明示した制約内で **0.16.1** として提供済みです（[PR #40](https://github.com/gwendall/chipvoice/pull/40)、[公開ワークフロー修正 #41](https://github.com/gwendall/chipvoice/pull/41)）。MIX-12 の人間による試聴は未完了です。MIX-14 は Node・Chromium・Firefox・WebKit のレンダーハッシュ照合を自動化し(22件中22件がバイト単位で一致、不一致ゼロ。[レンダー一致性](RENDER-PARITY_ja.md))、残るのは実機スマートフォンと実Safariでの1分の人手確認だけになりました([`/lab/render-parity`](https://chipvoice.dev/lab/render-parity))。本番ファイルと実際の npm 利用側を検証し、[リリース証拠](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1)に最終結果を記録します。
 依存関係と合格条件は[自動ミックス](AUTOMATIC-MIXING_ja.md)にあります。テスト曲は共通ポリシーの校正と
 評価用であり、本番動作で曲の識別子による特例を設けません。[API](MIXING-API_ja.md) と[評価](evals/AUTOMATIC-MIXING-POLICY-2026-09-07_ja.md)に証拠と制約を記載します。人間による比較試聴と実機確認は未完了のまま明示します。
 
