@@ -39,10 +39,25 @@ export const KNOWN_WORK_DENYLIST = [
 
 export interface PromptProblem { id: string; message: string }
 
+/** Guards the tempo clause a prompt's template splices in (", at X.",
+ * "moving at X." or "played at X,", see `docs/GENERATION-BENCHMARK.md`'s
+ * generator): every tempo phrase must read as a noun phrase starting "a "/
+ * "an "/"the ", so a bare adjective spliced straight after "at" ("at upbeat
+ * and energetic") is rejected. Anchored to the comma/"moving"/"played" lead-in
+ * so it never fires on an unrelated "at" elsewhere in a prompt (EXTRAS' "in at
+ * least two different sections" does not match). The first cut of this set
+ * shipped 37 of these; see PR #109's review. */
+const TEMPO_SPLICE = /(?:,\s|\bmoving |\bplayed )at (?!a\b|an\b|the\b)[a-z]/i;
+/** A second, semantic form of the same bug: a tempo phrase can carry a
+ * leading article and still not pair with "at" as a pace description - music
+ * is not "played at a feel" or "moving at a build". */
+const TEMPO_BAD_HEAD = /(?:,\s|\bmoving |\bplayed )at\s+[^.,]*?\b(feel|build|vibe|mood|atmosphere|energy)\b\s*[.,]/i;
+
 /** Checks the committed prompt set is what the ticket asks for: about 50 per
  * console, unique ids, durations inside the request schema's 10-90s bound
- * (`compositionRequest` in `./score`), and no hit against the denylist above.
- * Returns every problem found; an empty array means the set is fit to run. */
+ * (`compositionRequest` in `./score`), no hit against the denylist above, and
+ * no ungrammatical tempo splice. Returns every problem found; an empty array
+ * means the set is fit to run. */
 export function validatePromptSet(prompts: BenchPrompt[]): PromptProblem[] {
   const problems: PromptProblem[] = [];
   const seen = new Set<string>();
@@ -56,6 +71,8 @@ export function validatePromptSet(prompts: BenchPrompt[]): PromptProblem[] {
       problems.push({ id: p.id, message: `durationSeconds ${p.durationSeconds} outside the request schema's 10-90s bound` });
     if (!p.prompt.trim() || p.prompt.length > 2000)
       problems.push({ id: p.id, message: "prompt is empty or exceeds the request schema's 2000-character bound" });
+    if (TEMPO_SPLICE.test(p.prompt) || TEMPO_BAD_HEAD.test(p.prompt))
+      problems.push({ id: p.id, message: "tempo phrase reads ungrammatically after \"at\"/\"moving at\"/\"played at\" (bare adjective or a head noun \"at\" does not pair with)" });
     const lower = p.prompt.toLowerCase();
     for (const known of KNOWN_WORK_DENYLIST)
       // Whole-word/phrase match: "contra" must not flag "contrasting".
