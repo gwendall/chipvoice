@@ -2,7 +2,7 @@ import type { RegisterEvent } from "./chip.js";
 import { SnesChip, SPC_HZ } from "./chips/snes/dsp.js";
 import { Spc700 } from "./chips/snes/spc700.js";
 import { Ssmp } from "./chips/snes/ssmp.js";
-import { buildPlayerProgram, PTR, SCRATCH, TIMER_TARGET, TICKS_PER_SECOND } from "./chips/snes/spc-player.js";
+import { buildPlayerProgram, PTR, SCRATCH, TIMER_TARGET, TICKS_PER_SECOND, BURST_OP, COPY_OP, COPY_ACTIVE } from "./chips/snes/spc-player.js";
 
 /**
  * SPC export: a SNES song's register-write capture, frozen into a standard
@@ -46,7 +46,18 @@ import { buildPlayerProgram, PTR, SCRATCH, TIMER_TARGET, TICKS_PER_SECOND } from
  *    inert by construction, so it is rewritten to point at index 0.
  *  - The write stream itself: every `$F2`/`$F3` pair the capture ever made,
  *    as `{reg, value}`, each preceded by how many player ticks to wait
- *    first (see the encoding note on `buildPlayerProgram`). One tick is
+ *    first (see the encoding note on `buildPlayerProgram`). Two compaction
+ *    passes run first, over the writes' own cycle stamps alone, before any
+ *    of this function's real timing simulation: consecutive writes that
+ *    land on the same tick (a voice's registers all set at once, ordinary
+ *    at a keyed-on moment) fold into one burst event instead of several
+ *    separate ones, and a run of events byte-identical to one already
+ *    emitted earlier in the very same stream (a repeated bar, ordinary in
+ *    real music) becomes a back-reference that replays the earlier bytes in
+ *    place instead of storing them again - see the "group" and "planned
+ *    event" comment further down for why deciding *which* events to fold or
+ *    reuse this way never needs the real player simulation at all, only the
+ *    real one deciding each surviving event's actual delta does. One tick is
  *    Timer 0's own period; `TIMER_TARGET`'s doc comment says which one and
  *    why. A write's original cycle stamp is rounded to the nearest tick -
  *    `1000 / TICKS_PER_SECOND` in milliseconds, half of that as a bound on
@@ -411,45 +422,200 @@ export function exportSpc(
   ram[0xf1] = 0x01; // CONTROL: Timer 0 enabled, ROM disabled, ports untouched
   ram[0xfa] = TIMER_TARGET;
 
-  // ---- Pass 2: encode the write stream, timed by actually running it.
+  // ---- Pass 2a: group `remapped` into bursts, from the writes' own cycle
+  // stamps alone - no real player simulation involved yet. A "group" is
+  // either one plain write or a run of `BURST_MIN` or more consecutive
+  // writes that all land on the very same tick (a voice's registers all set
+  // at once, ordinary at a keyed-on moment): folding them under one $FE
+  // header instead of a separate delta/reg/value triple each saves both
+  // bytes and - just as important for the timing pass below - the real
+  // per-write dispatch cost a dense run of individually-encoded writes
+  // would otherwise have to pay for one at a time.
+  //
+  // This grouping (and the back-reference matching in pass 2b, right after)
+  // only has to decide *which* events belong together or repeat - a
+  // property of the source material's own relative timing, not of how
+  // expensively any particular encoding dispatches it - so both run against
+  // a cheap "naive" delta (chasing each write's cycle stamp from a running,
+  // always tick-aligned position, ignoring dispatch cost entirely) rather
+  // than the real simulated player pass 2c runs afterward. Two occurrences
+  // of the same pattern get identical naive bytes regardless of where in
+  // the song each one starts, because the naive delta is self-correcting -
+  // it is recomputed from each write's own absolute cycle stamp every step,
+  // not accumulated - so it never drifts away from the pattern's own
+  // relative timing the way a running total could. ----
+  const BURST_MIN = 4; // below this, a burst's own $FE+count header does not pay for itself
+  // The real profitability floor is `matchedNaiveBytes > 6` below, in bytes,
+  // not groups - this is only the smallest span a copy can even name (a
+  // one-group "range" is nonsensical) and, not coincidentally, `HASH_GROUPS`
+  // itself: nothing shorter than the hash window ever gets tried as a
+  // candidate anyway. Measured on this repo's own three arrangements: 2
+  // (this value) over 3 saves 2966/887/904 bytes (mario/zelda/sonic); 1
+  // (also trying single-group candidates, via `HASH_GROUPS` 1) loses badly
+  // instead - short, common single-group keys collide often enough to
+  // spend more on failed or barely-profitable matches than they save.
+  const MATCH_MIN_GROUPS = 2;
+  const HASH_GROUPS = 2; // how many groups a candidate back-reference is first hashed on; see MATCH_MIN_GROUPS above for why 1 measures worse
+
+  const naiveDeltaBytes = (ticks: number): number[] => {
+    const out: number[] = [];
+    let d = ticks;
+    while (d >= 255) {
+      out.push(0xff);
+      d -= 255;
+    }
+    out.push(d);
+    return out;
+  };
+
+  interface Group {
+    writeIndices: number[]; // indices into `remapped`
+    naiveBytes: number[]; // this group's own bytes, under the naive (non-real-time) delta
+    kind: "write" | "burst";
+  }
+  const groups: Group[] = [];
+  {
+    let naivePos = 0;
+    let i = 0;
+    while (i < remapped.length) {
+      const w = remapped[i];
+      const ticks = Math.max(0, Math.round((w.cycle - naivePos) / CYCLES_PER_TICK));
+      const target = naivePos + ticks * CYCLES_PER_TICK;
+      let j = i + 1;
+      while (j < remapped.length && j - i < 255 && Math.round((remapped[j].cycle - target) / CYCLES_PER_TICK) === 0) j++;
+      const runLen = j - i;
+      if (runLen >= BURST_MIN) {
+        const bytes = naiveDeltaBytes(ticks);
+        bytes.push(BURST_OP, runLen);
+        const indices: number[] = [];
+        for (let k = 0; k < runLen; k++) {
+          bytes.push(remapped[i + k].reg, remapped[i + k].value & 0xff);
+          indices.push(i + k);
+        }
+        groups.push({ writeIndices: indices, naiveBytes: bytes, kind: "burst" });
+        i += runLen;
+      } else {
+        const bytes = naiveDeltaBytes(ticks);
+        bytes.push(w.reg, w.value & 0xff);
+        groups.push({ writeIndices: [i], naiveBytes: bytes, kind: "write" });
+        i += 1;
+      }
+      naivePos = target;
+    }
+  }
+
+  // ---- Pass 2b: greedy LZ77-style matching over `groups` - a run of one or
+  // more consecutive groups whose naive bytes exactly match a run already
+  // emitted earlier becomes one $FD copy event, referencing the earlier
+  // occurrence's own final byte range (filled in by pass 2c below, which
+  // always processes groups in the same left-to-right order this pass
+  // decided, so an earlier occurrence's range is always already known by
+  // the time a later copy needs to reference it). `consumed` tracks which
+  // group indices this pass has already folded into someone else's copy, so
+  // a later match can never point at a source range that is itself partly
+  // spoken for by an even earlier copy - a copy's source is always plain
+  // groups a later pass 2c step gives their own real byte range. ----
+  type PlannedEvent =
+    | { kind: "write"; writeIndices: number[] }
+    | { kind: "burst"; writeIndices: number[] }
+    | { kind: "copy"; writeIndices: number[]; sourceGroupStart: number; sourceGroupCount: number };
+  const planned: PlannedEvent[] = [];
+  const firstOcc = new Map<string, number>();
+  const consumed = new Array<boolean>(groups.length).fill(false);
+  const keyOfRange = (start: number, count: number) => groups.slice(start, start + count).map((g) => g.naiveBytes.join(":")).join("|");
+  {
+    let cursor = 0;
+    while (cursor < groups.length) {
+      const key = groups.length - cursor >= HASH_GROUPS ? keyOfRange(cursor, HASH_GROUPS) : null;
+      let matched = false;
+      if (key !== null) {
+        const src = firstOcc.get(key);
+        if (src !== undefined) {
+          let k = 0;
+          while (
+            cursor + k < groups.length &&
+            src + k < cursor &&
+            !consumed[src + k] &&
+            groups[src + k].naiveBytes.length === groups[cursor + k].naiveBytes.length &&
+            groups[src + k].naiveBytes.every((v, idx) => v === groups[cursor + k].naiveBytes[idx])
+          ) {
+            k++;
+          }
+          const matchedNaiveBytes = groups.slice(cursor, cursor + k).reduce((s, g) => s + g.naiveBytes.length, 0);
+          if (k >= MATCH_MIN_GROUPS && matchedNaiveBytes > 6) {
+            const indices: number[] = [];
+            for (let g = cursor; g < cursor + k; g++) indices.push(...groups[g].writeIndices);
+            planned.push({ kind: "copy", writeIndices: indices, sourceGroupStart: src, sourceGroupCount: k });
+            for (let g = cursor; g < cursor + k; g++) consumed[g] = true;
+            cursor += k;
+            matched = true;
+          }
+        }
+      }
+      if (!matched) {
+        if (key !== null && !firstOcc.has(key)) firstOcc.set(key, cursor);
+        const g = groups[cursor];
+        planned.push(g.kind === "write" ? { kind: "write", writeIndices: g.writeIndices } : { kind: "burst", writeIndices: g.writeIndices });
+        cursor += 1;
+      }
+    }
+  }
+  // ---- Pass 2c: encode `planned` for real, timed by actually running it.
   // Loop bookkeeping is inspired by toVgm's (vgm.ts), but can't emit a
   // separate "wait up to loopTick" step the way VGM's self-delimiting
   // commands allow (a wait of zero samples there is simply zero bytes):
-  // this grammar needs exactly one delta before every reg/value pair, so a
-  // synthetic marker delta would either duplicate the very next event's own
-  // delta (two deltas in a row, which the player can't parse) or, if
-  // skipped, desync the byte the player reads as "reg" from the one meant
-  // as "value". So the loop point is simply the byte offset of the first
-  // event at or after `loopAtCycle`, compared against the write's own
-  // original cycle stamp.
+  // this grammar needs exactly one delta before every event, so a synthetic
+  // marker delta would either duplicate the very next event's own delta
+  // (two deltas in a row, which the player can't parse) or, if skipped,
+  // desync the byte the player reads as the event tag from the one meant as
+  // its first payload byte. So the loop point is simply the byte offset of
+  // the first *event* (write, burst or copy) whose last covered write's
+  // original cycle stamp is at or after `loopAtCycle` - group-granular, not
+  // write-granular, because a burst or copy event has no addressable byte
+  // offset in the middle of it a jump could land on.
   //
   // Every wait a `.spc` player as simple as this one's own `spc-player.ts`
   // can do comes in whole ticks (Timer 0's own period), but *reading* the
-  // stream, dispatching a register write and looping back to read the next
-  // delta is not itself free - almost entirely the delta/reg/value byte
-  // reads and the two $F2/$F3 writes themselves. A delta computed from the
-  // raw cycle/tick math alone (as if reading and dispatching a write took
+  // stream, dispatching an event and looping back to read the next delta is
+  // not itself free - almost entirely the byte reads and the $F2/$F3
+  // writes (or the copy bookkeeping) themselves. A delta computed from the
+  // raw cycle/tick math alone (as if reading and dispatching an event took
   // no time) silently ignores that cost; it is small next to a whole tick,
   // but a dense stretch - several notes changing in the same or adjacent
-  // ticks, ordinary in a real arrangement - adds it up write after write
+  // ticks, ordinary in a real arrangement - adds it up event after event
   // with nothing ever giving it back, and it was large enough on the
   // repo's own SNES arrangements to measurably late-shift the whole second
   // half of a song (see this file's own tests and the conformance sheet).
-  // Rather than estimate that cost by hand (fragile - it depends on
-  // exactly which instructions `buildPlayerProgram` assembles, and a bug in
-  // the estimate is invisible until measured against a real song), this
-  // pass runs a second, scratch copy of this package's own S-SMP and
-  // S-DSP - loaded with the exact ARAM and DSP state above - as the real
-  // player, live: it pokes each event's delta/reg/value bytes into that
-  // chip's own ARAM (the same bytes this function is also collecting into
-  // `stream`, its actual output) and then single-steps the CPU until it has
-  // read past them, so `ssmp.cycle` afterward is exactly where the real
-  // exported player will be too. The next event's delta is then however
-  // many ticks Timer 0 still needs to count down once that catches up to
-  // the event's own original cycle stamp - often zero for a write that
-  // lands only a handful of cycles after the one before it, exactly the
-  // dense-stretch case this is for - so every real SPC700 cost the
-  // exported file will actually pay is accounted for, not estimated. ----
+  // Rather than estimate that cost by hand (fragile - it depends on exactly
+  // which instructions `buildPlayerProgram` assembles, and a bug in the
+  // estimate is invisible until measured against a real song), this pass
+  // runs a second, scratch copy of this package's own S-SMP and S-DSP -
+  // loaded with the exact ARAM and DSP state above - as the real player,
+  // live: it pokes each event's bytes into that chip's own ARAM (the same
+  // bytes this function is also collecting into `stream`, its actual
+  // output) and then single-steps the CPU until it has read past them, so
+  // `ssmp.cycle` afterward is exactly where the real exported player will
+  // be too - including, for a copy event, the real cost of replaying
+  // whatever plain writes and bursts its source range holds, not just the
+  // copy op's own few bytes. The next event's delta is then however many
+  // ticks Timer 0 still needs to count down once that catches up to the
+  // event's own original cycle stamp (a burst or copy's *first* covered
+  // write's, since that is the moment this event as a whole is meant to
+  // begin) - often zero for an event that lands only a handful of cycles
+  // after the one before it, exactly the dense-stretch case this is for -
+  // so every real SPC700 cost the exported file will actually pay is
+  // accounted for, not estimated.
+  //
+  // A song whose write stream still does not fit in the ARAM left over
+  // (`IPL_START - streamAddr`) stops trusting this real simulation the
+  // moment the very first byte would land at or past `IPL_START`: nothing
+  // written past that point is real ARAM the exported player could ever
+  // run from, so single-stepping through it would either hang forever or
+  // execute garbage. From there this pass falls back to the same naive,
+  // no-dispatch-cost delta this file's other two passes already use, purely
+  // to keep counting real bytes so `SpcExportSizeError` below can report
+  // how many the song's write stream actually needs - the file is rejected
+  // either way, so that fallback's own timing accuracy does not matter. ----
   const simChip = new SnesChip();
   const ssmp = new Ssmp(simChip);
   ssmp.loadSnapshot(ram, resetRegs);
@@ -467,8 +633,18 @@ export function exportSpc(
   // forever on a `buildPlayerProgram` bug, not a limit any real event
   // approaches.
   const MAX_STEPS_PER_EVENT = 1_000_000;
+  // A copy event's own header (5 bytes: COPY_OP + start lo/hi + end lo/hi)
+  // sits immediately before the next event's own bytes, so PTR passes
+  // straight through `target` while L_COPY_START is still just reading
+  // that header - well before it redirects PTR into the source range,
+  // replays it, and restores PTR from RETPTR. Stopping on `readPtr() ===
+  // target` alone would end the simulation right there, before the
+  // replay (and its real cost) ever happens. COPY_ACTIVE (0 outside a
+  // copy, 1 while one is being replayed) tells the two apart: only a
+  // `target` reached with COPY_ACTIVE back at 0 means the event, copy or
+  // not, is actually done.
   const runUntilPtrReaches = (target: number) => {
-    for (let i = 0; readPtr() !== target; i++) {
+    for (let i = 0; readPtr() !== target || simChip.ram[COPY_ACTIVE] !== 0; i++) {
       if (i >= MAX_STEPS_PER_EVENT) {
         throw new Error(`SPC export: the player never reached byte $${target.toString(16)} of its own write stream after ${MAX_STEPS_PER_EVENT} steps - a bug in buildPlayerProgram or this simulation, not a normal export failure`);
       }
@@ -477,16 +653,37 @@ export function exportSpc(
   };
   const stream: number[] = [];
   let loopByteOffset = -1;
+  let overflowed = false;
+  let fallbackCycle = 0; // valid only once `overflowed` - see pass 2c's own doc comment above
+  // A footprint here is a *static* address range - it says nothing about
+  // when during the song the echo write it stands for actually happens, the
+  // same simplification the "prove the echo buffer never lands on any of
+  // it" check below already makes. That is deliberately conservative for
+  // the exported file's own correctness (that check runs regardless of
+  // timing), but it also means live echo hardware in *this* simulation can
+  // scribble over one of these addresses in `simChip.ram` at literally any
+  // point once its footprint is active, including moments before this same
+  // pass ever pokes a byte there - so any address inside a footprint is
+  // already unsafe for the live simulation to read back later (see
+  // `pokeStream` below), not just for the finished file.
+  const inEchoFootprint = (addr: number) => echoFootprints.some(({ start, size }) => ((addr - start + RAM_SIZE) % RAM_SIZE) < size);
   const pokeStream = (byte: number) => {
     const at = streamAddr + stream.length;
-    if (at >= IPL_START) {
-      throw new SpcExportSizeError(
-        `SPC export needs more than ${IPL_START - streamAddr} bytes of ARAM for the DSP write stream alone, on top of the player, directory and samples already using $${CODE_ORIGIN.toString(16)}-$${(streamAddr - 1).toString(16)}, more than the $${IPL_START.toString(16)} available before the IPL ROM's reserved region ($FFC0-$FFFF)`,
-        at + 1,
-        IPL_START,
-      );
-    }
-    simChip.ram[at] = byte;
+    // The IPL ROM overflow case (past `IPL_START`) and this one (inside a
+    // live echo footprint) are unrelated causes, but both mean the same
+    // thing to this pass: `simChip.ram` at `at` cannot be trusted, either
+    // because nothing real would ever run from there or because the DSP's
+    // own echo hardware can silently overwrite it while this same
+    // simulation is still running - a copy event replaying such a byte
+    // later would then either read garbage or (found empirically exporting
+    // `sonic`) spin `runUntilPtrReaches` for a byte value that can never
+    // come back, since the corrupting write lands after this pass already
+    // moved on. Both stop trusting the live simulation the same way, from
+    // here on; which one actually applies is only resolved once by the two
+    // dedicated checks after the main loop below, each with its own
+    // specific, address-naming error.
+    if (!overflowed && (at >= IPL_START || inEchoFootprint(at))) overflowed = true;
+    if (!overflowed) simChip.ram[at] = byte;
     stream.push(byte);
   };
   const emitDelta = (deltaTicks: number) => {
@@ -497,20 +694,88 @@ export function exportSpc(
     }
     pokeStream(d);
   };
-  for (const w of remapped) {
-    if (loopByteOffset < 0 && w.cycle >= loopAtCycle) loopByteOffset = stream.length;
-    const ticksNeeded = Math.max(0, Math.round((w.cycle - ssmp.cycle) / CYCLES_PER_TICK));
+  const currentCycle = () => (overflowed ? fallbackCycle : ssmp.cycle);
+
+  // Only a plain-write or burst group ever gets an entry here (its own real
+  // byte range, once emitted) - a copy is never itself a valid source, see
+  // pass 2b above. `contentStart` is where that same group's own bytes
+  // begin right after its leading delta - a copy's source always starts
+  // there, not at `start`: the copy op's own opening wait (below) already
+  // spends whatever real time is needed to reach the first replayed
+  // group's target, so replaying that group's own stored delta too would
+  // wait for it a second time, on top of the fresh, real-time-correct
+  // wait the copy op itself just did. Every other group's own delta - the
+  // gap from the group before it, still inside the copied range - is a
+  // portable, self-contained interval, not tied to when the source
+  // occurrence happened to fall, and is replayed as stored.
+  const groupByteRange = new Map<number, { start: number; end: number; contentStart: number }>();
+  let groupsCursor = 0; // tracks the same left-to-right walk over `groups` pass 2b made
+
+  for (const pe of planned) {
+    const firstCycle = remapped[pe.writeIndices[0]].cycle;
+    const lastCycle = remapped[pe.writeIndices[pe.writeIndices.length - 1]].cycle;
+    if (loopByteOffset < 0 && lastCycle >= loopAtCycle) loopByteOffset = stream.length;
+
+    const before = currentCycle();
+    const ticksNeeded = Math.max(0, Math.round((firstCycle - before) / CYCLES_PER_TICK));
+    const overflowedBefore = overflowed;
+    const startOffset = stream.length;
     emitDelta(ticksNeeded);
-    pokeStream(w.reg);
-    pokeStream(w.value & 0xff);
-    runUntilPtrReaches(streamAddr + stream.length);
+    const contentOffset = stream.length;
+    if (pe.kind === "write") {
+      const w = remapped[pe.writeIndices[0]];
+      pokeStream(w.reg);
+      pokeStream(w.value & 0xff);
+    } else if (pe.kind === "burst") {
+      pokeStream(BURST_OP);
+      pokeStream(pe.writeIndices.length);
+      for (const idx of pe.writeIndices) {
+        pokeStream(remapped[idx].reg);
+        pokeStream(remapped[idx].value & 0xff);
+      }
+    } else {
+      const start = groupByteRange.get(pe.sourceGroupStart)!;
+      const end = groupByteRange.get(pe.sourceGroupStart + pe.sourceGroupCount - 1)!;
+      pokeStream(COPY_OP);
+      pokeStream(start.contentStart & 0xff);
+      pokeStream((start.contentStart >> 8) & 0xff);
+      pokeStream(end.end & 0xff);
+      pokeStream((end.end >> 8) & 0xff);
+    }
+
+    if (!overflowedBefore && !overflowed) {
+      runUntilPtrReaches(streamAddr + stream.length);
+    } else {
+      fallbackCycle = before + ticksNeeded * CYCLES_PER_TICK;
+    }
+
+    if (pe.kind === "copy") {
+      groupsCursor += pe.sourceGroupCount;
+    } else {
+      groupByteRange.set(groupsCursor, { start: streamAddr + startOffset, end: streamAddr + stream.length, contentStart: streamAddr + contentOffset });
+      groupsCursor += 1;
+    }
   }
   // No event ever reaches loopAtCycle (it names a point after the last
   // write, or there are no writes at all): the loop point falls through to
   // the tail below, a silent stub that waits out to `cycles` and jumps to
   // itself, forever.
   if (loopByteOffset < 0) loopByteOffset = stream.length;
-  emitDelta(Math.max(0, Math.round((cycles - ssmp.cycle) / CYCLES_PER_TICK)));
+  // Rounded to the nearest tick everywhere else in this pass (a symmetric
+  // jitter, fine for mid-song timing), but this one final wait is not
+  // symmetric: it is what keeps the loop jump itself from ever firing
+  // before `cycles`. Rounding it down, on the roughly half of songs whose
+  // remaining cycles happen to fall in the lower half of a tick, lands the
+  // jump a few hundred cycles short - close enough that a listener would
+  // never hear it, but far enough that a caller sampling exactly `cycles`
+  // worth of playback (this file's own round-trip check, `check-export.mjs`)
+  // catches the very first sliver of the loop target's own content already
+  // replaying inside that window, a real extra write no plan-side trace
+  // ever has. Rounding up instead means this wait is never short, so the
+  // loop can only ever fire at or after `cycles` - at most a fraction of a
+  // tick longer than strictly needed, same order of magnitude as the
+  // dispatch jitter every other wait in this file already carries.
+  emitDelta(Math.max(0, Math.ceil((cycles - currentCycle()) / CYCLES_PER_TICK)));
   const loopTarget = (streamAddr + loopByteOffset) & 0xffff;
   pokeStream(0xff);
   pokeStream(loopTarget & 0xff);
@@ -518,7 +783,11 @@ export function exportSpc(
 
   const dataEnd = streamAddr + stream.length;
 
-  // ---- Prove the echo buffer never lands on any of it. ----
+  // ---- Prove the echo buffer never lands on any of it. Checked before the
+  // plain size check below (same `overflowed` trip can come from either
+  // cause - see `pokeStream`'s own doc comment - and an echo overlap gets
+  // its own, more specific address-naming message instead of just being
+  // folded into "too large"). ----
   const reserved = new Uint8Array(RAM_SIZE);
   reserved.fill(1, 0, dataEnd);
   reserved.fill(1, IPL_START, RAM_SIZE);
@@ -533,6 +802,14 @@ export function exportSpc(
         );
       }
     }
+  }
+
+  if (overflowed) {
+    throw new SpcExportSizeError(
+      `SPC export needs ${stream.length} bytes of ARAM for the DSP write stream alone, on top of the player, directory and samples already using $${CODE_ORIGIN.toString(16)}-$${(streamAddr - 1).toString(16)}, more than the ${IPL_START - streamAddr} available before the IPL ROM's reserved region ($FFC0-$FFFF)`,
+      stream.length,
+      IPL_START - streamAddr,
+    );
   }
 
   // ---- The write stream, now timed, is the only thing missing from `ram`

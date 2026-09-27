@@ -43,7 +43,14 @@ function build() {
  */
 export function spcCpuWrites(bytes, cycles) {
   build();
-  const result = spawnSync(BINARY, [String(cycles), '--writes'], { input: Buffer.from(bytes), maxBuffer: 1 << 28 });
+  // A bounded timeout, not a tuning knob: this call measures well under a
+  // second on this repo's own arrangements (mario's full 88 s render is
+  // under 500 ms), so 30 s is pure headroom, not a budget anyone should
+  // expect to need. It exists only so a stuck pipe fails loudly with a
+  // clear error instead of hanging a check (or CI) indefinitely - the same
+  // "never hang, never truncate silently" rule `exportSpc` itself follows.
+  const result = spawnSync(BINARY, [String(cycles), '--writes'], { input: Buffer.from(bytes), maxBuffer: 1 << 28, timeout: 30000 });
+  if (result.error) throw new Error(`play-spc did not finish (${result.error.code === 'ETIMEDOUT' ? 'timed out after 30s' : result.error.message}):\n${result.stderr?.toString() ?? ''}`);
   if (result.status !== 0) throw new Error(`play-spc failed:\n${result.stderr?.toString() ?? ''}`);
   const text = result.stdout.toString('utf8');
   const writes = [];

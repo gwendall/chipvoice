@@ -131,13 +131,36 @@ function canonicalizeSrcn(writes, dirPage) {
     maxCycleDiff = Math.max(maxCycleDiff, Math.abs(roundTrip[i].cycle - target));
   }
   check('same registers and values, in the same order', sequenceOk);
-  // Half a tick (512 cycles) is the encoding's own rounding; the player's
-  // polling loop (chips/snes/spc-player.ts) adds a small, bounded amount of
-  // per-event instruction latency on top (reading a delta/reg/value byte
-  // and issuing the write costs real cycles nothing subtracts from the next
-  // wait), empirically a few ticks total across a few hundred writes, not
-  // growing per write - 16 ticks (16 ms) leaves ample margin.
-  check('every write lands within 16 ticks of where it was rounded to', maxCycleDiff <= 16 * CYCLES_PER_TICK, `max diff ${maxCycleDiff} cycles (${(maxCycleDiff / CYCLES_PER_TICK).toFixed(2)} ticks)`);
+  // Half a tick (512 cycles) is the encoding's own rounding, unavoidable at
+  // a 1 kHz tick: two writes on the same real hardware cycle that round to
+  // different ticks are, by definition, at most half a tick from where
+  // they landed. On top of that, `chips/snes/spc-player.ts`'s burst loop
+  // (`L_BURST_LOOP`) spends real SPC700 cycles per write it dispatches
+  // (read reg, write $F2, read value, write $F3, loop) - about 38 cycles
+  // each, measured directly against this test's own exported stream. A
+  // dense run of same-tick writes (many voices retriggering at once - an
+  // 8-voice chord change is the realistic ceiling) can only be dispatched
+  // as fast as that loop runs, one at a time; there is no faster way to
+  // issue N register writes on a single, real, non-DMA CPU. This is why
+  // this file's own synthetic song front-loads ~80 setup writes into its
+  // first few ticks (deliberately: it is the worst case a real song's own
+  // instrument setup or chord change can produce, not a contrived one) -
+  // and, empirically, on both this song and the two full real arrangements
+  // `check:spc-export` covers (mario, zelda - see that script's own numbers
+  // for the third, sonic), the worst single write's drift lands at the
+  // same ceiling either way: essentially 2 ticks, never more, regardless of
+  // song length (mario's is 24092 writes over 88 s; zelda's is 12665 over
+  // 39 s; both peak within a few cycles of each other, at ~1.95 ticks) -
+  // one real all-voice retrigger's own dispatch cost, not a cost that grows
+  // with how many such moments a song has. A single tick is arithmetically
+  // out of reach for this case regardless of how tightly `L_BURST_LOOP` is
+  // hand-tuned: even a theoretical 12-cycle-per-write loop (well under what
+  // four real memory operations cost on this CPU) would still need
+  // 12 * 80 = 960 of the 1024 cycles in one tick just for the burst itself,
+  // leaving no room for the half-tick rounding on either side of it. Three
+  // ticks is not this file's rounding error given a pass - it is a bound
+  // with real margin over the measured, structural ~2-tick ceiling above.
+  check('every write lands within 3 ticks of where it was rounded to', maxCycleDiff <= 3 * CYCLES_PER_TICK, `max diff ${maxCycleDiff} cycles (${(maxCycleDiff / CYCLES_PER_TICK).toFixed(2)} ticks)`);
 }
 
 // ---- Looping: played past the captured length, playback repeats from the
@@ -161,11 +184,22 @@ function canonicalizeSrcn(writes, dirPage) {
   // A dense, entirely synthetic write stream (no samples involved): enough
   // $0C (MVOLL)/$1C (MVOLR) writes, one per SPC cycle, to blow past the
   // ~64K ceiling on its own. Registers alternate so DSPADDR/DSPDATA pairs
-  // resolve cleanly.
+  // resolve cleanly. Values come from a small deterministic hash of `i`
+  // (not `i` itself, and not `i & 0xff`) so no run of writes is ever
+  // byte-identical to an earlier one - the exporter's own back-reference
+  // compaction (see spc-export.ts pass 2b) cannot fold this stream down,
+  // the same way a real, mechanically-repetitive test pattern could. A
+  // genuinely oversized song must still be rejected once it no longer
+  // compresses away, which is the only thing this check is for.
   const events = [];
+  const hash = (n) => {
+    let h = (n * 2654435761) >>> 0;
+    h ^= h >>> 15;
+    return h & 0xff;
+  };
   for (let i = 0; i < 40000; i++) {
     events.push({at: i, addr: 0xf2, value: i % 2 === 0 ? 0x0c : 0x1c});
-    events.push({at: i, addr: 0xf3, value: i & 0xff});
+    events.push({at: i, addr: 0xf3, value: hash(i)});
   }
   let error;
   try {

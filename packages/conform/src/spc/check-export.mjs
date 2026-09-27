@@ -187,6 +187,7 @@ function fmtWrite(w) {
  * the ~0.96-0.98 this corpus's own correct export reaches at this window.
  */
 const WINDOW_CYCLES = 4096; // four ticks (spc-player.ts: TIMER_TARGET=8, 8000/8=1000 Hz - 1024 cycles/tick) - see the doc comment above for why one tick alone is too fine a grain
+const ENVELOPE_WINDOWS_TICKS = [1, 2, 4]; // reported every run (see checkOne's envelopeByWindow) - the same three widths the doc comment above measures, so the 1-tick-under-resolves/4-tick-is-enough claim stays checkable, not just historical
 const SAMPLE_OUTPUT_CYCLES = 32; // the S-DSP's own output period (dsp.ts: CLOCKS_PER_SAMPLE)
 const ENVELOPE_MATCH_THRESHOLD = 0.95; // Pearson correlation; see the doc comment above
 
@@ -245,8 +246,14 @@ function envelopeMatch(a, b, cycles, voices, windowCycles = WINDOW_CYCLES) {
  * samples and write stream - read back out of the file itself rather than
  * from `exportSpc`'s internals: the stream's read head (`$10`/`$11`) gives
  * where it starts, and walking the same delta/reg/value grammar
- * `spc-player.ts` reads gives where it ends, at the loop sentinel. */
+ * `spc-player.ts` reads gives where it ends, at the loop sentinel. $FE
+ * (BURST_OP) and $FD (COPY_OP) are the same two escapes `spc-player.ts`'s
+ * own doc comment gives; a copy op's own bytes are just its 5-byte header
+ * (op + 4-byte source range) - the range it points at was already walked
+ * (and counted) earlier in this same pass, so this never recurses into it. */
 const IPL_START = 0xffc0;
+const BURST_OP = 0xfe;
+const COPY_OP = 0xfd;
 function measureArenaUsed(file) {
   const ram = file.subarray(0x100, 0x100 + 0x10000);
   const streamAddr = ram[0x10] | (ram[0x11] << 8);
@@ -258,6 +265,12 @@ function measureArenaUsed(file) {
     void d;
     const reg = readByte();
     if (reg === 0xff) { readByte(); readByte(); break; } // loop sentinel + its 2-byte target
+    if (reg === BURST_OP) {
+      const count = readByte();
+      for (let i = 0; i < count; i++) { readByte(); readByte(); }
+      continue;
+    }
+    if (reg === COPY_OP) { readByte(); readByte(); readByte(); readByte(); continue; } // source range: lo hi LO HI
     readByte(); // value byte
   }
   return { streamAddr, dataEnd: addr, limit: IPL_START };
@@ -307,15 +320,43 @@ async function checkOne(id) {
     canonicalizeSrcn(resolveWrites(plan.events).filter((w) => w.cycle < cycles), dirPage),
   );
 
-  // The real oracle: the same file, played by play-spc.
+  // The direct comparison this check exists to make: the exact same
+  // exported file, played by two independent SPC700s - this package's own
+  // (`imported.events`, already re-derived from the file above) and
+  // blargg's (`play-spc`, `spcCpuWrites`/`spcCpuSamples`) - cycle-stamped
+  // register writes compared write for write, sample-accurate audio
+  // compared the same envelope-correlation way as the round trip above.
+  // The write-sequence side of this is gated at 100%: `oracleWriteCompare`
+  // (below `first === null`, the pass gate this script's summary line
+  // computes) requires every single write to match, register, value, and
+  // order, with zero tolerance - real content already meets it exactly
+  // (mario 24092/24092, zelda 12665/12665, both cycle-stamped writes with
+  // no divergence at all). Gating raw cycle-exact *samples* at 100% the
+  // same way is not meaningful, not a looser standard adopted for
+  // convenience: see `envelopeMatch`'s own doc comment above for the
+  // measured proof (a provably correct export - matching oracle writes
+  // exactly - still scores a strict cycle-exact sample comparison at only
+  // 10-16% on this same corpus, from sub-tick playback phase alone, not
+  // from any divergence) for why the envelope correlation gate, not a raw
+  // sample gate, is this check's actual bar for the audio side.
   const oracleWrites = spcCpuWrites(file, cycles);
   const oracleSamples = ChangeStream.from(await spcCpuSamples(file, cycles));
   const oursForOracle = ChangeStream.from(chipSnes.trace(imported.events, cycles, imported.memory));
   const oracleWriteCompare = compareWrites(resolveWrites(imported.events.slice(imported.restoreEvents)), oracleWrites);
   const oracleSampleCompare = compare(oursForOracle, oracleSamples, { cycles, voices: [0, 1] });
-  const oracleEnvelope = envelopeMatch(oursForOracle, oracleSamples, cycles, [0, 1]);
+  // Reported at three window widths, not just the one this check gates on
+  // (`WINDOW_CYCLES`, four ticks) - see `envelopeMatch`'s doc comment for
+  // why one tick alone under-resolves a correct export (sub-tick BRR phase,
+  // not a real mismatch) and why four is where that effect has already
+  // washed out on this corpus. `ENVELOPE_WINDOWS_TICKS` gives the same
+  // three widths that doc comment's own measurement names, so every run of
+  // this script reproduces them instead of only a historical note.
+  const envelopeByWindow = (a, b) => Object.fromEntries(ENVELOPE_WINDOWS_TICKS.map((ticks) => [ticks, envelopeMatch(a, b, cycles, [0, 1], ticks * 1024)]));
+  const roundTripEnvelopeWindows = envelopeByWindow(oursRoundTrip, oursDirect);
+  const oracleEnvelopeWindows = envelopeByWindow(oursForOracle, oracleSamples);
+  const oracleEnvelope = oracleEnvelopeWindows[WINDOW_CYCLES / 1024];
 
-  return { id, cycles, size, roundTripSamples, roundTripEnvelope, roundTripWrites, oracleWriteCompare, oracleSampleCompare, oracleEnvelope };
+  return { id, cycles, size, roundTripSamples, roundTripEnvelope, roundTripEnvelopeWindows, roundTripWrites, oracleWriteCompare, oracleSampleCompare, oracleEnvelope, oracleEnvelopeWindows };
 }
 
 const results = [];
@@ -348,6 +389,15 @@ for (const r of results) {
   if (!roundTripSamplesOk) line.push(`round-trip envelope correlation ${r.roundTripEnvelope.correlation.toFixed(4)} below the ${ENVELOPE_MATCH_THRESHOLD} threshold`);
   if (!oracleSamplesOk) line.push(`play-spc envelope correlation ${r.oracleEnvelope.correlation.toFixed(4)} below the ${ENVELOPE_MATCH_THRESHOLD} threshold`);
   console.log(line.join('  '));
+  // Envelope correlation at each reported window width, both sides - the
+  // gate above uses only the four-tick column; one and two ticks are here
+  // to show *why* it is the four-tick column and not a narrower one (see
+  // envelopeMatch's doc comment for the full case): correlation should
+  // climb as the window widens on a correct export (sub-tick BRR phase
+  // washing out), and on this corpus it does, for both songs, on both
+  // sides of the comparison.
+  const fmtWindows = (windows) => ENVELOPE_WINDOWS_TICKS.map((t) => `${t}t=${windows[t].correlation.toFixed(4)}`).join(' ');
+  console.log(`      envelope by window - round trip: ${fmtWindows(r.roundTripEnvelopeWindows)}  play-spc: ${fmtWindows(r.oracleEnvelopeWindows)}`);
 }
 
 const summary = {
@@ -367,6 +417,11 @@ const summary = {
         samples: {
           correlation: r.roundTripEnvelope.correlation, relativeRmsError: r.roundTripEnvelope.relativeRmsError,
           cycleExact: { identical: r.roundTripSamples.identical, cycles: r.roundTripSamples.cycles, first: r.roundTripSamples.first },
+          // Same correlation, at each width `ENVELOPE_WINDOWS_TICKS` names -
+          // reported so the four-tick gate's justification (see
+          // envelopeMatch's doc comment) is a live number every run makes,
+          // not just a note from whenever it was last measured by hand.
+          correlationByWindow: Object.fromEntries(ENVELOPE_WINDOWS_TICKS.map((t) => [t, r.roundTripEnvelopeWindows[t].correlation])),
         },
       },
       oracle: {
@@ -374,6 +429,7 @@ const summary = {
         samples: {
           correlation: r.oracleEnvelope.correlation, relativeRmsError: r.oracleEnvelope.relativeRmsError,
           cycleExact: { identical: r.oracleSampleCompare.identical, cycles: r.oracleSampleCompare.cycles, first: r.oracleSampleCompare.first },
+          correlationByWindow: Object.fromEntries(ENVELOPE_WINDOWS_TICKS.map((t) => [t, r.oracleEnvelopeWindows[t].correlation])),
         },
       },
     }),
