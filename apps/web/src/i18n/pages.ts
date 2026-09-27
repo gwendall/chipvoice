@@ -70,6 +70,12 @@ export const pages = {
     description:
       "The shared controls, visual states and accessibility foundations of the chipvoice playground and listening lab.",
   },
+  renderParity: {
+    path: "/lab/render-parity",
+    title: "Render parity checker · chipvoice",
+    description:
+      "Renders a fixed set of inputs in this browser and compares the result byte for byte against Node, on the device you opened it on.",
+  },
   missing: {
     path: "",
     title: "Page not found · chipvoice",

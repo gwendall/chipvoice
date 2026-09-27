@@ -1,0 +1,12 @@
+.render-parity-main { max-width: 860px; }
+.render-parity-howto { font: var(--text-label)/1.6 var(--mono); color: var(--muted); margin: 12px 0 24px; }
+.render-parity-summary { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font: var(--text-label)/1.6 var(--mono); color: var(--muted); }
+.render-parity-pass { color: #2b6b3c; font-weight: 600; }
+.render-parity-fail { color: #9c402b; font-weight: 600; }
+.render-parity-table-wrap { overflow-x: auto; }
+.render-parity-table-wrap table { width: 100%; border-collapse: collapse; font: var(--text-label)/1.5 var(--mono); }
+.render-parity-table-wrap th, .render-parity-table-wrap td { padding: 8px 6px; border-bottom: 1px solid var(--edge); text-align: left; }
+.render-parity-cell-match { color: #2b6b3c; }
+.render-parity-cell-mismatch, .render-parity-cell-error { color: #9c402b; font-weight: 600; }
+.render-parity-cell-pending, .render-parity-cell-running { color: var(--muted); }
+.render-parity-fine { font-size: var(--text-label); line-height: 1.7; color: var(--muted); word-break: break-word; }

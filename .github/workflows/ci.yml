@@ -55,6 +55,32 @@ jobs:
       - run: pnpm --filter chipvoice-conform test:unit
       - run: pnpm --filter chipvoice-conform accuracy-data:check
 
+  # MIX-14: Node/Chromium render-hash parity for a fixed set of arrangement
+  # excerpts and instrument presets across all five chips. Its own job so a
+  # Playwright download never blocks the browser-free `unit` checks, and a
+  # slow full matrix never blocks either. Firefox and WebKit only run
+  # locally (`pnpm render-parity:sheet`), and the physical-phone/real-Safari
+  # leg stays a one-minute human check at /lab/render-parity; see
+  # docs/RENDER-PARITY.md.
+  render-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter chipvoice build
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm render-parity:check
+
   # The web browser suite: production Next, anonymous API flows, measured
   # browser audio and editor recovery. Split from `unit` so a late failure
   # here (the slowest part of the old chain) does not also delay the fast

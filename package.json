@@ -31,7 +31,9 @@
     "gbs-export:sheet": "node scores/gbs-export/corpus.mjs --json .artifacts/gbs-export/report.json --sheet docs/chips/dmg.md",
     "audio:pull": "node apps/web/scripts/audio-store.mjs pull",
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
-    "audio:push": "node apps/web/scripts/audio-store.mjs push"
+    "audio:push": "node apps/web/scripts/audio-store.mjs push",
+    "render-parity:check": "node scores/render-parity/check.mjs",
+    "render-parity:sheet": "node scores/render-parity/sheet.mjs"
   },
   "devDependencies": {
     "playwright": "^1.62.1",

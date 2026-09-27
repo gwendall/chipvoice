@@ -55,7 +55,7 @@ The [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.
 | MIX-01–11 | Implemented, with the hardware, calibration and bounded-phrase limits documented in the API. |
 | MIX-12 | Automated evaluator and blinded listening materials delivered; human preference observations remain open. |
 | MIX-13 | Frozen-candidate holdouts, robustness and development ablations pass within the published corpus/window scope. |
-| MIX-14 | Local benchmarks and browser qualification pass; physical-phone/Safari measurements remain open. |
+| MIX-14 | [Render parity](RENDER-PARITY.md): the Node/Chromium/Firefox/WebKit render-hash matrix passes (22 of 22 inputs, zero mismatches); physical-phone/real-Safari measurement remains a one-minute human job at [`/lab/render-parity`](https://chipvoice.dev/lab/render-parity). |
 | MIX-15–16 | Shared SDK/web/game-phrase integration and English/Japanese documentation delivered. |
 | MIX-17 | Complete publication regenerated; actual production reports and all published audio files verified. |
 | MIX-18 | Version 0.16.1 published and installed from npm in an empty consumer; public API and AudioWorklet tests pass. |

@@ -531,7 +531,22 @@ real game music, and a real unit.
   differ). Rows written before this PR stay `null` rather than guessed.
   `/s/{id}` is unchanged: it still revalidates with whatever engine is
   currently deployed (a stated limit of decision 21, an AUD-2 follow-up).
-- MIX-14: compare render hashes across browsers, Node and physical phones.
+- done - MIX-14: this PR. `pnpm render-parity:sheet` renders a fixed 22-input
+  set (12 six-second excerpts of mario/zelda/sonic across the four
+  VGM-native chips - 2A03, DMG, MD, SNES - plus a held lead and a kick
+  preset per chip, C64 included) through the package the same way in Node,
+  Chromium, Firefox and WebKit (Playwright's closest automatable stand-in
+  for Safari, not Safari itself), hashing the raw PCM bytes (not a 16-bit
+  WAV, so a difference too small to hear still moves the hash). Node
+  v22.22.3, Chromium 151.0.7922.34, Firefox 153.0 and WebKit 26.5 all
+  produced byte-identical SHA-256 hashes for all 22 inputs: zero
+  mismatches, so there was nothing to diagnose. `docs/RENDER-PARITY.md`/
+  `_ja.md` record engine versions, the date and the per-input table;
+  `pnpm render-parity:check` reruns Node and Chromium in CI on every PR.
+  The physical-phone/real-Safari leg stays a one-minute human job:
+  `/lab/render-parity` renders the same fixed set in whatever browser
+  opens it and shows match/mismatch next to the Node reference.
+  `packages/chipvoice/src` is unchanged.
 - done - NEXT-12: `/accuracy` and `/ja/accuracy` show all five chips' digital
   parity (per oracle, plus c64's real-6581 combined-waveform check), test ROMs,
   analog stage and driver coverage, generated into
@@ -609,7 +624,7 @@ The existing sonic/hardware acceptance remains separate. Deployment-scale durabl
 ## General automatic mixing — priority plan (2026-09-07)
 
 Sound correctness and general adaptation remain the priority for subsequent releases and features.
-**MIX-01–MIX-18** have delivered their automated implementation and qualification within the documented API/corpus limits in **0.16.1** ([PR #40](https://github.com/gwendall/chipvoice/pull/40), [release workflow fix #41](https://github.com/gwendall/chipvoice/pull/41)). Human listening in MIX-12 and physical-phone/Safari acceptance in MIX-14 remain open. Production assets and the actual npm consumer are verified; [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1) records the final checks. Dependencies and acceptance criteria are
+**MIX-01–MIX-18** have delivered their automated implementation and qualification within the documented API/corpus limits in **0.16.1** ([PR #40](https://github.com/gwendall/chipvoice/pull/40), [release workflow fix #41](https://github.com/gwendall/chipvoice/pull/41)). Human listening in MIX-12 remains open. MIX-14 now automates the Node/Chromium/Firefox/WebKit render-hash matrix (22 of 22 inputs byte-identical, zero mismatches; [Render parity](RENDER-PARITY.md)) and narrows what is left to a one-minute human check on a physical phone and real Safari, at [`/lab/render-parity`](https://chipvoice.dev/lab/render-parity). Production assets and the actual npm consumer are verified; [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1) records the final checks. Dependencies and acceptance criteria are
 in [Automatic mixing](AUTOMATIC-MIXING.md). Song fixtures calibrate and evaluate
 the shared policy; production behavior must never special-case their identity.
 The [API](MIXING-API.md) and [evaluation](evals/AUTOMATIC-MIXING-POLICY-2026-09-07.md) record evidence and limits. Human listening and real-device acceptance remain explicitly open.
