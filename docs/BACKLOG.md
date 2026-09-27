@@ -370,8 +370,64 @@ real game music, and a real unit.
   VGMPlay itself write. Scored against Nes_Snd_Emu/Mesen and Gb_Snd_Emu/
   SameBoy on a self-composed, round-tripped corpus (a commercial rip cannot
   be committed here) - see each sheet's "VGM import" section.
-- todo - NEXT-09 SID/PSID: against its reference player (sidplayfp), with a
-  score per file.
+- done - NEXT-09: PSID/RSID playback (`importPsid`/`renderPsid`), built
+  entirely from HVSC's own file format document, with no ported GPL code
+  (decision 41). A from-scratch 6510 (`Cpu6510`) implements every documented
+  opcode plus the stable illegal ones, and names the 7 unstable and 12 JAM
+  opcodes it deliberately does not emulate rather than guessing at
+  undocumented CPU-internal state (`IllegalOpcodeError`, kind `"unstable"`
+  or `"jam"`). PAL/NTSC clock and 6581/8580 model header flags are honored;
+  multi-SID files, RSID+BASIC files and the MUS player format are rejected
+  by name. Conformance rests on three legs, none of them shipped or ported
+  GPL code: a hand-written unit suite (117 checks across `test/cpu6510.mjs`
+  and `test/psid-import.mjs` - every documented opcode's cycles/flags,
+  decimal-mode ADC/SBC against 6502.org's worked examples, every stable
+  illegal opcode, every unstable/JAM opcode's named rejection, header
+  parsing, and an end-to-end render); Klaus Dormann's 6502 functional test
+  and Bruce Clark's decimal test, vendored as non-shipping conformance tools
+  (`packages/conform`, `check:6510`, in CI); and a new independent oracle,
+  libsidplayfp, built at a pinned revision into gitignored local artifacts
+  (`scores/psid-corpus`, never vendored). Writing the unit suite caught a
+  real dispatch bug in the opcode matrix decode (a 4-bit mask that collided
+  distinct addressing modes) that a smaller test set would have missed. The
+  oracle settled INIT's own calling convention by measurement: `A` (song
+  number, zero-based) and `P` (0x24 before the PHP) match libsidplayfp's own
+  reference driver exactly; `X` and `Y` do not, and are confirmed genuinely
+  undefined rather than merely unconfirmed. The same oracle found a real
+  conformance gap, now fixed: `Cpu6510`'s read-modify-write instructions
+  were missing the dummy write real NMOS 6502 hardware always makes before
+  the modified one. Known cuts, stated rather than hidden: no self-produced
+  hardware capture corpus, and a small measured per-frame cycle wobble
+  against the real per-line VIC-II (comfortably inside the corpus
+  comparator's own tolerance). See `docs/chips/c64.md#psidrsid-playback`.
+- todo follow-up - NEXT-09's CIA-timed PLAY-phase cycle deviation
+  (`gt2-sanction-cia.sid`/`gt2-consultant-alt-cia.sid`, up to 128 cycles;
+  see `docs/chips/c64.md`'s "Known limits") is bounded and fully understood
+  in mechanism, but not yet closed, and one experiment's own result is
+  itself not fully understood. What was tried: libsidplayfp's own `cold:`
+  driver ceremony always reaches its pre-INIT `$D418=$0F` write at the same
+  absolute cycle (167873, tune-independent, confirmed across all six
+  fixtures, `SidConfig::powerOnDelay = 0` as this corpus already sets) -
+  measured, not inferred, giving a real raster phase at that moment
+  (167873 mod 19656 = raster line 168, cycle 41 within it, PAL) rather than
+  this environment's own default (`rasterCycle = 0` at INIT,
+  `psid-import.ts`'s `setupVic()`). Pinning `rasterCycle` to that measured
+  value, instead of 0, substantially improves both CIA-timed fixtures (max
+  PLAY-phase cycle deviation 128 to 47-48) but introduces a similar-sized
+  new deviation (about 45-47 cycles, up from the 3 and 5 the corpus
+  sheet's own "PLAY cycle deviation" column currently shows) on
+  `gt2-dojo.sid` and `gt2-hyperspace-alt.sid`, the two VBI-timed fixtures
+  that otherwise match content and cycle position closely today; the two
+  self-authored probe fixtures (`convention-probe.sid`,
+  `frame-rate-probe.sid`) are unaffected either way. That is the puzzle:
+  on one internally consistent raster model, using the oracle's own real,
+  measured phase, all six fixtures should match at least as well as today,
+  not trade one pair's accuracy for another's - so something in this
+  environment's own VBI/raster timing is already compensating for the
+  "wrong" (default, zero) phase in a way not yet understood, and changing
+  only the phase surfaces rather than removes that compensation. Reverted,
+  not shipped (`rasterCycle = 0` stays default); left here rather than
+  silently dropped, for whoever picks this up next.
 - P6-9 (SPC export, now unblocked by NEXT-08's CPU).
 - done - NEXT-10's NSF half (this PR): `exportNsf` turns a 2A03 capture into
   a standard NSF v1 file carrying its own tiny hand-assembled 6502 player

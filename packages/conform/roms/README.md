@@ -33,3 +33,8 @@ other suite here, these two run against the PACKAGE's own `chips/gb/cpu.ts`,
 not a harness-local CPU fixture - that is their point: `instr_timing` in
 particular checks the package's own SM83 timing against real Game Boy
 hardware behaviour, independently of any oracle emulator.
+
+`klaus-6502/` is neither: Klaus Dormann's 6502 functional test and Bruce
+Clark's decimal-mode test, run against `chipvoice`'s own `Cpu6510` (the
+PSID/RSID player's CPU) rather than against an oracle, since each one
+verifies itself. See its own [README](klaus-6502/README.md).

@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus|nsf-export):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus|nsf-export|cpu6510|psid-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -291,6 +291,37 @@ def localized_block(kind, body, templates):
                 raise ValueError(f'Unknown nsf-export note: {note}')
             lines.append(f'| {title} | {translated_commands} | {translated_frame_writes} | {translated_loss} | {translated_mixer} | {translated_note} |')
             continue
+        elif kind == 'cpu6510':
+            match = re.fullmatch(r"Run by `conform`'s `check:6510` on (.+): (\d+) of (\d+) pass\.", line)
+            if match:
+                line = f'`conform`の`check:6510`で{match[1]}に実行：{match[2]} / {match[3]}成功。'
+            elif line == '| Test | Result | What it said |':
+                line = '| テスト | 結果 | 実際の出力（原文） |'
+            elif re.fullmatch(r'\| `[\w]+` \| (?:pass|fail) \| .* \|', line):
+                # The third cell is the program's own stdout/verdict text, exact; never translate or rewrite it (`roms`' own precedent).
+                line = line.replace('| pass |', '| 成功 |').replace('| fail |', '| 失敗 |')
+            else:
+                raise ValueError(f'Unknown cpu6510 line: {line}')
+        elif kind == 'psid-corpus':
+            match = re.fullmatch(r'Written by `psid-corpus:sheet` on (.+), against libsidplayfp revision `(.+)`\.', line)
+            if match:
+                line = f'`psid-corpus:sheet`による生成：{match[1]}。参照：libsidplayfp revision `{match[2]}`。'
+            elif line == '| Fixture | Events | Matched | PLAY cycle deviation | First divergence | INIT registers |':
+                line = '| フィクスチャ | イベント数 | 一致 | PLAYサイクル偏差 | 最初の相違 | INITレジスタ |'
+            elif re.fullmatch(r'\| \[.+\]\(.+\) \| \d+ \| (?:\d+/\d+|not compared) \| (?:not compared|-|0 cycles|max \d+ cycles \(\d+/\d+ events off\)) \| .+ \| (?:-|(?:[A-Z]=(?:\d+(?:/\d+)?|undefined by spec))(?:, [A-Z]=(?:\d+(?:/\d+)?|undefined by spec))*) \|', line):
+                # The title and URL are proper nouns; the INIT-registers cell
+                # is plain `register=value` data (corpus.mjs's own
+                # `formatRegisters`), never translated, except its own one
+                # fixed phrase for a register `sources.json`'s own
+                # `undefinedRegisters` names (never scored against the
+                # oracle at all - see `compare.mjs`'s own `ignoreAddrs`).
+                # The divergence column's and the PLAY-cycle-deviation
+                # column's fixed vocabulary (corpus.mjs's `formatDivergence`
+                # and `formatCycleDeviation`) are translated the same way.
+                for before, after in {'not compared': '未比較', 'none': 'なし', 'init phase': 'INITフェーズ', 'play phase': 'PLAYフェーズ', ': one side has no more writes': '：それ以上の書き込みがありません', ' vs ': ' 対 ', 'cycle ': 'サイクル ', 'undefined by spec': '仕様上未定義', '0 cycles': '0サイクル', 'max ': '最大', ' cycles (': 'サイクル（', ' events off)': '件がずれ）'}.items():
+                    line = line.replace(before, after)
+            else:
+                raise ValueError(f'Unknown psid-corpus line: {line}')
         lines.append(line)
     return '\n'.join(lines) + '\n'
 

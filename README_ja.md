@@ -59,7 +59,7 @@ writeFileSync("theme.wav", toWav(renderSong(song, { seconds: 4 })));
 
 [プレイグラウンド](https://chipvoice.dev/ja)は完全な編曲から始まります。Mario はファミコン本来の 4 声、Zelda は NES のネイティブ編曲、Sonic はメガドライブのオリジナル FM・PSG・DAC 演奏です。曲を選ぶと元の機種を選択します。曲か日本版ゲーム機のロゴを選ぶ最初の操作で再生します。再生／一時停止、先頭へ戻る、曲全体のシークスライダー、クリックできる楽譜で探索できます。プリセットのフルミックスは、同じJavaScriptエンジンで生成したロスレス音声です。カーソルは音声出力の時計に従い、機種、テンポ、ソロを変えても、次の音を準備する間、楽曲内の位置を保ちます。Loopを切ると1回だけ再生します。
 
-MIDIをローカルで読み込み、楽器を分離し、Mario、Zelda、Sonic を独立したネイティブレンダラーと比較できます。各移植は省略した音と代替音色を報告し、伴奏を勝手に足しません。読み込みには準備とレンダリングの進捗を表示します。SDK は音楽の編曲用に `importMidi → planPerformance → renderPerformance`、メガドライブのネイティブコマンド用に `importVgm → renderPerformance` を用意します。[手順と限界](scores/arrangements/README_ja.md)では、元ゲームの検証、MIDI採譜、機種間の編曲を区別します。
+MIDIをローカルで読み込み、楽器を分離し、Mario、Zelda、Sonic を独立したネイティブレンダラーと比較できます。各移植は省略した音と代替音色を報告し、伴奏を勝手に足しません。読み込みには準備とレンダリングの進捗を表示します。SDK は音楽の編曲用に `importMidi → planPerformance → renderPerformance`、メガドライブのネイティブコマンド用に `importVgm → renderPerformance`、コモドール64自身のSID音楽ファイル用に `importPsid → renderPsid` を用意します。[手順と限界](scores/arrangements/README_ja.md)では、元ゲームの検証、MIDI採譜、機種間の編曲を区別します。
 
 共通のプレーヤーが画面下に表示され、モバイルにも対応します。一覧・ライブラリ・アーティストページのカードから直接再生して、再生待ちの曲へ進めます。公開曲は保存済み音声を使います。[再生の仕様](docs/CONTINUOUS-PLAYBACK-LAB_ja.md)。
 
