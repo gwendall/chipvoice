@@ -203,11 +203,51 @@
   め報告されるだけでゲートにはなりません。
   `docs/chips/2a03_ja.md#nsf出力`、`pnpm nsf-export:sheet`。
   パッケージ（`exportNsf`、`NsfExportError`）とstudio（`2a03`の曲でVGMの隣に
-  NSFダウンロードボタン）の両方から到達できます。NEXT-10のGBS半分はtodoの
-  ままです。NEXT-06のGBSインポーター（PR #103）はすでにマージ済みで着手
-  可能になりましたが、このPRには含まれません。実機フラッシュカートへの
-  録音（ステップ1の録音環境で）はハードウェアがないため両半分とも対象外
-  です。
+  NSFダウンロードボタン）の両方から到達できます。
+- done - NEXT-10のGBS半分（後のPR）：`exportGbs`はDMGのキャプチャを、自前
+  の小さな手組みSM83プレイヤー（`AsmSm83`、`packages/chipvoice/src/gbs.ts`）
+  を積んだ標準GBS v1ファイルに変換します。コミット済みソースから再現でき、
+  不透明なブロブにはなりません。PLAYはVBlankフレーム単位（70224 T-サイクル、
+  約59.73 Hz）ごとに、バンク切り替え式（`$2000-$3FFF`、MBC1/MBC5方式）で
+  ラン長符号化された書き込みログから1フレーム分の書き込みを再生し、書き込み
+  タイミングをフレーム単位（約16.7ms）に量子化します。2A03のDMCチャンネル
+  と異なり、DMGには自律的なサンプルDMAがなく、波形チャンネル（CH3）は他の
+  レジスタと同様に`$FF30-$FF3F`を通して完全にレジスタ駆動のため、別扱いの
+  サンプルメモリケースは不要で、`GbsOptions`に`memory`フィールドはありませ
+  ん。`gbs-corpus`が使うのと同じ固定revisionのGMEオラクルに対して4通りで
+  証明済み、最初の2つは件数や割合ではなく完全一致でCIをゲートします：コマ
+  ンド列は、本プロジェクト自身のオフラインSM83（`importGbs`）による同じエ
+  クスポートの再生と値・順序で一致し（`valueMatched === total`）、本プロ
+  ジェクト自身のDMGレンディション3つと`gbs-corpus`がすでに持つ独立作成・
+  再配布許諾済みGBS5ファイルからなるコーパスの全ファイルで成立します - サ
+  イクル一致ではありません。`gbs-corpus`自身の`compare.mjs`が、GMEのSM83
+  コアは実際の命令長にかかわらず一律4 T-サイクルを課すことをすでに見出し
+  ており、これはタイミングモデル自体の既知の相違であって、エクスポートの
+  欠陥ではないためです。元キャプチャ自身の書き込みとGMEによるエクスポート
+  のトレースは、一定のフレームオフセット1つを挟んでフレーム単位で完全一致
+  します（`compareFrameWrites`、音声ではなく決定的な証明 - 比較対象となっ
+  た全フレームは8ファイルすべてで100%一致、元のフレームがエクスポートし
+  たプレイヤーが自身のループフレームへ折り返す地点を過ぎた時点で比較対象
+  から外れ、これにより`zelda-rendition`（1）、`pulse-sweep`（2）、
+  `sample-song`（2）、`effects-test`（2）、`nightmode`（2）でそれぞれ自身
+  のループ地点の近くのフレームが除外されます。これはNSF出力が文書化して
+  いるのと同じ道理立った除外です）。`packages/chipvoice/test/gbs.mjs`内の
+  安価な否定テスト（GME不要）は1つの書き込みを破損させ、ゲートがそれを報
+  告することを検証しています。GMEによるエクスポートの再生と本プロジェク
+  ト自身の手つかずのレンダーを同じレンダラーで比較して、書き込みが本来の
+  サイクルではなくフレーム開始に着地することによる残差コストだけを取り出
+  す合否ゲートは、8ファイル全体で3.0〜26.2%を計測し、NSF出力と同じしきい
+  値30%に対して実質的な余裕があり、上記2つの完全一致の証明を補う粗い二次
+  ゲートとして維持しています。GMEと本プロジェクト自身のミキサー比較（独立
+  した2つのDMG APUエミュレーターのDAC／ミキサーカーブの差で5.2〜47.1%）は
+  可視化のため報告されるだけでゲートにはなりません。このリポジトリには実
+  機GB録音がありません（`scores/arrangements/native-sources.mjs`には2A03
+  とMega Driveのエントリしかありません）、これは黙って省略しているのでは
+  なく明記しています。`docs/chips/dmg_ja.md#gbs出力`、`pnpm gbs-export:sheet`。
+  パッケージ（`exportGbs`、`GbsExportError`）とstudio（`dmg`の曲でVGMの隣に
+  GBSダウンロードボタン）の両方から到達できます。実機フラッシュカートへの
+  録音（ステップ1の録音環境で）はハードウェアがないためNSF・GBS両半分とも
+  対象外です。
 - 商用のリッピングは配布しません。計測用コーパスは非公開にするか、自由に再配布できるものに限ります。
 
 **ステップ4. 後になっても、別の場所でも同じバイト列。**
@@ -424,7 +464,7 @@
 | P8-10 | palette／drumの量子化live重ね録りとUndo | implemented | D、audio-clock capture、固定伴奏、1take1Undo、draft。[評価](evals/RECORDING-2026-09-06_ja.md)。実携帯はP8-9 |
 | P8-23 | role変奏、他lock、Undo。作成済み／規則ベース、remote AI不要 | implemented | seed melody／drum／timbre、lock、Undo、無音pattern保持。決定26 |
 | P8-11 | 同じtransport／所有モデルのWeb MIDI | implemented | opt-in tap、channel10 drum、模擬port cleanup。実latency未測定 |
-| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM、さらにNES NSF（NEXT-10、このPR）。独立ZIPとbyte比較、決定26 |
+| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM、さらにNES NSF（NEXT-10、PR #106）とGame Boy GBS（NEXT-10、このPR）。独立ZIPとbyte比較、決定26 |
 | P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | done | D、P7-9 done：SIDのfilterはarrangerから到達可能。P5-10 done：MD arrangerのFM drumとLFO。P6-10 done：SNES triadとハードウェアノイズのハット。見た目だけの汎用代替なし |
 
 <a id="audit-follow-ups"></a>

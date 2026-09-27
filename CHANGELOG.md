@@ -228,6 +228,45 @@ confirmed undefined rather than merely unconfirmed, a small measured
 per-frame cycle wobble against the real per-line VIC-II, and no
 self-produced hardware capture corpus).
 
+A DMG song can now be exported as a standard GBS v1 file: `exportGbs(events,
+cycles, options)`, next to `exportNsf`. The file carries its own tiny SM83
+player, hand-assembled in `packages/chipvoice/src/gbs.ts` from a small
+in-file mnemonic assembler rather than a build tool, so the bytes it emits
+are exactly what that source says. PLAY replays one VBlank frame's writes at
+a time (70224 T-cycles, ~59.73 Hz) from a compact, bank-switched write log
+(`$2000-$3FFF` selects the data bank, MBC1/MBC5-style), looping at the
+capture's own loop point forever; write timing is quantized to the frame (up
+to ~16.7 ms late). Unlike the 2A03's DMC channel, the DMG has no autonomous
+sample DMA - the wave channel (CH3) is entirely register-driven through
+`$FF30-$FF3F` like every other register - so there is no separate
+sample-memory case to handle and `GbsOptions` carries no `memory` field. A
+loop point outside the capture, over-length or non-ASCII metadata, and a
+frame with more writes than the encoding can address (254) are rejected by
+name (`GbsExportError`, with a `code` and, where it applies,
+`measured`/`limit`) rather than silently dropped or truncated. Proven four
+ways against the same pinned Game_Music_Emu oracle `gbs-corpus` uses: the
+exported command stream matches this project's own offline SM83 replay of
+the same export on value and order (`valueMatched === total`, gating CI) on
+every file in a corpus of this project's own DMG renditions and
+independently authored, redistribution-licensed GBS files - not cycle-exact,
+since `gbs-corpus`'s own `compare.mjs` already found GME's SM83 core charges
+a flat 4 T-cycles per instruction regardless of its real length, a known
+timing-model divergence, not an export defect; the source capture's own
+writes and GME's trace of the export match exactly, frame for frame, after
+one constant offset (also gating CI exactly, not an audio proof) - a source
+frame stops counting once its own real-time slot passes the point where the
+exported player wraps back to its loop frame, so a capture's own last frame
+landing on its loop point is excluded rather than compared against the wrong
+lap; a cheap negative check corrupts one write and confirms the gate reports
+it as a mismatch; a same-DSP export-loss gate compares GME's replay of the
+export against this project's own untouched render, both through this
+project's own renderer (3.0-26.2% on this corpus, well under the 30%
+threshold); a GME-vs-ours mixer comparison is reported for visibility but
+does not gate. No native GB hardware recordings exist in this repo, stated
+rather than silently omitted. See
+[docs/chips/dmg.md#gbs-export](docs/chips/dmg.md#gbs-export). The studio now
+offers a Download GBS button next to VGM's, for Game Boy songs.
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the

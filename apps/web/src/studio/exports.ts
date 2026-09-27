@@ -1,10 +1,11 @@
-import { arrange, exportNsf, loopSeconds, recordSong, renderSong, toVgm, toWav } from 'chipvoice';
+import { arrange, exportGbs, exportNsf, loopSeconds, recordSong, renderSong, toVgm, toWav } from 'chipvoice';
 import { ROLES, tokens, type SongDocument } from './document';
 import { zip } from './zip';
 
-export type ExportKind = 'wav' | 'stems' | 'machines' | 'vgm' | 'nsf';
+export type ExportKind = 'wav' | 'stems' | 'machines' | 'vgm' | 'nsf' | 'gbs';
 export const VGM_CHIPS = ['2a03', 'dmg', 'md'];
 export const NSF_CHIPS = ['2a03'];
+export const GBS_CHIPS = ['dmg'];
 export function exportSong(song: SongDocument, kind: ExportKind, progress: (done: number, total: number) => void = () => {}) {
   const arranged = arrange(song);
   const seconds = Math.min(300, loopSeconds(arranged) * 2);
@@ -18,6 +19,11 @@ export function exportSong(song: SongDocument, kind: ExportKind, progress: (done
     if (!NSF_CHIPS.includes(song.chip)) throw new Error('NSF is available for NES only.');
     const capture = recordSong(arranged);
     return { bytes: exportNsf(capture.events, capture.cycles, { title: song.title, author: song.author, memory: capture.memory }), extension: 'nsf', type: 'audio/x-nsf' };
+  }
+  if (kind === 'gbs') {
+    if (!GBS_CHIPS.includes(song.chip)) throw new Error('GBS is available for Game Boy only.');
+    const capture = recordSong(arranged);
+    return { bytes: exportGbs(capture.events, capture.cycles, { title: song.title, author: song.author }), extension: 'gbs', type: 'audio/x-gbs' };
   }
   if (kind === 'wav') return { bytes: toWav(renderSong(arranged, { stereo: true })), extension: 'wav', type: 'audio/wav' };
   const files: { name: string; bytes: Uint8Array }[] = [];
