@@ -32,6 +32,47 @@ passes blargg's `cpu_instrs` and `instr_timing` test ROMs (`packages/conform`,
 Game Boy hardware, independently of any reference emulator. Package-only for
 now; there is no chipvoice.dev counterpart.
 
+A NES song can now be exported as a standard NSF v1 file: `exportNsf(events,
+cycles, options)`, next to `toVgm`. The file carries its own tiny 6502
+player, hand-assembled in `packages/chipvoice/src/nsf.ts` from a small
+in-file mnemonic assembler rather than a build tool, so the bytes it emits
+are exactly what that source says. PLAY replays one 60 Hz frame's writes at
+a time from a compact, bank-switched write log, looping at the capture's own
+loop point forever; write timing is quantized to the frame (up to ~16.7 ms
+late). DMC/DPCM sample playback is autonomous hardware DMA, so it needs no
+mid-frame code at all - only the sample bytes physically present in a fixed
+upper bank (`$C000-$FFFF`) for the real DMA read to find; a capture that
+carries its sample memory (`options.memory`, the same shape as
+`PerformancePlan.memory`) exports normally. A capture that enables DMC
+without supplying that memory is rejected by name
+(`NsfExportError('dmc_sample_missing', ...)`), and the one case this player
+genuinely cannot carry - raw `$4011` PCM streamed straight through the DAC
+many times within a single frame, not DMA sample playback - is rejected as
+`NsfExportError('dmc_unsupported', ...)`, as is sample memory outside
+`$C000-$FFFF`, a loop point outside the capture, over-length or non-ASCII
+metadata, and a frame with more writes than the encoding can address -
+rather than silently dropped or approximated. Proven four ways against the
+same pinned Game_Music_Emu oracle `nsf-corpus` uses: the exported command
+stream matches exactly (`matched === total`, gating CI) on every exportable
+file in a corpus of real hardware recordings, this project's own 2A03
+driver output and independently authored, redistribution-licensed NSFs
+(including the three DMC-using files, now that sample memory is carried
+through); the source capture's own writes and GME's trace of the export
+match exactly, frame for frame, after one constant offset (a deterministic
+proof, also gating CI exactly, not an audio one) - a source frame stops
+counting once its own real-time slot passes the point where the exported
+player wraps back to its loop frame, so a capture's own last frame landing
+on its loop point is excluded rather than compared against the wrong lap;
+a cheap negative check corrupts one write and confirms the gate reports it
+as a mismatch, so the gate's bite is tested, not just its pass case; a
+same-DSP export-loss gate compares GME's replay of the export against this
+project's own untouched render, both through this project's own renderer,
+isolating the residual cost of a write landing at its frame's start rather
+than its own real cycle (a coarse secondary gate, on top of the two exact
+ones); a GME-vs-ours mixer comparison is reported for visibility but does
+not gate. See [docs/chips/2a03.md#nsf-export](docs/chips/2a03.md#nsf-export).
+The studio now offers a Download NSF button next to VGM's, for NES songs.
+
 The SID has a second model: `model: "8580"` on `Chip.create`, on
 `renderPerformance`/`renderProject`'s options, and on a project's
 `settings.model`, next to the default `"6581"`. Every 8580 fact comes from a

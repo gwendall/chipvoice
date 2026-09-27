@@ -22,6 +22,8 @@ export { APU, OfflineDriver, FRAME_RATE, FRAME_TIME } from "./driver.js";
 export { renderSong, recordSong, toWav, loopSeconds } from "./render.js";
 export { toVgm } from "./vgm.js";
 export type { VgmOptions } from "./vgm.js";
+export { exportNsf, NsfExportError } from "./nsf.js";
+export type { NsfOptions } from "./nsf.js";
 export { validateSong } from "./validate.js";
 export type { Issue, IssueLevel, Measured, ValidationResult } from "./validate.js";
 export type { RenderOptions, RenderResult } from "./render.js";

@@ -372,9 +372,53 @@ real game music, and a real unit.
   be committed here) - see each sheet's "VGM import" section.
 - todo - NEXT-09 SID/PSID: against its reference player (sidplayfp), with a
   score per file.
-- P6-9 (SPC export, now unblocked by NEXT-08's CPU) and todo - NEXT-10 (NSF
-  and GBS export): a song that plays on a real console from a flash cart,
-  recorded on the step 1 bench.
+- P6-9 (SPC export, now unblocked by NEXT-08's CPU).
+- done - NEXT-10's NSF half (this PR): `exportNsf` turns a 2A03 capture into
+  a standard NSF v1 file carrying its own tiny hand-assembled 6502 player
+  (`Asm6502`, `packages/chipvoice/src/nsf.ts`), reproducible from committed
+  source, never an opaque blob. PLAY replays one frame's writes per 60 Hz
+  call from a bank-switched, run-length-encoded write log, quantizing write
+  timing to the frame (~16.7 ms). DMC/DPCM sample playback is autonomous
+  hardware DMA needing no mid-frame code, only the sample bytes present in a
+  fixed upper bank (`$C000-$FFFF`); a capture carrying its sample memory
+  (`options.memory`) exports normally, DMC enabled without that memory is
+  rejected by name (`dmc_sample_missing`), and only raw `$4011` PCM
+  streaming or out-of-range sample memory is rejected as `dmc_unsupported`.
+  Proven four ways against the same pinned GME oracle `nsf-corpus` uses, the
+  first two gating CI on an exact match (`matched === total`), not a count
+  or percentage: the command stream matches exactly on every exportable
+  corpus file (including the three DMC-using ones, now that sample memory
+  is carried through); the source capture's own writes and GME's trace of
+  the export match exactly, frame for frame, after one constant frame
+  offset (a deterministic proof, `compareFrameWrites`, not an audio one -
+  100% on every comparable frame, on all twelve files, once a source
+  frame stops counting past the point where the exported player wraps back
+  to its own loop frame - `frameCountFor(cycles)` - which excludes a
+  handful of frames on `zelda-native` (1), `zelda-rendition` (2) and
+  `pently-demo` (1), each landing within a frame or two of its own loop
+  point, a principled exclusion documented and tested, not an excuse; a
+  cheap negative check in `packages/chipvoice/test/nsf.mjs`, no GME needed,
+  corrupts one write and asserts the gate reports it). A same-DSP
+  export-loss gate - GME's replay of the export vs. this project's own
+  untouched render, both through this project's own renderer - isolates the
+  residual cost of a write landing at its frame's start rather than its own
+  real cycle, measuring 4.5-21.9% across all twelve files (an earlier
+  version of this metric, without a frame-offset search, measured
+  13.3-50.7% on the tracker-driven files and wrongly wrote that up as
+  sub-60Hz quantization loss - it was two independently onset-aligned
+  envelopes landing one frame apart), under a 30% threshold with a real
+  margin over that whole corrected band, kept as a coarse secondary gate
+  now that the two exact proofs above cover content fidelity; a
+  GME-vs-ours mixer comparison (21.3-51.6%, two independent 2A03 emulators'
+  DAC/mixer curves) is reported for visibility but does not gate.
+  `docs/chips/2a03.md#nsf-export`,
+  `pnpm nsf-export:sheet`. Reachable from the package (`exportNsf`,
+  `NsfExportError`) and the studio (a Download NSF button next to VGM's,
+  for `2a03` songs). NEXT-10's GBS half
+  stays todo - NEXT-06's GBS importer (PR #103) has since merged, so it is
+  unblocked, but is not part of this PR. A flash-cart recording on real
+  hardware (from the step 1 bench) stays out of scope for both halves for
+  lack of hardware.
 - No commercial rip is distributed; the measurement corpus stays private or
   freely redistributable.
 
@@ -656,7 +700,7 @@ it.
 | P8-10 | Quantized live recording and overdubbing from the note palette and drums, with undo | implemented | D. Audio-clock tap capture, stable backing loop, one Undo per take and draft recovery; [qualification](evals/RECORDING-2026-09-06.md). Physical-phone checks remain P8-9 |
 | P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | implemented | Seeded local melody/drum/timbre transforms, locked roles and Undo; silent patterns preserved; decision 26 |
 | P8-11 | Web MIDI input using the same tested transport and ownership model | implemented | Opt-in MIDI taps share audition/recording; channel-10 drums and cleanup tested with simulated ports. Physical MIDI latency remains unmeasured |
-| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM; independent ZIP reader and byte parity; decision 26 |
+| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM, plus NES NSF (NEXT-10, this PR); independent ZIP reader and byte parity; decision 26 |
 | P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | done | D. P7-9 done: the SID's filter is reachable from the arranger. P5-10 done: FM drums and the LFO in the MD arranger. P6-10 done: SNES triads and hardware-noise hats; no simulated generic substitute |
 
 ## Audit follow-ups

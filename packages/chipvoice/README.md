@@ -363,6 +363,32 @@ they write instead of playing it. `toVgm` rounds each write to a sample at
 44100 Hz, which is the format's clock, and writes a GD3 tag so a player shows
 a name. Pass `loopAtCycle` and the file loops there.
 
+For a NES song there is also `exportNsf`, which produces a standard NSF v1
+file carrying its own tiny hand-assembled 6502 player instead of a raw write
+list, so it plays back on real hardware or in any NSF player, not just this
+library's own:
+
+```ts
+import { recordSong, exportNsf } from "chipvoice";
+
+const { events, cycles } = recordSong(THEME, { seconds: 30 });
+writeFileSync("theme.nsf", exportNsf(events, cycles, { title: "Theme", author: "me" }));
+```
+
+Its player replays one frame's writes per 60 Hz PLAY call, so timing is
+quantized to the frame (about 16.7 ms). DMC/DPCM sample playback is
+autonomous hardware DMA needing no mid-frame code, only the sample bytes
+present in a fixed upper bank; pass them as `options.memory` (the same
+shape as `PerformancePlan.memory`) and DMC plays back normally. A capture
+that enables DMC without that memory throws a named
+`NsfExportError('dmc_sample_missing', ...)`, and the one case this player
+truly cannot carry - raw `$4011` PCM streamed through the DAC many times
+within a frame, not DMA sample playback - throws
+`NsfExportError('dmc_unsupported', ...)` rather than drop or approximate
+it. See
+[`docs/chips/2a03.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/2a03.md#nsf-export)
+for the full design and its conformance numbers against a real NSF player.
+
 ## Checking a song before playing it
 
 ```ts

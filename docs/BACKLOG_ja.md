@@ -162,9 +162,51 @@
   （市販ゲームのリップはここにコミットできません）。各シートの「VGMインポート」節を
   参照してください。
 - todo - NEXT-09 SID/PSID: 参照プレーヤー（sidplayfp）と比べ、ファイルごとにスコアを出します。
-- P6-9（SPCの書き出し、NEXT-08のCPUにより着手可能に）とtodo - NEXT-10
-  （NSFとGBSの書き出し）: フラッシュカートから実機で鳴る曲を、ステップ1の
-  録音環境で録音します。
+- P6-9（SPCの書き出し、NEXT-08のCPUにより着手可能に）。
+- done - NEXT-10のNSF半分（このPR）：`exportNsf`は2A03のキャプチャを、自前
+  の小さな手組み6502プレイヤー（`Asm6502`、`packages/chipvoice/src/nsf.ts`）
+  を積んだ標準NSF v1ファイルに変換します。コミット済みソースから再現でき、
+  不透明なブロブにはなりません。PLAYは60Hz呼び出しごとに、バンク切り替え
+  式でラン長符号化された書き込みログから1フレーム分の書き込みを再生し、
+  書き込みタイミングをフレーム単位（約16.7ms）に量子化します。DMC/DPCMの
+  サンプル再生は自律的なハードウェアDMAでフレーム途中のコードを必要とせ
+  ず、固定の上位バンク（`$C000-$FFFF`）にサンプルバイトが存在してさえいれ
+  ばよいため、自身のサンプルメモリ（`options.memory`）を運ぶキャプチャは
+  普通にエクスポートでき、そのメモリなしでDMCを有効にしたものは名前付き
+  で（`dmc_sample_missing`）拒否され、生の`$4011` PCMストリーミングやサン
+  プルメモリの範囲外だけが`dmc_unsupported`として拒否されます。`nsf-corpus`
+  が使うのと同じ固定revisionのGMEオラクルに対して4通りで証明済み、最初の
+  2つは件数や割合ではなく完全一致（`matched === total`）でCIをゲートしま
+  す：コマンド列はエクスポート可能な全コーパスファイル（サンプルメモリが
+  運ばれるようになった今、DMCを使う3ファイルを含む）で完全一致し、元キャ
+  プチャ自身の書き込みとGMEによるエクスポートのトレースは60Hzフレーム単位
+  でバケット化した上で一定のフレームオフセット1つを挟んで完全一致します
+  （音声ではなく決定的な証明`compareFrameWrites`）。元のフレームは、エクス
+  ポートしたプレイヤーが自身のループフレームへ折り返す地点（`frameCountFor
+  (cycles)`）を過ぎた時点で比較対象から外れ、これにより`zelda-native`（1）、
+  `zelda-rendition`（2）、`pently-demo`（1）でそれぞれ自身のループ地点に
+  1〜2フレームの近さで隣接するフレームが除外されます - これは言い訳ではな
+  く、文書化されテストされた原則に基づく除外で、比較対象となった全フレー
+  ムは12ファイルすべてで100%一致します。`packages/chipvoice/test/nsf.mjs`
+  内の安価な否定テスト（GME不要）は1つの書き込みを破損させ、ゲートがそれ
+  を報告することを検証しています。GMEによるエクスポートの再生と本プロジェ
+  クト自身の手つかずのレンダーを同じレンダラーで比較して、書き込みが本来
+  のサイクルではなくフレーム開始に着地することによる残差コストだけを取り
+  出す合否ゲートは、12ファイル全体で4.5〜21.9%を計測し（フレームオフセッ
+  トの探索がなかった旧版はトラッカー製ソースで13.3〜50.7%を計測し、これを
+  サブ60Hzの量子化損失と誤って書いていましたが、実際は独立に位置合わせさ
+  れた2つの包絡線が1フレームずれていただけでした）、しきい値30%に対して
+  実質的な余裕があり、上記2つの完全一致の証明を補う粗い二次ゲートとして
+  維持しています。GMEと本プロジェクト自身のミキサー比較（独立した2つの
+  2A03エミュレーターのDAC／ミキサーカーブの差で21.3〜51.6%）は可視化のた
+  め報告されるだけでゲートにはなりません。
+  `docs/chips/2a03_ja.md#nsf出力`、`pnpm nsf-export:sheet`。
+  パッケージ（`exportNsf`、`NsfExportError`）とstudio（`2a03`の曲でVGMの隣に
+  NSFダウンロードボタン）の両方から到達できます。NEXT-10のGBS半分はtodoの
+  ままです。NEXT-06のGBSインポーター（PR #103）はすでにマージ済みで着手
+  可能になりましたが、このPRには含まれません。実機フラッシュカートへの
+  録音（ステップ1の録音環境で）はハードウェアがないため両半分とも対象外
+  です。
 - 商用のリッピングは配布しません。計測用コーパスは非公開にするか、自由に再配布できるものに限ります。
 
 **ステップ4. 後になっても、別の場所でも同じバイト列。**
@@ -381,7 +423,7 @@
 | P8-10 | palette／drumの量子化live重ね録りとUndo | implemented | D、audio-clock capture、固定伴奏、1take1Undo、draft。[評価](evals/RECORDING-2026-09-06_ja.md)。実携帯はP8-9 |
 | P8-23 | role変奏、他lock、Undo。作成済み／規則ベース、remote AI不要 | implemented | seed melody／drum／timbre、lock、Undo、無音pattern保持。決定26 |
 | P8-11 | 同じtransport／所有モデルのWeb MIDI | implemented | opt-in tap、channel10 drum、模擬port cleanup。実latency未測定 |
-| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM。独立ZIPとbyte比較、決定26 |
+| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM、さらにNES NSF（NEXT-10、このPR）。独立ZIPとbyte比較、決定26 |
 | P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | done | D、P7-9 done：SIDのfilterはarrangerから到達可能。P5-10 done：MD arrangerのFM drumとLFO。P6-10 done：SNES triadとハードウェアノイズのハット。見た目だけの汎用代替なし |
 
 <a id="audit-follow-ups"></a>

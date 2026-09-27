@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus|nsf-export):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -166,6 +166,131 @@ def localized_block(kind, body, templates):
                     line = line.replace(before, after)
             else:
                 raise ValueError(f'Unknown gbs-corpus line: {line}')
+        elif kind == 'nsf-export':
+            match = re.fullmatch(
+                r"Written by `nsf-export:sheet` on (.+), against Game_Music_Emu revision `(.+)`\. "
+                r"Commands and frame writes both gate CI exactly \(matched must equal total, not just be nonzero or \"close\"\)\. "
+                r"Commands: the export, replayed by GME, against this project's own offline replay of the same export - "
+                r"identical bytes on both sides, so anything short of an exact match is a player bug\. "
+                r"Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into "
+                r"60 Hz frames and compared for exact address/value/order equality after one constant frame offset "
+                r"\(an expected, fixed PLAY-call latency - every NSF player's own INIT-to-first-PLAY overhead differs\) - "
+                r"a deterministic command-content proof, not an audio measurement; a source frame stops counting once its "
+                r"own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "
+                r"\"excluding N frame\(s\) past the loop wrap\" when that applies\. "
+                r"Export loss: relative RMS error, after peak-normalizing and offset-aligning \(searched, not assumed\), "
+                r"between two same-DSP renders \(GME's trace of the export, replayed; the untouched source\) - "
+                r"the coarse secondary gate, threshold (\d+)%\. "
+                r"GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - "
+                r"two independent emulators, reported for visibility, not gated\.", line)
+            if match:
+                line = (f'`nsf-export:sheet`による生成：{match[1]}。参照：Game_Music_Emu revision `{match[2]}`。'
+                         f'コマンドとフレーム書き込みはどちらもCIを完全一致でゲートします'
+                         f'（一致数が総数と等しくなければならず、非ゼロや「近い」では足りません）。'
+                         f'コマンド：エクスポートをGMEで再生したものと、本プロジェクト自身によるオフライン再生とを比較したもの - '
+                         f'両者は同一のバイト列なので、完全一致に届かなければプレイヤーのバグです。'
+                         f'フレーム書き込み：元キャプチャ自身のレジスター書き込みとGMEによるエクスポートのトレースを、'
+                         f'それぞれ60Hzフレーム単位でバケット化し、一定のフレームオフセット1つを挟んでアドレス・値・順序の'
+                         f'完全一致を比較したもの（これは想定内の固定PLAY呼び出し遅延です - NSFプレイヤーごとにINITから'
+                         f'最初のPLAYまでのオーバーヘッドが異なります） - 音声測定ではなく決定的なコマンド内容の証明です。'
+                         f'元のフレームは、自身の実時間上の位置がエクスポートしたプレイヤーの折り返し地点（ループフレームへ戻る地点）'
+                         f'を過ぎた時点で比較対象から外れ、該当する場合はシートに「ループ折り返し後のNフレームを除外」と表記されます。'
+                         f'エクスポート損失：ピーク正規化と（決め打ちではなく探索した）オフセット位置合わせを行った後の、'
+                         f'同一DSPによる2つのレンダー'
+                         f'（GMEによるエクスポートの再生トレースをレンダーしたものと、手つかずの元ソースをレンダーしたもの）'
+                         f'間の相対RMS誤差 - 粗い二次ゲートで、しきい値{match[3]}%。'
+                         f'GMEミキサー：GME自身によるエクスポートのPCMと本プロジェクトによる元ソースのレンダーとの間で同じ指標を'
+                         f'取ったもの - 独立した2つのエミュレーターの比較であり、可視化のために報告するだけでゲートにはなりません。')
+                lines.append(line)
+                continue
+            if line == '| Song | Commands | Frame writes | Export loss | GME mixer | First divergence |':
+                lines.append('| 曲 | コマンド | フレーム書き込み | エクスポート損失 | GMEミキサー | 最初の相違 |')
+                continue
+            row = re.fullmatch(r'\| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \|', line)
+            if not row:
+                raise ValueError(f'Unknown nsf-export line: {line}')
+            title, commands, frame_writes, loss, mixer, note = row.groups()
+            # Title (a proper noun, plain or a Markdown link) and any
+            # matched/total, byte or percentage counts pass through
+            # unchanged; only the small fixed vocabulary `corpus.mjs`'s
+            # `formatResult` produces is translated. Unrecognized shapes
+            # fail closed.
+            if not re.fullmatch(r'\d+/\d+|not exportable: \w+|not rendered|\d+ bytes', commands):
+                raise ValueError(f'Unknown nsf-export commands cell: {commands}')
+            frame_writes_match = re.fullmatch(
+                r'-|not compared|(\d+)/(\d+) \(offset ([+-]\d+)\)'
+                r'(?:, excluding (\d+) frames? past the loop wrap)?'
+                r'(?:, frames ((?:\d+, )*\d+(?:, \.\.\.)?) differ)?',
+                frame_writes)
+            if not frame_writes_match:
+                raise ValueError(f'Unknown nsf-export frame-writes cell: {frame_writes}')
+            if not re.fullmatch(r'-|not compared|\d+(?:\.\d+)?%(?: \(over threshold\))?', loss):
+                raise ValueError(f'Unknown nsf-export loss cell: {loss}')
+            mixer_match = re.fullmatch(r"-|not compared|GME's mixer differs from ours by (\d+(?:\.\d+)?)%", mixer)
+            if not mixer_match:
+                raise ValueError(f'Unknown nsf-export mixer cell: {mixer}')
+            if frame_writes in ('-', 'not compared'):
+                translated_frame_writes = {'-': '-', 'not compared': '未比較'}[frame_writes]
+            else:
+                matched, total, offset, excluded, mismatched = frame_writes_match.groups()[0:5]
+                translated_frame_writes = f'{matched}/{total}（オフセット{offset}）'
+                if excluded:
+                    translated_frame_writes += f'、ループ折り返し後の{excluded}フレームを除外'
+                if mismatched:
+                    translated_frame_writes += f'、フレーム{mismatched}が不一致'
+            # Error messages that carry a measured number (dacWritesPerFrame,
+            # a memory block's address/length) are translated with a regex so
+            # the number passes through unchanged; everything else is a
+            # small fixed vocabulary translated by substring replacement.
+            note_regex_replacements = [
+                (r"This capture writes \$4011 \(the DMC's direct-load DAC\) up to (\d+) times within a single 60 Hz frame - "
+                 r"raw PCM streamed straight through the DAC, not DMA sample playback\. That needs each write timed to a "
+                 r"fraction of a frame, which this player's once-per-frame PLAY call cannot carry\.",
+                 lambda m: f'このキャプチャは$4011（DMCの直接ロードDAC）を単一の60Hzフレーム内で最大{m[1]}回書き込んでいます - '
+                           'DMAサンプル再生ではなく、DACへ直接ストリーミングされる生のPCMです。各書き込みをフレームの端数'
+                           'タイミングに合わせる必要があり、このプレイヤーの1フレームに1回のPLAY呼び出しでは表現できません。'),
+                (r"This capture enables DMC/DPCM sample playback \(\$4015 written with bit 4 set\) but carries no sample memory "
+                 r"\(RecordedSong\.memory / PerformancePlan\.memory\); the export needs the sample bytes physically present at "
+                 r"the addresses \$4012/\$4013 point to, and this capture has none to place there\.",
+                 lambda m: 'このキャプチャはDMC/DPCMサンプル再生を有効にしています（$4015のビット4が立っています）が、'
+                           'サンプルメモリ（RecordedSong.memory / PerformancePlan.memory）を運んでいません。エクスポートには'
+                           '$4012/$4013が指すアドレスにサンプルバイトが物理的に存在している必要がありますが、このキャプチャ'
+                           'には配置するものがありません。'),
+                (r"A DMC sample memory block at \$([0-9a-f]+) \((\d+) bytes\) falls outside \$C000-\$FFFF, the only range the "
+                 r"DMC's hardware DMA can read from; this player can only place sample bytes there\.",
+                 lambda m: f'アドレス${m[1]}のDMCサンプルメモリブロック（{m[2]}バイト）は、DMCのハードウェアDMAが読み出せる'
+                           f'唯一の範囲である$C000-$FFFF外にあります。このプレイヤーはその範囲にしかサンプルバイトを配置'
+                           'できません。'),
+            ]
+            translated_note = note
+            for pattern, template in note_regex_replacements:
+                regex_match = re.fullmatch(pattern, note)
+                if regex_match:
+                    translated_note = template(regex_match)
+                    break
+            note_replacements = {
+                'not exportable: dmc_unsupported': 'エクスポート不可: dmc_unsupported',
+                'not exportable: dmc_sample_missing': 'エクスポート不可: dmc_sample_missing',
+                'not rendered': '未レンダリング',
+                'not compared': '未比較',
+                ' (over threshold)': '（しきい値超過）',
+                'none': 'なし', ' vs ': ' 対 ', 'cycle ': 'サイクル ',
+                ': one side has no more commands': '：一方にそれ以上のコマンドがありません',
+            }
+            translated_commands, translated_loss = commands, loss
+            for before, after in note_replacements.items():
+                translated_commands = translated_commands.replace(before, after)
+                translated_loss = translated_loss.replace(before, after)
+                if translated_note == note:
+                    translated_note = translated_note.replace(before, after)
+            if mixer_match[1] is not None:
+                translated_mixer = f'GMEのミキサーは本プロジェクトと{mixer_match[1]}%異なる'
+            else:
+                translated_mixer = note_replacements.get(mixer, mixer)
+            if translated_note == note and note not in ('none',) and not re.fullmatch(r'サイクル \d+ 対 \d+, \$[0-9a-f]+: \d+ 対 \d+|サイクル \d+：一方にそれ以上のコマンドがありません', translated_note):
+                raise ValueError(f'Unknown nsf-export note: {note}')
+            lines.append(f'| {title} | {translated_commands} | {translated_frame_writes} | {translated_loss} | {translated_mixer} | {translated_note} |')
+            continue
         lines.append(line)
     return '\n'.join(lines) + '\n'
 
