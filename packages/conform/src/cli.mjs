@@ -6,6 +6,7 @@ import { chipMd } from './chips/md.mjs';
 import { chipSnes } from './chips/snes.mjs';
 import { chipC64 } from './chips/c64.mjs';
 import { nesSndEmu } from './oracles/nes-snd-emu.mjs';
+import { mesen } from './oracles/mesen.mjs';
 import { gbSndEmu } from './oracles/gb-snd-emu.mjs';
 import { nukedOpn2 } from './oracles/nuked-opn2.mjs';
 import { snesSpc } from './oracles/snes-spc.mjs';
@@ -41,7 +42,7 @@ import { ChangeStream } from './change-stream.mjs';
  * compact form still works.
  */
 const CHIPS = { '2a03': chip2a03, dmg: chipDmg, md: chipMd, snes: chipSnes, c64: chipC64 };
-const ORACLES = { 'nes-snd-emu': nesSndEmu, 'gb-snd-emu': gbSndEmu, 'nuked-opn2': nukedOpn2, 'snes-spc': snesSpc, residfp };
+const ORACLES = { 'nes-snd-emu': nesSndEmu, mesen, 'gb-snd-emu': gbSndEmu, 'nuked-opn2': nukedOpn2, 'snes-spc': snesSpc, residfp };
 const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu', md: 'nuked-opn2', snes: 'snes-spc', c64: 'residfp' };
 
 const args = process.argv.slice(2);

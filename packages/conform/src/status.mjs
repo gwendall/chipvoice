@@ -40,7 +40,7 @@ const CHIPS = [
     notes: [
       'Analog: the mixer measured against blargg\'s recordings of his console; the filters and the DAC after them unmeasured, and want a unit\'s line-out.',
       'Driver: every voice but the DMC, which no instrument reaches yet.',
-      'Remains: a second oracle for the envelope, the sweep and the triangle near a clock; a corpus from real games; a unit for the filters.',
+      'Remains: a corpus from real games; a unit for the filters.',
     ],
   },
   {
