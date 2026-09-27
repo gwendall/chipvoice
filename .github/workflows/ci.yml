@@ -150,6 +150,7 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:mesen
       - run: pnpm --filter chipvoice-conform roms
       - run: pnpm --filter chipvoice-conform check:dmg
+      - run: pnpm --filter chipvoice-conform check:sameboy
       - run: pnpm --filter chipvoice-conform roms:dmg
       - run: pnpm --filter chipvoice-conform check:md
       - run: pnpm --filter chipvoice-conform check:sn76496

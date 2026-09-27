@@ -161,7 +161,7 @@ real game music, and a real unit.
   from silence outputs a digital zero until its first duty step (Pan Docs,
   SameBoy agrees); Gb_Snd_Emu's baseline was rewritten for it. Left for the
   second pass: the PSG divergences MAME found (P5-8) and the Game Boy against
-  SameBoy (P3-4) once it lands.
+  SameBoy (P3-4).
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md) catalogues
   what published recordings and measurements of real hardware already exist
   for all five chips, each source opened and verified before being listed
@@ -342,7 +342,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P3-1 | DMG APU from Pan Docs and blargg's notes, verified by his dmg_sound ROMs on an SM83 fixture | done | `packages/chipvoice/src/chips/gb`, `packages/conform/src/roms/{sm83,gb}.mjs` |
 | P3-2 | `ChipSpec`, `RegisterEvent` and the instrument model rewritten against two chips | done | `ChipDriver`, `FrameState`, `ChipSpec.roles`; `chips/{nes,gb}/driver.ts`. The 2A03's golden hash did not move |
 | P3-3 | The Game Boy sheet, generated | done | `docs/chips/dmg.md` |
-| P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | todo | Gb_Snd_Emu is 2005 and takes its first step at the trigger |
+| P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | done | PR #83. SameBoy's DMG-B `apu.c` vendored as a second oracle (`packages/conform/oracles/sameboy`); it found a real gap chipvoice's squares and noise share (a freshly-triggered voice is not instant on real hardware, now P2-1), plus an open sweep-overflow and a zombie-mode divergence |
 | P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found a citable public-domain formula (gbdev Pan Docs) matching the sheet's placeholder and a die-level teardown, but no measured recording of any unit: see [HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg) |
 | P3-6 | The Game Boy in the API, the studio and the skill: `chip: "dmg"` accepted, rendered and played; a chip selector in the editor; the skill says what changes | done | `apps/web`, skill 0.4.0 |
 
