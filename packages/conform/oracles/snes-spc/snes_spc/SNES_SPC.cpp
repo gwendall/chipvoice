@@ -76,9 +76,9 @@ inline SNES_SPC::Timer* SNES_SPC::run_timer( Timer* t, rel_time_t time )
 }
 
 // ---------------------------------------------------------------------
-// chipvoice patch, upstream snes_spc 0.9.0 is otherwise unmodified. See
-// oracles/snes-spc/README.md and DECISIONS.md #46 for the full story; this
-// comment gives the mechanism.
+// chipvoice patch (2026-09-28), upstream snes_spc 0.9.0 is otherwise
+// unmodified. See oracles/snes-spc/README.md and DECISIONS.md #46 for the
+// full story; this comment gives the mechanism.
 //
 // reset_time_regs() (SNES_SPC_misc.cpp), called by both a real reset and
 // load_spc(), sets every timer's next_time to 1 and divider to 0. The
@@ -103,9 +103,12 @@ inline SNES_SPC::Timer* SNES_SPC::run_timer( Timer* t, rel_time_t time )
 // (CONTROL enabling timer 0, T0TARGET=1, a poll loop reading T0OUT until
 // non-zero, then one marked DSP write) committed at
 // oracles/../../corpus/snes/spc/timer-phase.spc: without this patch, the
-// poll loop's write lands at cycle 3; with it, at cycle 129 - one prescaler
-// period (128 cycles) after the snapshot's own cycle 0, plus the poll
-// loop's own instruction cost.
+// poll loop's write lands at cycle 15; with it, at cycle 141 - a write cycle,
+// not the timer's own first-pulse instant, so it also carries the poll
+// loop's own instruction cost on top of the prescaler period itself. This
+// package's own per-cycle SPC700, playing the same file, reports that same
+// write at cycle 140 (see check.mjs's own top doc comment for the
+// unrelated, benign one-cycle label difference that explains 140 vs 141).
 void SNES_SPC::fix_snapshot_timer_phase()
 {
 	for ( int i = 0; i < timer_count; i++ )

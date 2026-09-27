@@ -214,10 +214,10 @@ private:
 	void reset_time_regs();
 	void reset_common( int timer_counter_init );
 
-	// chipvoice patch (see the definition in SNES_SPC.cpp, right after
-	// run_timer_, and DECISIONS.md #46): called once from load_spc() only,
-	// to remove a "phantom" timer period reset_time_regs() would otherwise
-	// leave every snapshot load to credit itself with.
+	// chipvoice patch (2026-09-28; see the definition in SNES_SPC.cpp, right
+	// after run_timer_, and DECISIONS.md #46): called once from load_spc()
+	// only, to remove a "phantom" timer period reset_time_regs() would
+	// otherwise leave every snapshot load to credit itself with.
 	void fix_snapshot_timer_phase();
 
 	Timer* run_timer_      ( Timer* t, rel_time_t );

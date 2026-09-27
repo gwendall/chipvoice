@@ -15,10 +15,21 @@ with a register log. Vendored from
 
 ## What is blargg's and what is not
 
-`snes_spc/SPC_DSP.*`, `snes_spc/blargg_*.h`, and - as of the CPU oracle below
-- `snes_spc/SNES_SPC.*`, `snes_spc/SNES_SPC_misc.cpp`,
-`snes_spc/SNES_SPC_state.cpp` and `snes_spc/SPC_CPU.h` are his, unchanged.
-Two files are ours:
+`snes_spc/SPC_DSP.*`, `snes_spc/blargg_*.h`, `snes_spc/SNES_SPC_state.cpp`
+and `snes_spc/SPC_CPU.h` are his, unchanged. Three more files - added as of
+the CPU oracle below - carry a small, marked chipvoice patch on top of his
+otherwise-unmodified code: `snes_spc/SNES_SPC.cpp`, `snes_spc/SNES_SPC.h`
+and `snes_spc/SNES_SPC_misc.cpp`. Each carries a "chipvoice patch
+(2026-09-28)" comment marking exactly what changed and when, per LGPL 2.1
+2(a). The patch, `fix_snapshot_timer_phase()` (defined in `SNES_SPC.cpp`,
+declared in `SNES_SPC.h`, called once from `load_spc()` in
+`SNES_SPC_misc.cpp`), removes a one-time quirk in his lazy timer model that
+credits a freshly loaded snapshot with one whole prescaler period already
+elapsed, however few cycles have actually passed since load
+(`reset_time_regs()`'s unconditional "+1" in the elapsed-periods formula).
+See DECISIONS.md #46 for the full mechanism and
+`corpus/snes/spc/timer-phase.spc` for its regression fixture. Two files are
+ours:
 
 - `main.cpp` reads a log - the samples from its `# memory` lines into the 64 KB
   the DSP shares with the SPC700, then the writes the SPC700 makes to `$F2` and
@@ -36,7 +47,12 @@ Two files are ours:
   With neither flag it prints both, for a person to read. Unlike `main.cpp`,
   which only ever drives the DSP from a log someone already made, this is
   what actually plays a `.spc` file with blargg's own CPU - the reference for
-  `importSpc`'s new CPU and snapshot loader, not just its ported S-DSP.
+  `importSpc`'s new CPU and snapshot loader, not just its ported S-DSP. Its
+  own sample-cycle counter (`g_sample_cycle`) starts at 27, not 0:
+  `SPC_DSP_OUT_HOOK` fires from a fixed phase 27 cycles into a freshly
+  loaded snapshot, not from cycle 0 (see the constant's own doc comment for
+  the derivation), so counting from 0 mislabeled every sample in the trace
+  by that same constant 27-cycle offset.
 
 The harness builds each with the system C++ compiler on first use, into
 `build/`.

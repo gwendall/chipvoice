@@ -1404,15 +1404,20 @@ Reading blargg's vendored snes_spc directly (`SNES_SPC.cpp`'s
 = TIMER_DIV(t, time - t->next_time) + 1` combined with `reset_time_regs()`
 setting every timer's `next_time` to 1 on every snapshot load means the very
 first post-load call always credits itself with one whole prescaler period
-already elapsed, however few cycles actually passed - confirmed in isolation
-with a minimal hand-built `.spc` file (`T0TARGET = 1`): blargg's own CPU
-reports timer 0's first pulse at cycle 3, where both real hardware and this
-package's per-cycle model only reach it at cycle 128. Round three fixed this
-at the source instead of only naming it: a load-time shim,
-`fix_snapshot_timer_phase()` in the vendored oracle, runs once right after a
-snapshot loads so blargg's own timers start in the same phase as real
-hardware, not one prescaler period ahead of it. A minimal regression
-fixture, `timer-phase.spc` (one write, one timer target), pins this in
+already elapsed, however few cycles actually passed. Confirmed with the
+regression fixture below (`timer-phase.spc`, timer 0 at a period of 1, one
+128-cycle prescaler period at normal tempo): before a fix, blargg's own CPU
+sees timer 0's counter as already non-zero and makes its one write only 15
+cycles into the snapshot, far short of the 128 cycles a full period actually
+takes; this package's own per-cycle model, from the same file, only reaches
+that same write at cycle 140. Round three fixed this at the source instead
+of only naming it: a load-time shim, `fix_snapshot_timer_phase()` in the
+vendored oracle, runs once right after a snapshot loads so blargg's own
+timers start in the same phase as real hardware, not one prescaler period
+ahead of it - with the fix, the oracle's write lands at cycle 141, one cycle
+after this package's own 140 (the same pre-charge labelling difference
+`check.mjs`'s own doc comment already names, not a second issue). This
+minimal regression fixture (one write, one timer target) pins the fix in
 `check:spc` alongside the existing corpus so a future change to the
 vendored oracle cannot silently reopen the one-time jump; `check:spc` now
 covers both files at 100.0000% (3072000/3072000 cycles).
