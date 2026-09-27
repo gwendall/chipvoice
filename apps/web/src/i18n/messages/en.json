@@ -1115,7 +1115,7 @@
   "Analog stage": "Analog stage",
   "Not measured yet. This stage is a placeholder, not a result.": "Not measured yet. This stage is a placeholder, not a result.",
   "A profile built from public documentation, unmeasured against a real unit.": "A profile built from public documentation, unmeasured against a real unit.",
-  "Measured against a real console's own recordings.": "Measured against a real console's own recordings.",
+  "The mixer is measured against a real console's own recordings; the output filters are not measured yet.": "The mixer is measured against a real console's own recordings; the output filters are not measured yet.",
   "{ours} dB (console {hardware} dB)": "{ours} dB (console {hardware} dB)",
   "Driver coverage": "Driver coverage",
   "The shipped driver reaches {reached} of the chip's {voices} voices.": "The shipped driver reaches {reached} of the chip's {voices} voices.",

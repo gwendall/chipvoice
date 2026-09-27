@@ -1115,7 +1115,7 @@
   "Analog stage": "アナログ段",
   "Not measured yet. This stage is a placeholder, not a result.": "まだ計測していません。この段階は仮の実装であり、結果ではありません。",
   "A profile built from public documentation, unmeasured against a real unit.": "公開資料から作ったプロファイルで、実機での計測はまだ行っていません。",
-  "Measured against a real console's own recordings.": "実機本体の録音と比較して計測しています。",
+  "The mixer is measured against a real console's own recordings; the output filters are not measured yet.": "ミキサーは実機本体の録音と比較して計測済みです。出力フィルターはまだ計測していません。",
   "{ours} dB (console {hardware} dB)": "{ours} dB（実機 {hardware} dB）",
   "Driver coverage": "ドライバーの対応範囲",
   "The shipped driver reaches {reached} of the chip's {voices} voices.": "出荷されているドライバーは、チップの {voices} 音源のうち {reached} 音源に対応しています。",

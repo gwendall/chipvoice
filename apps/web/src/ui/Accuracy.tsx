@@ -62,7 +62,7 @@ export default function Accuracy() {
             <h3>{t("Analog stage")}</h3>
             <p>{chip.analogStage.label === 'none' ? t("Not measured yet. This stage is a placeholder, not a result.")
               : chip.analogStage.label === 'profile' ? t("A profile built from public documentation, unmeasured against a real unit.")
-              : t("Measured against a real console's own recordings.")}</p>
+              : t("The mixer is measured against a real console's own recordings; the output filters are not measured yet.")}</p>
             {chip.analogStage.mixer && <ul>{chip.analogStage.mixer.rows.map(row => <li key={row.name}>{row.name}: {t("{ours} dB (console {hardware} dB)", {ours: row.oursResidualDb.toFixed(1), hardware: row.hardwareResidualDb.toFixed(1)})}</li>)}</ul>}
           </section>
           <section className="accuracy-level">
