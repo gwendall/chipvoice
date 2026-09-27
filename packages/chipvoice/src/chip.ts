@@ -299,6 +299,15 @@ export interface ChipDriver {
  */
 export interface ChipCreateOptions {
   model?: string;
+  /**
+   * Overrides the chip's own clock for this instance's cycle-to-sample
+   * resampling, in Hz. `ChipSpec.clockHz` (the number pitch and driver
+   * timing are computed against) never changes; this is only for a chip
+   * whose real clock varies by region, such as the C64's PAL/NTSC SID, so a
+   * file authored for the other standard still plays at the right tempo.
+   * Ignored by a chip whose clock does not vary. Defaults to the chip's own.
+   */
+  clockHz?: number;
 }
 
 export interface ChipDefinition {

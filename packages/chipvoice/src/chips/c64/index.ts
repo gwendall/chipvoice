@@ -37,7 +37,7 @@ export const C64: ChipSpec = {
 
 export const c64Chip: ChipDefinition = {
   spec: C64,
-  create: (sampleRate: number, options?: ChipCreateOptions) => new SidCore(sampleRate, profileFor(options)),
+  create: (sampleRate: number, options?: ChipCreateOptions) => new SidCore(sampleRate, profileFor(options), options?.clockHz),
   digital: (options?: ChipCreateOptions) => new Sid(profileFor(options).model),
   driver: () => new SidDriver(),
   workletSource: WORKLET_SOURCE,

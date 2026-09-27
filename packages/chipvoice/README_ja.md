@@ -76,6 +76,18 @@ GPL/LGPLのエミュレータからの移植ではありません。そのため
 を参照してください。これはパッケージのみの機能で、まだchipvoice.dev側の
 対応はありません。
 
+コモドール64のSID音楽ファイルは `importPsid(psidBytes)` と
+`renderPsid(performance)` で再生できます。ゼロから書いた6510が、
+ファイルのINITとPLAYルーチンを、HVSC自身のPSID/RSIDファイル形式文書だけ
+から組み立てた最小限の、開示済みC64環境（CIA1タイマーA、VICのラスターIRQ、
+SIDレジスターのミラーリング）に対して走らせます。オラクルは使わず、
+GPLコードの移植もありません。PAL/NTSCのクロックと6581/8580モデルの
+ヘッダーフラグを尊重します。マルチSIDファイル、BASICも必要とするRSID
+ファイル、MUSプレーヤー形式は名前で拒否し(`PsidFormatError`)、どの文書も
+値を示していない7個の不安定命令と12個のJAM 6502/6510命令も同様です
+(`IllegalOpcodeError`)。
+[docs/chips/c64_ja.md#psidrsid-playback](https://github.com/gwendall/chipvoice/blob/main/docs/chips/c64_ja.md#psidrsid-playback)を参照してください。
+
 ```bash
 npm i chipvoice
 ```

@@ -192,6 +192,26 @@ against a real reference SPC700 (`packages/conform`'s new `check:spc`): the
 DSP register writes the CPU makes and the output samples both matched on
 the first file checked.
 
+PSID/RSID files play through two new exports, `importPsid` and `renderPsid`,
+on a from-scratch 6510 (`Cpu6510`) run against a minimal, disclosed C64
+environment (CIA1 timer A, the VIC raster IRQ, SID register mirroring) built
+entirely from HVSC's own file format document, with no libsidplayfp or other
+oracle and no ported GPL code (decision 41). Every documented 6502/6510
+opcode is implemented, along with the stable illegal opcodes; the 7 unstable
+and 12 JAM opcodes are named and rejected (`IllegalOpcodeError`, kind
+`"unstable"` or `"jam"`) rather than guessed at, since no document gives
+their CPU-internal-state-dependent results. PAL/NTSC clock and 6581/8580
+model header flags are honored; multi-SID files, RSID files that also need
+BASIC, and the MUS player format are rejected by name rather than silently
+misplayed. With no oracle for this chip, conformance is a hand-written unit
+suite instead of a corpus comparison: every documented opcode's cycle count
+and flags, decimal-mode ADC/SBC against 6502.org's own worked examples, and
+every stable illegal and named-rejected opcode. See
+[docs/chips/c64.md#psidrsid-playback](docs/chips/c64.md#psidrsid-playback)
+for what this environment models, what it does not, and the known limits
+(no Klaus Dormann suite, an inferred INIT calling convention, no
+self-produced hardware capture corpus).
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the

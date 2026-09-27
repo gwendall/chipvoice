@@ -22,6 +22,7 @@ import type { ChipCore, RegisterEvent } from "../../chip.js";
 import { PAL_CLOCK_HZ, Sid, type SidModel } from "./sid.js";
 
 export const CLOCK_HZ = PAL_CLOCK_HZ;
+
 export const C64_PROCESSOR_NAME = "sid-processor";
 
 /**
@@ -193,7 +194,7 @@ export class SidOutputStage {
   private lastIn = 0;
   private primed = false;
 
-  constructor(sampleRate: number, profile: SidProfile = SID_6581_PROFILE) {
+  constructor(sampleRate: number, profile: SidProfile = SID_6581_PROFILE, clockHz: number = CLOCK_HZ) {
     this.profile = profile;
     this.waveDac = dacTable(12, profile.ladderRatio, profile.ladderTerminated);
     const zero = this.waveDac[profile.waveZero];
@@ -201,7 +202,7 @@ export class SidOutputStage {
     this.envDac = dacTable(8, profile.ladderRatio, profile.ladderTerminated);
     const hz = cutoffTable(profile.cutoff);
     this.w0 = new Float32Array(2048);
-    for (let fc = 0; fc < 2048; fc++) this.w0[fc] = (2 * Math.PI * hz[fc]) / CLOCK_HZ;
+    for (let fc = 0; fc < 2048; fc++) this.w0[fc] = (2 * Math.PI * hz[fc]) / clockHz;
     this.hpCoef = Math.exp((-2 * Math.PI * profile.highPassHz) / sampleRate);
     this.lpCoef = 1 - Math.exp((-2 * Math.PI * profile.lowPassHz) / sampleRate);
   }
@@ -254,18 +255,20 @@ export class SidOutputStage {
 
 /** The chip and its output stage behind `ChipCore`. */
 export class SidCore implements ChipCore {
-  fork(): SidCore { return forkState(this, () => new SidCore(this.sampleRate, this.stage.profile)); }
+  fork(): SidCore { return forkState(this, () => new SidCore(this.sampleRate, this.stage.profile, this.clockHz)); }
   readonly sampleRate: number;
+  readonly clockHz: number;
   readonly chip: Sid;
   readonly stage: SidOutputStage;
   private remainder = 0;
   private nextSample = -1;
   private masterGain = 1;
 
-  constructor(sampleRate: number, profile: SidProfile = SID_6581_PROFILE) {
+  constructor(sampleRate: number, profile: SidProfile = SID_6581_PROFILE, clockHz: number = CLOCK_HZ) {
     this.sampleRate = sampleRate;
+    this.clockHz = clockHz;
     this.chip = new Sid(profile.model);
-    this.stage = new SidOutputStage(sampleRate, profile);
+    this.stage = new SidOutputStage(sampleRate, profile, clockHz);
   }
 
   render(left: Float32Array, right: Float32Array | null, startSample: number) {
@@ -275,7 +278,7 @@ export class SidCore implements ChipCore {
     const stage = this.stage;
     for (let i = 0; i < n; i++) {
       stage.begin();
-      this.remainder += CLOCK_HZ;
+      this.remainder += this.clockHz;
       while (this.remainder >= this.sampleRate) {
         this.remainder -= this.sampleRate;
         chip.step();
@@ -289,7 +292,7 @@ export class SidCore implements ChipCore {
   }
 
   private seek(sample: number) {
-    const scaled = sample * CLOCK_HZ;
+    const scaled = sample * this.clockHz;
     this.chip.cycle = Math.floor(scaled / this.sampleRate);
     this.remainder = scaled - this.chip.cycle * this.sampleRate;
   }
