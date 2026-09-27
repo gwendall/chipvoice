@@ -122,6 +122,26 @@ function withSine(extra = []) {
   check('and plays back near the amplitude that went in', peak > 17000 && peak < 21000, `peak ${peak} for 20000 in`);
 }
 
+{
+  // NON routes a voice to the shared noise generator; FLG's low five bits pick its clock from the
+  // same rate table ADSR and GAIN use. The fastest rate (the driver's own, $1f) changes the LFSR
+  // near enough every sample; the slowest non-frozen rate (rate 1, a period of 2048 samples,
+  // about 15.6 Hz) holds it for whole stretches, an audible buzz rather than a hiss.
+  const changes = (flg, samples) => {
+    const { chip, writes, reg } = withSine([[0x3d, 0x01], [0x6c, flg]]);
+    reg(0x04, 0); reg(0x05, 0xff); reg(0x06, 0xe0); reg(0x02, 0x00); reg(0x03, 0x10); reg(0x00, 0x7f); reg(0x01, 0x7f); reg(0x4c, 0x01);
+    chip.schedule(writes);
+    let count = 0;
+    let last = null;
+    chip.trace(samples * (CLOCK / 32000), (c, v, value) => { if (v === 0) { if (last !== null && value !== last) count++; last = value; } });
+    return count;
+  };
+  const fast = changes(0x1f, 2000);
+  const slow = changes(0x01, 4200);
+  check('the fastest noise clock changes on nearly every sample', fast > 1900, `${fast}/2000`);
+  check('a slow noise clock holds its value for whole stretches between changes', slow > 0 && slow <= 5, `${slow} changes in 4200 samples`);
+}
+
 check('the SNES has eight voices and a stereo stream', snesChip.spec.voices.length === 8 && snesChip.digital().voices.join() === 'left,right');
 
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);

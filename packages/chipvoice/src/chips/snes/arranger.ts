@@ -30,11 +30,19 @@ const BASSES: Record<Required<Intent>["bass"], Instrument> = {
   resonant: { volume: [13], sustain: true, sample: "reed-bass" },
 };
 
+// The kick and the snare keep their BRR transients: a real drum's attack
+// reads better than the DSP's noise alone. The hats route to the DSP's own
+// noise generator instead - `noiseMode`, the same word the NES, Game Boy,
+// Mega Drive and C64 kits use for their own hardware noise - since a real
+// SNES hi-hat is broadband hiss shaped by envelope, not a fixed sample; the
+// `sample` name stays as the BRR fallback a caller gets by setting
+// `noiseMode: false` explicitly. See the driver for the noise clock and the
+// `NON` register this reaches.
 const KIT: PercussionKit = {
   K: { note: 6, instrument: { volume: [15, 15, 14, 13, 12, 11, 10, 9, 8], sample: "kick" }, duration: 0.15 },
   S: { note: 9, instrument: { volume: [14, 13, 12, 10, 8, 6, 4], sample: "snare" }, duration: 0.12 },
-  H: { note: 13, instrument: { volume: [10, 7, 4], sample: "hat" }, duration: 0.05 },
-  O: { note: 12, instrument: { volume: [10, 9, 8, 7, 6, 5, 4, 3], sample: "ohat" }, duration: 0.14 },
+  H: { note: 13, instrument: { volume: [10, 7, 4], sample: "hat", noiseMode: true }, duration: 0.05 },
+  O: { note: 12, instrument: { volume: [10, 9, 8, 7, 6, 5, 4, 3], sample: "ohat", noiseMode: true }, duration: 0.14 },
 };
 
 function quieter(kit: PercussionKit, scale: number): PercussionKit {

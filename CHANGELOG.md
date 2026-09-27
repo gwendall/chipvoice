@@ -97,6 +97,14 @@ driver level; no built-in preset uses it yet. `script-filter` and
 at 100%, since the filter is an analog-stage model that never touches the
 digital trace the harness compares.
 
+The SNES kit's closed and open hats now default to the S-DSP's own hardware
+noise generator (`NON`, and `FLG`'s noise clock set once at power-on) instead
+of a BRR sample, the way the NES, Game Boy, Mega Drive and C64 kits already
+use their own noise for hats. The kick and the snare stay BRR samples.
+`Instrument.noiseMode: false` on a hat opts back into the BRR burst. Every
+role's real triads across voices were already shipped; this closes the
+ticket's other half. No sound change on any other chip.
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the

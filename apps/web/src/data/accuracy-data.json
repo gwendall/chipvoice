@@ -369,9 +369,9 @@
           {
             "marker": "parity",
             "oracle": "snes_spc 0.9.0 (blargg)",
-            "files": 5,
-            "cycles": 23859200,
-            "identical": 23859200,
+            "files": 6,
+            "cycles": 29081600,
+            "identical": 29081600,
             "diverging": 0,
             "firstDivergence": null
           }

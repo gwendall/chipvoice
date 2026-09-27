@@ -172,6 +172,60 @@ const SCRIPTS = [
       return w.writes;
     })(),
   },
+  {
+    name: 'script-noise-clock',
+    notes: 'NON on two voices at once, sharing the one noise generator at different volumes; the noise clock changed under a held note, not just at key-on; and FLG\'s reset and mute bits over a voice routed to noise.',
+    cycles: second(5),
+    writes: (() => {
+      const w = writer();
+      w.at(0);
+      setup(w);
+      // Two voices on the same noise at once, the driver's own fastest clock,
+      // scaled by their own volumes: one shared LFSR, two independent levels.
+      w.at(second(0.2));
+      w.reg(0x3d, 0x05);
+      w.reg(0x6c, 0x1f);
+      voice(w, 0, { source: 0, pitch: 0x1000, vol: 0x70 });
+      voice(w, 2, { source: 1, pitch: 0x1000, vol: 0x30 });
+      keyOn(w, 0x05);
+      w.at(second(1.0));
+      keyOff(w, 0x05);
+      // A held note, never re-keyed, with the clock changed under it: FLG's
+      // rate bits take effect without a KON, from slow (an audible buzz) to
+      // the fastest (a hiss), the way the shared register moves for every
+      // voice routed to noise, whether or not this one retriggers.
+      w.at(second(1.2));
+      w.reg(0x3d, 0x02);
+      voice(w, 1, { source: 0, pitch: 0x1000, vol: 0x60 });
+      keyOn(w, 0x02);
+      [0x01, 0x0a, 0x15, 0x1f].forEach((rate, i) => { w.at(second(1.45 + i * 0.35)); w.reg(0x6c, rate); });
+      w.at(second(2.85));
+      keyOff(w, 0x02);
+      w.reg(0x3d, 0x00);
+      w.reg(0x6c, 0x00);
+      // FLG's other bits over a voice actively routed to noise: mute zeroes
+      // the final output only, so the envelope keeps running under it; reset
+      // forces every voice's envelope to release regardless of NON.
+      w.at(second(3.0));
+      w.reg(0x3d, 0x08);
+      w.reg(0x6c, 0x1f);
+      voice(w, 3, { source: 0, pitch: 0x1000, vol: 0x60 });
+      keyOn(w, 0x08);
+      w.at(second(3.2));
+      w.reg(0x6c, 0x5f); // mute, same rate
+      w.at(second(3.4));
+      w.reg(0x6c, 0x1f); // unmuted
+      w.at(second(3.6));
+      w.reg(0x6c, 0x80); // reset, held
+      w.at(second(3.8));
+      w.reg(0x6c, 0x1f); // reset released
+      w.at(second(4.0));
+      keyOff(w, 0x08);
+      w.reg(0x3d, 0x00);
+      w.reg(0x6c, 0x20);
+      return w.writes;
+    })(),
+  },
 ];
 
 const SONGS = [

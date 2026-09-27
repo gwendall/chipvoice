@@ -213,6 +213,21 @@ real game music, and a real unit.
 
 **Step 2. Every instrument each chip has.**
 
+- done - P7-10: a second SID model, `model: "8580"` on `Chip.create`,
+  `renderPerformance`, `renderProject` and a project's `settings.model`,
+  documented on [c64.md#the-8580](chips/c64.md#the-8580). Its combined
+  waveforms are fitted independently against reSID-fp's own 8580 tables
+  (decision 41: read from measurement, not from porting its `config[1]`),
+  landing short of the 6581's exact match (92.60-99.05% per combination,
+  against reSID-fp's own more detailed transistor model); its longer floating-
+  output and shift-register decays, its one-cycle OSC3 pipeline lag, its
+  near-linear DACs (`ladderRatio: 2.0`) and its filter (`filter.cc`'s exact
+  8580 R5 cutoff line and Q table) come from the documents. A second oracle
+  block, reSID-fp configured as an 8580 (`corpus/c64/parity-residfp-8580.json`,
+  `check:residfp-8580`, in CI under two minutes), is 99.28 % identical; both
+  divergences are the combined-waveform fit's own shortfall, confirmed against
+  the oracle's source, not a new bug. The 6581 default path is unchanged,
+  100 % identical as before.
 - done - P5-10 and P5-12: FM drums on channel 6
   (`perc: "punchy"`): a kick, a snare, a closed and an open hat, written as FM
   patches from the manual's own techniques, not sampled or a generic
@@ -245,41 +260,22 @@ real game music, and a real unit.
   `script-filter` and `song-filter` join the C64 corpus; reSID-fp parity holds
   at 100%, since the filter is analog-stage-only and never moves the digital
   trace.
-- P6-10 (hardware-noise hats), P4-9 (the SNES palette).
-- done - P7-10: a second SID model, `model: "8580"` on `Chip.create`,
-  `renderPerformance`, `renderProject` and a project's `settings.model`,
-  documented on [c64.md#the-8580](chips/c64.md#the-8580). Its combined
-  waveforms are fitted independently against reSID-fp's own 8580 tables
-  (decision 41: read from measurement, not from porting its `config[1]`),
-  landing short of the 6581's exact match (92.60-99.05% per combination,
-  against reSID-fp's own more detailed transistor model); its longer floating-
-  output and shift-register decays, its one-cycle OSC3 pipeline lag, its
-  near-linear DACs (`ladderRatio: 2.0`) and its filter (`filter.cc`'s exact
-  8580 R5 cutoff line and Q table) come from the documents. A second oracle
-  block, reSID-fp configured as an 8580 (`corpus/c64/parity-residfp-8580.json`,
-  `check:residfp-8580`, in CI under two minutes), is 99.28 % identical; both
-  divergences are the combined-waveform fit's own shortfall, confirmed against
-  the oracle's source, not a new bug. The 6581 default path is unchanged,
-  100 % identical as before.
-- done - P5-10 and P5-12: this PR. FM drums on channel 6
-  (`perc: "punchy"`): a kick, a snare, a closed and an open hat, written as FM
-  patches from the manual's own techniques, not sampled or a generic
-  substitute; the PSG noise kit stays the default (it already does what a
-  kit needs here at no cost to the other roles, and reads the same as every
-  other chip's kit). The LFO (`$22`, per-channel `ams`/`pms` in `$B4`, an
-  operator's own `am` in `$60`) now sounds in both drivers, wherever a patch
-  asks for it: `LEAD_BRIGHT`'s vibrato and the FM kit's hats in the portable
-  arranger, `MD_PATCHES.shimmer` and any `FmPatch` setting `lfoFrequency` in
-  the native one. Channel 3's special mode (`$27`, `$A8`-`$AE`) reaches the
-  native driver through a note's `ch3` field, `fm3` only; the sheet says why
-  it stays out of the portable arranger (no shape the four-role score asks
-  for pays off against losing that FM voice's single pitch). Corpus scripts
-  `song-punchy` and `script-native-lfo-ch3` added; Nuked-OPN2 parity stays
-  100 % including them, `check:sn76496` unregressed. A driver bug found while
-  writing the new tests, `MdDriver.noteOff()` treating any FM drum hit as a
-  PSG one, is fixed alongside.
-- P6-10 (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the
-  SID's filter and sweeps).
+- done - P6-10: the kit's closed and open hats default to the
+  S-DSP's own hardware noise generator (`NON` at `$3D`, `FLG`'s noise clock
+  at `$6C` set from the power-on sequence's very first write, never
+  rewritten to a different value since only the percussion voice ever
+  carries `noiseMode`), the kick and snare staying BRR samples;
+  `Instrument.noiseMode` opts a hat back to its BRR burst, the same word the
+  NES, Game Boy, Mega Drive and C64 kits already use for their own noise.
+  Real triads across voices, the ticket's other half, were already done. A
+  new corpus script (`script-noise-clock`) exercises two voices on the noise
+  at once, the clock changed under a held note rather than only at key-on,
+  and `FLG`'s reset and mute bits over an active noise voice; still identical
+  to snes_spc. A review pass before merge found the clock was live only from
+  the later, quarter-second write, leaving any hat in a song's first 250 ms
+  clocked at rate 0 - an audible click rather than hiss; fixed by moving it
+  into the first write.
+- P4-9 (the SNES palette).
 - todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
   with its measured envelope and spectrum, shown on the site, built only from
   what the chip really does.
@@ -512,7 +508,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
 | P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit. NEXT-04 found the one real logic-analyser capture of a console's S-DSP lines anyone made is dead-linked, and the one filter-frequency estimate is a schematic simulation, not a capture: see [HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp) |
 | P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | |
-| P6-10 | Real triads across voices and hardware-noise hats | doing | Simultaneous triads are implemented and tested, including internal mixer checks. Hardware-noise hats remain separate; the current kit uses BRR samples |
+| P6-10 | Real triads across voices and hardware-noise hats | done | this PR. Triads are implemented and tested, including internal mixer checks. The kit's hats default to the DSP's own hardware noise (`NON`, `FLG`'s clock set from the very first write at power-on, never rewritten to a different value), the kick and snare staying BRR samples; `Instrument.noiseMode` opts a hat back to its BRR burst. A corpus script exercises two noise voices at once, a held note's clock changed, and `FLG`'s reset and mute bits over an active noise voice. A review pass before merge found the clock was live only from the later, quarter-second write, leaving any hat in a song's first 250 ms clocked at rate 0; fixed by moving it into the first write |
 
 ## Phase 7. C64
 
@@ -565,7 +561,7 @@ it.
 | P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | implemented | Seeded local melody/drum/timbre transforms, locked roles and Undo; silent patterns preserved; decision 26 |
 | P8-11 | Web MIDI input using the same tested transport and ownership model | implemented | Opt-in MIDI taps share audition/recording; channel-10 drums and cleanup tested with simulated ports. Physical MIDI latency remains unmeasured |
 | P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM; independent ZIP reader and byte parity; decision 26 |
-| P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | doing | D. P7-9 done: the SID's filter is reachable from the arranger. P5-10 done: FM drums and the LFO in the MD arranger. P6-10 (SNES triads) doing; no simulated generic substitute |
+| P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | done | D. P7-9 done: the SID's filter is reachable from the arranger. P5-10 done: FM drums and the LFO in the MD arranger. P6-10 done: SNES triads and hardware-noise hats; no simulated generic substitute |
 
 ## Audit follow-ups
 
