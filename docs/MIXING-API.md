@@ -106,7 +106,7 @@ no promise to preserve every ratio when the hardware cannot realize it.
 
 `prepareMixPhrase` shares the same policy with `planPerformance`, without audio
 rendering or a network judge. Supply already allocated voices, at most 128 notes
-ending within two seconds. Bounds are checked before allocating frame arrays. Overlapping notes on one physical voice or a shared resource (Mega Drive PSG3/noise) are rejected. Explicit FM percussion uses an FM voice and keeps its drum pitch under melodic transposition.
+ending within two seconds. Bounds are checked before allocating frame arrays. Overlapping notes on one physical voice or a shared resource (Mega Drive PSG3/noise, or noise/fm6 while the noise voice carries an FM patch) are rejected. Explicit FM percussion uses an FM voice and keeps its drum pitch under melodic transposition.
 The caller keeps its existing APU and transport alive, and schedules the returned
 note offsets against its audio clock. A phrase does not allocate future voices or
 claim to support arbitrary held notes across phrase boundaries; the game's voice

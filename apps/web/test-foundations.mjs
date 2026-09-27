@@ -5,6 +5,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createClient } from "@libsql/client";
 import { build } from "../../packages/chipvoice/node_modules/esbuild/lib/main.js";
+import { PROJECT_ENGINE_VERSION } from "chipvoice";
 const directory = await mkdtemp(join(tmpdir(), "chipvoice-identity-"));
 const file = resolve("generated/test-foundations.mjs");
 process.env.VERCEL_ENV = "preview";
@@ -66,7 +67,7 @@ try {
   await api.migrate(legacy);
   assert.equal(
     (await legacy.execute("select * from schema_migrations")).rows.length,
-    10,
+    12,
   );
   assert.equal(
     Number(
@@ -75,6 +76,12 @@ try {
     ),
     4,
     "legacy songs retain the straight grid",
+  );
+  assert.equal(
+    (await legacy.execute("select engine_version from songs where id='oldsong1'"))
+      .rows[0].engine_version,
+    null,
+    "decision 43: a song saved before this migration stays unknown, not guessed",
   );
   assert.equal((await legacy.execute("select * from users")).rows.length, 1);
   assert.equal(
@@ -140,6 +147,11 @@ try {
     patterns: oldSong.patterns,
   };
   const song = await api.insert(input, null, caller);
+  assert.equal(
+    song.engineVersion,
+    PROJECT_ENGINE_VERSION,
+    "decision 43: a newly saved song records the engine that made it",
+  );
   const browserSong = await api.insert(
     input,
     null,
@@ -187,12 +199,12 @@ try {
   await api.migrate(fresh);
   assert.equal(
     (await fresh.execute("select * from schema_migrations")).rows.length,
-    10,
+    12,
   );
   // Decision 42: whoever composed before invitations began keeps composing.
   await fresh.batch(
     [
-      "delete from schema_migrations where version=10",
+      "delete from schema_migrations where version>=10",
       "drop table composition_invites",
       "insert into users values('early-composer','early@example.test',1),('never-composed','idle@example.test',1)",
       "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at) values('early-generation','early-composer','early-artist','early','early','{}','gpt-6-astra','ready',1)",
@@ -224,6 +236,9 @@ try {
         args: [i + 1, name, now],
       })),
       "create table users(id text primary key,email text not null unique,created_at integer not null)",
+      // A real v4 database still has the songs table migration 1 created;
+      // migration 11 (decision 43) alters it and needs it present here too.
+      "create table songs(id text primary key,parent_id text,title text,bpm integer not null,patterns text not null,song_order text not null,author text,created_at integer not null,key_id text)",
       "create table profiles(id text primary key,user_id text not null unique,handle text unique collate nocase,display_name text not null default '',bio text not null default '',created_at integer not null)",
       "create table projects(id text primary key,user_id text not null,parent_id text,root_id text not null,document text not null,content_hash text not null,title text not null,chip text not null,tags text not null,visibility text not null,created_at integer not null,deleted_at integer,request_key text,unique(user_id,request_key))",
       "create table project_jobs(id text primary key,project_id text not null,kind text not null,status text not null,engine text not null,created_at integer not null,started_at integer,finished_at integer,error text,bytes integer,etag text,progress real not null default 0,unique(project_id,kind))",
@@ -279,6 +294,11 @@ try {
   assert.equal(oldPublication.content_hash, "unchanged-content-hash");
   assert.equal(oldPublication.request_key, "stable-retry");
   assert.equal(
+    oldPublication.engine_version,
+    null,
+    "decision 43: a publication frozen before this migration stays unknown",
+  );
+  assert.equal(
     oldPublication.composition_hash,
     await api.hashKey(
       JSON.stringify(JSON.parse(oldPublication.document).source),
@@ -291,6 +311,7 @@ try {
   assert.equal(oldJob.etag, "old-etag");
   assert.equal(oldJob.status, "ready");
   assert.equal(oldJob.mp3_status, "none");
+  assert.equal(oldJob.engine_version, null);
   assert.deepEqual(
     new Uint8Array(
       (

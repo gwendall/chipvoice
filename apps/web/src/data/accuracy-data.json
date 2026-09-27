@@ -322,19 +322,19 @@
           {
             "marker": "parity",
             "oracle": "Nuked-OPN2 1.0.12 (Nuke.YKT)",
-            "files": 8,
-            "cycles": 2233636083,
-            "identical": 2233636083,
+            "files": 10,
+            "cycles": 2566533768,
+            "identical": 2566533768,
             "diverging": 0,
             "firstDivergence": null
           },
           {
             "marker": "parity-sn76496",
             "oracle": "MAME sn76496 (Sega VDP PSG, 76c7d197)",
-            "files": 8,
-            "cycles": 2233636083,
-            "identical": 1990757028,
-            "diverging": 4,
+            "files": 10,
+            "cycles": 2566533768,
+            "identical": 2321902638,
+            "diverging": 5,
             "firstDivergence": {
               "file": "script-psg-edges",
               "cycle": 8054100,

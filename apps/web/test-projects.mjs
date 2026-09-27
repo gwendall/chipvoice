@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "../../packages/chipvoice/node_modules/esbuild/lib/main.js";
+import { PROJECT_ENGINE_VERSION } from "chipvoice";
 const directory = await mkdtemp(join(tmpdir(), "chipvoice-projects-"));
 process.env.VERCEL_ENV = "preview";
 process.env.TURSO_DEV_DATABASE_URL = `file:${join(directory, "data.db")}`;
@@ -156,7 +157,10 @@ try {
     visibility: "private",
     requestKey: "project-test-render",
   });
+  // Decision 43: a publication records the engine that rendered it.
+  assert.equal(short.engineVersion, PROJECT_ENGINE_VERSION);
   const job = await api.createProjectJob(short.id, bob.userId, "full");
+  assert.equal(job.engineVersion, PROJECT_ENGINE_VERSION);
   assert.equal(
     (await api.createProjectJob(short.id, bob.userId, "full")).id,
     job.id,
@@ -186,6 +190,46 @@ try {
   const head=await audio({},'HEAD');assert.equal(head.status,200);assert.equal(head.headers.get('content-length'),String(wav.length));assert.equal((await head.arrayBuffer()).byteLength,0);
   assert.equal((await audio({range:`bytes=${wav.length}-`})).status,416);
   const anonymous=await api.audioGet(new Request(`https://chipvoice.test/api/v1/jobs/${job.id}/audio`,{headers:{range:'bytes=0-43'}}),{params:Promise.resolve({id:job.id})});assert.equal(anonymous.status,404,'range never bypasses private ownership');
+
+  // Decision 43: a publication recorded against an engine this server no
+  // longer runs still renders, with the current engine; the job records
+  // that current version, honestly, alongside the publication's older one,
+  // rather than refusing or pretending to be the publication's own engine.
+  // A fresh account keeps this off bob's and alice's render: rate budget.
+  const carol = await account("carol@example.test");
+  const stale = await api.publishProject(carol.userId, {
+    project: tiny,
+    visibility: "private",
+    requestKey: "project-test-stale-engine",
+  });
+  await client.execute({
+    sql: "update projects set engine_version='0.0.1-stale' where id=?",
+    args: [stale.id],
+  });
+  const mismatched = await api.createProjectJob(stale.id, carol.userId, "full");
+  assert.equal(mismatched.engineVersion, PROJECT_ENGINE_VERSION);
+  assert.equal(
+    (await api.getProject(stale.id, carol.userId)).engineVersion,
+    "0.0.1-stale",
+    "the publication's own recorded version is unaffected by a later render",
+  );
+  // A publication saved before decision 43 (null engine_version) renders
+  // the same way, recording the current version on its job.
+  const unrecorded = await api.publishProject(carol.userId, {
+    project: tiny,
+    visibility: "private",
+    requestKey: "project-test-unrecorded-engine",
+  });
+  await client.execute({
+    sql: "update projects set engine_version=null where id=?",
+    args: [unrecorded.id],
+  });
+  const unknown = await api.createProjectJob(
+    unrecorded.id,
+    carol.userId,
+    "full",
+  );
+  assert.equal(unknown.engineVersion, PROJECT_ENGINE_VERSION);
 
   await client.execute({
     sql: "update project_jobs set engine='older-engine' where id=?",

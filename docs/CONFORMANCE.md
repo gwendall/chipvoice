@@ -207,7 +207,9 @@ reported here.
 Before a unit is bought, [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md)
 catalogues what published recordings and measurements of real hardware already
 exist for each chip, per decision 38's order: free evidence first, then a
-capture bench.
+capture bench. The NES's capture bench (P2-3) is now built and proven without
+hardware; [docs/HARDWARE-BENCH.md](HARDWARE-BENCH.md) has the sourced unit and
+capture chain and the exact capture-day commands, still unbought.
 
 ## The sheet
 

@@ -124,26 +124,27 @@
 - done - P2-1：このステップの参照実装が見つけた相違は、全て資料から修正するか、特定して記載しました。第1段階（#86）：Mesenに対する2A03の相違を全て特定しました。1つはシム側（サイクルカウントの偶奇が逆の`$4017`遅延を選んでいた）で、修正して`song-e2e`のpulse 2が100%に。残りはMesenのsweepの電源投入状態、書込かタイマーのtickでしか出力を更新しないこと、reloadと同じサイクルの書込で、それぞれコアの試作ビルドで確かめてシートに記載しました。SIDはOSC3／ENV3の読み出しをデータバスに残すように（`busvalue`成功、14本中14本）。Game Boyの矩形波は無音から始めると最初のデューティの1段までデジタルのゼロを出します（Pan Docs、SameBoyも同じ）。第2段階：SameBoyに対するGame Boy（P3-4）。ノイズのノートが丸ごと欠けていたのは、コーパスがM-cycleの間に書き込んでいたためで、そうするCPUはありません。コーパスをM-cycle単位で書くようにし、SameBoyとの一致率は88.15%から94.82%に。シートの差異には2つの読み方を未解決として残します。トリガー時にノイズのクロックがどこにあるか（gbdev wikiとPan Docsが食い違い、実機が決める、P3-5）と、4または8サイクルの矩形波のトリガー遅延で、そのうちPan Docsのタイマー下位2ビット分は最大3サイクルを解消します（P3-7、後述）。ゾンビの複合ケースは実機で非決定的です。MAMEに対するPSGの3つの相違（P5-8）は既にシートに差異の行として記載済みで、資料と矛盾するものはなく、変更はありません。
 - done - P3-7: 本PR。ch1とch2のトリガーで周波数タイマーの下位2ビットをゼロにせず保持するようにしました（Pan Docsの「Obscure Behavior」）。SameBoyが示す残りの遅れの説明を資料だけで追加調査しましたが（GBEDGにはAPUのページがありません）、サイクル数を示す資料は見つからず、下位2ビットのみ実装し、残りは既知の差異として残します（4または8サイクルだったものが、今は最大5サイクル）。SameBoyに対しては`script-lengths`と`script-sweep`のch1の一致数が上昇（コーパス全体で1973サイクル）、このルールを実装していないGb_Snd_Emuに対しては同じ2本のログがわずかに後退（159サイクル）、弱いオラクルとしては想定どおりの方向です。goldenが動いたため、較正と編曲評価を通しました。
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE_ja.md](HARDWARE-EVIDENCE_ja.md)が、5チップすべてについて既に存在する実機の公開録音・測定値をカタログ化しました。掲載前に各出典を開いて検証済みです（decision 38の無償証拠優先の順序）。「測定一つ」スクリプトの条件を満たした候補は1つだけで、C64の組み合わせ波形を実機6581 R4AR（`libsidplayfp/combined-waveforms`）と比較するものです。`pnpm --filter chipvoice-conform evidence:c64:sheet`で採点し、4つの組み合わせにわたり82.0〜94.1%のバイト一致率となり、[docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581)へ書き込みました。アナログ段については何も確定しません（DAC手前の波形ジェネレーターです）が、デジタルモデルが以前は持っていなかった独立したハードウェアによる確認が1つ得られました。他のどのチップにも、正確に既知で再現可能な入力を持つ候補はありませんでした。NESは既にblarggの`apu_mixer`を持っています。取得スクリプト`packages/conform/src/evidence/fetch.mjs`（`evidence:fetch`）は、ライセンスの許す範囲でgitignore対象の`.artifacts/hardware-evidence/`へダウンロードし、`packages/conform/src/evidence/manifest.json`のコミット済みSHA-256で検証します。
-- 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をレジスタログ不要なアナログ測定への道として見つけました。P7-10は8580の分を両端点だけ読み取り済みで、両端点の間の曲線の形と6581自身のキンクはP7-8に残ります。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。
+- 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をレジスタログ不要なアナログ測定への道として見つけました。P7-10は8580の分を両端点だけ読み取り済みで、両端点の間の曲線の形と6581自身のキンクはP7-8に残ります。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。P2-3のbenchはソフトウェア側は準備完了（committedなtest ROM、render、compare、CIのsynthetic self-test）。買うべき実機とinterface、capture当日の手順は[HARDWARE-BENCH_ja.md](HARDWARE-BENCH_ja.md)を参照。実機はまだ未購入・未実施です。
 
 **ステップ2. 各チップが持つすべての楽器。**
 
-- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）。
-- done - P7-9: SIDのfilterがarranger自身の単語から到達可能になりました。leadの`sweep`はノート全体でcutoffを開き、bassの`resonant`は高いresonanceに固定します。両方lowpassです。各voiceは`$D417`の自分のrouting bitだけを立てて消し、共有するresonance／cutoff／modeは他voiceの値ではなく各voice自身の直前の書き込みと比較するため、時間順ではない順で処理された長いsweepが、それより後に処理される短いnote自身の書き込みを、別voice・別時刻にしか正しくなかった値で覆い隠すことはありません。sweep leadとresonant bassのように2つのvoiceが同時に異なるfilter設定を要求した場合は、黙って上書きさせるのではなく`validateSong`の`filter_conflict`で診断します。公開`Instrument.pulseWidth`フィールドがdriver層でframe単位のpulse-width sweepを可能にしますが、標準presetはまだ使いません。`script-filter`と`song-filter`をC64 corpusへ追加。filterはanalog段のみでdigital traceを動かさないため、reSID-fp parityは100%を保ちます。
 - done - P7-10: 第2のSIDモデル。`Chip.create`、`renderPerformance`、`renderProject`、プロジェクトの`settings.model`に`model: "8580"`を指定できます。詳細は[c64_ja.md#8580](chips/c64_ja.md#8580)。合成波形はreSID-fp自身の8580テーブルに対して独立にフィットしたもので（決定41: その`config[1]`を移植せず、測定として読む)、reSID-fp自身のより詳細なトランジスタモデルに対しては6581の完全一致には届きません（各組み合わせで92.60〜99.05%）。フローティング出力とノイズレジスタのテストビットリセットの長い放電、OSC3の1サイクル分のパイプライン遅延、ほぼ線形なDAC（`ladderRatio: 2.0`）、フィルター（`filter.cc`の8580 R5のカットオフ直線とQテーブルそのもの）はいずれも文書由来です。第2のオラクルブロック、8580として設定したreSID-fp（`corpus/c64/parity-residfp-8580.json`、`check:residfp-8580`、CIで2分未満）は99.28%一致し、2件の相違はいずれも合成波形フィットの限界であって新しいバグではないと確認済みです。6581側の既定パスは変更なく100%一致を保っています。
+- done - P5-10とP5-12：チャンネル6のFMドラム（`perc: "punchy"`）：キック、スネア、クローズ・オープンハイハットを、マニュアル自身の手法によるFMパッチとして書きました。サンプルでも汎用代替でもありません。PSGノイズキットは既定のままです（ここで求められることを他の役割に何のコストもかけず満たし、他のすべてのチップのキットと同じ音になるためです）。LFO（`$22`、チャンネルごとの`ams`／`pms`は`$B4`、オペレーター自身の`am`は`$60`）は両ドライバーで、それを求めるパッチがあるときに鳴るようになりました。移植可能な編曲器では`LEAD_BRIGHT`のビブラートとFMキットのハイハット、ネイティブドライバーでは`MD_PATCHES.shimmer`や`lfoFrequency`を設定する任意の`FmPatch`です。チャンネル3の特殊モード（`$27`、`$A8`〜`$AE`）は音符の`ch3`フィールド（fm3限定）でネイティブドライバーに届きます。移植可能な編曲器に出てこない理由はシートに記載しました（4役割の楽譜が求める形では、そのFMボイスの単一音高を失う見返りが割に合わないため）。コーパススクリプト`song-punchy`と`script-native-lfo-ch3`を追加。Nuked-OPN2との一致率はそれらを含めて100%を保ち、`check:sn76496`も後退なし。新しいテストを書く過程で見つかったドライバーの不具合、`MdDriver.noteOff()`がFMドラムのヒットをPSGのものとして扱っていた件も同時に修正しました。
+- done - P7-9: SIDのfilterがarranger自身の単語から到達可能になりました。leadの`sweep`はノート全体でcutoffを開き、bassの`resonant`は高いresonanceに固定します。両方lowpassです。各voiceは`$D417`の自分のrouting bitだけを立てて消し、共有するresonance／cutoff／modeは他voiceの値ではなく各voice自身の直前の書き込みと比較するため、時間順ではない順で処理された長いsweepが、それより後に処理される短いnote自身の書き込みを、別voice・別時刻にしか正しくなかった値で覆い隠すことはありません。sweep leadとresonant bassのように2つのvoiceが同時に異なるfilter設定を要求した場合は、黙って上書きさせるのではなく`validateSong`の`filter_conflict`で診断します。公開`Instrument.pulseWidth`フィールドがdriver層でframe単位のpulse-width sweepを可能にしますが、標準presetはまだ使いません。`script-filter`と`song-filter`をC64 corpusへ追加。filterはanalog段のみでdigital traceを動かさないため、reSID-fp parityは100%を保ちます。
+- P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）。
 - todo - NEXT-05: 計測済みの楽器カタログ。プリセットごとにゴールデンのレンダーと、計測したエンベロープとスペクトルを持ち、サイトで見られ、チップが実際にできることだけで作ります。
 - P4-7とMIX-12: 人による試聴。正確さとは分けて扱います。
 
 **ステップ3. 各機種固有の音楽。**
 
-- P1-12: NSFのコーパスを完全な1曲から多数の曲へ広げ、それぞれを参照とコマンド単位で比較します。
+- done - P1-12: NSFのコーパスをMarioの完全な1曲から、独立に作られた実在の8つのNSF（FamiTracker製7曲、Pently製1曲）へ広げました。各ファイルはCC0、CC-BY、zlibのいずれかで再配布可能で、そのsource URL、licence、author、SHA-256を`scores/nsf-corpus/sources.json`に記録しています。8曲すべてが固定したGame_Music_Emuオラクルとコマンド単位で一致し、31,083命令すべてに相違なしと`docs/chips/2a03.md`の生成済みシートに出ています。ここに至るには実際のcapture修正が2つ必要でした。Pentlyのmetadataのみのexportに対するNSF2（version 2）対応と、Pently固有の非標準NTSC rate（$411a=16639、通常の16666ではない）です。後者ではPLAYの開始が単純な`ceil(initEnd/period)*period`より1 cycle遅れていました。標準rateでは半cycleの丸めがたまたま正しいcycleに収まるため、これはcustom rateでだけ表面化していました。`packages/chipvoice`は変更していません。
 - todo - NEXT-06 GBS、NEXT-07 VGMの読み込み、NEXT-08 SPCの再生、NEXT-09 SID/PSID: それぞれ参照プレーヤー（GME、snes_spc、sidplayfp）と比べ、ファイルごとにスコアを出します。
 - P6-9（SPCの書き出し）とtodo - NEXT-10（NSFとGBSの書き出し）: フラッシュカートから実機で鳴る曲を、ステップ1の録音環境で録音します。
 - 商用のリッピングは配布しません。計測用コーパスは非公開にするか、自由に再配布できるものに限ります。
 
 **ステップ4. 後になっても、別の場所でも同じバイト列。**
 
-- todo - NEXT-11: 保存した曲ごとにエンジンのバージョンを記録し、そのエンジンで再びレンダーできるようにします（決定21が明記した制限で、AUD-2の後続）。
+- done - NEXT-11: 本PR。決定43。`songs`、`projects`、`project_jobs`はそれぞれ、行を書いた時点で動いていた`PROJECT_ENGINE_VERSION`を記録します。レンダーは常にサーバーのいまのエンジンを使い、ジョブは自分自身のバージョンを記録するので、レンディションの`engineVersion`は公開作品のものと食い違うことがあります(両方をAPIと公開ページの両方に表示し、食い違うときは「chipvoice x.y.zで公開、chipvoice a.b.cでレンダー」)。本PR以前に書かれた行は推測せず`null`のままです。`/s/{id}`は変わらず、今デプロイされているエンジンでその都度再検証します（決定21が明記した制限で、AUD-2の後続）。
 - MIX-14: ブラウザ、Node、実機のスマートフォンの間でレンダーのハッシュを比べます。
 - done - NEXT-12: `/accuracy`と`/ja/accuracy`は5つのチップすべてについて、デジタル一致度（オラクルごと、加えてc64の実機6581との複合波形比較）、テストROM、アナログ段、ドライバの網羅率を示します。`packages/conform/src/accuracy-data.mjs`が`status.mjs`が仕様書に書き込むのと同じ集計から`apps/web/src/data/accuracy-data.json`を生成するため、数値を手で入力することはありません。このファイルが仕様書とずれるとCIが失敗します。
 - done - NEXT-13: 編曲の`report.json`は`evaluate.mjs`から到達できるエンジンのモジュール（109個中43個）だけをハッシュするため、再生だけの変更で`pnpm arrangements:eval`全体をやり直す必要はなくなりました。
@@ -156,7 +157,10 @@
 **ステップ6. 誰もが使える生成、並行して（決定39）。**
 
 - GEN-01とGEN-05: コンソールごとに約50のプロンプトによるベンチマーク。レイテンシ、コスト、試聴の評価表を含め、モデルを変えるたびに再実行します。
-- GEN-03: 曲全体の検査（後半のクリッピング、無音、終わり方、ループ）。
+- done - GEN-03: 曲全体の検査（後半のクリッピング、レベルの跳躍、無音の
+  空白、終わり方の未解決、ループ接合点、長さの不一致）。純粋な関数として
+  `apps/web/src/lib/composition/checks.ts`に実装しテスト済みで、生成のレン
+  ダーが完了した時点で1回実行して記録し、却下はしません（GEN-04は分離）。
 - GEN-04: 修復の呼び出し。計測した失敗がそれを正当化する場合だけです。
 - todo - NEXT-18: スタイル、テンポ、構成の指定。GEN-11とGEN-12: 対象を絞った改訂とコンソール別の変奏。
 - todo - NEXT-19: デプロイ規模での永続的なジョブキュー。AUD-2のキャッシュと重複排除と合わせます。
@@ -223,7 +227,7 @@
 | P1-9 | subsetの`conform`をCIへ | done | PR #3、commit済みbaseline比較 |
 | P1-10 | 5-step frameと`$4017`write timing | done | 0.5.0、P1-2と同時。decoderにも必要 |
 | P1-11 | blargg APU ROM用6502 fixture | done | PR #7、29/29、CI対象 |
-| P1-12 | corpus2：logger付き参照で実game NSFを再生 | doing | 最初の完全sourceはMario Ground Theme、41,999命令が固定GMEとexact cycle一致。広いNSF corpusは残件 |
+| P1-12 | corpus2：logger付き参照で実game NSFを再生 | done | Mario Ground Themeの41,999命令の後、実在の8つの再配布可能NSF（FamiTracker製7曲、Pently製1曲）を追加、31,083命令すべてが固定GMEとexact cycle一致。`docs/chips/2a03.md`のnsf-corpusシート、`pnpm nsf-corpus:sheet` |
 | P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | done | #84。`packages/conform/oracles/mesen`に同梱したMesen 2 APU。sweep dividerのtimingは不一致でP2-1へ記録 |
 | P1-14 | triangleをrun別時間shiftとsequencer位置offsetで比較し、開始規約だけで低一致にならないmetric | done | PR #4。隠れたstepを復元し全triangle runがstep時刻で整合 |
 
@@ -234,7 +238,7 @@
 | --- | --- | --- | --- |
 | P2-1 | 全相違を修正するか参照側の誤りを説明 | done | #86：Mesenに対する2A03を特定・記載（シム修正1件）、SIDのバスラッチ、Game Boyの矩形波開始。第2段階：DMGコーパスをM-cycle単位に、SameBoyのノイズのクロックと矩形波のトリガー遅延を差異として記録、MAMEに対するPSGの相違を確認 |
 | P2-2 | DMC | done | PR #5、0.6.0。1bit周期差で同じstep。末尾参照 |
-| P2-3 | analog参照実機をcapture／測定 | doing | PR #8、blargg NES録音と同等にmix相殺。filterはline-out待ち。NEXT-04がフィルター境界の出自をblargg自身のキャプチャとlidnariqの解析まで追跡しましたが、ファイルは失われ、リビジョンも未特定です。[HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03)参照 |
+| P2-3 | analog参照実機をcapture／測定 | doing | PR #8、blargg NES録音と同等にmix相殺。filterはline-out待ち。NEXT-04がフィルター境界の出自をblargg自身のキャプチャとlidnariqの解析まで追跡しましたが、ファイルは失われ、リビジョンも未特定です。[HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03)参照。capture benchはソフトウェア側は準備完了：committedなtest ROM、`bench:nes:render`／`bench:nes:compare`（sync marker、drift補正、帯域誤差、境界fit）、意図的に違えたcorner・gain・latency・drift・DC・noiseを合成しfitが許容差内で復元することを確認するCI self-test（`bench:nes:selftest`）。買うべき実機とinterface、capture当日の手順は[HARDWARE-BENCH_ja.md](HARDWARE-BENCH_ja.md)参照。実機は未購入 |
 | P2-4 | package README／skillにsheetをリンクしてrelease | done | READMEはすべてのsheetに、skillは各ターゲットのsheetにリンク |
 
 <a id="phase-3-game-boy"></a>
@@ -286,9 +290,9 @@
 | P5-7 | Nuked全voice比較、script／song corpusのsheet | done | `docs/chips/md.md` |
 | P5-8 | PSG参照：MAME `sn76496` shimまたはMaster System ROM | done | PR #85。`packages/conform/oracles/sn76496`、`segapsg_device`として構成。3件の相違をシートに記録 |
 | P5-9 | 既知scriptでModel 1 line-out測定 | todo | P2-3同様、実機必要。NEXT-04はMDFourierを見つけました。両モデルにわたる名前付き実機、文書化されたオープンソーステストROMによるキャプチャですが、正確なレジスタ列は見つかっていません。[HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489)参照 |
-| P5-10 | channel 6のFM drumとarranger LFO | todo | 移植用arrangerのkitは現状PSG noise。ネイティブdriver（P5-11）はDACでPCM kitを流す |
+| P5-10 | channel 6のFM drumとarranger LFO | done | `perc: "punchy"`でキック、スネア、ハイハットをchannel 6上のFM patchとして再生。PSG noise kitは既定のまま。パッチの`pms`、`ams`、オペレーターの`am`が求めるときLFOが鳴る。`chips/md/arranger.ts`、`driver.ts`。noise kitを既定とする理由はシートに記載 |
 | P5-11 | 移植用と並ぶゲーム専用driver：FM 6ch、矩形波3音、noise、DACを名前で指定、テキストtracker、PCM kit付きbank、ゲームが出荷するまでのrender手順。Punk Forceから抽出 | done | `chips/md/native-driver.ts`、`bank.ts`、`tracker.ts`、`src/game-audio.ts`。[MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER_ja.md)、決定32。ゲームの楽譜は同じバイトにcompile・renderされる |
-| P5-12 | ネイティブdriverのLFOとchannel 3特殊モード | todo | 起動時に`$22` = 0を書くため、`ams`、`pms`、`am`は書かれるが効かない |
+| P5-12 | ネイティブdriverのLFOとchannel 3特殊モード | done | ロードされたパッチのうち`ams`、`pms`、オペレーターの`am`を最初に求めたものでLFOが起動。音符の`ch3`フィールド（fm3限定）でchannel 3特殊モードを設定。`native-driver.ts`。コーパスへ`script-native-lfo-ch3`を追加 |
 
 <a id="phase-6-snes"></a>
 ## フェーズ6. SNES
@@ -352,7 +356,7 @@
 | P8-23 | role変奏、他lock、Undo。作成済み／規則ベース、remote AI不要 | implemented | seed melody／drum／timbre、lock、Undo、無音pattern保持。決定26 |
 | P8-11 | 同じtransport／所有モデルのWeb MIDI | implemented | opt-in tap、channel10 drum、模擬port cleanup。実latency未測定 |
 | P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM。独立ZIPとbyte比較、決定26 |
-| P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | doing | D、P7-9 done：SIDのfilterはarrangerから到達可能。P6-10（SNES triad）doing、P5-10（FM drum）todo。見た目だけの汎用代替なし |
+| P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | doing | D、P7-9 done：SIDのfilterはarrangerから到達可能。P5-10 done：MD arrangerのFM drumとLFO。P6-10（SNES triad）doing。見た目だけの汎用代替なし |
 
 <a id="audit-follow-ups"></a>
 ## 監査の後続

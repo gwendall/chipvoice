@@ -206,12 +206,30 @@ real game music, and a real unit.
   8580's endpoint to endpoint, leaving the curve's shape between them, and the
   6581's own kink, for P7-8; and MDFourier as P5-9's strongest lead, blocked on
   finding its test ROM's exact register sequence rather than on hardware
-  access.
+  access. P2-3's bench is ready in software (test ROM, render, compare, a
+  synthetic self-test in CI); [HARDWARE-BENCH.md](HARDWARE-BENCH.md) has the
+  unit and interface to buy and the capture-day procedure, still to be
+  bought and run.
 
 **Step 2. Every instrument each chip has.**
 
-- P5-10 and P5-12 (FM drums, the LFO, channel 3's special mode), P6-10
-  (hardware-noise hats), P4-9 (the SNES palette).
+- done - P5-10 and P5-12: FM drums on channel 6
+  (`perc: "punchy"`): a kick, a snare, a closed and an open hat, written as FM
+  patches from the manual's own techniques, not sampled or a generic
+  substitute; the PSG noise kit stays the default (it already does what a
+  kit needs here at no cost to the other roles, and reads the same as every
+  other chip's kit). The LFO (`$22`, per-channel `ams`/`pms` in `$B4`, an
+  operator's own `am` in `$60`) now sounds in both drivers, wherever a patch
+  asks for it: `LEAD_BRIGHT`'s vibrato and the FM kit's hats in the portable
+  arranger, `MD_PATCHES.shimmer` and any `FmPatch` setting `lfoFrequency` in
+  the native one. Channel 3's special mode (`$27`, `$A8`-`$AE`) reaches the
+  native driver through a note's `ch3` field, `fm3` only; the sheet says why
+  it stays out of the portable arranger (no shape the four-role score asks
+  for pays off against losing that FM voice's single pitch). Corpus scripts
+  `song-punchy` and `script-native-lfo-ch3` added; Nuked-OPN2 parity stays
+  100 % including them, `check:sn76496` unregressed. A driver bug found while
+  writing the new tests, `MdDriver.noteOff()` treating any FM drum hit as a
+  PSG one, is fixed alongside.
 - done - P7-9: the SID's filter is reachable from the arranger's own words. A
   lead's `sweep` opens the cutoff across the note; a bass's `resonant` sets a
   fixed high resonance; both are low-pass. A voice sets and clears only its
@@ -227,6 +245,7 @@ real game music, and a real unit.
   `script-filter` and `song-filter` join the C64 corpus; reSID-fp parity holds
   at 100%, since the filter is analog-stage-only and never moves the digital
   trace.
+- P6-10 (hardware-noise hats), P4-9 (the SNES palette).
 - done - P7-10: a second SID model, `model: "8580"` on `Chip.create`,
   `renderPerformance`, `renderProject` and a project's `settings.model`,
   documented on [c64.md#the-8580](chips/c64.md#the-8580). Its combined
@@ -242,6 +261,25 @@ real game music, and a real unit.
   divergences are the combined-waveform fit's own shortfall, confirmed against
   the oracle's source, not a new bug. The 6581 default path is unchanged,
   100 % identical as before.
+- done - P5-10 and P5-12: this PR. FM drums on channel 6
+  (`perc: "punchy"`): a kick, a snare, a closed and an open hat, written as FM
+  patches from the manual's own techniques, not sampled or a generic
+  substitute; the PSG noise kit stays the default (it already does what a
+  kit needs here at no cost to the other roles, and reads the same as every
+  other chip's kit). The LFO (`$22`, per-channel `ams`/`pms` in `$B4`, an
+  operator's own `am` in `$60`) now sounds in both drivers, wherever a patch
+  asks for it: `LEAD_BRIGHT`'s vibrato and the FM kit's hats in the portable
+  arranger, `MD_PATCHES.shimmer` and any `FmPatch` setting `lfoFrequency` in
+  the native one. Channel 3's special mode (`$27`, `$A8`-`$AE`) reaches the
+  native driver through a note's `ch3` field, `fm3` only; the sheet says why
+  it stays out of the portable arranger (no shape the four-role score asks
+  for pays off against losing that FM voice's single pitch). Corpus scripts
+  `song-punchy` and `script-native-lfo-ch3` added; Nuked-OPN2 parity stays
+  100 % including them, `check:sn76496` unregressed. A driver bug found while
+  writing the new tests, `MdDriver.noteOff()` treating any FM drum hit as a
+  PSG one, is fixed alongside.
+- P6-10 (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the
+  SID's filter and sweeps).
 - todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
   with its measured envelope and spectrum, shown on the site, built only from
   what the chip really does.
@@ -249,8 +287,18 @@ real game music, and a real unit.
 
 **Step 3. The machines' own music.**
 
-- P1-12: grow the NSF corpus from one complete song to many, each compared
-  command by command with its reference.
+- done - P1-12: the NSF corpus grew from Mario's one complete song to 8 real,
+  independently authored NSFs (7 FamiTracker, 1 Pently), each redistributable
+  under CC0, CC-BY or zlib and recorded with its source URL, licence, author
+  and SHA-256 in `scores/nsf-corpus/sources.json`. All 8 match a pinned
+  Game_Music_Emu oracle command by command, 31,083 commands with zero
+  divergence, on `docs/chips/2a03.md`'s generated sheet. Getting there needed
+  two real capture fixes: NSF2 (version 2) support for Pently's metadata-only
+  export, and Pently's own non-standard NTSC rate ($411a=16639, not the usual
+  16666), whose PLAY schedule starts one cycle later than a plain
+  `ceil(initEnd/period)*period` gives - the standard rate's own half-cycle
+  rounding lands on the right cycle already, so this only showed up on a
+  custom rate. `packages/chipvoice` was not touched.
 - todo - NEXT-06 GBS, NEXT-07 VGM import, NEXT-08 SPC playback, NEXT-09
   SID/PSID: each against its reference player (GME, snes_spc, sidplayfp),
   with a score per file.
@@ -261,9 +309,15 @@ real game music, and a real unit.
 
 **Step 4. The same bytes, later and elsewhere.**
 
-- todo - NEXT-11: each saved song records its engine version and can be
-  rendered by that engine again (a stated limit of decision 21, an AUD-2
-  follow-up).
+- done - NEXT-11: this PR. Decision 43. `songs`, `projects` and
+  `project_jobs` each record the `PROJECT_ENGINE_VERSION` active when the row
+  was written; a render always uses the server's current engine and records
+  its own version on the job, so a rendition's `engineVersion` can differ
+  from its publication's (both are shown, on the API and the published page:
+  "published with chipvoice x.y.z, rendered with chipvoice a.b.c" when they
+  differ). Rows written before this PR stay `null` rather than guessed.
+  `/s/{id}` is unchanged: it still revalidates with whatever engine is
+  currently deployed (a stated limit of decision 21, an AUD-2 follow-up).
 - MIX-14: compare render hashes across browsers, Node and physical phones.
 - done - NEXT-12: `/accuracy` and `/ja/accuracy` show all five chips' digital
   parity (per oracle, plus c64's real-6581 combined-waveform check), test ROMs,
@@ -288,7 +342,10 @@ real game music, and a real unit.
 
 - GEN-01 and GEN-05: a benchmark of about 50 prompts per console, with
   latency, cost and a listening grid, rerun on every model change.
-- GEN-03: whole-song checks (late clipping, silences, endings, loops).
+- done - GEN-03: whole-song checks (late clipping, level jumps, silence
+  gaps, an unresolved ending, a loop seam, a duration mismatch), pure and
+  tested in `apps/web/src/lib/composition/checks.ts`, run once a generation's
+  render is ready and recorded on it, never rejecting (GEN-04 stays separate).
 - GEN-04: a repair call, only if measured failures justify it.
 - todo - NEXT-18: style, tempo and structure control. GEN-11 and GEN-12:
   targeted revisions and console variants.
@@ -380,7 +437,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P1-9 | `conform` in CI on the subset | done | PR #3, against a committed baseline |
 | P1-10 | The 5-step frame sequence and `$4017` write timing | done | 0.5.0, with P1-2: the decoder needed `$4017` anyway |
 | P1-11 | A 6502 test fixture to run blargg's APU ROMs | done | PR #7. 29 of 29 pass, in CI |
-| P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | doing | First complete source: Mario Ground Theme, all 41,999 music commands match pinned GME at exact cycles; broader NSF corpus remains |
+| P1-12 | Corpus 2: real games, from NSFs played through a reference with a write logger | done | Mario Ground Theme's 41,999 commands, then a corpus of 8 real, permissively licensed NSFs (7 FamiTracker, 1 Pently) added, 31,083 commands, all matched against pinned GME at exact cycles. `docs/chips/2a03.md`'s nsf-corpus sheet, `pnpm nsf-corpus:sheet` |
 | P1-13 | Oracle 2: a modern reference - Mesen 2's APU or puNES - for the envelope, the sweep and the triangle's start, which neither the 2005 oracle nor the test ROMs settle | done | #84. Mesen 2's APU, vendored under `packages/conform/oracles/mesen`; the sweep's divider timing disagrees, filed as P2-1 |
 | P1-14 | The triangle metric: compare step times with a per-run shift and a sequencer-position offset, so the triangle reads as identical when it is, rather than a few percent because of the oracle's start convention | done | PR #4. Hidden steps put back; every triangle run aligns on step times |
 
@@ -390,7 +447,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | --- | --- | --- | --- |
 | P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | done | #86: 2A03 against Mesen traced and documented (a shim fix), SID bus latch, Game Boy pulse start. Second pass: the DMG corpus on whole M-cycles; SameBoy's noise clock and pulse trigger delay recorded as deviations; the PSG's MAME divergences reviewed |
 | P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
-| P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output. NEXT-04 traced the filter corners' provenance to blargg's own capture and lidnariq's analysis of it, but the files are gone and no revision was named: see [HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03) |
+| P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output. NEXT-04 traced the filter corners' provenance to blargg's own capture and lidnariq's analysis of it, but the files are gone and no revision was named: see [HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03). The capture bench is now ready in software and proven without hardware: a committed test ROM, `bench:nes:render`/`bench:nes:compare` (sync marker, drift correction, per-band error, corner fit), and a synthetic CI self-test (`bench:nes:selftest`) that recovers deliberately wrong corners, gain, latency, drift, DC and noise within stated tolerance. [HARDWARE-BENCH.md](HARDWARE-BENCH.md) has what unit and interface to buy and the capture-day procedure; no unit is bought yet |
 | P2-4 | Release with the sheet linked from the package README and the skill | done | The README links every sheet; the skill links each target's |
 
 ## Phase 3. Game Boy
@@ -438,9 +495,9 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P5-7 | The Mega Drive sheet: parity with Nuked on every voice, a corpus of scripts and songs | done | `docs/chips/md.md` |
 | P5-8 | A PSG oracle: MAME's `sn76496` behind a shim, or a Master System test ROM | done | PR #85. `packages/conform/oracles/sn76496`, configured as `segapsg_device`; three diagnosed divergences on the sheet |
 | P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found MDFourier: named real units across both models, captured through a documented open-source test ROM, but its exact register sequence was not located; see [HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489) |
-| P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the portable arranger's kit is on the PSG noise for now; the native driver (P5-11) streams a PCM kit on the DAC |
+| P5-10 | FM drums on channel 6 and the LFO in the arranger | done | `perc: "punchy"` plays a kick, a snare and hats as FM patches on channel 6 instead of the PSG noise kit, which stays the default; the LFO sounds when a patch's `pms`, `ams` or an operator's `am` asks for it. `chips/md/arranger.ts`, `driver.ts`; the sheet says why the noise kit stays the default |
 | P5-11 | A game's own driver beside the portable one: all six FM channels, the three tones, the noise and the DAC by name, a text tracker, a bank with a PCM kit, and the render steps a game ships through, extracted from Punk Force | done | `chips/md/native-driver.ts`, `bank.ts`, `tracker.ts`, `src/game-audio.ts`; [MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER.md), decision 32; the game's score compiles and renders to the same bytes |
-| P5-12 | The native driver's LFO and channel 3's special mode | todo | power-on writes `$22` = 0, so `ams`, `pms` and `am` are written but inert |
+| P5-12 | The native driver's LFO and channel 3's special mode | done | the LFO turns on for whichever loaded patch's `ams`, `pms` or an operator's `am` asks for it first; a note's `ch3` field (fm3 only) sets channel 3's special mode. `native-driver.ts`; `script-native-lfo-ch3` added to the corpus |
 
 ## Phase 6. SNES
 
@@ -508,7 +565,7 @@ it.
 | P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | implemented | Seeded local melody/drum/timbre transforms, locked roles and Undo; silent patterns preserved; decision 26 |
 | P8-11 | Web MIDI input using the same tested transport and ownership model | implemented | Opt-in MIDI taps share audition/recording; channel-10 drums and cleanup tested with simulated ports. Physical MIDI latency remains unmeasured |
 | P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM; independent ZIP reader and byte parity; decision 26 |
-| P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | doing | D. P7-9 done: the SID's filter is reachable from the arranger. P6-10 (SNES triads) doing; P5-10 (FM drums) todo; no simulated generic substitute |
+| P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | doing | D. P7-9 done: the SID's filter is reachable from the arranger. P5-10 done: FM drums and the LFO in the MD arranger. P6-10 (SNES triads) doing; no simulated generic substitute |
 
 ## Audit follow-ups
 

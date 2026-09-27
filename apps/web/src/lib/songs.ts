@@ -1,4 +1,4 @@
-import { arrange, loopSeconds, validateSong, type Intent, type Measured, type Issue } from "chipvoice";
+import { arrange, loopSeconds, validateSong, PROJECT_ENGINE_VERSION, type Intent, type Measured, type Issue } from "chipvoice";
 import { db, newId } from "./db";
 import type { Caller } from "./auth";
 import type { SongInput } from "./schema";
@@ -31,6 +31,14 @@ export interface StoredSong {
   /** Stable owner; never exposed in public responses. */
   userId: string | null;
   createdAt: number;
+  /**
+   * The chipvoice package version active when this song was saved, null for
+   * songs saved before decision 43. `/s/{id}` always renders with the engine
+   * live on the server now, so this is a record of authorship, not a promise
+   * that the sound has not moved on: compare it with the current
+   * `PROJECT_ENGINE_VERSION` to know whether it might have.
+   */
+  engineVersion: string | null;
 }
 
 /** One step of a lineage, for showing where a song sits in its tree. */
@@ -128,6 +136,7 @@ export function check(input: SongInput): { ok: boolean; issues: Issue[]; measure
       keyId: null,
       userId: null,
       createdAt: 0,
+      engineVersion: null,
     }),
   );
   return { ok: result.ok, issues: result.issues, measured: result.measured };
@@ -161,11 +170,12 @@ export async function insert(
     keyId: caller.keyId,
     userId: caller.userId,
     createdAt: Date.now(),
+    engineVersion: PROJECT_ENGINE_VERSION,
   };
   await client.execute({
     sql: `insert into songs
-            (id, parent_id, root_id, depth, title, bpm, steps_per_beat, chip, patterns, song_order, intent, author, key_id, user_id, created_at)
-          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, parent_id, root_id, depth, title, bpm, steps_per_beat, chip, patterns, song_order, intent, author, key_id, user_id, created_at, engine_version)
+          values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       song.id,
       song.parentId,
@@ -182,6 +192,7 @@ export async function insert(
       song.keyId,
       song.userId,
       song.createdAt,
+      song.engineVersion,
     ],
   });
   return song;
@@ -206,6 +217,7 @@ function rowToSong(row: Record<string, unknown>): StoredSong {
     keyId: row.key_id === null || row.key_id === undefined ? null : String(row.key_id),
     userId: row.user_id == null ? null : String(row.user_id),
     createdAt: Number(row.created_at),
+    engineVersion: row.engine_version == null ? null : String(row.engine_version),
   };
 }
 

@@ -1,0 +1,83 @@
+{
+  "work-ram": {
+    "file": "work-ram.nsf",
+    "title": "Work RAM",
+    "author": "Amiga Deluxe",
+    "driver": "FamiTracker",
+    "url": "https://opengameart.org/content/work-ram",
+    "licence": "CC-BY 3.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "sha256": "1b7b79699c868d374419ffee867a94382b623db041c9b9d9ef2d7a5482f53d5f"
+  },
+  "cave-loop": {
+    "file": "cave-loop.nsf",
+    "title": "8-Bit Cave Loop",
+    "author": "Wolfgang_ (Theodore Kerr)",
+    "driver": "FamiTracker",
+    "url": "https://opengameart.org/content/8-bit-cave-loop",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "64769a9cb342b878e36d5f382f2c2f5375a08933743d324c2a9524caf9dd2af8"
+  },
+  "battle-loop": {
+    "file": "battle-loop.nsf",
+    "title": "8-Bit Battle Loop",
+    "author": "Wolfgang_ (Theodore Kerr)",
+    "driver": "FamiTracker",
+    "url": "https://opengameart.org/content/8-bit-battle-loop",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "b52a06be5410c32f1f3aa0542111d92aef1a5bbbb1092c1d9b21a7f5a1438f61"
+  },
+  "victory-loop": {
+    "file": "victory-loop.nsf",
+    "title": "8-Bit Victory Loop",
+    "author": "Wolfgang_ (Theodore Kerr)",
+    "driver": "FamiTracker",
+    "url": "https://opengameart.org/content/8-bit-victory-loop",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "ab16cb5ade2677923433d5ffec6ed5725e7707cb34605b30918fc81c286957ed"
+  },
+  "lone-fighter": {
+    "file": "lone-fighter.nsf",
+    "title": "8-bit Chiptune - Lone Fighter",
+    "author": "shiru8bit",
+    "driver": "FamiTracker",
+    "url": "https://opengameart.org/content/8-bit-chiptune-lone-fighter",
+    "licence": "CC-BY 3.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "sha256": "34ce3903fab77f23bb5afd322fc500aaf42f228ce305c088db93a6ec01c7cbf6"
+  },
+  "after-the-rain": {
+    "file": "after-the-rain.nsf",
+    "title": "8-bit Chiptune - After The Rain",
+    "author": "shiru8bit",
+    "driver": "FamiTracker",
+    "url": "https://opengameart.org/content/8-bit-chiptune-after-the-rain",
+    "licence": "CC-BY 3.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "sha256": "2d12f597da28207ae72d6ef82ceda6e7a0c32268d09e94328e499a9c6dff1023"
+  },
+  "spring-thing": {
+    "file": "spring-thing.nsf",
+    "title": "8-bit Chiptune - Spring Thing",
+    "author": "shiru8bit",
+    "driver": "FamiTracker",
+    "url": "https://opengameart.org/content/8-bit-chiptune-spring-thing",
+    "licence": "CC-BY 3.0",
+    "licenceUrl": "https://creativecommons.org/licenses/by/3.0/",
+    "sha256": "7541ff743d241752fa0b496b1f6ed7146526208c5a4b0d59cff8f8e8d55e45ac"
+  },
+  "pently-demo": {
+    "file": "pently-demo.nsf",
+    "title": "Pently demo - Argument?",
+    "author": "Damian Yerrick (DJ Tepples)",
+    "driver": "Pently",
+    "url": "https://github.com/pinobatch/pently/releases/tag/v0.05wip11",
+    "licence": "zlib License",
+    "licenceUrl": "https://github.com/pinobatch/pently/blob/master/LICENSE",
+    "sha256": "947a290a847679d1ff7ef196376ec9a55755a13109357f61ce607c06e4cbcd49",
+    "track": 0
+  }
+}

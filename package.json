@@ -16,6 +16,8 @@
     "arrangements:check": "node scores/arrangements/test.mjs",
     "arrangements:import": "node scores/arrangements/import.mjs",
     "arrangements:eval": "node scores/arrangements/evaluate.mjs",
+    "nsf-corpus:check": "node scores/nsf-corpus/corpus.mjs --json .artifacts/nsf-corpus/report.json",
+    "nsf-corpus:sheet": "node scores/nsf-corpus/corpus.mjs --json .artifacts/nsf-corpus/report.json --sheet docs/chips/2a03.md",
     "audio:pull": "node apps/web/scripts/audio-store.mjs pull",
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
     "audio:push": "node apps/web/scripts/audio-store.mjs push"

@@ -1,13 +1,16 @@
 import { createHash } from "node:crypto";
+import type { Client } from "@libsql/client";
+import { performanceClock } from "chipvoice";
 import type { Caller } from "../auth";
 import { projectViewer } from "../auth";
 import { db, newId } from "../db";
-import { canonical, ensureProfile, ownedProfile, getProject, publishProject, ProjectHttpError } from "../projects";
+import { canonical, ensureProfile, ownedProfile, getProject, publishProject, ProjectHttpError, type Publication } from "../projects";
 import { createProjectJob, getProjectJob } from "../project-jobs";
 import { utilityWorker } from "../utility-worker";
 import { compositionConfig, openAIModel, type CompositionModel } from "./model";
 import { compositionAccess, compositionBudget, isInvited, monthSpend, requireBudget, requireInvitation } from "./admission";
 import { compositionRequest, compositionTarget, compositionInstructions, compositionSchema, compositionProject } from "./score";
+import { decodeWav, wholeSongChecks, type Finding, type PartActivity } from "./checks";
 
 function error(status: number, code: string, message: string): never { throw new ProjectHttpError(status, code, message); }
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -92,8 +95,16 @@ export async function getGeneration(id: string, caller: Caller, summary = false)
     const mp3Failed = job.status === "ready" && ["failed", "cancelled"].includes(job.mp3Status);
     const status = mp3Failed ? "failed" : job.status === "ready" && job.mp3Status !== "ready" ? "rendering" : job.status;
     const failure = mp3Failed ? "The complete MP3 could not be prepared" : job.error;
-    await client.execute({ sql: "update generations set status=?,error=?,error_code=?,finished_at=? where id=? and status='rendering'", args: [status, failure, status === "failed" ? "render_failed" : null, status === "rendering" ? null : Date.now(), id] });
+    // GEN-03: the full render just became available, so this is the one place
+    // whole-song acoustic checks can run - see wholeSongReport below for what
+    // they need and why nothing here fails or blocks the generation on them.
+    const songReport = status === "ready" ? await wholeSongReport(client, row, publication ?? (row.project_id ? await getProject(String(row.project_id), projectViewer(caller)) : null)) : null;
+    await client.execute({
+      sql: "update generations set status=?,error=?,error_code=?,finished_at=?,song_report=coalesce(song_report,?) where id=? and status='rendering'",
+      args: [status, failure, status === "failed" ? "render_failed" : null, status === "rendering" ? null : Date.now(), songReport ? JSON.stringify(songReport) : null, id],
+    });
     row.status = status; row.error = failure; row.error_code = status === "failed" ? "render_failed" : null; row.finished_at = status === "rendering" ? null : Date.now();
+    if (songReport && !row.song_report) row.song_report = JSON.stringify(songReport);
   }
   return {
     id: String(row.id), status: String(row.status), model: String(row.model),
@@ -106,8 +117,39 @@ export async function getGeneration(id: string, caller: Caller, summary = false)
     renderJobId: row.render_job_id ? String(row.render_job_id) : null,
     project: publication, render: job,
     evaluation: row.report ? JSON.parse(String(row.report)) : null,
+    songReport: row.song_report ? JSON.parse(String(row.song_report)) : null,
     usage: row.usage ? JSON.parse(String(row.usage)) : null,
   };
+}
+
+/** GEN-03's whole-song acoustic checks, run once against the full render.
+ * Pure measurement lives in `./checks`; this is only the glue that finds the
+ * WAV bytes the render job already stored (the same `project_audio` chunks
+ * `runProjectMp3` reassembles in project-jobs.ts) and the declared duration
+ * and loop intent the request already carries. Part-level silence attribution
+ * additionally needs the compiled score, which is why `publication` (already
+ * fetched above whenever it is available) is reused rather than fetched
+ * again; without it every finding is still produced, just without a `voice`.
+ * Never throws into the caller: a report that fails to build must not turn an
+ * otherwise-successful generation into a failed one. */
+async function wholeSongReport(client: Client, row: Record<string, unknown>, project: Publication | null): Promise<Finding[] | null> {
+  try {
+    const chunks = await client.execute({ sql: "select bytes from project_audio where job_id=? order by chunk", args: [String(row.render_job_id)] });
+    if (!chunks.rows.length) return null;
+    const wav = Buffer.concat(chunks.rows.map((r) => Buffer.from(r.bytes as ArrayBuffer)));
+    const audio = decodeWav(new Uint8Array(wav.buffer, wav.byteOffset, wav.byteLength));
+    const request = compositionRequest.parse(JSON.parse(String(row.request)));
+    let parts: PartActivity[] | undefined;
+    const source = project?.project?.source;
+    if (source?.kind === "performance") {
+      const performance = source.performance;
+      const clock = performanceClock(performance);
+      parts = performance.parts.map((part) => ({ id: part.id, ranges: part.notes.map((note) => [clock(note.tick), clock(note.endTick)] as [number, number]) }));
+    }
+    return wholeSongChecks(audio, { durationSeconds: request.durationSeconds, loop: request.loop, ...(parts ? { parts } : {}) });
+  } catch {
+    return null;
+  }
 }
 
 async function authorized(row: Record<string, unknown>) {

@@ -34,7 +34,9 @@ export function prepareMixPhrase(chip: ChipDefinition, notes: readonly MixPhrase
   const voiced = framedNotes.map((note, index) => {
     const voice = chip.spec.voices.find(v => v.id === note.voice);
     if (!voice || !Number.isFinite(note.at) || note.at < 0 || !Number.isFinite(note.duration) || note.duration <= 0 || note.at + Math.max(1, Math.round(note.duration * 60)) / 60 > 2 || !Number.isFinite(note.gain ?? 1) || (note.gain ?? 1) < 0 || (note.gain ?? 1) > 1 || !Number.isFinite(note.detune ?? 0)) throw new Error('Invalid or excessive mix phrase');
-    if (framedNotes.some((other, otherIndex) => otherIndex !== index && voicesConflict(chip.spec,other.voice,note.voice) && other.at < note.at + note.duration && note.at < other.at + other.duration)) throw new Error('Mix phrase contains overlapping hardware voices');
+    // The noise voice only shares channel 6 with fm6 when it is actually
+    // playing an FM drum kit; plain PSG noise never conflicts with fm6.
+    if (framedNotes.some((other, otherIndex) => otherIndex !== index && voicesConflict(chip.spec,other.voice,note.voice,(other.voice==='noise'&&!!other.instrument.fm)||(note.voice==='noise'&&!!note.instrument.fm)) && other.at < note.at + note.duration && note.at < other.at + other.duration)) throw new Error('Mix phrase contains overlapping hardware voices');
     if(!instrumentFitsVoice(chip.spec,voice,note.instrument))throw new Error('Instrument is incompatible with the hardware voice');
     const hz = typeof note.note === 'string' ? noteToFreq(note.note) : note.note;
     const pitch = voice.notes === 'period' ? 60 : 69 + 12 * Math.log2(hz / 440) + (note.detune ?? 0);

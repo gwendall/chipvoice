@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { db, newId } from "./db";
+import { PROJECT_ENGINE_VERSION } from "chipvoice";
 import {
   viewerUser,
   viewerProfile,
@@ -53,10 +54,15 @@ export async function createProjectJob(
     }
     return jobView(row);
   }
+  // A render always uses whatever engine is live on the server now (decision
+  // 43); it is never refused for differing from the publication's own
+  // engineVersion. The job records the version that actually rendered it,
+  // which is honest on its own: a rendition never claims to be a recording
+  // it is not, whether or not its version matches the publication's.
   await admitProject(`render:${viewerUser(userId)}`, 3);
   await client.execute({
-    sql: "insert into project_jobs(id,project_id,kind,status,engine,created_at) values(?,?,?,'queued',?,?) on conflict(project_id,kind) do nothing",
-    args: [newId(), projectId, kind, rendererIdentity(), Date.now()],
+    sql: "insert into project_jobs(id,project_id,kind,status,engine,engine_version,created_at) values(?,?,?,'queued',?,?,?) on conflict(project_id,kind) do nothing",
+    args: [newId(), projectId, kind, rendererIdentity(), PROJECT_ENGINE_VERSION, Date.now()],
   });
   return jobView(
     (
@@ -74,6 +80,7 @@ function jobView(row: Record<string, unknown>) {
     kind: String(row.kind),
     status: String(row.status),
     engine: String(row.engine),
+    engineVersion: row.engine_version == null ? null : String(row.engine_version),
     progress: Number(row.progress),
     bytes: Number(row.bytes ?? 0),
     error: row.error ? String(row.error) : null,

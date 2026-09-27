@@ -219,6 +219,8 @@ A song that parses can still ask the chip for more than its registers or its voi
 
 Legacy /api/songs can publish anonymously and provides MP3/WAV URLs. Complete /api/v1/projects requires authentication and pins WAV and MP3 through jobs. Their bodies, ownership and audio persistence differ: do not mix them. Preserve an existing compact Score with projectFromScore; do not flatten a polyphonic Performance into tracker lines. See OpenAPI for the complete legacy schema. Revalidated legacy audio URLs can change after an engine deployment; only ready project renditions are pinned to stored bytes.
 
+Every song and publication records the chipvoice engineVersion active when it was saved or published (decision 43); null means it predates this and no version is known. A project's renditions (in renditions[], and on a job) carry their own engineVersion too: a render always uses the server's current engine, never an old one kept installed, so a rendition's engineVersion can differ from its publication's if the render happened after a deploy - that is shown, not refused. To reproduce a rendition's exact bytes yourself, npm install chipvoice@<its own engineVersion>, not the publication's, and call renderProject on the publication's stored document. Legacy /s/{id} audio has no such recording: it always renders with whatever engine is current, by design (decision 21), so its engineVersion field is informational only, not a promise the current render still sounds the same.
+
 ## Endpoint reference
 
 | Method | Path | Purpose |

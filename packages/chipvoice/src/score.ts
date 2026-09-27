@@ -43,6 +43,7 @@ export const INTENTS = {
   perc: {
     tight: "the default kit: a kick, a snare, a closed and an open hat",
     soft: "the same kit at two thirds, for a piece that should not celebrate",
+    punchy: "the kit built from the chip's own synthesis where one exists, in place of noise or a sample; on a Mega Drive, FM drums on channel six with a shimmer from its own LFO",
   },
 } as const;
 

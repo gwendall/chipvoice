@@ -253,6 +253,14 @@ export interface FmPatch {
   /** LFO sensitivities, when the LFO is on. */
   ams?: number;
   pms?: number;
+  /**
+   * One of the LFO's eight fixed rates, register `$22`'s low three bits: 0
+   * is slowest (about 3.98 Hz), 7 fastest (about 69.6 Hz). Only meaningful
+   * alongside `ams`, `pms` or an operator's `am`; the LFO is one oscillator
+   * for the whole chip, so when more than one loaded patch asks for it the
+   * driver keeps whichever channel asked first.
+   */
+  lfoFrequency?: number;
 }
 
 /** A frame, stamped with the cycle it starts on. */

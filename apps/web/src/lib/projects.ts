@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { parseProject, type MusicProject } from "chipvoice";
+import { parseProject, PROJECT_ENGINE_VERSION, type MusicProject } from "chipvoice";
 import { SITE } from "./songs";
 import { db, newId } from "./db";
 export class ProjectHttpError extends Error {
@@ -39,6 +39,14 @@ export interface Publication {
   visibility: Visibility;
   createdAt: number;
   contentHash: string;
+  /**
+   * The chipvoice package version live when this revision was published,
+   * null for publications from before decision 43. Since the revision's
+   * document and its immutable audio never change, installing this exact
+   * npm version and calling renderProject reproduces its recording; a
+   * differing current server version cannot rerender it under this id.
+   */
+  engineVersion: string | null;
   profile: Profile;
   favourites: number;
   favourited: boolean;
@@ -48,6 +56,7 @@ export interface Publication {
     kind: string;
     status: string;
     engine: string;
+    engineVersion: string | null;
     mp3Bytes: number;
   }[];
   project?: MusicProject;
@@ -249,6 +258,7 @@ function present(
     visibility: row.visibility as Visibility,
     createdAt: Number(row.created_at),
     contentHash: String(row.content_hash),
+    engineVersion: row.engine_version == null ? null : String(row.engine_version),
     profile: profile(row),
     favourites: Number(row.favourite_count ?? 0),
     favourited: !!row.favourited,
@@ -288,7 +298,7 @@ export async function getProject(
   const jobs = await (
     await db()
   ).execute({
-    sql: "select id,kind,status,engine,mp3_bytes from project_jobs where project_id=?",
+    sql: "select id,kind,status,engine,engine_version,mp3_bytes from project_jobs where project_id=?",
     args: [id],
   });
   publication.renditions = jobs.rows.map((j) => ({
@@ -296,6 +306,7 @@ export async function getProject(
     kind: String(j.kind),
     status: String(j.status),
     engine: String(j.engine),
+    engineVersion: j.engine_version == null ? null : String(j.engine_version),
     mp3Bytes: Number(j.mp3_bytes ?? 0),
   }));
   const variants = await (
@@ -412,7 +423,7 @@ export async function publishProject(
   const id = newId(),
     now = Date.now();
   await client.execute({
-    sql: `insert into projects(id,user_id,parent_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,request_key,profile_id,composition_hash,origin,origin_model) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(user_id,request_key) do nothing`,
+    sql: `insert into projects(id,user_id,parent_id,root_id,document,content_hash,title,chip,tags,visibility,created_at,request_key,profile_id,composition_hash,origin,origin_model,engine_version) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) on conflict(user_id,request_key) do nothing`,
     args: [
       id,
       userId,
@@ -429,6 +440,7 @@ export async function publishProject(
       artist.id,
       digest(canonical(project.source)),
       origin.method, origin.model,
+      PROJECT_ENGINE_VERSION,
     ],
   });
   const saved = await client.execute({

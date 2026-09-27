@@ -85,6 +85,15 @@ export interface MdFmNote extends MdNote {
   patch: FmPatch;
   /** A linear gain per frame on top of `volume`; the last value holds. */
   levels?: number[];
+  /**
+   * Channel 3 only (`fm3`): its special mode, register `$27` bits 6 to 7,
+   * with operators 1 to 3 each given their own fixed pitch here (MIDI
+   * semitones) instead of the note's one; operator 4 keeps following the
+   * note's own pitch at `$A2`/`$A6`, bend, slide and vibrato included. Set on
+   * one voice's note and not the next to turn the mode off again. `compileFm`
+   * throws if it is set on any voice other than `fm3`.
+   */
+  ch3?: readonly [number, number, number];
 }
 
 export interface MdPsgNote extends MdNote {
@@ -260,7 +269,21 @@ function freqWrites(ch: number, freq: number): YmWrite[] {
   const f = fmFrequency(freq);
   return [[port, 0xa4 + sub, f >> 8], [port, 0xa0 + sub, f & 0xff]];
 }
+/** Channel 3 special mode's own frequency registers, `$A8` to `$AE`: one pair per operator, 1 to 3. */
+function ch3Writes(pitches: readonly [number, number, number]): YmWrite[] {
+  const w: YmWrite[] = [];
+  pitches.forEach((midi, k) => {
+    const f = fmFrequency(hz(midi));
+    w.push([0, 0xac + k, f >> 8], [0, 0xa8 + k, f & 0xff]);
+  });
+  return w;
+}
 const keyIndex = (ch: number) => (ch < 3 ? ch : ch + 1);
+
+/** Whether a patch asks the LFO for anything: amplitude or pitch sensitivity, or an operator's own `am`. */
+function wantsLfo(patch: FmPatch): boolean {
+  return (patch.ams ?? 0) > 0 || (patch.pms ?? 0) > 0 || patch.ops.some((op) => op.am);
+}
 
 const FM_IDS: readonly string[] = ["fm1", "fm2", "fm3", "fm4", "fm5", "fm6"];
 const PSG_IDS: readonly string[] = ["psg1", "psg2", "psg3"];
@@ -294,11 +317,32 @@ export function compileMdVoices(voices: MdVoice[]): MdCompiled {
       const prev = v.notes[k - 1];
       if (prev && n.at < prev.until - 1e-6) throw new Error(`compileMdVoices: ${v.voice} note ${k} starts at ${n.at} s, before the previous one ends at ${prev.until} s`);
     });
+    if (v.voice.startsWith("fm") && v.voice !== "fm3" && (v as MdFmVoice).notes.some((n) => n.ch3)) {
+      throw new Error(`compileMdVoices: ${v.voice} sets ch3, but channel 3's special mode is fm3's alone`);
+    }
+  }
+
+  // The LFO is one oscillator for the whole chip: on for the whole compiled
+  // output at the rate of the first patch, in voice and note order, whose
+  // `ams`, `pms` or an operator's `am` asks for it - off, as before, when
+  // none do. A real driver could turn it on and off through a song; this one
+  // decides once, which is enough to make the values every patch already
+  // carries audible, and simple enough to reason about from a corpus log.
+  let lfo = -1;
+  for (const v of voices) {
+    if (!v.voice.startsWith("fm")) continue;
+    for (const n of (v as MdFmVoice).notes) {
+      if (wantsLfo(n.patch)) {
+        lfo = n.patch.lfoFrequency ?? 3;
+        break;
+      }
+    }
+    if (lfo >= 0) break;
   }
 
   const bus = createBus();
-  // power on: LFO off, channel 3 normal, the DAC on when it plays (it takes FM 6), every key off, the PSG silent
-  bus.ym(0, [[0, 0x22, 0], [0, 0x27, 0], [0, 0x2b, used.has("dac") ? 0x80 : 0]]);
+  // power on: the LFO as decided above, channel 3 normal, the DAC on when it plays (it takes FM 6), every key off, the PSG silent
+  bus.ym(0, [[0, 0x22, lfo >= 0 ? 0x08 | lfo : 0], [0, 0x27, 0], [0, 0x2b, used.has("dac") ? 0x80 : 0]]);
   for (let ch = 0; ch < 6; ch++) bus.ym(0, [[0, 0x28, keyIndex(ch)]]);
   bus.psg(0, [0x9f, 0xbf, 0xdf, 0xff]);
 
@@ -318,6 +362,8 @@ function compileFm(bus: Bus, v: MdFmVoice) {
   const gain = v.gain ?? 1;
   let loaded: FmPatch | null = null;
   let prevPitch: number | null = null;
+  // Channel 3 special mode's own state (fm3 only; see the ch3 field below).
+  let ch3Mode = false;
   // What this channel's patch registers hold, so a patch change writes only what differs.
   const regs = new Map<number, number>();
   const changed = (w: YmWrite[]) => w.filter(([port, reg, value]) => {
@@ -334,19 +380,29 @@ function compileFm(bus: Bus, v: MdFmVoice) {
     const legato = !!n.glide && prevPitch != null && notes[k - 1].until >= n.at - 1e-6;
     const level = atten(volume * gain, 0.75);
     const t0 = n.at * C;
+    // Channel 3's special mode toggles with whether this note sets `ch3`, so
+    // a note without it plays normally again on the very next attack.
+    const ch3Switch = ch === 2 && !!n.ch3 !== ch3Mode;
+    if (ch3Switch) ch3Mode = !!n.ch3;
     if (!legato) {
       const w: YmWrite[] = [[0, 0x28, keyIndex(ch)]];
+      if (ch3Switch) w.push([0, 0x27, ch3Mode ? 0x40 : 0]);
       if (loaded !== n.patch) {
         w.push(...changed(patchWrites(ch, n.patch, pan)));
         loaded = n.patch;
       }
       w.push(...carrierWrites(ch, n.patch, level));
       w.push(...freqWrites(ch, hz(pitchAt(n, 0, prevPitch))));
+      if (n.ch3) w.push(...ch3Writes(n.ch3));
       w.push([0, 0x28, 0xf0 | keyIndex(ch)]);
       bus.ym(t0, w);
     } else {
       // Legato: the new pitch and level on the sounding note, no key-off, no attack.
-      bus.ym(t0, [...carrierWrites(ch, n.patch, level), ...freqWrites(ch, hz(pitchAt(n, 0, prevPitch)))]);
+      const w: YmWrite[] = [];
+      if (ch3Switch) w.push([0, 0x27, ch3Mode ? 0x40 : 0]);
+      w.push(...carrierWrites(ch, n.patch, level), ...freqWrites(ch, hz(pitchAt(n, 0, prevPitch))));
+      if (n.ch3) w.push(...ch3Writes(n.ch3));
+      bus.ym(t0, w);
     }
     let lastF = fmFrequency(hz(pitchAt(n, 0, prevPitch)));
     let lastL = level;

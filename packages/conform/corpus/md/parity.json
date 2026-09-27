@@ -13,9 +13,9 @@
     "fm6"
   ],
   "date": "2026-09-27",
-  "files": 8,
-  "cycles": 2233636083,
-  "identical": 2233636083,
+  "files": 10,
+  "cycles": 2566533768,
+  "identical": 2566533768,
   "diverging": 0,
   "results": [
     {
@@ -385,6 +385,130 @@
             "theirs": 9,
             "alignedTimes": 9,
             "alignedValues": 9,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-native-lfo-ch3",
+      "source": "src/chips/md/native-driver.ts (compileMdVoices)",
+      "writes": 268,
+      "cycles": 118124985,
+      "identical": 118124985,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 118124985,
+          "a": 106772,
+          "b": 106772,
+          "exact": 106772,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 106772,
+          "runs": {
+            "ours": 550,
+            "theirs": 550,
+            "alignedTimes": 550,
+            "alignedValues": 550,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 118124985,
+          "a": 80491,
+          "b": 80491,
+          "exact": 80491,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 80491,
+          "runs": {
+            "ours": 1166,
+            "theirs": 1166,
+            "alignedTimes": 1166,
+            "alignedValues": 1166,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 118124985,
+          "a": 69634,
+          "b": 69634,
+          "exact": 69634,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 69634,
+          "runs": {
+            "ours": 584,
+            "theirs": 584,
+            "alignedTimes": 584,
+            "alignedValues": 584,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 118124985,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 118124985,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 118124985,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
             "maxShift": 0
           }
         }
@@ -765,7 +889,7 @@
     {
       "name": "song-bright",
       "source": "the same lines with a bright lead and a bright bass",
-      "writes": 2038,
+      "writes": 1801,
       "cycles": 214772700,
       "identical": 214772700,
       "first": null,
@@ -773,38 +897,38 @@
         {
           "voice": "fm1",
           "identical": 214772700,
-          "a": 191137,
-          "b": 191137,
-          "exact": 191137,
+          "a": 196019,
+          "b": 196019,
+          "exact": 196019,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 191137,
+          "aligned": 196019,
           "runs": {
-            "ours": 462,
-            "theirs": 462,
-            "alignedTimes": 462,
-            "alignedValues": 462,
+            "ours": 478,
+            "theirs": 478,
+            "alignedTimes": 478,
+            "alignedValues": 478,
             "maxShift": 0
           }
         },
         {
           "voice": "fm2",
           "identical": 214772700,
-          "a": 166647,
-          "b": 166647,
-          "exact": 166647,
+          "a": 170424,
+          "b": 170424,
+          "exact": 170424,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 166647,
+          "aligned": 170424,
           "runs": {
-            "ours": 1852,
-            "theirs": 1852,
-            "alignedTimes": 1852,
-            "alignedValues": 1852,
+            "ours": 1906,
+            "theirs": 1906,
+            "alignedTimes": 1906,
+            "alignedValues": 1906,
             "maxShift": 0
           }
         },
@@ -889,7 +1013,7 @@
     {
       "name": "song-golden",
       "source": "packages/chipvoice/test/golden-md.mjs",
-      "writes": 1900,
+      "writes": 1947,
       "cycles": 214772700,
       "identical": 214772700,
       "first": null,
@@ -897,38 +1021,38 @@
         {
           "voice": "fm1",
           "identical": 214772700,
-          "a": 169736,
-          "b": 169736,
-          "exact": 169736,
+          "a": 174832,
+          "b": 174832,
+          "exact": 174832,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 169736,
+          "aligned": 174832,
           "runs": {
-            "ours": 1151,
-            "theirs": 1151,
-            "alignedTimes": 1151,
-            "alignedValues": 1151,
+            "ours": 1135,
+            "theirs": 1135,
+            "alignedTimes": 1135,
+            "alignedValues": 1135,
             "maxShift": 0
           }
         },
         {
           "voice": "fm2",
           "identical": 214772700,
-          "a": 97120,
-          "b": 97120,
-          "exact": 97120,
+          "a": 99648,
+          "b": 99648,
+          "exact": 99648,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 97120,
+          "aligned": 99648,
           "runs": {
-            "ours": 565,
-            "theirs": 565,
-            "alignedTimes": 565,
-            "alignedValues": 565,
+            "ours": 604,
+            "theirs": 604,
+            "alignedTimes": 604,
+            "alignedValues": 604,
             "maxShift": 0
           }
         },
@@ -1005,6 +1129,130 @@
             "theirs": 0,
             "alignedTimes": 0,
             "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-punchy",
+      "source": "the same lines with a bright lead (its own pitch LFO) and the FM drum kit on channel six (perc: \"punchy\")",
+      "writes": 3784,
+      "cycles": 214772700,
+      "identical": 214772700,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 214772700,
+          "a": 196019,
+          "b": 196019,
+          "exact": 196019,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 196019,
+          "runs": {
+            "ours": 478,
+            "theirs": 478,
+            "alignedTimes": 478,
+            "alignedValues": 478,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 214772700,
+          "a": 99648,
+          "b": 99648,
+          "exact": 99648,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 99648,
+          "runs": {
+            "ours": 604,
+            "theirs": 604,
+            "alignedTimes": 604,
+            "alignedValues": 604,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 214772700,
+          "a": 53521,
+          "b": 53521,
+          "exact": 53521,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 53521,
+          "runs": {
+            "ours": 3324,
+            "theirs": 3324,
+            "alignedTimes": 3324,
+            "alignedValues": 3324,
             "maxShift": 0
           }
         }
