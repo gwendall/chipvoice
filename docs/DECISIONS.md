@@ -1291,3 +1291,56 @@ has asked for a non-Sony-ROM SPC700.
 AND LGPL-2.1-or-later)`, unchanged by this file: the LGPL half still names
 only `ym2612.ts` and `sdsp.ts`. The package README documents `IPL_ROM`'s
 source next to `importSpc`.
+
+## 46. The exported .spc carries its own tiny SPC700 player, assembled from TS source in the repo (2026-09-28)
+
+P6-9 adds `exportSpc` (`packages/chipvoice/src/spc-export.ts`), which freezes
+a SNES song's register-write capture into a standard `.spc` snapshot. Nothing
+of chipvoice runs on the machine that opens a `.spc` file, so something has
+to replay the writes on the real SPC700 itself: the snapshot's own ARAM
+carries a tiny player program (`chips/snes/spc-player.ts`) that reads the
+next tick-delta, waits it out on a hardware timer, issues the next
+`$F2`/`$F3` pair, repeats, and loops back to the song's loop point forever.
+
+**Why write it, not assemble it externally.** The ticket required the
+player's source stay readable in the repo, with the TS-side bytes
+reproducible from committed source by a script CI can run, not an opaque
+blob. `buildPlayerProgram` in `spc-player.ts` is a small TS emitter: SPC700
+opcodes and operands written out as an annotated byte sequence, assembled by
+chipvoice itself at export time, not by a third-party assembler whose own
+output would need to be vendored or trusted as-is. This is not decision 45's
+IPL ROM exception again: nothing here is copied from another emulator or
+from Sony's own driver code, so there is no licensing question to record,
+only an unusual artifact (assembled SPC700 machine code, MIT, produced by
+TypeScript) worth naming so a future reader does not mistake it for a
+binary blob.
+
+**Timer, tick rate, quantization.** The player times itself with the S-SMP's
+Timer 0, at `TIMER_TARGET = 8` against its 8000 Hz input, giving 1000
+ticks/second (`TICKS_PER_SECOND`, `chips/snes/spc-player.ts`; `SPC_HZ /
+TICKS_PER_SECOND` is 1024 cycles/tick, exactly). Each captured write's cycle
+stamp is rounded to the nearest tick before being re-simulated:
+`exportSpc` runs a second, scratch instance of this package's own SPC700
+over the assembled player program during export, so the tick-delta stream
+that ships is the one that actually reproduces each write's target tick when
+a real SPC700 executes the wait loop and dispatch, not an estimate that
+ignores the player's own instruction cost.
+
+**Encoding.** The write stream is tick-deltas plus `{reg, value}` pairs, with
+no run-length or dictionary compaction: the simplest encoding that fits
+comfortably inside 64 KB for the corpus tested so far except the two dense,
+multi-instrument arrangements (mario, sonic), which fail loudly with
+`SpcExportSizeError { measured, limit }` rather than truncating, matching
+how `validateSong` already reports capacity elsewhere. A denser encoding
+(run lengths, a value dictionary) was considered and set aside, not ruled
+out: today's failures are named and measured, not silent, which was the
+ticket's bar.
+
+**What changes.** `packages/chipvoice/src/spc-export.ts` and
+`chips/snes/spc-player.ts` are new; `exportSpc` and `SpcExportSizeError` are
+exported from the package index; `projectCapabilities()` reports `spc` as
+the SNES `registerExportFormats` entry; `apps/web/src/studio/exports.ts`
+gains an `spc` export kind. None of this touches `spc-import.ts`,
+`spc700.ts` or `ssmp.ts` from decision 45; a round trip through `importSpc`
+is how the CI check in `packages/conform/src/spc/check-export.mjs` proves
+the player's writes land where the capture put them.
