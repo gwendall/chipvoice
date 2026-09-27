@@ -44,6 +44,7 @@
     "check:spc": "node src/spc/check.mjs",
     "baseline:spc": "node src/spc/check.mjs --sheet ../../docs/chips/snes.md --marker spc",
     "check:spc-export": "node src/spc/check-export.mjs",
+    "check:spc-export:self-test": "node src/spc/check-export.mjs --self-test",
     "baseline:spc-export": "node src/spc/check-export.mjs --sheet ../../docs/chips/snes.md",
     "corpus:snes": "node src/corpus/generate-snes.mjs",
     "check:c64": "node src/cli.mjs c64 --corpus corpus/c64 --oracle residfp --baseline corpus/c64/parity.json",

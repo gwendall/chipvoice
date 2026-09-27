@@ -75,6 +75,47 @@ inline SNES_SPC::Timer* SNES_SPC::run_timer( Timer* t, rel_time_t time )
 	return t;
 }
 
+// ---------------------------------------------------------------------
+// chipvoice patch, upstream snes_spc 0.9.0 is otherwise unmodified. See
+// oracles/snes-spc/README.md and DECISIONS.md #46 for the full story; this
+// comment gives the mechanism.
+//
+// reset_time_regs() (SNES_SPC_misc.cpp), called by both a real reset and
+// load_spc(), sets every timer's next_time to 1 and divider to 0. The
+// elapsed-periods formula just above - `TIMER_DIV(t, time - next_time) + 1`,
+// an unconditional "+1" - means the very first call to run_timer_() after
+// that always credits one whole prescaler period (128 SPC cycles for
+// timers 0 and 1 at normal tempo, 16 for timer 2) as already elapsed, no
+// matter how few real cycles have passed since next_time was set. On a real
+// reset this is masked by the long IPL ROM boot before any game code starts
+// a timer; on load_spc() it is not, because a snapshot is typically taken
+// mid-song, with timers already running, so the very next timer check can
+// come almost immediately.
+//
+// A .spc file has no record of a timer's sub-period phase (only its 4-bit
+// counter, already applied by timers_loaded() before this runs), so there
+// is no "correct" phase to recover from the file - only a convention to
+// pick for where a freshly loaded timer's period starts counting from. This
+// patch picks the same one real hardware and this project's own per-cycle
+// SPC700 core use: each enabled timer's current period starts fresh at the
+// snapshot's own cycle 0, so its first pulse is a full prescaler period
+// away, not (up to) one period early. Proven with a minimal hand-built .spc
+// (CONTROL enabling timer 0, T0TARGET=1, a poll loop reading T0OUT until
+// non-zero, then one marked DSP write) committed at
+// oracles/../../corpus/snes/spc/timer-phase.spc: without this patch, the
+// poll loop's write lands at cycle 3; with it, at cycle 129 - one prescaler
+// period (128 cycles) after the snapshot's own cycle 0, plus the poll
+// loop's own instruction cost.
+void SNES_SPC::fix_snapshot_timer_phase()
+{
+	for ( int i = 0; i < timer_count; i++ )
+	{
+		Timer* t = &m.timers [i];
+		t->next_time += TIMER_MUL( t, 1 ) - 1;
+	}
+}
+// ---------------------------------------------------------------------
+
 
 //// ROM
 

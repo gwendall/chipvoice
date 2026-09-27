@@ -161,7 +161,9 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:sn76496
       - run: pnpm --filter chipvoice-conform test:listening
       - run: pnpm --filter chipvoice-conform check:snes
+      - run: pnpm --filter chipvoice-conform check:spc
       - run: pnpm --filter chipvoice-conform check:spc-export
+      - run: pnpm --filter chipvoice-conform check:spc-export:self-test
       - run: pnpm --filter chipvoice-conform check:c64
       - run: pnpm --filter chipvoice-conform check:residfp-8580
       - run: pnpm --filter chipvoice-conform roms:c64

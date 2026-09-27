@@ -28,8 +28,8 @@ import { ChangeStream } from '../change-stream.mjs';
  *
  *  - The DSP register writes the CPU makes: sequence identity (register and
  *    value, in order) is the pass/fail signal. Cycle numbers are reported
- *    alongside for a person to read, not asserted equal: blargg's CPU
- *    "pre-charges" its cycle counter by a whole instruction's cost before
+ *    alongside for a person to read, not asserted equal in general: blargg's
+ *    CPU "pre-charges" its cycle counter by a whole instruction's cost before
  *    running the instruction's body, so a write hook fired from inside, say,
  *    `MOV $F3,A`'s handler reports the cycle at the END of that instruction,
  *    while this package's own convention (documented in `spc700.ts`) is the
@@ -37,6 +37,12 @@ import { ChangeStream } from '../change-stream.mjs';
  *    +1-for-the-last-access-of-an-instruction labelling difference, not a
  *    defect on either side (the CPU's own per-instruction cycle counts are
  *    checked directly, against Anomie's doc, in `packages/chipvoice/test/spc700.mjs`).
+ *    `checkTimerPhase` below is the one exception: the corpus's
+ *    `timer-phase.spc` (see its own README entry) exists specifically to
+ *    exercise a timer counter read, and its cycle IS asserted there, exactly
+ *    up to that same +1 - proof that `oracles/snes-spc/snes_spc/SNES_SPC.cpp`'s
+ *    `fix_snapshot_timer_phase()` patch (DECISIONS.md #46) keeps holding,
+ *    not just that the general per-file loop's content-only gate passes.
  *
  *  - The output samples: reusing `compare()` (compare.mjs), the same
  *    matched-cycles / first-divergence logic every other chip's check uses.
@@ -90,6 +96,34 @@ function compareWrites(ours, oracle) {
   return {oursCount: ours.length, oracleCount: oracle.length, matched, first};
 }
 
+// The same "+1 for the last access of an instruction" cycle-labelling
+// difference this file's own top doc comment names - defined here too
+// (check-export.mjs defines its own copy, for the same "not a dependency of
+// each other" reason `resolveWrites` above already gives) so
+// `checkTimerPhase` below can assert an exact number, not just describe one.
+const KNOWN_WRITE_OFFSET = 1;
+
+/**
+ * The one exact cycle assertion this script makes: `corpus/snes/spc/
+ * timer-phase.spc` (see its own README entry) is built so its single write
+ * only happens once the CPU sees timer 0's counter turn non-zero - a direct
+ * readout of the `fix_snapshot_timer_phase()` patch (SNES_SPC.cpp,
+ * DECISIONS.md #46) this repository carries in the vendored oracle. A
+ * correct oracle's write lands exactly `KNOWN_WRITE_OFFSET` cycles after
+ * ours (the same benign label difference every other write in this corpus
+ * already shows); the patch regressing would instead show the oracle's
+ * write landing roughly 126 cycles too early, credited to the load-time
+ * phantom prescaler period the patch removes. Returns `null` for any other
+ * file - this is not a general-purpose check, only this fixture's own.
+ */
+function checkTimerPhase(file, oursWrites, oracleWrites) {
+  if (path.basename(file) !== 'timer-phase.spc') return null;
+  const ours = oursWrites[0] ?? null;
+  const oracle = oracleWrites[0] ?? null;
+  const diff = ours && oracle ? oracle.cycle - ours.cycle : null;
+  return {ours, oracle, diff, ok: diff === KNOWN_WRITE_OFFSET};
+}
+
 let files = [];
 for (const dir of corpusDirs) {
   if (!fs.existsSync(dir)) continue;
@@ -115,12 +149,13 @@ for (const file of files) {
   const oursWrites = resolveWrites(plan.events.slice(plan.restoreEvents));
   const oracleWrites = spcCpuWrites(bytes, cycles);
   const writes = compareWrites(oursWrites, oracleWrites);
+  const timerPhase = checkTimerPhase(file, oursWrites, oracleWrites);
 
   const oursSamples = ChangeStream.from(chipSnes.trace(plan.events, cycles, plan.memory));
   const oracleSamples = ChangeStream.from(await spcCpuSamples(bytes, cycles));
   const samples = compare(oursSamples, oracleSamples, {cycles, voices: [0, 1]});
 
-  const writesOk = writes.first === null;
+  const writesOk = writes.first === null && (timerPhase === null || timerPhase.ok);
   const samplesOk = samples.first === null;
   const pct = (100 * samples.identical) / samples.cycles;
   if (!writesOk || !samplesOk) anyDivergence = true;
@@ -131,7 +166,9 @@ for (const file of files) {
     `writes ${writes.matched}/${Math.max(writes.oursCount, writes.oracleCount)}`,
     `samples ${pct.toFixed(4)}%`,
   ];
+  if (timerPhase) line.push(`timer-phase shim: ours ${fmtWrite(timerPhase.ours)}, oracle ${fmtWrite(timerPhase.oracle)} (diff ${timerPhase.diff}, expected ${KNOWN_WRITE_OFFSET})`);
   if (writes.first) line.push(`writes diverge at #${writes.first.index}: ours ${fmtWrite(writes.first.ours)}, oracle ${fmtWrite(writes.first.oracle)}`);
+  if (timerPhase && !timerPhase.ok) line.push(`timer-phase shim regressed: expected the oracle's write ${KNOWN_WRITE_OFFSET} cycle(s) after ours, got ${timerPhase.diff}`);
   if (samples.first) line.push(`samples diverge at cycle ${samples.first.cycle} ${['left', 'right'][samples.first.voice]}: ours ${samples.first.a}, oracle ${samples.first.b}`);
   console.log(line.join('  '));
 
@@ -139,6 +176,7 @@ for (const file of files) {
     name,
     seconds: plan.seconds,
     cycles,
+    timerPhase,
     id666: plan.id666 ?? null,
     writes: {oursCount: writes.oursCount, oracleCount: writes.oracleCount, matched: writes.matched, first: writes.first},
     samples: {identical: samples.identical, cycles: samples.cycles, first: samples.first, perVoice: samples.perVoice.map((v) => ({...v, voice: ['left', 'right'][v.voice]}))},

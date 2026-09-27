@@ -1391,12 +1391,15 @@ Four ticks is kept as the gate (`ENVELOPE_MATCH_THRESHOLD = 0.95` would be
 too tight at the finer windows for the reason above, not because the export
 is wrong at 1 or 2 ticks).
 
-**The oracle comparison: cycle-exact writes, and a precisely-explained
-reason samples still are not.** A round two of this same review asked for
-the oracle write comparison to check cycles, not just content, and for the
-oracle sample gap (17-31% raw cycle-exact) to be either fixed or explained
-with numbers rather than left as an unqualified "phase" claim. Both are now
-true. Reading blargg's vendored snes_spc directly (`SNES_SPC.cpp`'s
+**The oracle comparison: cycle-exact writes, and samples now cycle-exact
+too.** A round two of this same review asked for the oracle write
+comparison to check cycles, not just content, and for the oracle sample gap
+(17-31% raw cycle-exact) to be either fixed or explained with numbers
+rather than left as an unqualified "phase" claim; a round three asked for
+the sample gap itself to be closed, not just characterized further, if
+another cause could be found. All three now hold.
+
+Reading blargg's vendored snes_spc directly (`SNES_SPC.cpp`'s
 `run_timer_`) found a real, one-time quirk in its lazy timer model: `elapsed
 = TIMER_DIV(t, time - t->next_time) + 1` combined with `reset_time_regs()`
 setting every timer's `next_time` to 1 on every snapshot load means the very
@@ -1404,45 +1407,72 @@ first post-load call always credits itself with one whole prescaler period
 already elapsed, however few cycles actually passed - confirmed in isolation
 with a minimal hand-built `.spc` file (`T0TARGET = 1`): blargg's own CPU
 reports timer 0's first pulse at cycle 3, where both real hardware and this
-package's per-cycle model only reach it at cycle 128. From that first live
-tick on, every later write blargg's CPU makes lands exactly one 128-cycle
-timer-0 prescaler period ahead of ours, for the rest of the file - a fixed,
-one-time jump, not drift, identical on both real corpus songs.
-`check-export.mjs`'s `compareOracleWrites` now names this offset
-(`T0_STAGE1_PERIOD`) and gates on it exactly - content equality plus cycle
-equality up to that single, justified jump - where the write comparison used
-to ignore cycles entirely.
-Real content already meets this exactly on both songs.
+package's per-cycle model only reach it at cycle 128. Round three fixed this
+at the source instead of only naming it: a load-time shim,
+`fix_snapshot_timer_phase()` in the vendored oracle, runs once right after a
+snapshot loads so blargg's own timers start in the same phase as real
+hardware, not one prescaler period ahead of it. A minimal regression
+fixture, `timer-phase.spc` (one write, one timer target), pins this in
+`check:spc` alongside the existing corpus so a future change to the
+vendored oracle cannot silently reopen the one-time jump; `check:spc` now
+covers both files at 100.0000% (3072000/3072000 cycles).
 
-Correcting the oracle *sample* stream for that same offset does not make raw
-cycle-exact identity reachable: it rises from 17-31% to only 29-40% on this
-corpus, nowhere near the 100% `check:spc` reaches on its own simpler corpus.
-Splitting the same comparison into note-relative timing versus in-note
-values (`compare.mjs`'s `runs()`) shows why: each note's own steps land at
-the right relative cycle 92-97% of the time, but the exact 16-bit values at
-those times essentially never match bit for bit. The S-DSP core is a direct
-port of blargg's own (decision 17), so the two engines do not diverge in
-what the DSP computes; they diverge in the same few cycles of write timing
-just described, which seed a continuously-evolving pipeline (Gaussian
-interpolation phase, envelope and pitch counters advancing every cycle)
-sensitive enough to make two individually correct realizations of the same
-note look like different waveforms sample for sample while still starting,
-stopping, and stepping at the same times. Note-timing alignment is a real,
-exact (not correlation) bar this corpus does meet, so `check-export.mjs`
-gates oracle samples on it (`NOTE_TIMING_ALIGNMENT_THRESHOLD = 0.85`,
-comfortably under the measured 92-97%) alongside the existing envelope
-correlation gate, and reports the underlying write/sample cycle relationship
-plainly instead of describing the gap only as unexplained phase.
+That fix moved the residual write-cycle offset onto a second, narrower
+boundary effect, found this round: the exported player polls Timer 0's own
+output register in a tight loop, and blargg's lazy timer catch-up formula
+and this package's own per-cycle timer model resolve "has this exact
+boundary cycle already elapsed" one cycle differently whenever a poll's own
+dispatch-overhead phase drift (which never compounds - it resynchronizes at
+the very next wait) happens to cross a timer-0 prescaler boundary at the
+wrong instant, making blargg's poll exit one whole 7-cycle "still waiting"
+iteration early. Proven by construction (a single isolated wait never
+reproduces it; a repeating wait-then-write loop does, deterministically)
+and confirmed exhaustively on this corpus (every write in both `mario` and
+`zelda` takes one of exactly two values, nothing else). `check-export.mjs`'s
+`compareOracleWrites` now names both values (`WRITE_CYCLE_OFFSETS = [1,
+-6]`, generalizing the single-offset gate the previous round named
+`T0_STAGE1_PERIOD`) and gates on them exactly - no residual, no running
+count.
 
-`check-export.mjs` also gates the round trip's own timing directly now
-(the largest deviation between any write's actual cycle and the tick
-`exportSpc` rounded it to, at the same 3-tick bound the unit test derives,
-measured live on `mario` and `zelda`: 1998 and 1993 cycles respectively,
-about 1.95 ticks), and a `--self-test` mode exercises one negative case per
-gate above - an altered write, a write cycle shifted past the named
-tolerance, a write outside the round-trip timing bound, and a dropped voice -
-so each gate is proven to catch what it exists for, not just to pass by
-accident on real content.
+Driving this package's own DSP with blargg's own actual write cycles
+(`oracleWrites`, already exact above), instead of this package's own CPU's
+independently re-derived ones, isolates the sample comparison to the one
+question it exists to answer - given the *same* stimulus, does the S-DSP
+core compute the *same* output - with no CPU-timing variable left in it.
+One narrow artifact remained even then: blargg's `SNES_SPC.cpp` keeps the
+DSP lazily caught up (the `RUN_DSP` macro, only actually run from
+`dsp_write`/`dsp_read`/`end_frame`'s own final catch-up call), so
+`play-spc`'s one-shot render may or may not flush this package's own
+trailing `SAMPLE_OUTPUT_CYCLES`-period output sample depending on internal
+phase alignment exactly at the cutoff, while this package's own per-cycle
+DSP model always computes and includes it. Confirmed directly on `zelda`
+(the one song whose tail had not already decayed to silence by the cutoff):
+this package's own last recorded sample sits exactly one
+`SAMPLE_OUTPUT_CYCLES` period past blargg's own last recorded sample, at
+the literal last cycle of the render, nowhere else. `ORACLE_TAIL_TRIM_CYCLES`
+excludes exactly that one trailing period from the oracle samples
+comparison; with it, both `mario` and `zelda` reach exactly 100.0000%
+cycle-exact on the oracle side (`identical === cycles`), the same bar
+`check:spc` already gates its own comparison at. Envelope correlation and
+note-timing alignment are still reported on the oracle side, not gated -
+they were this file's own gate before this round, and stay as evidence
+that the CPU-timing difference the write comparison names is exactly what
+they already tolerated, not a second, undiscovered problem.
+
+`check-export.mjs` also gates the round trip's own timing directly (the
+largest deviation between any write's actual cycle and the tick `exportSpc`
+rounded it to, at the same 3-tick bound the unit test derives, measured
+live on `mario` and `zelda`: 1998 and 1993 cycles respectively, about 1.95
+ticks, unchanged this round), and a `--self-test` mode (wired into CI as
+`check:spc-export:self-test`, alongside `check:spc` itself, which was not
+previously run in CI at all) exercises a positive and a negative control
+per gate: the write-cycle gate accepts both named offsets outright
+(including the `-6` case, not just the plain `+1`) and rejects one cycle
+past either; the new exact sample gate accepts two identical streams and
+rejects one perturbed by a single sample at a single cycle; the round-trip
+timing and envelope-correlation gates keep their existing negative controls
+(a write outside the round-trip timing bound, a dropped voice) unchanged
+from before this round.
 
 **What changes.** `packages/chipvoice/src/spc-export.ts` and
 `chips/snes/spc-player.ts` are new; `exportSpc` and `SpcExportSizeError` are
@@ -1453,3 +1483,10 @@ gains an `spc` export kind. None of this touches `spc-import.ts`,
 is how the CI check in `packages/conform/src/spc/check-export.mjs` proves
 the player's writes land where the capture put them, alongside a direct
 comparison against `play-spc`'s own playback of the same exported file.
+Round three also touches the vendored oracle itself
+(`packages/conform/oracles/snes-spc/`): the `fix_snapshot_timer_phase()`
+load-time shim and the `g_sample_cycle` output-hook fix in `play-spc.cpp`,
+plus the new `timer-phase.spc` regression fixture and its
+`checkTimerPhase` assertion in `check.mjs`. `.github/workflows/ci.yml`
+gains two steps in the `conformance` job: `check:spc` (previously written
+but never run in CI) and the new `check:spc-export:self-test`.

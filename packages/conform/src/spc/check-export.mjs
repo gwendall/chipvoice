@@ -19,12 +19,15 @@ import { ChangeStream } from '../change-stream.mjs';
  *   node src/spc/check-export.mjs [--json <file>] [--sheet <file>] [--report]
  *   node src/spc/check-export.mjs --self-test
  *
- * `--self-test` runs a handful of negative tests against synthetic data
- * instead of the real corpus, one per gate this file has: an oracle write
- * altered by one value, an oracle write cycle shifted past the tolerance
- * `compareOracleWrites` names, a write placed past the round-trip timing
- * bound, and a voice dropped entirely - each must make the matching gate
- * fail, not just pass by accident (see `selfTest`'s own doc comment).
+ * `--self-test` runs a handful of negative tests (and their positive
+ * controls) against synthetic data instead of the real corpus, one set per
+ * gate this file has: an oracle write altered by one value, an oracle write
+ * cycle shifted one past either of the two exact values `WRITE_CYCLE_OFFSETS`
+ * names, a write placed past the round-trip timing bound, a voice dropped
+ * entirely, and a single sample perturbed by one value - each must make the
+ * matching gate fail, not just pass by accident, and each exact gate's own
+ * named legitimate value (such as the -6 early exit) must still pass (see
+ * `selfTest`'s own doc comment).
  *
  * Two comparisons per song, both against `exportSpc`'s own output, not the
  * pre-export capture directly (its sample directory is legitimately
@@ -134,6 +137,18 @@ function fmtWrite(w) {
   return w ? `reg $${w.reg.toString(16).padStart(2, '0')} = $${w.value.toString(16).padStart(2, '0')} @ cycle ${w.cycle}` : '(none)';
 }
 
+/** The last write at or before `cycle` in a cycle-ordered write list - used
+ * to explain a sample divergence (item 3: "the write just before it") rather
+ * than just the bare cycle number. */
+function lastWriteAtOrBefore(writes, cycle) {
+  let result = null;
+  for (const w of writes) {
+    if (w.cycle > cycle) break;
+    result = w;
+  }
+  return result;
+}
+
 // spc-player.ts: TIMER_TARGET=8, 8000/8 = 1000 Hz = 1024 SPC cycles/tick -
 // the same constant packages/chipvoice/test/spc-export.mjs names for its own
 // round-trip timing check.
@@ -141,52 +156,60 @@ const CYCLES_PER_TICK = 1024;
 
 // check.mjs's own documented "+1 for the last access of an instruction"
 // cycle-labeling convention difference between the two CPUs - already
-// treated as benign there, and confirmed here as the constant offset every
-// write before the phantom period below shares.
+// treated as benign there, and the offset every oracle write carries unless
+// T0_POLL_EARLY_EXIT below also applies to it.
 const KNOWN_WRITE_OFFSET = 1;
 
 // blargg's vendored snes_spc (oracles/snes-spc/snes_spc/SNES_SPC.cpp,
-// `run_timer_`) computes each timer's elapsed prescaler periods as
-// `TIMER_DIV(t, time - t->next_time) + 1` - an unconditional "+1" - while
-// `reset_time_regs()` (SNES_SPC_misc.cpp) sets every timer's `next_time = 1`
-// on every snapshot load, including `load_spc()`'s own. The combination
-// means the very FIRST call to `run_timer_` after a load always credits
-// itself with one whole prescaler period already elapsed, no matter how few
-// cycles have actually passed - proven in isolation with a minimal
-// hand-built .spc file (CONTROL enabling timer 0, T0TARGET=1, T0OUT=0, no
-// other writes): blargg's own CPU reports timer 0's first pulse at cycle 3,
-// where both real hardware and this package's own per-cycle timer model only
-// reach it at cycle 128 (ssmp.ts's STAGE1_T01, timer 0's free-running
-// prescaler period). From that first live tick onward every later timer read
-// and DSP register write blargg's CPU makes lands exactly one such period
-// ahead of ours, for the rest of the file - a single, fixed, one-time jump,
-// not drift (confirmed by sampling write cycles across the whole file on
-// both real corpus songs; the offset never changes again after this one
-// jump). This is a known simplification in blargg's own lazy timer model,
-// not a bug in this package's per-cycle one, and not something exportSpc or
-// importSpc could work around: the phantom period is entirely inside
-// play-spc's own CPU, before the exported file's first real write.
-const T0_STAGE1_PERIOD = 128;
-
-// Headroom around a clean multiple of T0_STAGE1_PERIOD, in cycles: measured
-// residual on this corpus is 2 (mario) and 5 (zelda) cycles, from the same
-// plain-vs-burst write-dispatch cost difference the round-trip timing gate
-// below measures. 16 matches the window compare.mjs's own bestShift already
-// searches for the same "phase convention, not a bug" purpose, comfortably
-// over the measured 2-5 cycle residual this mechanism actually produces.
-const PHANTOM_PERIOD_RESIDUAL_BOUND = 16;
+// `run_timer_`) decides a timer's elapsed periods lazily, only when
+// something actually reads or writes it, via `TIMER_DIV(t, time -
+// t->next_time) + 1`. The exported player (spc-player.ts) polls Timer 0's
+// output counter (`T0OUT`, $FD) in a tight loop - `MOV A,dp` (3 cycles) then
+// a taken `BEQ` back to the same poll (4 cycles), 7 cycles per "still
+// waiting" iteration - so the real question at each poll is only ever "has
+// blargg's lazy formula and this package's own per-cycle timer model (ssmp.ts's
+// `Timer.tick()`, which advances every timer by exactly one cycle before the
+// CPU's own next bus access can see it) already crossed the same 128-cycle
+// prescaler boundary, as of the exact cycle this specific poll read lands
+// on". They agree on every boundary that is not itself the poll's own read
+// cycle - the ordinary case, `KNOWN_WRITE_OFFSET` alone explains it - but the
+// two models differ on whether a read landing exactly on a boundary cycle
+// already sees that boundary's own count. When it lands early enough,
+// blargg's poll sees the counter go nonzero one iteration before this
+// package's own per-cycle model would have looped again, so the write that
+// follows the loop lands a whole poll iteration (7 cycles) earlier in
+// blargg's trace than KNOWN_WRITE_OFFSET alone predicts - `1 - 7 = -6`. It
+// never compounds: the next wait re-synchronizes to the true boundary (there
+// is no drift to inherit), so a write with no wait of its own before it
+// (delta 0, dispatched straight out of a burst or copy) only ever inherits
+// whichever of the two values the wait before it already settled on, never a
+// third. Proven by construction, not just observed: a minimal synthetic
+// two-write .spc with a single isolated wait never reproduces this (the
+// dispatch overhead that walks the poll's own phase forward by a couple of
+// cycles each time never has anywhere to accumulate from), but a repeating
+// wait-then-write loop does, deterministically, at the same write index
+// every time it is rebuilt (see `packages/conform`'s own git history for the
+// isolating scratch scripts this was found with). Exhaustively confirmed on
+// the whole write stream of both real corpus songs: `oracle[i].cycle -
+// ours[i].cycle` takes exactly the two values below, nothing else, for every
+// single write in `mario` (24092/24092) and `zelda` (12665/12665). This is a
+// boundary-inclusivity artifact of blargg's own lazy catch-up formula, not a
+// bug in this package's per-cycle timer (ssmp.ts already resolves the same
+// question, and every other project boundary this file's git history has
+// checked, the per-cycle model against real hardware behavior), so it is
+// shimmed and documented here rather than patched into the vendored oracle.
+const T0_POLL_ITERATION_COST = 7;
+const WRITE_CYCLE_OFFSETS = [KNOWN_WRITE_OFFSET, KNOWN_WRITE_OFFSET - T0_POLL_ITERATION_COST]; // [1, -6] - exact, no tolerance band around either
 
 /**
- * Like compareWrites, but for the oracle comparison: also validates that
- * every matched write's cycle is explained by KNOWN_WRITE_OFFSET, optionally
- * advanced by exactly one T0_STAGE1_PERIOD partway through the file (see the
- * doc comment above) - not "close enough" on some looser scale. Content
- * (register, value, order) is still gated at exact equality, same as
- * compareWrites; cycles are gated at exact equality up to that single, named,
- * justified offset. Any other cycle relationship - a second change in the
- * phantom-period count, a residual outside PHANTOM_PERIOD_RESIDUAL_BOUND, or
- * the oracle running behind rather than ahead - fails the gate and is
- * reported as the first write whose cycle diverges.
+ * Like compareWrites, but for the oracle comparison: content (register,
+ * value, order) is gated at exact equality, same as compareWrites, and every
+ * matched write's cycle is gated at exact equality to `ours[i].cycle` plus
+ * one of `WRITE_CYCLE_OFFSETS` - no residual, no running count, no "close
+ * enough" tolerance around either value. See `WRITE_CYCLE_OFFSETS`'s own doc
+ * comment for what the second value is and why it is exact rather than a
+ * band. Any other cycle relationship fails the gate and is reported as the
+ * first write whose cycle diverges.
  */
 function compareOracleWrites(ours, oracle) {
   const n = Math.min(ours.length, oracle.length);
@@ -194,27 +217,17 @@ function compareOracleWrites(ours, oracle) {
   while (matched < n && ours[matched].reg === oracle[matched].reg && ours[matched].value === oracle[matched].value) matched++;
   const first = matched < ours.length || matched < oracle.length ? { index: matched, ours: ours[matched] ?? null, oracle: oracle[matched] ?? null } : null;
 
-  let phantomPeriods = 0;
-  let transitionIndex = null;
   let cycleFirst = null;
+  let earlyExits = 0; // how many matched writes used WRITE_CYCLE_OFFSETS[1] (the -6 case) rather than the plain +1
   for (let i = 0; i < matched; i++) {
     const diff = oracle[i].cycle - ours[i].cycle;
-    const periods = Math.round((KNOWN_WRITE_OFFSET - diff) / T0_STAGE1_PERIOD);
-    const residual = diff - (KNOWN_WRITE_OFFSET - periods * T0_STAGE1_PERIOD);
-    if (periods < 0 || Math.abs(residual) > PHANTOM_PERIOD_RESIDUAL_BOUND) {
-      cycleFirst = { index: i, ours: ours[i], oracle: oracle[i], diff, periods, residual };
+    if (!WRITE_CYCLE_OFFSETS.includes(diff)) {
+      cycleFirst = { index: i, ours: ours[i], oracle: oracle[i], diff };
       break;
     }
-    if (periods !== phantomPeriods) {
-      if (transitionIndex !== null) {
-        cycleFirst = { index: i, ours: ours[i], oracle: oracle[i], diff, periods, residual, reason: 'a second change in the phantom-period count' };
-        break;
-      }
-      transitionIndex = i;
-      phantomPeriods = periods;
-    }
+    if (diff !== KNOWN_WRITE_OFFSET) earlyExits++;
   }
-  return { oursCount: ours.length, oracleCount: oracle.length, matched, first, cycleOk: cycleFirst === null, cycleFirst, phantomPeriods, transitionIndex };
+  return { oursCount: ours.length, oracleCount: oracle.length, matched, first, cycleOk: cycleFirst === null, cycleFirst, earlyExits };
 }
 
 /**
@@ -265,18 +278,21 @@ const ROUND_TRIP_DRIFT_TICKS = 3; // see roundTripTimingDrift's doc comment
  * the same waveform as almost entirely different, the same way a sine wave
  * correlates poorly with a slightly delayed copy of itself even though it is
  * the identical tone. Measured on this exact corpus: a strict cycle-exact
- * comparison lands around 17-31% across both real songs, despite their
- * write streams matching the plan or the oracle exactly, register for
- * register, value for value, in order (see `roundTripWrites`/
- * `oracleWriteCompare` below) - the notes are all there, on time to within
- * the stated tolerance, but sample-for-sample matching is not a meaningful
- * test of that. On the oracle side this is not just phase: correcting for
- * blargg's own proven timer quirk (see `T0_STAGE1_PERIOD`'s doc comment)
- * only raises it to 29-40%, and `compareOracleWrites`'s own doc comment (in
- * `checkOne`) gives the fuller, measured explanation - note-relative timing
- * matches 92-97% of the time; the exact sample values within a note do not,
- * which is why `noteTimingAlignment`, not raw cycle-exact identity, is this
- * check's other exact bar for the oracle samples comparison.
+ * comparison of the ROUND TRIP (this package's own CPU on both sides, one
+ * pass through a real file and one direct trace of the plan it came from)
+ * lands around 17-31% across both real songs, despite their write streams
+ * matching the plan exactly, register for register, value for value, in
+ * order (see `roundTripWrites` below) - the notes are all there, on time to
+ * within the stated tolerance, but sample-for-sample matching of two
+ * independently tick-rounded renders is not a meaningful test of that, which
+ * is why the round trip stays gated on this envelope correlation rather than
+ * raw identity. The oracle (play-spc) side is a different case: once the
+ * samples comparison is built to remove the CPU-timing variable entirely
+ * (see the doc comment above `oracleWriteCompare`/`oracleSampleCompare` in
+ * `checkOne`), a strict cycle-exact comparison there reaches 100% on both
+ * real songs, so it is gated on exactly that (`identical === cycles`) rather
+ * than this correlation. `oracleEnvelope`/`oracleNoteTiming` are still
+ * reported for context, not gated.
  *
  * What does survive a timing shift far smaller than a note's own length is
  * loudness over a short window - a shifted sine wave has the same RMS as an
@@ -315,6 +331,40 @@ const WINDOW_CYCLES = 4 * CYCLES_PER_TICK; // four ticks - see the doc comment a
 const ENVELOPE_WINDOWS_TICKS = [1, 2, 4]; // reported every run (see checkOne's envelopeByWindow) - the same three widths the doc comment above measures, so the 1-tick-under-resolves/4-tick-is-enough claim stays checkable, not just historical
 const SAMPLE_OUTPUT_CYCLES = 32; // the S-DSP's own output period (dsp.ts: CLOCKS_PER_SAMPLE)
 const ENVELOPE_MATCH_THRESHOLD = 0.95; // Pearson correlation; see the doc comment above
+
+/**
+ * The one exact, narrow exclusion the oracle samples gate needs, and why:
+ * blargg's own SNES_SPC.cpp keeps the DSP lazily caught up, exactly the same
+ * "advance only when observed" bookkeeping as `run_timer_`'s own lazy
+ * catch-up (see `WRITE_CYCLE_OFFSETS`'s doc comment) - `dsp_write`/`dsp_read`
+ * run the DSP forward only as far as whatever CPU access just touched it.
+ * `play-spc`'s one-shot `end_frame(cycles)` render commits the DSP's own
+ * final, not-yet-observed output period only once, in a single trailing
+ * catch-up call at the exact frame boundary (`SNES_SPC.cpp`'s `end_frame`,
+ * "Catch DSP up to CPU"). This package's own per-cycle DSP model has no such
+ * batching - driven by the identical write timeline (`oracleWrites`), it
+ * always computes and emits the output sample for every `SAMPLE_OUTPUT_CYCLES`
+ * period up to and including the one ending exactly at `cycles`, regardless
+ * of whether blargg's own one-shot render tool happened to flush that same
+ * trailing sample before it returned.
+ *
+ * Measured directly, on the whole corpus: `mario`'s oracle sample stream is
+ * byte-for-byte identical to ours through the entire render (its own tail
+ * happens to have already decayed to silence, so this never becomes
+ * observable there). `zelda`'s has exactly one divergence in its entire
+ * 39086556-cycle run, at cycle 39086555 - the very last cycle - and it is
+ * this package's own trailing sample that `play-spc`'s own recorded output
+ * never reaches: `play-spc`'s last recorded sample for that run ends at
+ * cycle 39086523, exactly one `SAMPLE_OUTPUT_CYCLES` period earlier, not at
+ * 39086555. Not a bug in either DSP core's math (every other sample in both
+ * songs, tens of millions of them, matches exactly) and not something to
+ * patch into the vendored oracle (a one-shot batch tool's own last output
+ * period is inherently not guaranteed the way a live, continuously-run chip
+ * is) - so it is excluded here, by the smallest, most literal margin the
+ * mechanism above can ever affect: one trailing `SAMPLE_OUTPUT_CYCLES`
+ * period, not a number picked to make one song pass.
+ */
+const ORACLE_TAIL_TRIM_CYCLES = SAMPLE_OUTPUT_CYCLES;
 
 function windowedRms(cs, voice, cycles, windowCycles) {
   const windows = Math.ceil(cycles / windowCycles);
@@ -374,16 +424,19 @@ function envelopeMatch(a, b, cycles, voices, windowCycles = WINDOW_CYCLES) {
 const NOTE_TIMING_ALIGNMENT_THRESHOLD = 0.85;
 
 /**
- * The exact (not correlation) bar the oracle SAMPLES comparison actually
- * meets: for each voice, compare.mjs's `compare()` already runs `runs()`
- * (split into per-note runs, each allowed its own constant shift) and
- * reports how many of those runs have every step landing at the right
- * relative cycle (`alignedTimes`). This pools that across the voices
- * `compare()` was given, into one fraction - see the doc comment above
- * `oracleWriteCompare` in checkOne for why this, not raw cycle-exact
- * identity, is the tightest rule that survives on real content: note
- * *timing* matches exactly; the exact 16-bit values inside a note do not
- * (`alignedValues`, reported alongside, stays low even when this is high).
+ * Reported alongside the oracle samples comparison, not gated: for each
+ * voice, compare.mjs's `compare()` already runs `runs()` (split into
+ * per-note runs, each allowed its own constant shift) and reports how many
+ * of those runs have every step landing at the right relative cycle
+ * (`alignedTimes`). This pools that across the voices `compare()` was given,
+ * into one fraction. Before the oracle samples comparison was rebuilt to
+ * drive both DSPs from the same write timeline (see the doc comment above
+ * `oracleWriteCompare`/`oracleSampleCompare` in `checkOne`), this was that
+ * comparison's own exact bar, since note *timing* matched exactly while the
+ * exact 16-bit values inside a note did not (`alignedValues`, reported
+ * alongside, stays low even when this is high); it stays here as evidence
+ * that the CPU-timing difference the write comparison names is exactly what
+ * this already tolerated, not a second, undiscovered problem.
  */
 function noteTimingAlignment(compareResult) {
   let ours = 0, theirs = 0, alignedTimes = 0, alignedValues = 0;
@@ -481,48 +534,75 @@ async function checkOne(id) {
   // The direct comparison this check exists to make: the exact same
   // exported file, played by two independent SPC700s - this package's own
   // (`imported.events`, already re-derived from the file above) and
-  // blargg's (`play-spc`, `spcCpuWrites`/`spcCpuSamples`) - cycle-stamped
-  // register writes compared write for write, sample-accurate audio
-  // compared the same envelope-correlation way as the round trip above.
+  // blargg's (`play-spc`, `spcCpuWrites`/`spcCpuSamples`).
   //
   // The write-sequence side is gated exactly, content AND cycle:
-  // `compareOracleWrites` (see its own doc comment, and T0_STAGE1_PERIOD's,
-  // above) requires every register and value to match in order with zero
-  // tolerance, and every write's cycle to be explained by the one, named,
-  // proven offset blargg's own lazy timer model introduces at snapshot load
-  // - not "close enough" on some looser scale. Real content already meets
-  // this exactly (mario 24092/24092, zelda 12665/12665 writes, both with
-  // `cycleOk: true` and exactly one phantom-period transition, at write #63
-  // on both songs).
+  // `compareOracleWrites` (see its own doc comment, and
+  // `WRITE_CYCLE_OFFSETS`'s, above) requires every register and value to
+  // match in order with zero tolerance, and every write's cycle to equal
+  // `ours[i].cycle` plus one of exactly two named values - no residual, no
+  // running count. Real content meets this exactly on both real corpus
+  // songs (mario 24092/24092, zelda 12665/12665 writes, both `cycleOk:
+  // true`).
   //
-  // Raw cycle-exact *samples*, unlike writes, are not gateable at any
-  // meaningful bar, even after correcting for that same proven offset -
-  // measured directly, not assumed: shifting the oracle's sample stream by
-  // the write comparison's own phantomPeriods * T0_STAGE1_PERIOD still only
-  // raises cycle-exact identity to 29-40% on this corpus (up from 17-31%
-  // unshifted), nowhere near check.mjs's own 100% bar. The reason is not
-  // unexplained "phase": splitting the same comparison into note-relative
-  // timing versus in-note sample values (compare.mjs's `runs()`) shows why -
-  // each note's own steps land at the right relative times 92-97% of the
-  // time (`alignedTimes` below), but the exact 16-bit values at those times
-  // essentially never match bit for bit (`alignedValues`, and raw `edges()`,
-  // both near zero). The S-DSP core is a direct port of blargg's own (see
-  // this file's own top doc comment), so the two do not diverge in what the
-  // DSP itself computes; they diverge in the few cycles of write timing that
-  // seed a continuously-evolving, chaotic pipeline (Gaussian interpolation
-  // phase, envelope and pitch counters advancing every cycle) - the same
-  // handful of cycles the write comparison above already names and bounds,
-  // just now shown to be enough, downstream, to make two individually
-  // correct realizations of the same note sound like different waveforms
-  // sample for sample while still starting, stopping, and stepping at the
-  // same times. Note timing IS a real, exact (not correlation) bar this
-  // corpus meets, and NOTE_TIMING_ALIGNMENT_THRESHOLD below gates on it,
-  // alongside envelope correlation (unchanged) for the audio content itself.
+  // The samples side is gated exactly too, `identical === cycles`, the same
+  // bar `check:spc` already gates its own DSP-only comparison at - but only
+  // once the one remaining degree of freedom the write comparison above
+  // already explains is taken out of it. Driving this package's own DSP
+  // with `imported.events` (this package's own CPU's own write cycles)
+  // and comparing against blargg's actual output re-tests the write
+  // comparison's own already-named, already-exact `WRITE_CYCLE_OFFSETS`
+  // difference a second time, through a far noisier instrument: a note's
+  // Gaussian interpolation phase and envelope/pitch counters keep advancing
+  // every cycle once a note starts, so even the documented, bounded,
+  // self-correcting few-cycle write-time difference leaves that note's
+  // whole remaining audio shifted from the oracle's own, and a raw
+  // cycle-exact sample comparison scores two out-of-phase copies of the same
+  // waveform as almost entirely different (see `envelopeMatch`'s own doc
+  // comment below for the general version of this effect). Measured
+  // directly: comparing this way capped out at 92.56% (mario) / 98.00%
+  // (zelda) cycle-exact, even after the `play-spc.cpp` sample-clock fix
+  // this file's own git history already made.
+  //
+  // What this check actually exists to prove is narrower and already fully
+  // covered elsewhere: given the *same* write, does the S-DSP core compute
+  // the *same* sample - a question with no CPU-timing content in it at all,
+  // and the one `check:spc` already answers at 100% for a hand-built write
+  // trace. So the samples comparison below drives this package's own DSP
+  // with blargg's own actual write cycles (`oracleWrites`, already proven
+  // content-identical by `oracleWriteCompare` above), not this package's
+  // own CPU's independently-derived ones - the same shared-stimulus,
+  // separate-DSP-implementations shape `check:spc` already uses, just built
+  // from a real exported file's write stream instead of a hand-written
+  // fixture. `oracleNoteTiming` and the envelope correlation are still
+  // reported below (not gated): they were this file's own gate before this
+  // rebuild, and stay as evidence that the CPU-timing difference the write
+  // comparison names is exactly what note-relative timing and loudness
+  // correlation already tolerated, not a second, undiscovered problem.
   const oracleWrites = spcCpuWrites(file, cycles);
   const oracleSamples = ChangeStream.from(await spcCpuSamples(file, cycles));
-  const oursForOracle = ChangeStream.from(chipSnes.trace(imported.events, cycles, imported.memory));
   const oracleWriteCompare = compareOracleWrites(resolveWrites(imported.events.slice(imported.restoreEvents)), oracleWrites);
-  const oracleSampleCompare = compare(oursForOracle, oracleSamples, { cycles, voices: [0, 1] });
+  // The samples comparison drives this package's own DSP with blargg's own
+  // write cycles (`oracleWrites`), not this package's own CPU's re-derived
+  // ones (`imported.events`): `oracleWriteCompare` above already proves the
+  // two CPUs' write cycles agree exactly, up to the one named, exact,
+  // two-valued rule `WRITE_CYCLE_OFFSETS` documents - so re-introducing that
+  // same few-cycle CPU-timing difference here would test it a second time,
+  // through a much noisier instrument (a note's own interpolation and
+  // envelope phase, once shifted by even a few cycles, stays shifted for the
+  // rest of that note - see the git history that measured this before this
+  // rebuild for the raw numbers). Feeding both DSPs the identical write
+  // timeline isolates this comparison to the one thing it exists to check -
+  // whether the S-DSP core itself, given the same stimulus, produces the
+  // same audio - the same thing `check:spc` already gates at 100%, and the
+  // reason this can be gated the same way.
+  const restoreEvents = imported.events.slice(0, imported.restoreEvents);
+  const oracleWriteEvents = oracleWrites.flatMap((w) => [{ at: w.cycle, addr: 0xf2, value: w.reg }, { at: w.cycle, addr: 0xf3, value: w.value }]);
+  const oursForOracle = ChangeStream.from(chipSnes.trace([...restoreEvents, ...oracleWriteEvents], cycles, imported.memory));
+  // See ORACLE_TAIL_TRIM_CYCLES's own doc comment: the exact gate excludes
+  // this package's own trailing output period, which play-spc's one-shot
+  // render cannot be relied on to have flushed.
+  const oracleSampleCompare = compare(oursForOracle, oracleSamples, { cycles: cycles - ORACLE_TAIL_TRIM_CYCLES, voices: [0, 1] });
   const oracleNoteTiming = noteTimingAlignment(oracleSampleCompare);
   // Reported at three window widths, not just the one this check gates on
   // (`WINDOW_CYCLES`, four ticks) - see `envelopeMatch`'s doc comment for
@@ -536,23 +616,35 @@ async function checkOne(id) {
   const oracleEnvelopeWindows = envelopeByWindow(oursForOracle, oracleSamples);
   const oracleEnvelope = oracleEnvelopeWindows[WINDOW_CYCLES / CYCLES_PER_TICK];
 
-  return { id, cycles, size, roundTripSamples, roundTripEnvelope, roundTripEnvelopeWindows, roundTripWrites, roundTripDrift, oracleWriteCompare, oracleSampleCompare, oracleNoteTiming, oracleEnvelope, oracleEnvelopeWindows };
+  return { id, cycles, size, roundTripSamples, roundTripEnvelope, roundTripEnvelopeWindows, roundTripWrites, roundTripDrift, oracleWrites, oracleWriteCompare, oracleSampleCompare, oracleNoteTiming, oracleEnvelope, oracleEnvelopeWindows };
 }
 
 /**
- * One negative test per gate this file has, against small synthetic data
+ * One set of tests per gate this file has, against small synthetic data
  * rather than the real corpus - proof each gate actually catches the kind of
- * problem it exists for, not just that real content happens to pass it:
+ * problem it exists for, not just that real content happens to pass it, and
+ * (for the two exact gates item 3 and item 5 ask for) proof each gate's own
+ * named legitimate value still passes, so the gate is exact rather than
+ * merely strict:
  *
  *  - a write whose value is altered: the content gate (`compareOracleWrites`,
  *    shared with `compareWrites`/`roundTripWrites`) must reject it.
- *  - a write cycle shifted one cycle past PHANTOM_PERIOD_RESIDUAL_BOUND: the
- *    cycle gate must now reject it, where the old, cycle-blind `compareWrites`
- *    would have passed it silently.
+ *  - a write cycle at exactly `WRITE_CYCLE_OFFSETS[0]` (+1) or
+ *    `WRITE_CYCLE_OFFSETS[1]` (-6, the named early-exit value): the cycle
+ *    gate must accept both - positive controls, since the second value is a
+ *    proven, exact, legitimate outcome (see `WRITE_CYCLE_OFFSETS`'s doc
+ *    comment), not tolerance. A write cycle one past either value: the cycle
+ *    gate must reject it, where the old, cycle-blind `compareWrites` would
+ *    have passed it silently.
  *  - a write placed past ROUND_TRIP_DRIFT_TICKS from its tick-rounded target:
- *    `roundTripTimingDrift`'s own gate must reject it.
+ *    `roundTripTimingDrift`'s own gate must reject it (round trip, item 4:
+ *    unchanged).
  *  - a voice dropped entirely (real content, replaced with silence): the
- *    envelope correlation gate must reject it.
+ *    round trip's own envelope correlation gate must reject it (item 4:
+ *    unchanged).
+ *  - a single sample perturbed by one value: the oracle samples gate
+ *    (`identical === cycles`, item 3/5) must reject it, exactly, not just
+ *    reduce a correlation score.
  *
  * Returns the number of checks that did NOT behave as expected.
  */
@@ -577,26 +669,45 @@ function selfTest() {
     check('self-test: an altered write value fails the content gate', r.first !== null && r.first.index === 1);
   }
 
-  // ---- Write cycle, shifted one cycle past the named tolerance: the cycle
-  // gate must reject it where a cycle-blind compareWrites would not. ----
+  // ---- Write cycle: exact equality to one of WRITE_CYCLE_OFFSETS, no
+  // residual band around either value. ----
   {
     const ours = [];
-    const oracle = [];
-    for (let i = 0; i < 6; i++) {
-      ours.push({ reg: i, value: i, cycle: 100 + i * 3000 });
-      oracle.push({ reg: i, value: i, cycle: ours[i].cycle + KNOWN_WRITE_OFFSET });
-    }
-    // The old, cycle-blind compareWrites sees identical content and passes.
-    const contentOnly = compareWrites(ours, oracle);
-    check('self-test: content-only comparison does not itself catch a cycle shift (sanity check)', contentOnly.first === null);
-    // One cycle past the residual this file names and justifies (16) - not
-    // an arbitrarily large shift, the smallest one that must fail.
-    oracle[5].cycle += PHANTOM_PERIOD_RESIDUAL_BOUND + 1;
-    const r = compareOracleWrites(ours, oracle);
-    check('self-test: a write cycle one past the named tolerance fails the cycle gate', !r.cycleOk && r.cycleFirst?.index === 5);
+    for (let i = 0; i < 6; i++) ours.push({ reg: i, value: i, cycle: 100 + i * 3000 });
+
+    // Positive control: the plain +1 offset on every write passes, and is
+    // not counted as an early exit.
+    const plusOne = ours.map((w) => ({ ...w, cycle: w.cycle + KNOWN_WRITE_OFFSET }));
+    const plusOneResult = compareOracleWrites(ours, plusOne);
+    check('self-test: every write at the plain +1 offset passes the cycle gate', plusOneResult.cycleOk && plusOneResult.earlyExits === 0);
+
+    // Positive control: the named early-exit value (-6) also passes outright
+    // - the second of exactly two named exact values, not a tolerance band
+    // (see WRITE_CYCLE_OFFSETS's doc comment) - and is counted as such.
+    const earlyExit = ours.map((w) => ({ ...w, cycle: w.cycle + WRITE_CYCLE_OFFSETS[1] }));
+    const earlyExitResult = compareOracleWrites(ours, earlyExit);
+    check('self-test: every write at the named early-exit offset (-6) passes the cycle gate', earlyExitResult.cycleOk && earlyExitResult.earlyExits === ours.length);
+
+    // The old, cycle-blind compareWrites sees identical content and passes
+    // regardless of cycle - the sanity check that motivates a separate cycle
+    // gate at all.
+    const farOff = ours.map((w) => ({ ...w, cycle: w.cycle + 12345 }));
+    check('self-test: content-only comparison does not itself catch a cycle shift (sanity check)', compareWrites(ours, farOff).first === null);
+
+    // Negative: one cycle past +1 (and not equal to -6 either) fails - the
+    // smallest shift that must fail, not an arbitrarily large one.
+    const pastPlusOne = ours.map((w, i) => ({ ...w, cycle: w.cycle + (i === 5 ? KNOWN_WRITE_OFFSET + 1 : KNOWN_WRITE_OFFSET) }));
+    const pastPlusOneResult = compareOracleWrites(ours, pastPlusOne);
+    check('self-test: a write cycle one past +1 fails the cycle gate', !pastPlusOneResult.cycleOk && pastPlusOneResult.cycleFirst?.index === 5);
+
+    // Negative: one cycle past the named early-exit value (-7) fails too.
+    const pastEarlyExit = ours.map((w, i) => ({ ...w, cycle: w.cycle + (i === 5 ? WRITE_CYCLE_OFFSETS[1] - 1 : KNOWN_WRITE_OFFSET) }));
+    const pastEarlyExitResult = compareOracleWrites(ours, pastEarlyExit);
+    check('self-test: a write cycle one past the named early-exit value (-7) fails the cycle gate', !pastEarlyExitResult.cycleOk && pastEarlyExitResult.cycleFirst?.index === 5);
   }
 
-  // ---- Round-trip timing: a write placed past the gate's own bound. ----
+  // ---- Round-trip timing: a write placed past the gate's own bound (item
+  // 4: unchanged from before this round). ----
   {
     const plan = [{ reg: 0, value: 0, cycle: 10000 }];
     const onTarget = [{ reg: 0, value: 0, cycle: 10240 }]; // rounds to the same tick (10240), 0 drift
@@ -607,8 +718,9 @@ function selfTest() {
     check('self-test: a write past the round-trip timing bound fails the gate', badDrift.maxCycleDiff > ROUND_TRIP_DRIFT_TICKS * CYCLES_PER_TICK);
   }
 
-  // ---- Sample content: a voice dropped entirely (replaced with silence),
-  // not just phase-shifted - the envelope correlation gate must reject it. ----
+  // ---- Round-trip sample content: a voice dropped entirely (replaced with
+  // silence), not just phase-shifted - the envelope correlation gate must
+  // reject it (item 4: unchanged from before this round). ----
   {
     const cycles = 5 * WINDOW_CYCLES;
     const ours = new ChangeStream();
@@ -618,9 +730,26 @@ function selfTest() {
     }
     const silentOracle = new ChangeStream(); // the dropped voice: no changes at all, value stays 0 throughout
     const dropped = envelopeMatch(ours, silentOracle, cycles, [0]);
-    check('self-test: a dropped voice fails the envelope correlation gate', dropped.correlation < ENVELOPE_MATCH_THRESHOLD);
+    check('self-test: a dropped voice fails the round-trip envelope correlation gate', dropped.correlation < ENVELOPE_MATCH_THRESHOLD);
     const identical = envelopeMatch(ours, ours, cycles, [0]);
-    check('self-test: comparing a stream against itself passes the envelope correlation gate (sanity check)', identical.correlation >= ENVELOPE_MATCH_THRESHOLD);
+    check('self-test: comparing a stream against itself passes the round-trip envelope correlation gate (sanity check)', identical.correlation >= ENVELOPE_MATCH_THRESHOLD);
+  }
+
+  // ---- Oracle samples: the exact identical === cycles gate (item 3/5) - a
+  // single sample perturbed by one value must fail it outright, not just
+  // move a correlation score. ----
+  {
+    const cycles = 4 * SAMPLE_OUTPUT_CYCLES;
+    const a = new ChangeStream();
+    const b = new ChangeStream();
+    for (let c = 0; c < cycles; c += SAMPLE_OUTPUT_CYCLES) { a.push(c, 0, 1000); b.push(c, 0, 1000); }
+    const identical = compare(a, b, { cycles, voices: [0] });
+    check('self-test: two identical streams pass the exact oracle sample gate (sanity check)', identical.identical === identical.cycles);
+
+    const perturbed = new ChangeStream();
+    for (let c = 0; c < cycles; c += SAMPLE_OUTPUT_CYCLES) perturbed.push(c, 0, c === SAMPLE_OUTPUT_CYCLES ? 1001 : 1000); // one sample off by one value
+    const off = compare(a, perturbed, { cycles, voices: [0] });
+    check('self-test: a one-sample perturbation fails the exact oracle sample gate', off.identical !== off.cycles && off.first !== null && off.first.cycle === SAMPLE_OUTPUT_CYCLES);
   }
 
   return failures;
@@ -646,7 +775,12 @@ for (const r of results) {
   const roundTripDriftOk = r.roundTripDrift.maxCycleDiff <= ROUND_TRIP_DRIFT_TICKS * CYCLES_PER_TICK;
   const oracleWritesOk = r.oracleWriteCompare.first === null && r.oracleWriteCompare.cycleOk;
   const roundTripSamplesOk = r.roundTripEnvelope.correlation >= ENVELOPE_MATCH_THRESHOLD;
-  const oracleSamplesOk = r.oracleEnvelope.correlation >= ENVELOPE_MATCH_THRESHOLD && r.oracleNoteTiming.fraction >= NOTE_TIMING_ALIGNMENT_THRESHOLD;
+  // Exact, not tolerant (item 3): identical === cycles, the same bar
+  // check:spc gates its own DSP-only comparison at - see the doc comment
+  // above oracleWriteCompare/oracleSampleCompare in checkOne for why this is
+  // now achievable exactly. oracleEnvelope/oracleNoteTiming stay as reported
+  // evidence only, not part of this gate.
+  const oracleSamplesOk = r.oracleSampleCompare.identical === r.oracleSampleCompare.cycles;
   const ok = roundTripWritesOk && roundTripDriftOk && oracleWritesOk && roundTripSamplesOk && oracleSamplesOk;
   if (!ok) anyDivergence = true;
   const rawPct = (n, d) => (100 * n) / d;
@@ -656,7 +790,7 @@ for (const r of results) {
     r.id.padEnd(8),
     `ARAM ${r.size.dataEnd}/${r.size.limit}`,
     `round trip: writes ${r.roundTripWrites.matched}/${Math.max(r.roundTripWrites.oursCount, r.roundTripWrites.oracleCount)} (max drift ${r.roundTripDrift.maxCycleDiff}c/${r.roundTripDrift.ticks.toFixed(2)}t), samples ${fmtEnv(r.roundTripEnvelope)} (${rawPct(r.roundTripSamples.identical, r.roundTripSamples.cycles).toFixed(4)}% cycle-exact)`,
-    `play-spc: writes ${r.oracleWriteCompare.matched}/${Math.max(r.oracleWriteCompare.oursCount, r.oracleWriteCompare.oracleCount)} (cycleOk ${r.oracleWriteCompare.cycleOk}, phantomPeriods ${r.oracleWriteCompare.phantomPeriods}@#${r.oracleWriteCompare.transitionIndex}), samples ${fmtEnv(r.oracleEnvelope)} (${rawPct(r.oracleSampleCompare.identical, r.oracleSampleCompare.cycles).toFixed(4)}% cycle-exact, note timing ${r.oracleNoteTiming.alignedTimes}/${Math.max(r.oracleNoteTiming.ours, r.oracleNoteTiming.theirs)} = ${(100 * r.oracleNoteTiming.fraction).toFixed(2)}%)`,
+    `play-spc: writes ${r.oracleWriteCompare.matched}/${Math.max(r.oracleWriteCompare.oursCount, r.oracleWriteCompare.oracleCount)} (cycleOk ${r.oracleWriteCompare.cycleOk}, ${r.oracleWriteCompare.earlyExits} early-exit write(s)), samples ${rawPct(r.oracleSampleCompare.identical, r.oracleSampleCompare.cycles).toFixed(4)}% cycle-exact (reported only: ${fmtEnv(r.oracleEnvelope)}, note timing ${r.oracleNoteTiming.alignedTimes}/${Math.max(r.oracleNoteTiming.ours, r.oracleNoteTiming.theirs)} = ${(100 * r.oracleNoteTiming.fraction).toFixed(2)}%)`,
   ];
   if (r.roundTripWrites.first) line.push(`round-trip writes diverge at #${r.roundTripWrites.first.index}: ours ${fmtWrite(r.roundTripWrites.first.ours)}, plan ${fmtWrite(r.roundTripWrites.first.oracle)}`);
   if (!roundTripDriftOk) line.push(`round-trip timing drift ${r.roundTripDrift.maxCycleDiff} cycles exceeds the ${ROUND_TRIP_DRIFT_TICKS}-tick (${ROUND_TRIP_DRIFT_TICKS * CYCLES_PER_TICK}-cycle) bound, at write #${r.roundTripDrift.worst?.index}`);
@@ -664,8 +798,15 @@ for (const r of results) {
   if (!r.oracleWriteCompare.cycleOk) line.push(`play-spc write cycles diverge at #${r.oracleWriteCompare.cycleFirst.index}: diff ${r.oracleWriteCompare.cycleFirst.diff}, ${r.oracleWriteCompare.cycleFirst.periods} phantom period(s), residual ${r.oracleWriteCompare.cycleFirst.residual}${r.oracleWriteCompare.cycleFirst.reason ? ` (${r.oracleWriteCompare.cycleFirst.reason})` : ''}`);
   if (!roundTripSamplesOk) line.push(`round-trip envelope correlation ${r.roundTripEnvelope.correlation.toFixed(4)} below the ${ENVELOPE_MATCH_THRESHOLD} threshold`);
   if (!oracleSamplesOk) {
-    if (r.oracleEnvelope.correlation < ENVELOPE_MATCH_THRESHOLD) line.push(`play-spc envelope correlation ${r.oracleEnvelope.correlation.toFixed(4)} below the ${ENVELOPE_MATCH_THRESHOLD} threshold`);
-    if (r.oracleNoteTiming.fraction < NOTE_TIMING_ALIGNMENT_THRESHOLD) line.push(`play-spc note timing alignment ${(100 * r.oracleNoteTiming.fraction).toFixed(2)}% below the ${(100 * NOTE_TIMING_ALIGNMENT_THRESHOLD).toFixed(0)}% threshold`);
+    // Item 3: when the exact sample gate fails, report the first differing
+    // sample - cycle, voice, both values - and the write just before it, not
+    // a correlation number, so the next cause (if any) is findable directly
+    // from this line.
+    const d = r.oracleSampleCompare.first;
+    if (d) {
+      const before = lastWriteAtOrBefore(r.oracleWrites, d.cycle);
+      line.push(`play-spc samples diverge at cycle ${d.cycle}, voice ${d.voice}: ours ${d.a}, oracle ${d.b}; last write at/before: ${fmtWrite(before)}`);
+    }
   }
   console.log(line.join('  '));
   // Envelope correlation at each reported window width, both sides - the
@@ -682,8 +823,8 @@ for (const r of results) {
 const summary = {
   date: new Date().toISOString().slice(0, 10),
   oracle: 'play-spc (blargg\'s SPC700, vendored snes_spc)',
-  sampleMetric: `envelope correlation: both streams' per-voice RMS loudness in ${WINDOW_CYCLES}-cycle (four ticks, ${(WINDOW_CYCLES / CYCLES_PER_TICK).toFixed(0)} ms) windows, pooled across voices, compared by Pearson correlation; gated at ${ENVELOPE_MATCH_THRESHOLD}. relativeRmsError is the same envelopes' RMS difference relative to the oracle's own RMS, reported but not gated. cycleExact is compare()'s raw, unwindowed cycle-exact percentage, reported but not gated - see envelopeMatch's doc comment in this file for why a raw sample comparison, or even a too-fine windowed one, is the wrong tool for audio this close to correct. noteTiming (oracle side only) is compare()'s runs()-based per-note alignment: the fraction of notes whose steps land at the right relative cycle once each note is given its own constant shift - a genuinely exact (not correlation) bar, gated at ${NOTE_TIMING_ALIGNMENT_THRESHOLD}; see compareOracleWrites's and noteTimingAlignment's doc comments for why this, not raw sample identity, is the tightest exact rule that survives blargg's own proven timer quirk.`,
-  writeMetric: `oracle writes are gated on content (register, value, order - exact) AND cycle (exact, up to the single named T0_STAGE1_PERIOD offset blargg's own snes_spc introduces at snapshot load - see compareOracleWrites's doc comment). roundTripDrift is the round trip's own timing gate (item 3): the largest |actual cycle - tick-rounded plan cycle| over every write, gated at ${ROUND_TRIP_DRIFT_TICKS} ticks (${ROUND_TRIP_DRIFT_TICKS * CYCLES_PER_TICK} cycles) - see roundTripTimingDrift's doc comment for the derivation.`,
+  sampleMetric: `Round trip (own CPU on both sides): envelope correlation - both streams' per-voice RMS loudness in ${WINDOW_CYCLES}-cycle (four ticks, ${(WINDOW_CYCLES / CYCLES_PER_TICK).toFixed(0)} ms) windows, pooled across voices, compared by Pearson correlation; gated at ${ENVELOPE_MATCH_THRESHOLD}. relativeRmsError is the same envelopes' RMS difference relative to the oracle's own RMS, reported but not gated. Oracle (play-spc): gated exactly, identical === cycles, the same bar check:spc gates its own DSP-only comparison at - achieved by driving this package's own DSP with blargg's own actual write cycles (oracleWrites), not this package's own CPU's independently re-derived ones, isolating the comparison to DSP-core equivalence alone (see the doc comment above oracleWriteCompare/oracleSampleCompare in checkOne). cycleExact on both sides is compare()'s raw, unwindowed cycle-exact percentage. correlation and noteTiming on the oracle side are reported for context only (not gated): they were this file's gate before the samples comparison below was rebuilt to be exact, and stay as evidence that the CPU-timing difference compareOracleWrites names is exactly what they already tolerated.`,
+  writeMetric: `oracle writes are gated on content (register, value, order - exact) AND cycle: exact equality to ours[i].cycle plus one of exactly two named values, WRITE_CYCLE_OFFSETS (${JSON.stringify(WRITE_CYCLE_OFFSETS)}) - no residual, no running count. See WRITE_CYCLE_OFFSETS's and compareOracleWrites's doc comments for the derivation of the second value (a boundary-inclusivity artifact of blargg's own lazy timer catch-up formula, proven and shimmed, not a bug in this package's own per-cycle timer). earlyExits counts how many matched writes used the second value rather than the plain +1. roundTripDrift is the round trip's own timing gate (item 3): the largest |actual cycle - tick-rounded plan cycle| over every write, gated at ${ROUND_TRIP_DRIFT_TICKS} ticks (${ROUND_TRIP_DRIFT_TICKS * CYCLES_PER_TICK} cycles) - see roundTripTimingDrift's doc comment for the derivation.`,
   songs: results.length,
   results: results.map((r) => r.tooLarge
     ? { id: r.id, cycles: r.cycles, tooLarge: r.tooLarge }
@@ -745,7 +886,7 @@ function writeSheet(file, summary) {
     '',
     `Samples: ${summary.sampleMetric}`,
     '',
-    '| Song | ARAM used | Round trip (own CPU): writes, max drift | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes (cycleOk, phantom periods) | play-spc: samples (envelope corr, rel RMS error, cycle-exact, note timing) |',
+    '| Song | ARAM used | Round trip (own CPU): writes, max drift | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes (cycleOk, early exits) | play-spc: samples (cycle-exact - gated exact; envelope corr, note timing reported only) |',
     '| --- | --- | --- | --- | --- | --- |',
   ];
   for (const r of summary.results) {
@@ -756,7 +897,7 @@ function writeSheet(file, summary) {
     const fmtSamples = (s) => `${s.correlation.toFixed(4)} (${pct(100 * s.relativeRmsError)} %, ${pct((100 * s.cycleExact.identical) / s.cycleExact.cycles)} % cycle-exact${s.noteTiming ? `, ${pct(100 * s.noteTiming.fraction)} % note timing` : ''})`;
     const rtWrites = `${r.roundTrip.writes.matched}/${Math.max(r.roundTrip.writes.oursCount, r.roundTrip.writes.oracleCount)}, ${r.roundTrip.drift.maxCycleDiff}c (${r.roundTrip.drift.ticks.toFixed(2)}t)`;
     const rtSamples = fmtSamples(r.roundTrip.samples);
-    const orWrites = `${r.oracle.writes.matched}/${Math.max(r.oracle.writes.oursCount, r.oracle.writes.oracleCount)}, cycleOk ${r.oracle.writes.cycleOk}, ${r.oracle.writes.phantomPeriods} period(s)`;
+    const orWrites = `${r.oracle.writes.matched}/${Math.max(r.oracle.writes.oursCount, r.oracle.writes.oracleCount)}, cycleOk ${r.oracle.writes.cycleOk}, ${r.oracle.writes.earlyExits} early-exit`;
     const orSamples = fmtSamples(r.oracle.samples);
     lines.push(`| ${r.id} | ${r.aramUsed} / ${r.aramLimit} bytes | ${rtWrites} | ${rtSamples} | ${orWrites} | ${orSamples} |`);
   }
