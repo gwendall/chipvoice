@@ -31,12 +31,20 @@ const wav = toWav(renderPerformance(plan, snesChip));
 
 `allowLoss`がなければ、発音数予算による省略は例外になります。テンポマップ、同時発音、ベロシティー、サステイン、ピッチベンド、音量／エクスプレッションを保持し、未対応コントローラーも保存して報告します。GM系パッチは近似で、元ゲームの楽器認証ではありません。[編曲の手順](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README_ja.md)に入力制限、原典検査、実機由来の参照、worker再生を記載します。
 
-メガドライブのネイティブ再生は `importVgm(vgmBytes)` と同じ
-`renderPerformance(plan, mdChip)` エンジンを使い、FM 音色、PSG コマンド、
-オリジナルの DAC サンプルを保持します。`isolateNativePerformance(plan, ['fm6'])`
-は共有バス時刻を維持してハードウェアの声をソロにします。上限付き VGM
-インポーターは未対応コマンドを拒否し、すべての VGM 音源やストリーム形式への
-対応は主張しません。[ネイティブ原典の手順](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README_ja.md)を参照してください。
+ネイティブ再生は `importVgm(vgmBytes)` と同じ `renderPerformance(plan, chip)`
+エンジンを使い、Mega Drive・NES・Game Boy いずれの VGM ファイルにも対応します。
+`importVgm` はヘッダーのクロックフィールドを見て機種を判定し、どちらでも同じ
+`PerformancePlan` を返すため、後段のパイプラインはトラックがファイル由来か
+譜面由来かを知る必要がありません。Mega Drive では FM 音色、PSG コマンド、
+オリジナルの DAC サンプルを保持し、NES では DPCM サンプルデータ（VGM データ
+ブロック種別 `0xC2`）を保持します。`isolateNativePerformance(plan, ['fm6'])`
+（DMG のボイスなら `['ch1']`）は共有バス時刻を維持してハードウェアの声を
+ソロにします。上限付き VGM インポーターは未対応コマンド、PAL など非NTSCの
+NES／DMG クロック、ファミコンディスクシステムのビット、第二の（「デュアル
+チップ」）NES または Game Boy チップ、同じヘッダー内の別チップのクロック、
+1.50〜1.71の範囲外のVGMバージョンを、それぞれの名前とともに拒否します。
+すべての VGM 音源やストリーム形式への対応は主張しません。
+[ネイティブ原典の手順](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README_ja.md)を参照してください。
 
 SNESのネイティブ再生は `importSpc(spcBytes)` を使います。`.spc`ファイル
 （SPC700とS-DSPを凍結したスナップショット、SNES自身の音楽形式）を、この
@@ -267,7 +275,7 @@ const { ok, issues, measured } = validateSong(song);
 
 NES、Game Boy、Mega Drive、SNES、C64の5機種を出荷しています。`ChipSpec`が声と役割割当を定義し、`ChipCore`が時刻付きのレジスター書き込みを受け、バッファーを埋めます。楽器はフレームテーブル、FMパッチ、サンプルに対応します。
 
-移植可能な楽譜は4役割を保ちます。Mega DriveはFMの旋律／ベースとPSGの和音／ドラム(または`perc: "punchy"`でチャンネル6のFMドラム。チップ自前のLFOも、それを求めるどのパッチからでも使えます)、SNESはサンプル音声、C64は第3声の和音／打楽器共有へ割り当てます。C64のフィルターにも到達できます：`lead: "sweep"`はノート全体でカットオフを開き、`bass: "resonant"`は高レゾナンスでパルスを通します。VGM出力はNES、Game Boy、Mega Drive。SNESとC64のログをファイルへ出す機能はまだ出荷していません。
+移植可能な楽譜は4役割を保ちます。Mega DriveはFMの旋律／ベースとPSGの和音／ドラム(または`perc: "punchy"`でチャンネル6のFMドラム。チップ自前のLFOも、それを求めるどのパッチからでも使えます)、SNESはサンプル音声、C64は第3声の和音／打楽器共有へ割り当てます。C64のフィルターにも到達できます：`lead: "sweep"`はノート全体でカットオフを開き、`bass: "resonant"`は高レゾナンスでパルスを通します。VGM出力とVGMインポートはいずれもNES、Game Boy、Mega Driveに対応。SNESとC64のログをファイルへ出す機能・読み込む機能はまだ出荷していません。
 
 `validateSong`は機種別の基音とアルペジオの音域警告を出します。楽譜を保存しますが、すべての変調が表現範囲内に収まる保証はしません。[移植可能な楽譜](../../docs/SCORE_ja.md)と各シートで、能力、およびコーパス一致と実機測定の違いを確認してください。
 

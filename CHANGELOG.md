@@ -72,6 +72,19 @@ voice is sounding one of its FM patches; `prepareMixPhrase` rejects the same
 overlap explicitly, and losing fm6 to the drum kit is reported like any other
 substitution, not silent.
 
+`importVgm` now reads NES and Game Boy VGM files, not only Mega Drive ones.
+It tells the three apart from the header's clock fields and returns the same
+`PerformancePlan`, so `renderPerformance`/`isolateNativePerformance` work
+unchanged: register writes (command `0xB4`) and DPCM sample data (data-block
+type `0xC2`, "NES APU RAM write") for the NES 2A03; register writes (command
+`0xB3`) for the Game Boy DMG, soloed by masking NR51 (`$FF25`) rather than
+`$4015`. A PAL or otherwise non-NTSC clock (accepted within 0.01% of the
+NES's own 1789773 Hz, admitting the 1789772 most real rips write too), the
+Famicom Disk System bit, a second ("dual-chip") chip, another chip's clock in
+the same header, and VGM versions outside 1.50-1.71 are rejected, by name.
+See [docs/chips/2a03.md](docs/chips/2a03.md#vgm-import) and
+[docs/chips/dmg.md](docs/chips/dmg.md#vgm-import).
+
 A Game Boy pulse note's trigger (ch1, ch2) keeps the low two bits of its
 frequency timer instead of zeroing them, as Pan Docs' "Obscure Behavior"
 describes ("When triggering Ch1 and Ch2, the low two bits of the frequency

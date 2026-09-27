@@ -1,0 +1,111 @@
+{
+  "chip": "dmg",
+  "oracle": {
+    "id": "gb-snd-emu",
+    "name": "Gb_Snd_Emu 0.1.4 (blargg)"
+  },
+  "voices": [
+    "ch1",
+    "ch2",
+    "ch3",
+    "ch4"
+  ],
+  "date": "2026-09-27",
+  "files": 1,
+  "cycles": 12582912,
+  "identical": 550601,
+  "diverging": 1,
+  "results": [
+    {
+      "name": "song-demo",
+      "source": "source/song-demo.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 783,
+      "cycles": 12582912,
+      "identical": 550601,
+      "first": {
+        "cycle": 0,
+        "voice": 0,
+        "a": 0,
+        "b": 15
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 6521639,
+          "a": 2167,
+          "b": 2167,
+          "exact": 22,
+          "near": 13,
+          "onlyA": 2132,
+          "onlyB": 2132,
+          "shift": 0,
+          "aligned": 22,
+          "runs": {
+            "ours": 2122,
+            "theirs": 2129,
+            "alignedTimes": 2111,
+            "alignedValues": 2106,
+            "maxShift": 102087
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 6507551,
+          "a": 1065,
+          "b": 1068,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1065,
+          "onlyB": 1068,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1065,
+            "theirs": 1065,
+            "alignedTimes": 1065,
+            "alignedValues": 1064,
+            "maxShift": 15019
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 1561926,
+          "a": 6517,
+          "b": 6512,
+          "exact": 14,
+          "near": 0,
+          "onlyA": 6503,
+          "onlyB": 6498,
+          "shift": 0,
+          "aligned": 14,
+          "runs": {
+            "ours": 14,
+            "theirs": 14,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 1791
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 10395459,
+          "a": 29987,
+          "b": 29994,
+          "exact": 3,
+          "near": 0,
+          "onlyA": 29984,
+          "onlyB": 29991,
+          "shift": 7,
+          "aligned": 14196,
+          "runs": {
+            "ours": 219,
+            "theirs": 218,
+            "alignedTimes": 157,
+            "alignedValues": 145,
+            "maxShift": 909341
+          }
+        }
+      ]
+    }
+  ]
+}

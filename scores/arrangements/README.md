@@ -39,13 +39,19 @@ const wav = toWav(renderPerformance(native, mdChip));
 const drums = isolateNativePerformance(native, ['fm6']);
 ```
 
-`importVgm` accepts uncompressed VGM 1.50–1.71 using NTSC Mega Drive YM2612 and
-SN76489 clocks/configuration. Supported commands are FM/PSG writes, waits,
-DAC data blocks, PCM seeks and DAC write/waits. Unknown commands, alternate
-hardware, malformed input and invalid loop offsets fail explicitly. Limits:
-8 MiB, ten minutes, two million bus writes. DAC banks use one bounded buffer;
-no per-sample sample-bank allocation. VGM timing has 44,100 ticks/second and
-cannot recover the game's sub-sample CPU bus timing. Browser rendering stays in a
+`importVgm` accepts uncompressed VGM 1.50-1.71 for three machines, told apart by
+which clock field the header sets: NTSC Mega Drive YM2612 and SN76489, NTSC NES
+2A03, and Game Boy DMG. For the Mega Drive, supported commands are FM/PSG
+writes, waits, DAC data blocks, PCM seeks and DAC write/waits; DAC banks use one
+bounded buffer, no per-sample sample-bank allocation. For the NES, register
+writes (command `0xB4`) and DPCM sample data (data-block type `0xC2`, "NES APU
+RAM write") are supported; the Famicom Disk System bit is not. For the Game
+Boy, register writes (command `0xB3`) are supported. On any of the three, a
+PAL or otherwise non-NTSC clock, a second ("dual-chip") NES or Game Boy chip,
+and another chip's clock in the same header fail explicitly, by name, alongside
+unknown commands, malformed input and invalid loop offsets. Limits: 8 MiB, ten
+minutes, two million bus writes. VGM timing has 44,100 ticks/second and cannot
+recover the game's sub-sample CPU bus timing. Browser rendering stays in a
 replaceable worker; the compact VGM is fetched only when needed for native solo.
 
 ```ts

@@ -43,12 +43,19 @@ not original-game instrument certification. The
 [arrangement method](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md)
 documents input limits, source checks, native references and worker playback.
 
-Native Mega Drive playback uses `importVgm(vgmBytes)` and the same
-`renderPerformance(plan, mdChip)` engine. It preserves FM patches, PSG commands
-and original DAC sample bytes. `isolateNativePerformance(plan, ['fm6'])` solos
-the hardware voice while retaining shared bus timing. The bounded VGM importer
-rejects unsupported commands; it does not claim every VGM chip/stream format.
-See the [native source method](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md).
+Native playback uses `importVgm(vgmBytes)` and the same `renderPerformance(plan, chip)`
+engine, for Mega Drive, NES and Game Boy VGM files alike: `importVgm` reads the
+header's clock fields to tell them apart and returns the same `PerformancePlan`
+either way, so the rest of the pipeline does not need to know a track came from
+a file rather than from a score. For the Mega Drive it preserves FM patches, PSG
+commands and original DAC sample bytes; for the NES it preserves DPCM sample
+data (VGM data-block type `0xC2`); `isolateNativePerformance(plan, ['fm6'])` (or
+`['ch1']` for a DMG voice) solos the hardware voice while retaining shared bus
+timing. The bounded VGM importer rejects unsupported commands, a PAL or
+otherwise non-NTSC NES/DMG clock, the Famicom Disk System bit, a second
+("dual-chip") NES or Game Boy chip, another chip's clock in the same header, and
+VGM versions outside 1.50-1.71, by name; it does not claim every VGM chip/stream
+format. See the [native source method](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md).
 
 Native SNES playback uses `importSpc(spcBytes)`: it plays an `.spc` file (a
 frozen SPC700 + S-DSP snapshot, the Super Nintendo's own music format)
@@ -393,8 +400,9 @@ FM lead/bass and PSG chord/drums on Mega Drive (or FM drums on channel 6,
 it), four sample voices on SNES, and shared chord/percussion on the C64's third
 voice. The C64's filter is reachable too: `lead: "sweep"` opens its cutoff
 across a note, `bass: "resonant"` routes a pulse through it at a high
-resonance. VGM export supports NES, Game Boy and Mega Drive; SNES and C64
-register logs do not yet have a shipped file exporter.
+resonance. VGM export and import both support NES, Game Boy and Mega Drive;
+SNES and C64 register logs do not yet have a shipped file exporter or
+importer.
 
 `validateSong` reports machine-specific base-pitch and arpeggio range warnings.
 It preserves the score; it does not guarantee every modulation stays representable.
