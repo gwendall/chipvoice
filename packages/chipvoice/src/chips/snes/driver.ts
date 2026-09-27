@@ -21,6 +21,25 @@ import { FACTORY_SAMPLES, FACTORY_RAM_HEX } from "./bank-inline.js";
  * every SNES sound. The DSP still supports original echo register streams.
  * This is one arrangement choice, not proof of a particular game's sound;
  * that also depends on its sample bank, envelopes, tuning and voicing.
+ *
+ * The kit's hats are the DSP's own noise, not a sample. `NON` (`$3D`) routes
+ * a voice's output to the shared noise generator instead of its decoded BRR;
+ * the voice's own ADSR and volumes still shape it exactly as they shape a
+ * sample, so a closed and an open hat differ in decay through the volume
+ * table, the way they already did as BRR bursts. `FLG`'s low five bits
+ * (`$6C`) are the noise's clock, and it is one clock for every voice routed
+ * to noise at once - a hardware limit, not a driver one. This driver sets it
+ * once at power-on, to its fastest rate, and never rewrites it: the DSP's
+ * noise LFSR runs off the same 32-entry rate table as ADSR and GAIN, and a
+ * slow clock makes it an audible, discrete buzz rather than a continuous
+ * hiss - wrong for a hat at any rate this driver's single kit voice would
+ * want. Because only the percussion voice's `notes: "period"` ChipSpec ever
+ * carries `noiseMode`, `NON` is written whole, with only that voice's bit,
+ * from that voice's own note stream alone; a pitched voice never touches
+ * it. That mirrors why note off writes GAIN and not KOFF: `NON`, like KOFF,
+ * is one register for eight voices, and a driver that let a second voice
+ * carry noise would need to track the others' bits rather than overwrite
+ * them, the way this driver already tracks nothing about KOFF's neighbours.
  */
 
 /** The DSP's registers, as `$F2` selects them. */
@@ -60,6 +79,12 @@ const ECHO_DELAY = 3;
 const VOICE_VOLUME = 0x1f;
 const PAN_LEFT = [1, 1, 1, 1, .68, .88, 1, .72];
 const PAN_RIGHT = [1, .68, 1, 1, 1, .88, .72, 1];
+// FLG bits 0-4: an index into the same 32-entry rate table ADSR and GAIN use,
+// from about 1 Hz (0) to 32000 Hz (31, every sample). One clock drives every
+// voice's noise at once, so this driver sets it once, at the fastest rate:
+// the broadest, most sample-rate-limited hiss, with no beat a slower rate
+// would add. Set once at power-on and never rewritten.
+const NOISE_CLOCK = 0x1f;
 type BankEntry = (typeof FACTORY_SAMPLES)[number];
 const SAMPLE_BY_NAME = new Map(FACTORY_SAMPLES.map(entry => [entry.name,entry]));
 /** One tuning source for both arrangement diagnostics and playback. */
@@ -148,10 +173,12 @@ export class SnesDriver implements ChipDriver {
     // KOFF released, once every voice has seen it, so KON can take again.
     reg(R_KOFF, 0x00);
     // Echo writes on, once the power-on buffer has wrapped: 240 ms of it.
+    // The same write sets the noise clock (bits 0-4): the reset and mute
+    // bits (7, 6) stay off, as they were meant to from here on.
     t = Math.round(0.25 * 1024000);
     reg(R_EVOLL, 0);
     reg(R_EVOLR, 0);
-    reg(R_FLG, 0x00);
+    reg(R_FLG, NOISE_CLOCK);
     return out;
   }
 
@@ -163,7 +190,12 @@ export class SnesDriver implements ChipDriver {
     const base = v * 0x10;
     const first = frames[0];
     const pitched = first.freq > 0;
-    const name = pitched ? (first.sample ?? "tri") : first.sample ?? DRUM_FOR_INDEX(first.period);
+    // Only the percussion voice's frames ever carry noiseMode (its ChipSpec
+    // is the one voice with `notes: "period"`); a pitched voice never does,
+    // so NON is only ever written from a drum's own note stream, whole, and
+    // never clobbers a pitched voice's registers.
+    const noise = !pitched && first.noiseMode;
+    const name = pitched ? (first.sample ?? "tri") : noise ? "noise" : first.sample ?? DRUM_FOR_INDEX(first.period);
     const source = this.index(name, pitched ? "tri" : "noise");
     const entry = this.bank[source];
     let lastVolume = -1;
@@ -188,6 +220,7 @@ export class SnesDriver implements ChipDriver {
         reg(base + 0x03, pitch >> 8);
         reg(base + 0x00, Math.round(volume * PAN_LEFT[v]));
         reg(base + 0x01, Math.round(volume * PAN_RIGHT[v]));
+        if (!pitched) reg(R_NON, noise ? 1 << v : 0);
         reg(R_KON, 1 << v);
       } else {
         if (pitch !== lastPitch) {

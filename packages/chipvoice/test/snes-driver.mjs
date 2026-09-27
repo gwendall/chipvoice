@@ -42,7 +42,8 @@ function regs(writes) {
   const by = Object.fromEntries(power.map(([r, v]) => [r, v]));
   check('and sets the directory, the volumes, the echo and every voice\'s envelope, with echo writes off and every voice released first', power[1][0] === 0x5c && power[1][1] === 0xff && by[0x5c] === 0x00 && by[0x6c] === 0x20 && by[0x5d] === 0x02 && by[0x0c] === 0x60 && by[0x7d] === 3 && by[0x4d] === 0 && by[0x05] === 0xff && by[0x75] === 0xff, JSON.stringify(by));
   const enable = regs(writes.filter((w) => w.at >= 200000 && w.at < CLOCK));
-  check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped', JSON.stringify(enable) === JSON.stringify([[0x2c,0],[0x3c,0],[0x6c,0]]), JSON.stringify(enable));
+  // FLG's low bits are the noise clock (fastest, $1f), set once here and never rewritten.
+  check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped', JSON.stringify(enable) === JSON.stringify([[0x2c,0],[0x3c,0],[0x6c,0x1f]]), JSON.stringify(enable));
   const note = regs(writes.filter((w) => w.at >= CLOCK && w.at < CLOCK + CLOCK / 60));
   // A4 on the 32-sample triangle: pitch = 440 * 4096 / 1000 = 1802 = $70A.
   check('a note sets the source, the envelope, the pitch, the volumes, then keys on', note.map((p) => p[0]).join(',') === '4,5,6,2,3,0,1,76' && note[3][1] === 0x0a && note[4][1] === 0x07 && note[5][1] === 31 && note[7][1] === 0x01, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
@@ -67,6 +68,42 @@ function regs(writes) {
   flush();
   const note = regs(writes.filter((w) => w.at >= 1000 && w.at < CLOCK / 60));
   check('a drum is its sample at pitch $1000', note[0][0] === 0x34 && note[0][1] === 8 && note[3][1] === 0x00 && note[4][1] === 0x10, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
+  check('and NON stays off for a BRR drum', note.some(([r, v]) => r === 0x3d && v === 0), note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
+}
+
+{
+  // A hat with the kit's default noiseMode routes voice 3 to the DSP's own noise: NON gets that
+  // voice's bit, and the source is the bank's "noise" carrier, not the "hat" BRR sample.
+  const { driver, writes, flush } = recorder();
+  driver.playNote('v3', { note: 13, instrument: { volume: [10, 7, 4], sample: 'hat', noiseMode: true }, duration: 0.05, at: 0 });
+  flush();
+  const note = regs(writes.filter((w) => w.at >= 1000 && w.at < CLOCK / 60));
+  const by = Object.fromEntries(note);
+  check('a hat with noiseMode routes its voice to NON and the noise sample', by[0x34] === 11 && by[0x3d] === 0x08, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
+}
+
+{
+  // The same hat with noiseMode explicitly off keeps the BRR sample and NON clear: the escape
+  // hatch back to a recorded burst for a caller who wants one.
+  const { driver, writes, flush } = recorder();
+  driver.playNote('v3', { note: 13, instrument: { volume: [10, 7, 4], sample: 'hat', noiseMode: false }, duration: 0.05, at: 0 });
+  flush();
+  const note = regs(writes.filter((w) => w.at >= 1000 && w.at < CLOCK / 60));
+  const by = Object.fromEntries(note);
+  check('a hat with noiseMode off keeps the BRR sample and leaves NON clear', by[0x34] === 9 && by[0x3d] === 0, note.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
+}
+
+{
+  // Two hats in the kit's own order: the noise-routed hat, then a BRR drum on the same voice.
+  // NON must drop back to 0 at the drum's own key-on so it plays its decoded sample, not noise.
+  const { driver, writes, flush } = recorder();
+  driver.playNote('v3', { note: 13, instrument: { volume: [10, 7, 4], sample: 'hat', noiseMode: true }, duration: 0.05, at: 0 });
+  driver.playNote('v3', { note: 6, instrument: { volume: [15, 12, 9], sample: 'kick' }, duration: 0.15, at: 0.1 });
+  flush();
+  const secondAt = 0.1 * CLOCK;
+  const second = regs(writes.filter((w) => w.at >= secondAt + 1000 && w.at < secondAt + CLOCK / 60));
+  const by = Object.fromEntries(second);
+  check('a BRR drum after a noise hat on the same voice clears NON again', by[0x3d] === 0, second.map((p) => `${p[0].toString(16)}=${p[1].toString(16)}`).join(' '));
 }
 
 const SCORE = {
@@ -83,6 +120,7 @@ const SCORE = {
 {
   const song = arrange(SCORE, 'snes');
   check('the arranger names samples for every role', song.lead.sample === 'flute' && song.bass.sample === 'picked-bass' && song.chord.sample === 'harp' && song.perc.K.instrument.sample === 'kick');
+  check('and the kit defaults its hats to the DSP\'s own noise', song.perc.H.instrument.noiseMode === true && song.perc.O.instrument.noiseMode === true && song.perc.K.instrument.noiseMode === undefined);
   const { events, cycles, memory } = recordSong(song, { seconds: 2, chip: 'snes' });
   check('a song records as writes to $F2 and $F3 with the bank in memory', events.length > 100 && events.every((e) => e.addr === 0xf2 || e.addr === 0xf3) && memory.length === 1, `${events.length} writes, ${memory.length} blocks`);
   check('over cycles on the SPC700 clock', cycles === 2 * CLOCK);

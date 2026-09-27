@@ -17,36 +17,37 @@ SPC700. The method behind every section is in [CONFORMANCE.md](../CONFORMANCE.md
 | **Status** | **in progress**: the DSP is identical to snes_spc on its output stream, the driver plays every role, the analog stage is unmeasured |
 | **Core** | ported line for line from snes_spc's SPC_DSP (`packages/chipvoice/src/chips/snes/sdsp.ts`) |
 | **Licence of the core** | `sdsp.ts` is a port of snes_spc and carries its LGPL 2.1; everything else in the package is MIT. The package's licence field says both |
-| **Sheet updated** | 2026-09-04, by hand and by `conform` |
+| **Sheet updated** | 2026-09-27, by hand and by `conform` |
 
 ## Digital parity
 
 Measured by [`conform`](../../packages/conform), the harness, against
 [snes_spc](../../packages/conform/oracles/snes-spc), on the DSP's output
 stream - left and right, the sixteen-bit words the chip hands its DAC - over two
-songs through the driver and three scripts in
+songs through the driver and four scripts in
 [`packages/conform/corpus/snes`](../../packages/conform/corpus/snes). The numbers
 between the markers are written by the harness (`pnpm --filter chipvoice-conform
 baseline:snes`); the reading of them below is a person's. CI reruns the corpus and
 fails if the identical count falls below the committed baseline.
 
 <!-- parity:begin -->
-Written by `conform` on 2026-09-04, against snes_spc 0.9.0 (blargg), on left, right.
+Written by `conform` on 2026-09-27, against snes_spc 0.9.0 (blargg), on left, right.
 
 | | |
 | --- | --- |
 | Oracle | snes_spc 0.9.0 (blargg) |
-| Corpus | 5 logs, 23859200 cycles |
-| Identical cycles | 23859200 / 23859200 (100.0000 %) |
+| Corpus | 6 logs, 29081600 cycles |
+| Identical cycles | 29081600 / 29081600 (100.0000 %) |
 | Logs with a divergence | 0 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
 | script-echo | 100.0000 % | none | left 100.0000 %, 78790/0/0; runs 60: 60 on times, 60 on values, shift <= 0; right 100.0000 %, 78813/0/0; runs 59: 59 on times, 59 on values, shift <= 0 |
 | script-envelopes | 100.0000 % | none | left 100.0000 %, 142795/0/0; runs 2: 2 on times, 2 on values, shift <= 0; right 100.0000 %, 142795/0/0; runs 2: 2 on times, 2 on values, shift <= 0 |
+| script-noise-clock | 100.0000 % | none | left 100.0000 %, 58698/0/0; runs 53: 53 on times, 53 on values, shift <= 0; right 100.0000 %, 58698/0/0; runs 53: 53 on times, 53 on values, shift <= 0 |
 | script-pitch-noise-pmod | 100.0000 % | none | left 100.0000 %, 54203/0/0; runs 28: 28 on times, 28 on values, shift <= 0; right 100.0000 %, 54203/0/0; runs 28: 28 on times, 28 on values, shift <= 0 |
-| song-bright | 100.0000 % | none | left 100.0000 %, 124507/0/0; runs 1: 1 on times, 1 on values, shift <= 0; right 100.0000 %, 124506/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-| song-golden | 100.0000 % | none | left 100.0000 %, 124266/0/0; runs 1: 1 on times, 1 on values, shift <= 0; right 100.0000 %, 124266/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| song-bright | 100.0000 % | none | left 100.0000 %, 127730/0/0; runs 1: 1 on times, 1 on values, shift <= 0; right 100.0000 %, 127756/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| song-golden | 100.0000 % | none | left 100.0000 %, 127636/0/0; runs 1: 1 on times, 1 on values, shift <= 0; right 100.0000 %, 127656/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 <!-- parity:end -->
 
 **What the numbers say.** On this chip the digital output is the output: the
@@ -54,9 +55,13 @@ DSP computes the word the DAC gets, and the comparison is on that word, sample
 for sample. Every log is identical to snes_spc on both channels - the envelopes
 in ADSR and each GAIN mode, pitch and the noise at several rates, pitch
 modulation, the echo at several delays and feedbacks through two FIRs, the BRR
-decoder on the driver's bank and on a burst - on the first run of the port. What
-the first run found was in the programs, not the chip, and the chip and its
-oracle agreed on every bit of it. Two things the DSP powers on with, since its
+decoder on the driver's bank and on a burst - on the first run of the port.
+Later, once the kit's hats moved onto the DSP's own noise, a fourth script
+added two voices sharing that noise at once, its clock changed under a held
+note rather than only at key-on, and `FLG`'s reset and mute bits held over an
+active noise voice; identical to snes_spc as well. What the first run found
+was in the programs, not the chip, and the chip and its oracle agreed on
+every bit of it. Two things the DSP powers on with, since its
 power-on state is a register set captured from a console: an echo buffer 28 KB
 long from wherever ESA points, which wraps round the top of RAM and over the
 samples until the old buffer has run out and the new EDL is read; and voices
@@ -116,7 +121,7 @@ is divided across its notes; pitched chord voices have moderate stereo spread.
 | Voice | Exercised | Not exercised |
 | --- | --- | --- |
 | v0, v1, v2, v4–v7 | original BRR attacks and separate sustain loops, per-family hardware ADSR, pitch and stereo volume per frame, key-on, note off as a fast GAIN decrease, echo; legacy periodic waveforms also available | GAIN's other modes, pitch modulation, hardware noise |
-| v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame | the noise source for hats |
+| v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame; the kit's hats routed to the DSP's own noise through `NON`, at the one clock `FLG` sets once at power-on | a held drum note's noise clock changed mid-note (the corpus scripts this; the kit does not) |
 | the echo | on for the pitched voices: 48 ms, feedback `$38`, the low-pass FIR most games used, enabled once the power-on buffer has wrapped | other FIRs, other delays |
 
 ## Known deviations
@@ -126,6 +131,7 @@ is divided across its notes; pitched chord voices have moderate stereo spread.
 | A write to `$F3` lands before the clock it is stamped with; several on one clock land in order | yes | the SPC700 writes between DSP clocks; the oracle's driver takes the same convention | when a register lands, to within one clock |
 | Note off is the voice's GAIN, not KOFF | yes | KOFF is one register for eight voices, and a driver that writes notes out of time order cannot hold its state; GAIN is the voice's own | how a note fades: exponentially over about 8 ms rather than linearly |
 | The bank's samples are synthesised and encoded here, not recorded | yes | they are the arranger's instruments, not the chip's | what the intents sound like, not what the chip does |
+| `NON` is written whole, with only the percussion voice's bit, and the noise clock (`FLG`'s low five bits) is set once at power-on and never rewritten | yes | `NON` and the noise clock are each one register shared by every voice; only the percussion voice's `notes: "period"` ChipSpec ever carries `noiseMode`, and a driver that let a second voice carry noise would need to track the others' bits instead of overwriting them, and would need to pick one clock for whichever voices ask for different rates at once | a future second noise voice sharing the kit's own voice would need this register handled like KOFF, not extended as is; today it does not arise |
 
 ## Power-on state
 
@@ -136,7 +142,9 @@ power-on does what the IPL ROM and a program did: disables echo writes and
 mutes echo output (reads can initially wrap into sample RAM), keys
 every voice off, sets the directory, the volumes, the echo and every voice's
 envelope, then releases KOFF, and enables echo writes and echo output a quarter
-of a second later, once the power-on buffer has wrapped.
+of a second later, once the power-on buffer has wrapped. The same write sets
+the noise clock, `FLG`'s low five bits, to its fastest rate - the one clock
+every voice routed to noise shares - and it is never rewritten after.
 
 The factory bank occupies 21,472 bytes below the echo buffer at 57,344. Sample
 generation and BRR encoding happen at build time. Voice volume is capped at
@@ -146,6 +154,13 @@ See [palette acceptance and measurements](../SNES-PALETTE.md).
 
 ## History
 
+- 2026-09-27: the kit's hats moved from BRR bursts to the DSP's own noise
+  generator (`NON`, `FLG`'s clock), the kick and the snare staying BRR
+  samples. A new corpus script exercises two voices on the noise at once, the
+  clock changed under a held note, and `FLG`'s reset and mute bits over a
+  voice routed to noise; still identical to snes_spc. The golden render moved
+  (rms 0.0858 to 0.0867, peak 0.313 to 0.3127) with the hats now hiss rather
+  than a recorded burst.
 - 2026-09-04: the port, the driver, the corpus. Identical to snes_spc on every
   log on the first run; the power-on state's echo buffer and keyed-on voices
   were the two things to handle, in the programs rather than the chip.

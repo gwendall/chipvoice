@@ -93,7 +93,7 @@ What the shipped arrangers and drivers currently do:
 | 2A03 | Pulse 1, duty as timbre | Pulse 2, arpeggiated at frame rate | Triangle | Noise; DMC samples when present | Arpeggiated chords, triangle bass |
 | DMG | Pulse 1, duty as timbre, retriggered on volume changes | Pulse 2, arpeggiated | Wave channel, the word as its waveform | Noise, the kit fitted to the hardware envelope | The wave channel's bass |
 | YM2612 + SN76489 | FM patch, the LFO on `"bright"` | PSG arpeggios | FM patch | PSG noise clocked by tone 3, or FM drums on channel 6 (`"punchy"`) | FM timbres |
-| S-DSP | A sample | One sample voice, arpeggiated | A sample | A sampled kit | BRR samples and echo |
+| S-DSP | A sample | One sample voice, arpeggiated | A sample | The kick and the snare a sampled kit; the hats the DSP's own hardware noise | BRR samples, hardware noise and echo |
 | SID | One voice | Fast arpeggio on one voice, at 50 Hz | One voice | Waveform switches on one voice | Three voices; chord/drums share one |
 
 ## The voice budget
@@ -109,8 +109,9 @@ That is what every C64 tune with drums did, and it means a busy drum line
 leaves the chord little room, which the skill tells an agent. Other sharings
 - bass and chord alternating, the classic on a three-voice PSG - are the same
 rule with other roles, when a chip asks for it. More voices than roles - the
-S-DSP has eight - opens real triads, doubling and echo voices, still to come
-(P6-10). `canPlay` and `claim` speak in the chip's own voice ids.
+S-DSP has eight - opens real triads, doubling and echo voices instead of one
+sharing a voice with another. `canPlay` and `claim` speak in the chip's own
+voice ids.
 
 ## Structure
 

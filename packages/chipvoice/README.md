@@ -290,7 +290,11 @@ sample for sample on the DSP's output stream. Everything on it is a sample:
 at build time, with the machine's echo on. Lead intents choose flute, brass or
 mallet; chords choose harp or strings; bass intents choose picked, reed or synth
 bass. Each has its own attack, sustain loop and hardware envelope. Legacy
-waveforms and drums remain available; `encodeBrr` is also exported.
+waveforms and drums remain available; `encodeBrr` is also exported. The kit's
+kick and snare are BRR drums; its closed and open hats default to the DSP's
+own hardware noise (`NON`, and `FLG`'s noise clock set once at power-on) the
+way the other chips' kits use their own noise, through `Instrument.noiseMode`
+- set it `false` on a hat's instrument for the BRR burst instead.
 `Instrument.sample` names a sample in the driver's bank. Its sheet is
 [`docs/chips/snes.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes.md).
 
@@ -359,9 +363,9 @@ The portable score keeps four musical roles. Arrangers map them onto each machin
 FM lead/bass and PSG chord/drums on Mega Drive (or FM drums on channel 6,
 `perc: "punchy"`, with the chip's own LFO available to any patch that asks for
 it), four sample voices on SNES, and shared chord/percussion on the C64's third
-voice. SNES triads and SID filter controls remain backlog items. VGM export
-supports NES, Game Boy and Mega Drive; SNES and C64 register logs do not yet
-have a shipped file exporter.
+voice. SID filter controls remain a backlog item. VGM export supports NES,
+Game Boy and Mega Drive; SNES and C64 register logs do not yet have a shipped
+file exporter.
 
 `validateSong` reports machine-specific base-pitch and arpeggio range warnings.
 It preserves the score; it does not guarantee every modulation stays representable.
