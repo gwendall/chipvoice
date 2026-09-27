@@ -25,10 +25,14 @@ const tests=[
   assert.throws(()=>prepareMixPhrase(mdChip,[tone,noise]),/overlapping|resource/);
   assert.doesNotThrow(()=>prepareMixPhrase(mdChip,[tone,{...noise,at:.6}]));
  }],
- ['explicit FM percussion uses FM',()=>{
+ ['explicit FM percussion uses the noise voice\'s channel-6 redirect',()=>{
+  // An FM instrument on a percussion part always plays through the noise
+  // voice (driver.ts's redirect to channel 6), never a direct fm1-fm6 pick:
+  // that is what keeps it from colliding with a melodic part that lands on
+  // fm6 (see the fm6-shared performance test).
   const p=part('kick',[{...note('n',36),drum:36}],'perc');p.instruments={md:instrumentsFor('md').lead};
   const plan=planPerformance(score([p]),mdChip);
-  assert.match(plan.notes[0].voice,/^fm/);assert.ok(!plan.losses.some(l=>l.kind==='instrument-substitution'));
+  assert.equal(plan.notes[0].voice,'noise');assert.ok(!plan.losses.some(l=>l.kind==='instrument-substitution'));
  }],
 ];
 let failed=0;for(const [name,run]of tests)try{run();console.log('PASS',name);}catch(e){failed++;console.error('FAIL',name,e.message);}assert.equal(failed,0);

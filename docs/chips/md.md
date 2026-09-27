@@ -222,7 +222,13 @@ to PSG 1, its percussion to the noise with tone 3 as its clock, or, on
 when the kit is the FM one, which `note()` reads to redirect both the note and
 its eventual key-off. The LFO turns on whenever the lead's own patch
 (`"bright"`) or the FM kit's hats ask for it, at the lowest-indexed channel
-that still does; `syncLfo()` re-checks every note. The noise kit stays the
+that still does; `syncLfo()` re-checks every note. `$22` is one register for
+the whole chip, not one per channel, so when both want it the lowest-indexed
+channel's own rate wins: the bright lead's `pms` (frequency 4) plays before
+FM 6, so the hats' own `lfoFrequency` (6) is overridden by it whenever both
+sound together, and the hats speed up to the lead's rate instead of their
+own. That is the hardware's rule, not a bug to fix here; a piece that needs
+the hats' own rate has to keep the lead's LFO off while they play. The noise kit stays the
 default: it already does what a kit needs to here at no cost to the other
 five roles, and it is what every other chip's kit already sounds like, which
 keeps a score portable in fact as well as in name. `"punchy"` is for a piece

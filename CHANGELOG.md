@@ -42,7 +42,14 @@ mode through a note's new `ch3` field (`fm3` only), register `$27` and
 `$A8`-`$AE`. See [docs/chips/md.md](docs/chips/md.md#driver-coverage) for why
 the noise kit stays the arranger's default and channel 3's special mode stays
 out of it. Fixed alongside: `MdDriver.noteOff()` sent a spurious PSG silence
-write and never keyed channel 6 off after an FM drum hit.
+write and never keyed channel 6 off after an FM drum hit; and an FM instrument
+on a percussion part (`planPerformance`) could land on fm6 directly instead of
+through the noise voice's own redirect, letting it collide with a melodic fm6
+note on the same hardware channel. FM percussion now always plays through the
+noise voice, and fm6 is unavailable to melodic allocation while the noise
+voice is sounding one of its FM patches; `prepareMixPhrase` rejects the same
+overlap explicitly, and losing fm6 to the drum kit is reported like any other
+substitution, not silent.
 
 A Game Boy pulse note's trigger (ch1, ch2) keeps the low two bits of its
 frequency timer instead of zeroing them, as Pan Docs' "Obscure Behavior"

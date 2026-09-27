@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {importMidi,planPerformance,renderPerformance,performanceClock,validatePerformance,nesChip,gbChip,mdChip,snesChip} from '../dist/index.js';
+import {importMidi,planPerformance,renderPerformance,performanceClock,validatePerformance,nesChip,gbChip,mdChip,snesChip,MD_PATCHES} from '../dist/index.js';
 import {RegisterTransactions} from '../dist/register-transactions.js';
 
 const variable = n => {const bytes=[n&127];while(n>>=7)bytes.unshift((n&127)|128);return bytes;};
@@ -60,3 +60,26 @@ const monitored=renderPerformance(progressPlan,nesChip,{sampleRate:8000,onProgre
 assert.equal(updates[0],0);assert.equal(updates.at(-1),1);assert.ok(updates.some(p=>p>0&&p<1));assert.ok(updates.every((p,i)=>!i||p>updates[i-1]));
 assert.deepEqual(monitored.left,plain.left,'reporting actual rendered frames does not change PCM');
 console.log('PASS legacy MIDI labels and monotonic sample-based render progress without audio changes');
+
+// Six overlapping FM melodic parts plus FM-kit percussion: the noise voice's
+// FM-drum redirect keys hardware channel 6, the same physical resource as a
+// melodic fm6 note, so fm6 must stay unavailable to the allocator while a
+// drum note is sounding rather than let both key the same channel silently.
+const leadFm = {volume: [15], sustain: true, fm: MD_PATCHES.lead};
+const drumFm = {volume: [15], fm: MD_PATCHES.lead};
+const fmCollision = {
+  version: 1, title: 'fm6 collision', ticksPerBeat: 480, endTick: 480,
+  tempos: [{tick: 0, microsecondsPerBeat: 500000}], notices: [],
+  parts: [
+    {id: 'a-perc', name: 'Kit', role: 'perc', priority: 0, instruments: {md: drumFm}, notes: [{id: 'n0', tick: 0, endTick: 240, pitch: 60, velocity: 100, drum: 36}]},
+    ...Array.from({length: 6}, (_, i) => ({id: `m${i+1}`, name: `Lead ${i+1}`, role: 'lead', priority: 0, instruments: {md: leadFm}, notes: [{id: 'n0', tick: 0, endTick: 480, pitch: 60 + i, velocity: 100}]})),
+  ],
+};
+const collisionPlan = planPerformance(fmCollision, mdChip, {allowLoss: true});
+assert.equal(collisionPlan.notes.length, 7, 'the drum note and all six leads are still placed, none dropped');
+assert.equal(collisionPlan.notes.find(n => n.part === 'a-perc').voice, 'noise', 'the FM kit always plays through the noise voice, never a direct fm1-fm6 pick');
+for (let i = 1; i <= 5; i++) assert.equal(collisionPlan.notes.find(n => n.part === `m${i}`).voice, `fm${i}`, `lead ${i} takes the next free FM voice`);
+assert.notEqual(collisionPlan.notes.find(n => n.part === 'm6').voice, 'fm6', 'fm6 is reserved away from melodic allocation while the drum note shares it with the noise voice');
+assert.ok(collisionPlan.losses.some(l => l.part === 'a-perc' && l.kind === 'fm6-shared'), 'the channel-6 sharing is a reported diagnostic, not a silent behavior');
+assert.ok(collisionPlan.losses.some(l => l.part === 'm6'), 'losing fm6 to the drum kit is reported, not a silent substitution');
+console.log('PASS an FM drum kit reserves channel 6 away from a melodic fm6 pick instead of colliding with it silently');
