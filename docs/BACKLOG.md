@@ -133,12 +133,18 @@ Work without a ticket takes a NEXT id.
   70, on Playwright's 30-second default wait. Every wait now gets the test's
   two-minute preparation budget. The editor itself kept Pause visible through
   a tempo change, even with the page's CPU slowed sixfold.
+- done - P7-7: a minimal 6510, VIC-II raster line and CIA 1 (`src/roms/c64.mjs`)
+  run fourteen of VICE's `testprogs/SID` programs, chosen for reporting a
+  verdict without the KERNAL; thirteen pass, in CI (`roms:c64`). `busvalue`
+  fails: reading OSC3 or ENV3 does not refresh the internal bus latch the way
+  real hardware's read-only registers do, a P2-1 finding, not fixed here.
+  `envrate` matches Dag Lem's real-hardware-verified rate table exactly.
 
 **Step 1. Prove the five chips.** A sheet is complete when it gives a number
 at four levels: an independent oracle, test ROMs written for the hardware,
 real game music, and a real unit.
 
-- Oracle and ROM level: P1-13, P1-14, P2-1, P3-4, P5-8, P7-7, P7-11.
+- Oracle and ROM level: P1-13, P1-14, P2-1, P3-4, P5-8, P7-11.
 - todo - NEXT-04: for each chip, gather published recordings of real units
   before buying any (decision 38).
 - Hardware level: P2-3 first, with one purchased NES validating the capture
@@ -365,7 +371,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P7-4 | The C64's driver and arranger: waveforms and the envelope for the intents, three voices for four roles with the classic sharing | done | `chips/c64/driver.ts`, `arranger.ts`; the sharing rule in `Sequencer.scheduleStep` |
 | P7-5 | The chip in the API, the studio and the skill | done | schema, openapi, skill 0.8.0, llms.txt, studio |
 | P7-6 | The C64 sheet: parity with reSID-fp on the digital voices, a corpus of scripts and songs | done | `docs/chips/c64.md`, `corpus/c64`, `check:c64` in CI |
-| P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | todo | needs a 6510 the way the NES has a 6502 |
+| P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | done | `packages/conform/roms/vice-sid`, `src/roms/c64.mjs`, `roms:c64` in CI; 13 of 14 pass, `busvalue` a P2-1 finding |
 | P7-8 | A 6581's line-out captured under a known script, and the analog profile fitted to it: the DAC's zero, the filter's curve, the output stage | todo | needs a unit |
 | P7-9 | The filter in the arranger: a word that opens it, a sweep for a lead | todo | |
 | P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | todo | |

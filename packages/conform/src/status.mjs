@@ -33,6 +33,7 @@ const CHIPS = [
     chip: 'Ricoh 2A03',
     sheet: 'docs/chips/2a03.md',
     since: '0.1.0',
+    romsSource: "blargg's",
     /** The analog stage: how much of it is measured, and the word for the cell. */
     analog: { done: 0.5, label: 'mixer' },
     /** Voices the driver reaches, of the chip's. */
@@ -49,6 +50,7 @@ const CHIPS = [
     chip: 'DMG APU',
     sheet: 'docs/chips/dmg.md',
     since: '0.8.0',
+    romsSource: "blargg's",
     analog: { done: 0, label: 'none' },
     driver: { reached: 4, voices: 4 },
     notes: [
@@ -93,13 +95,14 @@ const CHIPS = [
     chip: 'MOS 6581 SID',
     sheet: 'docs/chips/c64.md',
     since: '0.13.0',
+    romsSource: "VICE's `testprogs/SID` on a 6510:",
     analog: { done: 0, label: 'profile' },
     driver: { reached: 3, voices: 3 },
     notes: [
       'The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter.',
       'Analog: a profile from the documents, unmeasured: the 6581\'s non-linear DAC ladders, the filter on a measured cutoff curve, the output stage\'s corners. The 8580 is not modelled.',
       'Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did.',
-      'Remains: the filter in the arranger; the 8580; a unit\'s line-out; VICE\'s SID test programs on a 6510.',
+      'Remains: the filter in the arranger; the 8580; a unit\'s line-out.',
     ],
   },
 ];
@@ -159,7 +162,7 @@ function row(chip) {
   ];
   const notes = [];
   if (p) notes.push(`Digital: ${p.oracle}, ${p.files} logs, ${millions(p.cycles)} cycles; runs aligned on step times ${pct(p.fraction, 1)} (${p.aligned} of ${p.runs}); identical cycles ${pct(p.identical, 1)}, the rest the oracle's own conventions, read on the sheet.`);
-  if (r) notes.push(`ROMs: blargg's ${r.suites.map((s) => `\`${s}\``).join(', ')}, ${r.passed} of ${r.total} pass.`);
+  if (r) notes.push(`ROMs: ${chip.romsSource ?? "blargg's"} ${r.suites.map((s) => `\`${s}\``).join(', ')}, ${r.passed} of ${r.total} pass.`);
   const m = mixer(chip);
   notes.push(...chip.notes.map((n) => (n.startsWith('Analog:') && m ? `${n} Cancellation against the DMC: ${m.join(', ')}.` : n)));
   return { line: `| ${cells.join(' | ')} |`, note: `**${chip.machine}** (${chip.chip}, since ${chip.since}). ${notes.join(' ')}` };

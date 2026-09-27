@@ -3,11 +3,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Nes } from './nes.mjs';
 import { GameBoy } from './gb.mjs';
+import { C64, C64_CLOCK_HZ } from './c64.mjs';
 
 /**
- * Runs blargg's APU test ROMs against the chips and prints what each one said.
+ * Runs blargg's APU test ROMs, or VICE's `testprogs/SID`, against the chips
+ * and prints what each one said.
  *
- *   node src/roms/run.mjs [--chip 2a03|dmg] [--only <name>] [--json <file>] [--sheet <file>]
+ *   node src/roms/run.mjs [--chip 2a03|dmg|c64] [--only <name>] [--json <file>] [--sheet <file>]
  *
  * Every ROM under `roms/` is run for up to thirty seconds of emulated time.
  * The newer NES ones speak blargg's `$6000` protocol: `$80` there means
@@ -16,12 +18,27 @@ import { GameBoy } from './gb.mjs';
  * and otherwise the code the ROM's readme explains, with the text the ROM
  * wrote at `$6004`. The older ones print to the screen and park the CPU in a
  * jump to itself; their screen is read back and "Passed" or "Failed #n" is
- * the verdict. The Game Boy ones speak the same protocol at `$A000`.
+ * the verdict. The Game Boy ones speak the same protocol at `$A000`. The C64
+ * ones write VICE's debug cartridge register, `$D7FF` - 0 for pass, `$ff`
+ * for fail - and the border colour, then park the CPU in a jump to itself;
+ * see `c64.mjs`.
  */
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'roms');
 const CPU_HZ = 1789773;
 const LIMIT = 30 * CPU_HZ;
 const GB_HZ = 4194304;
+/** Comfortably over the slowest chosen program's cycle count (`envrate`'s, at a few million). */
+const C64_BUDGET = 40_000_000;
+/**
+ * `busvalue` is a documented, accepted divergence (P2-1): reading OSC3 or
+ * ENV3 does not refresh the bus latch the way real hardware's read-only
+ * registers do (`docs/chips/c64.md`'s Test ROMs section has the trace). It is
+ * pinned here exactly as a parity baseline pins a known state, so this
+ * script still fails on a genuine regression - anything passing that should
+ * not, or failing that should not - without CI going red forever over a
+ * finding that is not this ticket's to fix.
+ */
+const C64_EXPECTED_FAIL = new Set(['busvalue/busvalue']);
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -33,6 +50,25 @@ const chip = option('chip', '2a03');
 
 const SUITES = chip === 'dmg' ? ['dmg_sound'] : ['apu_test', 'apu_reset', 'dmc_tests', 'apu_2005'];
 const EXT = chip === 'dmg' ? '.gb' : '.nes';
+
+/** Every `.prg` under a directory, depth first, sorted, as paths relative to it. */
+function listPrgs(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (entry.isDirectory()) out.push(...listPrgs(path.join(dir, entry.name)).map((f) => path.join(entry.name, f)));
+    else if (entry.name.endsWith('.prg')) out.push(entry.name);
+  }
+  return out;
+}
+
+/** A VICE `testprogs/SID` program: run to a verdict at `$D7FF`, or the budget. */
+function runC64(prg) {
+  const c64 = new C64(prg);
+  c64.run(C64_BUDGET);
+  const halted = c64.halted();
+  const passed = halted && c64.verdict === 0;
+  return { passed, halted, verdict: c64.verdict, cycles: c64.cpu.cycles, border: c64.vic.d020 };
+}
 
 /** A dmg_sound ROM: the `$A000` protocol, no reset button, no screen to read. */
 function runGameBoy(rom) {
@@ -49,7 +85,21 @@ function runGameBoy(rom) {
 }
 
 const results = [];
-for (const suite of SUITES) {
+if (chip === 'c64') {
+  const dir = path.join(ROOT, 'vice-sid');
+  for (const rel of listPrgs(dir)) {
+    const name = rel.replace(/\.prg$/, '').split(path.sep).join('/');
+    if (only && !name.includes(only)) continue;
+    const prg = new Uint8Array(fs.readFileSync(path.join(dir, rel)));
+    const outcome = runC64(prg);
+    const verdict = !outcome.halted ? 'HUNG' : outcome.passed ? 'PASS' : 'FAIL';
+    const said = !outcome.halted
+      ? `no verdict in ${Math.round(C64_BUDGET / C64_CLOCK_HZ)} s of emulated time`
+      : `$D7FF = ${outcome.verdict === null ? 'unset' : `$${outcome.verdict.toString(16).padStart(2, '0')}`}, border ${outcome.border}`;
+    console.log(`${verdict}  ${name.padEnd(32)} ${said}`);
+    results.push({ name, status: outcome.passed ? 0 : 1, passed: outcome.passed, text: said, resets: 0 });
+  }
+} else for (const suite of SUITES) {
   const dir = path.join(ROOT, suite);
   if (!fs.existsSync(dir)) continue;
   for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(EXT)).sort()) {
@@ -139,14 +189,15 @@ if (sheetPath) {
   if (begin < 0 || end < 0) throw new Error(`${sheetPath} has no roms markers`);
   const lines = [
     '<!-- roms:begin -->',
-    `Run by \`conform\`'s ${chip === 'dmg' ? 'SM83' : '6502'} fixture on ${new Date().toISOString().slice(0, 10)}: ${passed} of ${results.length} pass.`,
+    `Run by \`conform\`'s ${{ dmg: 'SM83', c64: '6510' }[chip] ?? '6502'} fixture on ${new Date().toISOString().slice(0, 10)}: ${passed} of ${results.length} pass.`,
     '',
     '| ROM | Result | What it said |',
     '| --- | --- | --- |',
-    ...results.map((r) => `| \`${r.name}\` | ${r.status < 0 ? 'hung' : r.passed ? 'pass' : `fail, code ${r.status}`} | ${clip(r.text.replace(/\|/g, '\\|').replace(/\s+/g, ' '))} |`),
+    ...results.map((r) => `| \`${r.name}\` | ${chip === 'c64' ? (r.passed ? 'pass' : 'fail') : r.status < 0 ? 'hung' : r.passed ? 'pass' : `fail, code ${r.status}`} | ${clip(r.text.replace(/\|/g, '\\|').replace(/\s+/g, ' '))} |`),
     '<!-- roms:end -->',
   ];
   fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- roms:end -->'.length));
 }
 
-process.exit(results.every((r) => r.passed) ? 0 : 1);
+const ok = chip === 'c64' ? results.every((r) => r.passed === !C64_EXPECTED_FAIL.has(r.name)) : results.every((r) => r.passed);
+process.exit(ok ? 0 : 1);
