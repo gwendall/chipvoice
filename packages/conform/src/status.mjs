@@ -83,8 +83,8 @@ const CHIPS = [
     notes: [
       'The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR.',
       'Analog: unmeasured; the DAC and the console\'s filter are a placeholder. A capture of the DSP\'s output would compare directly with the stream.',
-      'Driver: a bank of synthesised samples in BRR, four voices of eight, the echo on the pitched ones.',
-      'Remains: real triads across voices; a unit\'s line-out; SPC export.',
+      'Driver: a build-time BRR sample bank with hardware envelopes; lead, bass and percussion plus up to five simultaneous chord voices, with a shared chord volume budget.',
+      'Remains: a unit\'s line-out; SPC export.',
     ],
   },
   {
