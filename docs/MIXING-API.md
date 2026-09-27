@@ -48,11 +48,16 @@ additional authored gain. An explicitly silent source remains silent.
 ## Calibration and uncertainty
 
 `MIX_PROFILE_VERSION` identifies the response schema/qualified engine generation.
-Factory measurements are bound to compiled chip code and the measurement method
-by `scores/mixing/calibration-manifest.json`; CI rejects stale measurements.
-An engine/output change requires regeneration and review, and incompatible
-published generations must increment the profile version. Do not reuse custom
-profiles across SDK releases without requalification.
+Factory measurements are bound, by `scores/mixing/calibration-manifest.json`,
+to the compiled modules `scores/mixing/calibrate.mjs` actually reaches (every
+chip's core and driver, the probe instruments, the measurement code itself)
+and to the measurement method (`MIX_PROFILE_VERSION`); CI rejects stale
+measurements. A module calibration never runs, such as another chip's own
+file-format player, does not move that hash and does not force a
+recalibration. An engine/output change that calibration does reach requires
+regeneration and review, and incompatible published generations must
+increment the profile version. Do not reuse custom profiles across SDK
+releases without requalification.
 
 The factory collection contains 90 sound/voice profiles at 44.1 kHz, with pitch
 (or noise-period), duration and control grids. RMS and peak measurements come
