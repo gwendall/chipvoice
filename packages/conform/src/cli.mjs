@@ -17,15 +17,17 @@ import { compare, dump } from './compare.mjs';
  * conform: the harness.
  *
  *   conform <chip> --corpus <dir> --oracle <id> [--voices p1,p2,tri]
- *                  [--only <name>] [--json <file>] [--sheet <file>] [--report]
- *                  [--dump <voice>] [--baseline <file> [--write-baseline]]
+ *                  [--only <name>] [--json <file>] [--sheet <file> [--marker <name>]]
+ *                  [--report] [--dump <voice>] [--baseline <file> [--write-baseline]]
  *
  * Every log in the corpus is run through the chip and through the oracle,
  * and their change streams are compared. One line per log says how many
  * cycles were identical and where the first divergence is, in a form a
  * person can act on without a debugger: the cycle, the voice, both values.
  * `--json` writes the numbers; `--sheet` writes them into the chip's sheet
- * between its parity markers. The exit code is 1 on any divergence unless
+ * between its parity markers, `<!-- parity:begin -->` for the chip's first
+ * oracle and `<!-- <marker>:begin -->` for any other, so a second oracle gets
+ * its own block beside the first rather than overwriting it. The exit code is 1 on any divergence unless
  * `--report` is given, or unless a `--baseline` is given, in which case it is
  * 1 only when a log's identical count fell below the baseline's: the check CI
  * runs, since an imperfect oracle diverges somewhere by design.
@@ -172,22 +174,25 @@ if (jsonPath) {
 }
 
 const sheetPath = option('sheet', null);
-if (sheetPath) writeSheet(sheetPath, summary, chip);
+if (sheetPath) writeSheet(sheetPath, summary, chip, option('marker', 'parity'));
 
 process.exit(regressed || (anyDivergence && !flag('report') && !baselinePath) ? 1 : 0);
 
 /**
- * Replaces the block between `<!-- parity:begin -->` and `<!-- parity:end -->`
- * in a sheet with the numbers. The prose around it stays a person's.
+ * Replaces the block between `<!-- <marker>:begin -->` and
+ * `<!-- <marker>:end -->` in a sheet with the numbers. The prose around it
+ * stays a person's.
  */
-function writeSheet(file, summary, chip) {
+function writeSheet(file, summary, chip, marker) {
   const text = fs.readFileSync(file, 'utf8');
-  const begin = text.indexOf('<!-- parity:begin -->');
-  const end = text.indexOf('<!-- parity:end -->');
-  if (begin < 0 || end < 0) throw new Error(`${file} has no parity markers`);
+  const open = `<!-- ${marker}:begin -->`;
+  const close = `<!-- ${marker}:end -->`;
+  const begin = text.indexOf(open);
+  const end = text.indexOf(close);
+  if (begin < 0 || end < 0) throw new Error(`${file} has no ${marker} markers`);
   const pct = (n, d) => (d === 0 ? '0' : ((100 * n) / d).toFixed(4));
   const lines = [
-    '<!-- parity:begin -->',
+    open,
     `Written by \`conform\` on ${summary.date}, against ${summary.oracle.name}, on ${summary.voices.join(', ')}.`,
     '',
     '| | |',
@@ -209,6 +214,6 @@ function writeSheet(file, summary, chip) {
       .join('; ');
     lines.push(`| ${r.name} | ${pct(r.identical, r.cycles)} % | ${first} | ${edges} |`);
   }
-  lines.push('<!-- parity:end -->');
-  fs.writeFileSync(file, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- parity:end -->'.length));
+  lines.push(close);
+  fs.writeFileSync(file, text.slice(0, begin) + lines.join('\n') + text.slice(end + close.length));
 }

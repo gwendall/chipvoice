@@ -149,6 +149,15 @@ code. Executable NSF/ROM files and downloaded archive collections stay local.
   regression.
 - Writes the sheet's numbers between its parity markers. Nobody types them.
 
+A chip can have more than one oracle: a second reference for what the first
+leaves open, or one for voices the first does not model. The chip's first
+oracle keeps `corpus/<chip>/parity.json` and the sheet's `parity` block, which
+the board reads. Each other oracle gets its own baseline,
+`corpus/<chip>/parity-<oracle>.json`, and its own block in the sheet, written
+with `--marker parity-<oracle>` between `<!-- parity-<oracle>:begin -->` and
+`<!-- parity-<oracle>:end -->`; its `check` and `baseline` scripts run in CI
+like the first one's.
+
 The oracle is a native build of the reference core: its sources are vendored, a
 recording sink stands in for its sample synthesis, and the system C++ compiler
 builds it on first use. A WebAssembly build would do as well; native was a day

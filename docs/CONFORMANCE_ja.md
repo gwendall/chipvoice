@@ -88,6 +88,8 @@ node packages/conform/src/corpus/import-vgm.mjs some.vgm --out packages/conform/
 - 差があれば非0終了します。ただし`--baseline`付きなら、声の一致数がコミット済み基準より下がった場合だけ失敗します。CIはこれを使います。不完全な参照は設計上どこかで異なるので、防ぐべきは回帰です。
 - 一致マーカーの間へシートの数字を書きます。人は入力しません。
 
+1つのチップに参照が複数あっても構いません。最初の参照が残した点を決める第2の参照や、最初の参照が扱わない声の参照です。チップの最初の参照は`corpus/<chip>/parity.json`とシートの`parity`ブロックを使い、ボードはそれを読みます。ほかの参照はそれぞれ基準`corpus/<chip>/parity-<oracle>.json`と、シート内の専用ブロックを持ちます。ブロックは`--marker parity-<oracle>`で`<!-- parity-<oracle>:begin -->`と`<!-- parity-<oracle>:end -->`の間へ書きます。その`check`と`baseline`スクリプトも最初の参照と同じくCIで実行します。
+
 参照は同梱ソースのネイティブビルドです。サンプル合成を記録先へ置き換え、初回にシステムC++コンパイラーで作ります。WebAssemblyでもよいですが、ネイティブなら1日短く済みました。
 
 <a id="what-a-core-must-provide-to-be-testable"></a>
