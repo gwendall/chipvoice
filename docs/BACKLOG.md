@@ -151,6 +151,17 @@ real game music, and a real unit.
   diagnosed three real divergences from `sn76489.ts` (a tone period of 0 or 1,
   the polarity a channel starts at before its first reload, tone 3's noise
   rate), recorded on the sheet.
+- doing - P2-1, first pass: every 2A03 divergence against Mesen is traced.
+  One was the shim's (its cycle count's parity picked the other `$4017`
+  delay), fixed, lifting `song-e2e`'s pulse 2 to 100 %; the rest are Mesen's
+  sweep power-on state, its output refreshed only on a write or a timer tick,
+  and a write on a reload's own cycle, each confirmed with a scratch build of
+  the core and documented on the sheet. The SID now leaves an OSC3 or ENV3
+  read on its data bus (`busvalue` passes, 14 of 14). A Game Boy pulse started
+  from silence outputs a digital zero until its first duty step (Pan Docs,
+  SameBoy agrees); Gb_Snd_Emu's baseline was rewritten for it. Left for the
+  second pass: the PSG divergences MAME found (P5-8) and the Game Boy against
+  SameBoy (P3-4) once it lands.
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md) catalogues
   what published recordings and measurements of real hardware already exist
   for all five chips, each source opened and verified before being listed
@@ -319,7 +330,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
-| P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | todo | |
+| P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | doing | first pass: 2A03 against Mesen traced and documented (a shim fix), SID bus latch, Game Boy pulse start; PSG and SameBoy next |
 | P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
 | P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output. NEXT-04 traced the filter corners' provenance to blargg's own capture and lidnariq's analysis of it, but the files are gone and no revision was named: see [HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03) |
 | P2-4 | Release with the sheet linked from the package README and the skill | done | The README links every sheet; the skill links each target's |
@@ -477,7 +488,10 @@ exactly; its divider's timing does not: nesdev's page checks the divider
 against zero before reloading or decrementing it, which this core's
 `clockSweep()` follows, while Mesen's vendored code decrements first and
 checks the result, landing a freshly-armed sweep's first period step one
-half-frame clock late. Filed as a finding for P2-1, not fixed here. See
+half-frame clock late. Filed as a finding for P2-1, not fixed here. (P2-1
+later found the algorithm to be the same unit counted one apart; the
+difference is Mesen's power-on divider and period, both 0, outside its own
+range.) See
 `docs/chips/2a03.md`'s second-oracle section and the oracle's own README for
 the numbers and the full diagnosis. No core change; no golden hash moved.
 
