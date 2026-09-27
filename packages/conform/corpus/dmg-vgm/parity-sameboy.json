@@ -1,0 +1,111 @@
+{
+  "chip": "dmg",
+  "oracle": {
+    "id": "sameboy",
+    "name": "SameBoy (DMG-B)"
+  },
+  "voices": [
+    "ch1",
+    "ch2",
+    "ch3",
+    "ch4"
+  ],
+  "date": "2026-09-27",
+  "files": 1,
+  "cycles": 12582912,
+  "identical": 8201474,
+  "diverging": 1,
+  "results": [
+    {
+      "name": "song-demo",
+      "source": "source/song-demo.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 783,
+      "cycles": 12582912,
+      "identical": 8201474,
+      "first": {
+        "cycle": 4643,
+        "voice": 3,
+        "a": 0,
+        "b": 13
+      },
+      "edges": [
+        {
+          "voice": "ch1",
+          "identical": 12576108,
+          "a": 2167,
+          "b": 2167,
+          "exact": 466,
+          "near": 0,
+          "onlyA": 1701,
+          "onlyB": 1701,
+          "shift": -4,
+          "aligned": 1701,
+          "runs": {
+            "ours": 2122,
+            "theirs": 2122,
+            "alignedTimes": 2120,
+            "alignedValues": 2120,
+            "maxShift": 4
+          }
+        },
+        {
+          "voice": "ch2",
+          "identical": 12578676,
+          "a": 1065,
+          "b": 1065,
+          "exact": 6,
+          "near": 0,
+          "onlyA": 1059,
+          "onlyB": 1059,
+          "shift": -4,
+          "aligned": 1059,
+          "runs": {
+            "ours": 1065,
+            "theirs": 1065,
+            "alignedTimes": 1065,
+            "alignedValues": 1065,
+            "maxShift": 4
+          }
+        },
+        {
+          "voice": "ch3",
+          "identical": 12579172,
+          "a": 6517,
+          "b": 6517,
+          "exact": 2777,
+          "near": 3740,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 1,
+          "aligned": 3740,
+          "runs": {
+            "ours": 14,
+            "theirs": 14,
+            "alignedTimes": 6,
+            "alignedValues": 6,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "ch4",
+          "identical": 8210848,
+          "a": 29987,
+          "b": 98961,
+          "exact": 1074,
+          "near": 555,
+          "onlyA": 28358,
+          "onlyB": 97332,
+          "shift": -8,
+          "aligned": 1118,
+          "runs": {
+            "ours": 219,
+            "theirs": 395,
+            "alignedTimes": 134,
+            "alignedValues": 97,
+            "maxShift": 5169073
+          }
+        }
+      ]
+    }
+  ]
+}

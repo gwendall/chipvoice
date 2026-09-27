@@ -33,7 +33,7 @@ const wav = toWav(renderPerformance(native, mdChip));
 const drums = isolateNativePerformance(native, ['fm6']);
 ```
 
-`importVgm` は NTSC メガドライブの YM2612 と SN76489 のクロック・設定を使う非圧縮 VGM 1.50〜1.71 に対応します。FM・PSG 書き込み、待機、DAC データブロック、PCM シーク、DAC 書き込み＋待機を扱います。不明なコマンド、別のハードウェア、不正な入力やループ位置は明示的に拒否します。上限は 8 MiB、10 分、バス書き込み 200 万件。DAC バンクには上限付きバッファを 1 個使い、サンプルごとのバンク確保はしません。VGM の時刻は毎秒 44,100 tick であり、元ゲームのサンプル未満の CPU バス時刻は復元できません。ブラウザーのレンダリングは交換可能な worker 内で行い、小さな VGM はネイティブのソロに必要な時だけ取得します。
+`importVgm` は非圧縮 VGM 1.50〜1.71 に対応し、ヘッダーがどのクロックフィールドを設定しているかで3機種を判別します。NTSC メガドライブの YM2612 と SN76489、NTSC NES の 2A03、Game Boy の DMG です。メガドライブでは FM・PSG 書き込み、待機、DAC データブロック、PCM シーク、DAC 書き込み＋待機を扱い、DAC バンクには上限付きバッファを 1 個使い、サンプルごとのバンク確保はしません。NES ではレジスター書き込み（コマンド `0xB4`）と DPCM サンプルデータ（データブロック種別 `0xC2`、「NES APU RAM write」）に対応し、ファミコンディスクシステムのビットには対応しません。Game Boy ではレジスター書き込み（コマンド `0xB3`）に対応します。いずれの機種でも、PAL など非NTSCのクロック、第二の（「デュアルチップ」）NES または Game Boy チップ、同じヘッダー内の別チップのクロックは、それぞれの名前とともに明示的に拒否します。不明なコマンド、不正な入力やループ位置も同様です。上限は 8 MiB、10 分、バス書き込み 200 万件。VGM の時刻は毎秒 44,100 tick であり、元ゲームのサンプル未満の CPU バス時刻は復元できません。ブラウザーのレンダリングは交換可能な worker 内で行い、小さな VGM はネイティブのソロに必要な時だけ取得します。
 
 ```ts
 import {importMidi, planPerformance, renderPerformance, snesChip} from 'chipvoice';

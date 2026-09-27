@@ -337,6 +337,60 @@ Written by `gbs-corpus:sheet` on 2026-09-27, against Game_Music_Emu revision `fe
 | [Nightmode](https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs) | Laxity's own driver (bundled with gbsplay) | 59673 | 0/59673 | 59673/59673 | cycle 3928 vs 1895, $ff26: 128 vs 128 |
 <!-- gbs-corpus:end -->
 
+## VGM import
+
+`importVgm` (`packages/chipvoice/src/vgm-import.ts`) reads a VGM 1.61+ file
+whose header declares the Game Boy's clock at offset `0x80`: register writes
+(command `0xB3`, offset `0x00`-`0x2F` from `$FF10`) become the same
+`PerformancePlan` the arranger produces, so `renderPerformance`/
+`isolateNativePerformance` do not need to know a track came from a file
+rather than from a score - `isolateNativePerformance` solos a DMG voice by
+masking NR51 (`$FF25`), a pure output mask with no side effect on the
+channel it mutes, unlike the NES's `$4015`. Import rejects, by name, a
+second ("dual-chip") DMG, another chip's clock in the same header, and VGM
+versions outside 1.50-1.71: see the package's README and
+[CONFORMANCE.md](../CONFORMANCE.md).
+
+Scored the same way as "Digital parity" above, but on a file that went
+through `importVgm` rather than through the driver directly: one
+self-composed, round-tripped file per oracle
+([`packages/conform/corpus/dmg-vgm`](../../packages/conform/corpus/dmg-vgm);
+source, licence and SHA-256 in its `manifest.json`. A rip of a commercial
+game cannot be committed here, so this is not yet a corpus of real music).
+Any divergence on the pulses or the noise channel is the same triggered-note
+and noise-clock phase questions "What the numbers say" above already
+describes, not an import-path finding.
+
+<!-- parity-vgm-gb-snd-emu:begin -->
+Written by `conform` on 2026-09-27, against Gb_Snd_Emu 0.1.4 (blargg), on ch1, ch2, ch3, ch4.
+
+| | |
+| --- | --- |
+| Oracle | Gb_Snd_Emu 0.1.4 (blargg) |
+| Corpus | 1 logs, 12582912 cycles |
+| Identical cycles | 550601 / 12582912 (4.3758 %) |
+| Logs with a divergence | 1 |
+
+| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
+| --- | --- | --- | --- |
+| song-demo | 4.3758 % | cycle 0, ch1: ours 0, oracle 15 | ch1 51.8293 %, 22/13/4264; runs 2122: 2111 on times, 2106 on values, shift <= 102087; ch2 51.7174 %, 0/0/2133; runs 1065: 1065 on times, 1064 on values, shift <= 15019; ch3 12.4131 %, 14/0/13001; runs 14: 1 on times, 1 on values, shift <= 1791; ch4 82.6157 %, 3/0/59975 (14196 at +7); runs 219: 157 on times, 145 on values, shift <= 909341 |
+<!-- parity-vgm-gb-snd-emu:end -->
+
+<!-- parity-vgm-sameboy:begin -->
+Written by `conform` on 2026-09-27, against SameBoy (DMG-B), on ch1, ch2, ch3, ch4.
+
+| | |
+| --- | --- |
+| Oracle | SameBoy (DMG-B) |
+| Corpus | 1 logs, 12582912 cycles |
+| Identical cycles | 8201474 / 12582912 (65.1795 %) |
+| Logs with a divergence | 1 |
+
+| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
+| --- | --- | --- | --- |
+| song-demo | 65.1795 % | cycle 4643, ch4: ours 0, oracle 13 | ch1 99.9459 %, 466/0/3402 (1701 at -4); runs 2122: 2120 on times, 2120 on values, shift <= 4; ch2 99.9663 %, 6/0/2118 (1059 at -4); runs 1065: 1065 on times, 1065 on values, shift <= 4; ch3 99.9703 %, 2777/3740/0 (3740 at +1); runs 14: 6 on times, 6 on values, shift <= 0; ch4 65.2540 %, 1074/555/125690 (1118 at -8); runs 219: 134 on times, 97 on values, shift <= 5169073 |
+<!-- parity-vgm-sameboy:end -->
+
 ## Test ROMs
 
 blargg's `dmg_sound` suite, run on the harness's own SM83 with the chip on the

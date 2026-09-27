@@ -1,0 +1,111 @@
+{
+  "chip": "2a03",
+  "oracle": {
+    "id": "nes-snd-emu",
+    "name": "Nes_Snd_Emu 0.1.7 (blargg)"
+  },
+  "voices": [
+    "p1",
+    "p2",
+    "tri",
+    "dmc"
+  ],
+  "date": "2026-09-27",
+  "files": 1,
+  "cycles": 5369319,
+  "identical": 145980,
+  "diverging": 1,
+  "results": [
+    {
+      "name": "song-demo",
+      "source": "source/song-demo.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 1075,
+      "cycles": 5369319,
+      "identical": 145980,
+      "first": {
+        "cycle": 0,
+        "voice": 2,
+        "a": 15,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "p1",
+          "identical": 5369319,
+          "a": 2162,
+          "b": 2162,
+          "exact": 2162,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 2162,
+          "runs": {
+            "ours": 12,
+            "theirs": 12,
+            "alignedTimes": 12,
+            "alignedValues": 12,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "p2",
+          "identical": 5369319,
+          "a": 928,
+          "b": 928,
+          "exact": 928,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 928,
+          "runs": {
+            "ours": 464,
+            "theirs": 464,
+            "alignedTimes": 464,
+            "alignedValues": 464,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "tri",
+          "identical": 145980,
+          "a": 6476,
+          "b": 6482,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 6476,
+          "onlyB": 6482,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 15,
+            "theirs": 14,
+            "alignedTimes": 8,
+            "alignedValues": 0,
+            "maxShift": 388017
+          }
+        },
+        {
+          "voice": "dmc",
+          "identical": 5369319,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

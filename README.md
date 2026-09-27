@@ -69,9 +69,10 @@ Import a MIDI locally, isolate its instruments, or compare Mario, Zelda and Soni
 independent native renderer. Every port reports voice omissions and substitutions;
 no extra accompaniment is invented. Imports show preparation and rendering progress.
 The SDK offers `importMidi → planPerformance → renderPerformance` for musical
-arrangements and `importVgm → renderPerformance` for native Mega Drive commands;
-[the method and its limits](scores/arrangements/README.md) distinguish original
-game verification from MIDI transcription and cross-console adaptation.
+arrangements and `importVgm → renderPerformance` for native Mega Drive, NES and
+Game Boy commands; [the method and its limits](scores/arrangements/README.md)
+distinguish original game verification from MIDI transcription and
+cross-console adaptation.
 
 **Make a loop** opens the editor, keyboard, pads, recording, undo, code, export and
 sharing in the same page. Your saved draft is restored there; shared links still

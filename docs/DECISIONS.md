@@ -1182,6 +1182,63 @@ an operation a caller runs locally, against a named, exact, reproducible
 target. MIX-14 (render hashes across browsers, Node and phones) and further
 AUD-2 measurement remain separate.
 
+## 44. VGM import carries DPCM through a memory block, and rejects what it does not model, by name (2026-09-27)
+
+`importVgm`, which shipped for the Mega Drive only, extends to the NES 2A03
+and the Game Boy DMG. Both read the same VGM header
+clock fields the file format already reserves for them (`0x84`, `0x80`), so
+one function keeps telling the three machines apart the way it already told
+the Mega Drive's YM2612 clock from a foreign one.
+
+- **DPCM through `PerformancePlan.memory`, not a DAC-stream command.** A VGM's
+  NES DPCM sample data can arrive two ways: data-block type `0xC2` ("NES APU
+  RAM write", a plain address-and-bytes dump) or type `0x07` plus the
+  `0x90`-`0x95` DAC-stream commands (a compressed bank format meant for
+  streaming playback, not for a one-shot sample already sitting in address
+  space). `importVgm` supports only the first, and turns it into
+  `PerformancePlan.memory`, the same field `recordSong` already fills for a
+  DMC sample composed from a score (`packages/conform`'s `script-dmc`
+  corpus entry uses it too). `renderPerformance` already knows what to do
+  with it: `core.load(address, bytes)` before `core.schedule(events)`. No
+  new mechanism, and no bulk-bank decompressor, is needed. Type `0x07`/DAC
+  streams are rejected by name; a file that only used them would need one.
+- **NES and Game Boy writes need no buffered-write spacing.** The Mega Drive
+  importer paces YM2612 writes because the real chip needs cycles between a
+  port write and the next; the 2A03 and the DMG's registers have no such
+  restriction, so their register writes turn directly into `RegisterEvent`s
+  at the write's own VGM sample time, with no artificial spacing inserted.
+- **Rejected, by name, rather than silently ignored or best-effort.** A PAL or
+  otherwise non-NTSC clock (accepted within 0.01% of the NES's own 1789773 Hz,
+  which admits both that and the 1789772 most real rips and VGMPlay itself
+  write, and still rejects PAL's 1662607 and Dendy's 1773448), the Famicom
+  Disk System bit, a second ("dual-chip") NES or Game Boy chip (bit 7 of the
+  register byte, the VGM convention for both), and another chip's clock in
+  the same header each throw a named error rather than produce a
+  plausible-looking but wrong render: none of the four is modeled by either
+  chip core, so a silent partial import would misrepresent what was played.
+  VGM versions outside 1.50-1.71 fail the same way, at the format check that
+  runs before any machine is chosen. In practice that range is narrower for
+  the NES and Game Boy than for the Mega Drive: VGM only reserves their
+  clock fields (`0x84`, `0x80`) from 1.61 on, so a file below that version is
+  not recognized as either and falls through to the Mega Drive branch
+  instead, which fails there on its own header check; the Mega Drive itself,
+  whose clock fields sit earlier in the header, keeps the full 1.50-1.71
+  range.
+
+**Why.** Reusing `PerformancePlan.memory` and `renderPerformance` unchanged
+means the arranger's own scores and an imported VGM are indistinguishable
+once parsed, the same property decision 21 wants from any performance plan.
+Naming what is rejected, rather than skipping unknown bytes, matches the
+package's existing Mega Drive importer and keeps a caller from mistaking a
+half-read file for a complete one.
+
+**What changes.** `packages/chipvoice/src/vgm-import.ts` gains an NES branch
+and a Game Boy branch beside the existing Mega Drive one, both documented in
+the package README and on each chip's sheet
+([2a03.md](chips/2a03.md#vgm-import), [dmg.md](chips/dmg.md#vgm-import)),
+scored against Nes_Snd_Emu/Mesen and Gb_Snd_Emu/SameBoy on a self-composed,
+round-tripped corpus. A rip of a commercial game is not committed here.
+
 ## 45. The SPC700 and S-SMP stay MIT; the IPL ROM's 64 bytes are the one embedded exception (2026-09-27)
 
 NEXT-08 adds `chips/snes/spc700.ts` (the CPU) and `chips/snes/ssmp.ts` (its

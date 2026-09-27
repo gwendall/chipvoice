@@ -1,0 +1,10 @@
+[
+  {
+    "chip": "2a03",
+    "filename": "source/song-demo.vgm",
+    "source": "packages/conform/src/corpus/generate-vgm-import.mjs",
+    "licence": "MIT (chipvoice project; self-generated, no external material)",
+    "sha256": "5b574ebc3df012d5e4a721b62694121e231287642782bc54a98a1cc27583d247",
+    "note": "Round-trip export of a short chipvoice-composed song (recordSong + toVgm), 3 s."
+  }
+]

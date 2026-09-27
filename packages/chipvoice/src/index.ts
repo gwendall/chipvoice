@@ -402,6 +402,7 @@ export {planPerformance, renderPerformance, performanceClock, validatePerformanc
 export type {Performance, PerformancePart, PerformanceNote, PerformancePlan, PerformanceOptions, PerformanceLoss} from './performance.js';
 
 export {importVgm} from "./vgm-import.js";
+export type {VgmImportOptions} from "./vgm-import.js";
 export {importSpc} from "./spc-import.js";
 export type {Id666Tag, SpcPerformancePlan} from "./spc-import.js";
 export {importGbs, parseGbsHeader} from "./gbs-import.js";

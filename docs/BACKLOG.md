@@ -328,8 +328,17 @@ real game music, and a real unit.
   matched on the first (self-authored) corpus file. This CPU is also the
   prerequisite for P6-9 below: an embedded driver cannot be checked against
   a real SPC700 without one.
-- todo - NEXT-07 VGM import, NEXT-09 SID/PSID: each against its reference
-  player (GME, sidplayfp), with a score per file.
+- done - NEXT-07: `importVgm` extends to the NES 2A03 (command `0xB4`; DPCM
+  sample data via data-block type `0xC2`) and the Game Boy DMG (command
+  `0xB3`), alongside the unchanged Mega Drive path; a PAL or otherwise
+  non-NTSC clock, dual-chip files, the FDS bit and unsupported VGM versions
+  are rejected by name. The NES clock check accepts anything within 0.01% of
+  the NTSC 1789773 Hz clock, admitting the 1789772 most real rips and
+  VGMPlay itself write. Scored against Nes_Snd_Emu/Mesen and Gb_Snd_Emu/
+  SameBoy on a self-composed, round-tripped corpus (a commercial rip cannot
+  be committed here) - see each sheet's "VGM import" section.
+- todo - NEXT-09 SID/PSID: against its reference player (sidplayfp), with a
+  score per file.
 - P6-9 (SPC export, now unblocked by NEXT-08's CPU) and todo - NEXT-10 (NSF
   and GBS export): a song that plays on a real console from a flash cart,
   recorded on the step 1 bench.

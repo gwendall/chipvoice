@@ -11,6 +11,15 @@ export function isolateNativePerformance(plan: PerformancePlan, voices: string[]
     const mask = voices.reduce((m, v) => m | bits[v], 0);
     return {...plan, events: plan.events.map(e => e.addr === 0x4015 ? {...e, value: e.value & mask} : e)};
   }
+  if (plan.chip === 'dmg') {
+    const bits: Record<string, number> = {ch1: 1, ch2: 2, ch3: 4, ch4: 8};
+    if (voices.some(v => !bits[v])) throw new Error('Unknown native Game Boy voice');
+    // NR51 gates each channel into the left/right mix independently of its
+    // own trigger/length/envelope, so masking it here is a pure output mask:
+    // unlike the NES's $4015, it has no side effect on the source channel.
+    const mask = voices.reduce((m, v) => m | bits[v], 0), full = mask | (mask << 4);
+    return {...plan, events: plan.events.map(e => e.addr === 0xff25 ? {...e, value: e.value & full} : e)};
+  }
   if (plan.chip !== 'md' || voices.some(v => !/^(fm[1-6]|psg[1-3]|noise)$/.test(v))) throw new Error('Unsupported native voices');
   let fmLatch = 0, psgLatch = 0;
   return {...plan, events: plan.events.map(e => {
