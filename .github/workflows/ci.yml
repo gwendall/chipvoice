@@ -154,6 +154,7 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform check:sameboy
       - run: pnpm --filter chipvoice-conform roms:dmg
+      - run: pnpm --filter chipvoice-conform roms:cpu-instrs
       - run: pnpm --filter chipvoice-conform check:md
       - run: pnpm --filter chipvoice-conform check:sn76496
       - run: pnpm --filter chipvoice-conform test:listening
@@ -172,3 +173,11 @@ jobs:
           path: .artifacts/nsf-corpus/gme-oracle/gme
           key: gme-oracle-fe8da4b6d3876d7542c2fb69d94487e19836d678
       - run: pnpm nsf-corpus:check
+      # The real-GBS corpus (NEXT-06) builds the same pinned Game_Music_Emu
+      # revision, into its own clone (a different oracle module, GBS vs
+      # NSF), so it gets its own cache entry at the same pin.
+      - uses: actions/cache@v6
+        with:
+          path: .artifacts/gbs-corpus/gme-oracle/gme
+          key: gme-oracle-gbs-fe8da4b6d3876d7542c2fb69d94487e19836d678
+      - run: pnpm gbs-corpus:check

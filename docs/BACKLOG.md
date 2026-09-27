@@ -295,8 +295,27 @@ real game music, and a real unit.
   `ceil(initEnd/period)*period` gives - the standard rate's own half-cycle
   rounding lands on the right cycle already, so this only showed up on a
   custom rate. `packages/chipvoice` was not touched.
-- todo - NEXT-06 GBS, NEXT-07 VGM import, NEXT-09 SID/PSID: each against its
-  reference player (GME, sidplayfp), with a score per file.
+- done - NEXT-06: `importGbs`/`parseGbsHeader` play a `.gbs` on `dmg` through
+  an own SM83 CPU, written from Pan Docs, gbdev's opcode tables and the GBS
+  format spec, never ported from a GPL/LGPL emulator (decision 41). Every
+  opcode, including CB-prefixed, is unit-tested against Pan Docs' own flag
+  and cycle rules (`test/cpu-gb.mjs`), and also run against blargg's own
+  hardware-behaviour and hardware-timing suites, `cpu_instrs` and
+  `instr_timing` (`packages/conform`'s `roms:cpu-instrs`, 12 of 12 ROMs
+  pass) - independent of any reference emulator, this is what actually
+  settles the SM83's timing against real Game Boy hardware. Scored, not
+  asserted, against a pinned Game_Music_Emu `Gbs_Emu` (`scores/gbs-corpus`,
+  `docs/chips/dmg.md#gbs-playback`): the corpus holds one self-produced file
+  plus four real files from three independent drivers (hUGEDriver, GBT
+  Player, and Laxity's own driver bundled with gbsplay); on all five, every
+  register write matches address, value and order for the file's whole run,
+  while the exact cycle timestamps do not - a real, bounded, documented
+  divergence in per-opcode timing *model* from GME's own CPU core (a flat
+  4T-per-instruction charge, confirmed by reading `Gb_Cpu.cpp` by revision),
+  not a bug fixed by copying it. `packages/chipvoice` gained
+  `src/chips/gb/cpu.ts` and `src/gbs-import.ts` only; no existing chip module
+  changed, so the calibration manifest was refreshed but nothing about the
+  mixer or its golden renders moved.
 - done - NEXT-08: `importSpc` plays an `.spc` snapshot (SPC700 + S-DSP, the
   SNES's own music format) through a new SPC700 (S-SMP), timers and I/O
   ports written from fullsnes, Anomie's SPC700/S-DSP documents and the SNES
@@ -309,6 +328,8 @@ real game music, and a real unit.
   matched on the first (self-authored) corpus file. This CPU is also the
   prerequisite for P6-9 below: an embedded driver cannot be checked against
   a real SPC700 without one.
+- todo - NEXT-07 VGM import, NEXT-09 SID/PSID: each against its reference
+  player (GME, sidplayfp), with a score per file.
 - P6-9 (SPC export, now unblocked by NEXT-08's CPU) and todo - NEXT-10 (NSF
   and GBS export): a song that plays on a real console from a flash cart,
   recorded on the step 1 bench.

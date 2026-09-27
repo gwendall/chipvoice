@@ -16,8 +16,14 @@ const T_PER_LINE = 456;
 const LINES = 154;
 
 export class GameBoy {
-  /** @param {Uint8Array} rom */
-  constructor(rom) {
+  /**
+   * @param {Uint8Array} rom
+   * @param {{cpuClass?: new (bus: GameBoy) => unknown}} [options] `cpuClass`
+   *   defaults to this file's own `Sm83` (what `dmg_sound` runs against);
+   *   `cpu-instrs.mjs` passes the package's own `chips/gb/cpu.ts` instead, to
+   *   check ITS timing, not this harness's separate oracle-side CPU.
+   */
+  constructor(rom, {cpuClass = Sm83} = {}) {
     this.rom = rom;
     this.vram = new Uint8Array(0x2000);
     this.eram = new Uint8Array(0x2000);
@@ -28,11 +34,15 @@ export class GameBoy {
     this.ie = 0;
     this.if = 0;
     this.chip = gbChip.digital();
-    this.cpu = new Sm83(this);
+    this.cpu = new cpuClass(this);
     this.tCycles = 0;
     this.timerCycles = 0;
     /** Every APU register write, stamped with its T-cycle. */
     this.log = [];
+    /** Characters sent out the serial port (`$FF01`/`$FF02`), blargg's
+     * `cpu_instrs`/`instr_timing` protocol - unused by `dmg_sound`, which
+     * never touches `$FF02`, so this is a pure addition for those suites. */
+    this.serial = '';
   }
 
   powerOn() {
@@ -127,6 +137,18 @@ export class GameBoy {
       return;
     }
     if (reg === 0x0f) { this.if = value & 0x1f; return; }
+    if (reg === 0x02) {
+      // blargg's serial protocol (cpu_instrs, instr_timing): a write with
+      // bit 7 set sends the byte already in SB ($FF01), then the port goes
+      // idle again immediately and raises the serial interrupt, the same
+      // as a real (unconnected) link cable's transfer completing at once.
+      if (value & 0x80) {
+        this.serial += String.fromCharCode(this.io[0x01]);
+        this.if |= 0x08;
+      }
+      this.io[reg] = value & 0x7f;
+      return;
+    }
     this.io[reg] = value;
   }
 
