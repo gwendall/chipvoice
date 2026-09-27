@@ -1003,3 +1003,23 @@ uploaded; the 169 of 316 lab files no report referenced any more are gone.
 The old arrangement URLs without a hash now answer 404. A checkout that pulls
 this change loses its tracked lab copies with it; the site still plays them
 from the store, and `pnpm audio:pull` brings them back.
+
+## 41. Reference emulators under the GPL may be vendored in the harness, never in the package (2026-09-27)
+
+Step 1's second oracles include GPL code: Mesen 2 (GPL 3) for the NES and
+VICE's SID test programs (GPL 2) for the C64. They may be vendored under
+`packages/conform`, each in its own folder with its licence and a README that
+says what is upstream and what is ours, the way the LGPL oracles already are.
+They run as separate programs the harness builds and drives over a pipe, or as
+test programs its CPUs execute. Nothing from them is linked into, copied into
+or ported into `packages/chipvoice`, which stays `(MIT AND LGPL-2.1-or-later)`
+(decision 17), and `packages/conform` is private and never published.
+
+**Why.** The strongest available reference is often GPL, and an oracle is
+only worth what it is validated against. Running it beside our core, rather
+than inside it, keeps the package's licence unchanged while letting the sheets
+cite the best evidence there is.
+
+**What changes.** A reviewer rejects any change that moves code from a GPL
+oracle into the package. A divergence a GPL oracle finds is fixed from the
+documents, the way decision 14 wrote the Game Boy's chip, not from its code.
