@@ -36,7 +36,10 @@ compile against, not real behaviour:
   (`GetApu`, `GetCpu`, `GetMemoryManager`, `GetSoundMixer`, `GetEmulator`,
   `GetRegion`, `GetNesConfig`), plus the `uint8_t memory[0x10000]` the DMC
   reads from.
-- `shim/NES/NesCpu.h` / `.cpp` - a cycle counter, the `IRQSource` flags the
+- `shim/NES/NesCpu.h` / `.cpp` - a cycle counter, counted from 1 so that it
+  calls the same cycles APU cycles as chipvoice does (the frame
+  counter's 3- or 4-cycle `$4017` delay and the DMC's start delay are read
+  from it; see the header's comment, P2-1), the `IRQSource` flags the
   APU sets and reads, and `StartDmcTransfer()`: a synchronous, zero-stall
   read of `console->memory[apu->GetDmcReadAddress()]` handed straight to
   `apu->SetDmcReadBuffer()`. See "The DMC's memory reads" below.
@@ -121,18 +124,36 @@ itself starts a trace from.
   script that never writes the triangle's registers holds it at this
   disagreement for the script's entire length, which is why the sheet's
   per-log table shows 0 % on the triangle line for those logs.
-- **A freshly-armed sweep's first step.** `SquareChannel::TickSweep()`
-  decrements its divider first and checks the result against zero; nesdev's
-  sweep page gives the algorithm the other way around - check the divider
-  against zero, *then* reload or decrement it - which is what
-  `packages/chipvoice/src/chips/nes/dsp.ts`'s `clockSweep()` does verbatim.
-  From a freshly-written sweep, that ordering difference costs one extra
-  half-frame clock before this oracle's first period step, once per unit of
-  the divider's period. The target-period arithmetic itself (the mute
-  thresholds, pulse 1's extra minus one) matches exactly; only this timing
-  does not. See `docs/chips/2a03.md`'s second-oracle section for the
-  corpus numbers this produces. Filed as a finding for a later ticket
-  (P2-1), not fixed here.
+- **The sweep's power-on state.** `SquareChannel::TickSweep()` counts its
+  divider from P+1 down to 1, decrementing first and checking the result,
+  where nesdev's page (and chipvoice's `clockSweep()`) counts from P down to
+  0 and checks first: the same unit, a divider of d in one reading being d+1
+  in the other. `Reset()`, though, sets both the divider and the period to
+  0, outside that 1 to P+1 range, so the first decrement wraps the byte to
+  255, and until a channel's first `$4001`/`$4005` write is followed by a
+  half-frame clock, its sweep fires late - by a whole 4-step sequence on
+  `script-sweep-up`'s pulse 2. A scratch build with both reset to 1
+  (nesdev's 0) matches chipvoice on every edge of both sweep scripts. Nesdev
+  does not give the divider's power-on value; songs never see it, since
+  chipvoice's driver writes `$4001 = $08` at every note start.
+- **An output changes only on a write or a timer tick.** The square channel
+  recomputes its output on a register write and on a timer reload;
+  `TickEnvelope()` and `TickLengthCounter()` do not, so an envelope step, a
+  restart or a length expiry shows up to one timer period late. The noise
+  channel recomputes its output only on a timer tick, not even on a write.
+  On the hardware the volume is gated straight to the mixer. Every such
+  interval in the corpus closes within one timer period, and a scratch build
+  that refreshes the output in those places removes all of them.
+- **A write on a reload's own cycle.** `WriteRam` runs every channel through
+  the write's own cycle before applying it, so a period write that lands on
+  the cycle a pulse's timer reloads is not seen by that reload; chipvoice,
+  and Nes_Snd_Emu, apply it first, the harness's convention for a write's
+  cycle. Twice in the corpus (`song-studio`'s pulse 2, `song-golden`'s pulse
+  1), each leaving a constant phase offset for the rest of the song. This
+  shim cannot take chipvoice's order without shifting everything else by a
+  cycle: the pulse timers here count 2P+1 cycles from where the first period
+  write left them, not on a fixed APU-cycle parity, and their phase lines up
+  with chipvoice's on this corpus because the reload comes first.
 - **The DMC's first byte, and every restart from a cold buffer.** With no
   simulated CPU stall, this oracle's DMC plays its first sample byte 54
   cycles apart from chipvoice's own - the same magnitude the `nes-snd-emu`
