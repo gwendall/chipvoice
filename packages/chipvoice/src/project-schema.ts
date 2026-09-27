@@ -310,6 +310,8 @@ export const PROJECT_SCHEMA: DataSchema = obj(
     settings: obj(
       {
         chip,
+        /** For the few chips with more than one model: the C64's SID, 6581 or 8580. */
+        model: choice("6581", "8580"),
         tempoScale: num(0.1, 10),
         transpose: num(-48, 48),
         gain: num(0, 1),

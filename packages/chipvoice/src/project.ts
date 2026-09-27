@@ -33,6 +33,8 @@ export interface MusicProject {
     | { kind: "native"; plan: StoredPlan; performance: Performance };
   settings: {
     chip: ProjectChip;
+    /** For the few chips with more than one model: the C64's `"6581"` (the default) or `"8580"`. */
+    model?: "6581" | "8580";
     tempoScale?: number;
     transpose?: number;
     gain?: number;

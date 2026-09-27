@@ -18,6 +18,7 @@
 
 import {
   type ChipCore,
+  type ChipCreateOptions,
   type ChipDefinition,
   type ChipDriver,
   type FmPatch,
@@ -167,7 +168,7 @@ export class APU implements NoteSink {
    * error anywhere. The registry is still there for introspection; nothing
    * on the path that has to work depends on it.
    */
-  constructor(ctx: AudioContext, chip: ChipDefinition = nesChip) {
+  constructor(ctx: AudioContext, chip: ChipDefinition = nesChip, private readonly options: ChipCreateOptions = {}) {
     this.ctx = ctx;
     this.chip = chip;
     this.encoder = chip.driver();
@@ -199,6 +200,7 @@ export class APU implements NoteSink {
       numberOfInputs: 0,
       numberOfOutputs: 1,
       outputChannelCount: [2],
+      processorOptions: { model: this.options.model },
     });
     this.node.connect(destination);
     this.ready = true;

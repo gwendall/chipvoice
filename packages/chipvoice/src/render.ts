@@ -24,6 +24,8 @@ export interface RenderOptions {
   sampleRate?: number;
   /** Which chip: `"2a03"` (the default), `"dmg"`, `"md"`, `"snes"` or `"c64"`. */
   chip?: string;
+  /** For the few chips with more than one model: the C64's `"6581"` (the default) or `"8580"`. */
+  model?: string;
   /** 0 to 1, applied by the chip's own output stage. */
   gain?: number;
   /** Render both channels. The 2A03 is mono, so this duplicates; the Game Boy is stereo. */
@@ -73,7 +75,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
   const seconds = options.seconds ?? Math.min(300, loopSeconds(song) * 2);
   const total = Math.max(1, Math.round(seconds * sampleRate));
 
-  const core = chip.create(sampleRate);
+  const core = chip.create(sampleRate, { model: options.model });
   core.setGain(options.gain ?? 0.78);
 
   /*

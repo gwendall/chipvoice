@@ -43,7 +43,7 @@ export interface ProjectRender {
 export function compileProject(
   input: MusicProject,
   options: ProjectRenderOptions = {},
-): {plan: PerformancePlan; native: boolean; gain: number; engineVersion: string; sourceKind: MusicProject['source']['kind']} {
+): {plan: PerformancePlan; native: boolean; gain: number; model?: string; engineVersion: string; sourceKind: MusicProject['source']['kind']} {
   const project = parseProject(input),
     settings = project.settings,
     chip = definitions[settings.chip],
@@ -88,7 +88,7 @@ export function compileProject(
     return {
       plan: {chip: settings.chip, seconds: Math.round(seconds * sampleRate) / sampleRate, loopStartSeconds: 0,
         events: capture.events, memory: capture.memory, notes: [], losses: []},
-      gain: settings.gain ?? .78, sourceKind: project.source.kind,
+      gain: settings.gain ?? .78, model: settings.model, sourceKind: project.source.kind,
       engineVersion: PROJECT_ENGINE_VERSION, native: false,
     };
   }
@@ -121,13 +121,13 @@ export function compileProject(
       Math.max(0, plan.seconds - 0.001),
     );
   }
-  return {plan, gain: settings.gain ?? .6, sourceKind: project.source.kind, native, engineVersion: PROJECT_ENGINE_VERSION};
+  return {plan, gain: settings.gain ?? .6, model: settings.model, sourceKind: project.source.kind, native, engineVersion: PROJECT_ENGINE_VERSION};
 }
 /** Offline export and interactive preview execute the same compiled commands. */
 export function renderProject(input: MusicProject, options: ProjectRenderOptions = {}): ProjectRender {
   const compiled = compileProject(input, options);
   const audio = renderPerformance(compiled.plan, definitions[compiled.plan.chip as keyof typeof definitions], {
-    sampleRate: options.sampleRate, gain: compiled.gain, onProgress: options.onProgress,
+    sampleRate: options.sampleRate, gain: compiled.gain, model: compiled.model, onProgress: options.onProgress,
   });
   return {audio, plan: compiled.sourceKind === 'score' ? null : compiled.plan,
     engineVersion: compiled.engineVersion, native: compiled.native, loopStartSeconds: compiled.plan.loopStartSeconds};
