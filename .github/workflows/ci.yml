@@ -191,3 +191,13 @@ jobs:
           path: .artifacts/gbs-corpus/gme-oracle/gme
           key: gme-oracle-gbs-fe8da4b6d3876d7542c2fb69d94487e19836d678
       - run: pnpm gbs-corpus:check
+      # The PSID/RSID corpus (NEXT-09) builds a pinned libsidplayfp (plus a
+      # second pinned dependency, xa65, to assemble its own driver) from
+      # source; caching both clones and the incremental build directory by
+      # their pinned revisions leaves only an incremental build and the
+      # small write-logging harness to compile on a cache hit.
+      - uses: actions/cache@v6
+        with:
+          path: .artifacts/psid-corpus/sidplayfp-oracle
+          key: psid-oracle-ecd932b3ef87746008472bc7e65b0c419a483e02-3be092964c80b10564f600325b1e4ff455387140
+      - run: pnpm psid-corpus:check

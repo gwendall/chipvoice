@@ -1,3 +1,4 @@
+<a id="klaus-dormanns-6502-functional-and-decimal-tests-run-on-cpu6510"></a>
 # Klaus Dormannの6502ファンクショナル/デシマルテスト、`Cpu6510`で実行
 
 <p align="center">

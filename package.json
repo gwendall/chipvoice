@@ -25,6 +25,8 @@
     "instruments:test": "node scores/instruments/test-presets.mjs",
     "nsf-export:check": "node scores/nsf-export/corpus.mjs --json .artifacts/nsf-export/report.json",
     "nsf-export:sheet": "node scores/nsf-export/corpus.mjs --json .artifacts/nsf-export/report.json --sheet docs/chips/2a03.md",
+    "psid-corpus:check": "node scores/psid-corpus/corpus.mjs --json .artifacts/psid-corpus/report.json",
+    "psid-corpus:sheet": "node scores/psid-corpus/corpus.mjs --json .artifacts/psid-corpus/report.json --sheet docs/chips/c64.md",
     "audio:pull": "node apps/web/scripts/audio-store.mjs pull",
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
     "audio:push": "node apps/web/scripts/audio-store.mjs push"

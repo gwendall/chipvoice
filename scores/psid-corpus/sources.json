@@ -1,0 +1,25 @@
+{
+  "convention-probe": {
+    "file": "convention-probe.sid",
+    "title": "convention-probe",
+    "author": "gwendall, chipvoice project",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "url": "https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs",
+    "sha256": "9b2f155ec8a4d4ae570f8235c8e7278096134c4d59a8ef93471f91f29e2b18c6",
+    "purpose": "INIT's own calling convention: A, X, Y and PHP-pulled P, stored straight to $D400-$D403 once, read back as a write-stream instead of inferred from the file format document's prose. Its byte-stream comparison against the oracle is expected to stop at the X register (index 1): the format spec never defines X or Y, chipvoice deliberately zeroes them, and libsidplayfp's own reference driver leaves them holding whatever incidental value an unrelated setup branch happened to load - see docs/chips/c64.md.",
+    "seconds": 1,
+    "registerNames": {"0": "A", "1": "X", "2": "Y", "3": "P"}
+  },
+  "frame-rate-probe": {
+    "file": "frame-rate-probe.sid",
+    "title": "frame-rate-probe",
+    "author": "gwendall, chipvoice project",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "url": "https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs",
+    "sha256": "62afe92a3fb80c220044b50234398276e50baadafb4f38c305d5b2bd6fc0bfa2",
+    "purpose": "PLAY's own cadence: a start marker in INIT, then one INC $D400 every call, for many frames - whether PLAY is called once a frame, at the tune's declared speed, and how closely its cycle lands against a real per-line VIC-II's own raster IRQ.",
+    "seconds": 10
+  }
+}

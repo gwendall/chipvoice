@@ -55,6 +55,12 @@ export interface PsidPerformance extends PerformancePlan {
   title: string;
   author: string;
   released: string;
+  /** How many of `events` were written while INIT itself was still running,
+   * before the first real IRQ ever dispatched to PLAY - the same boundary
+   * `capture-nsf.mjs`'s own `calls[0].first` marks for NSF, kept here so a
+   * comparator (`scores/psid-corpus/compare.mjs`) can align each phase
+   * against an oracle separately without guessing where INIT ends. */
+  initEventCount: number;
 }
 
 const PAL_FRAME_CYCLES = 19656; // 63 cycles/line * 312 lines/frame; also the file format's own stated PAL VBI period.
@@ -369,6 +375,7 @@ export function importPsid(bytes: Uint8Array, options: ImportPsidOptions = {}): 
   const sentinel = 0xea31; // An address this environment's RAM never holds real code at; only ever reached via the synthetic return address below.
 
   runUntilReturn(cpu, env, initAddress, sentinel, MAX_CYCLES_PER_CALL);
+  const initEventCount = env.events.length;
   if (header.format === 'PSID') env.ram[0x01] = bankFor(initAddress);
 
   // With INIT done, real hardware never falls off the end of a program: the
@@ -398,6 +405,7 @@ export function importPsid(bytes: Uint8Array, options: ImportPsidOptions = {}): 
     title: header.name, author: header.author, released: header.released,
     seconds, loopStartSeconds: 0,
     events: env.events, memory: [], notes: [], losses: [],
+    initEventCount,
   };
 }
 

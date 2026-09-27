@@ -147,9 +147,12 @@ throws('seconds out of range is rejected', () => importPsid(buildPsid({loadAddre
   prg.set(init, 0);
   prg.set(play, playAddress - loadAddress);
   const p = importPsid(buildPsid({loadAddress, initAddress, playAddress, flags: 0x00, speed: 0, prg}), {seconds: 0.5});
-  const plays = p.events.filter((e) => e.addr === 0xd40e);
+  // INC is a read-modify-write: two bus writes per call (the unmodified
+  // value, a real dummy write, then the incremented one) - halve the raw
+  // event count back into PLAY calls.
+  const plays = p.events.filter((e) => e.addr === 0xd40e).length / 2;
   // PAL VBI: ~50 Hz: half a second should give roughly 25 calls, generously bounded.
-  check('a VBI-driven (speed=0) PSID calls PLAY repeatedly, near 50Hz PAL', plays.length > 15 && plays.length < 40, `plays=${plays.length}`);
+  check('a VBI-driven (speed=0) PSID calls PLAY repeatedly, near 50Hz PAL', plays > 15 && plays < 40, `plays=${plays}`);
 }
 {
   const loadAddress = 0x1000, initAddress = 0x1000, playAddress = 0x1020;
@@ -159,9 +162,10 @@ throws('seconds out of range is rejected', () => importPsid(buildPsid({loadAddre
   prg.set(init, 0);
   prg.set(play, playAddress - loadAddress);
   const p = importPsid(buildPsid({loadAddress, initAddress, playAddress, flags: 0x00, speed: 1, prg}), {seconds: 0.5});
-  const plays = p.events.filter((e) => e.addr === 0xd40e);
+  // Same halving as the VBI-driven case above: INC writes twice per call.
+  const plays = p.events.filter((e) => e.addr === 0xd40e).length / 2;
   // CIA-driven (speed=1): the file format's own 60Hz default CIA latch.
-  check('a CIA-driven (speed=1) PSID calls PLAY repeatedly, near 60Hz', plays.length > 20 && plays.length < 45, `plays=${plays.length}`);
+  check('a CIA-driven (speed=1) PSID calls PLAY repeatedly, near 60Hz', plays > 20 && plays < 45, `plays=${plays}`);
 }
 
 // --- End-to-end render: renderPsid produces audible, finite samples.

@@ -438,13 +438,14 @@ export class Cpu6510 {
     return result;
   }
 
-  /** Read-modify-write at a memory address: the shifts, INC/DEC, and the illegal SLO/RLA/SRE/RRA/DCP/ISC combine into this too. */
+  /** Read-modify-write at a memory address: the shifts, INC/DEC, and the illegal SLO/RLA/SRE/RRA/DCP/ISC combine into this too. On real NMOS hardware, a read-modify-write instruction writes the unmodified value back before it writes the modified one - two bus writes, not one - and PSID/RSID tunes are documented to lean on it deliberately (an `INC`/`ASL` straight on a SID register's own address for a phantom gate retrigger). Verified against the libsidplayfp oracle (`scores/psid-corpus`): its own 6510 core does the same dummy write, one cycle before the real one. */
   private rmw(addr: number, op: "ASL" | "ROL" | "LSR" | "ROR" | "INC" | "DEC") {
     const value = this.read(addr);
     let result: number;
     if (op === "INC") result = (value + 1) & 0xff;
     else if (op === "DEC") result = (value - 1) & 0xff;
     else result = this.shift(op, value);
+    this.write(addr, value); // The dummy write: real hardware's own extra bus cycle, not a rounding choice.
     this.write(addr, result);
     if (op === "INC" || op === "DEC") this.setNZ(result);
   }
@@ -517,13 +518,15 @@ export class Cpu6510 {
     if (op === 0xbb) { const { addr, crossed } = this.absIndexed(this.y); this.a = this.x = this.s = this.read(addr) & this.s; this.setNZ(this.a); this.cycle += 4 + (crossed ? 1 : 0); return; }
 
     // SLO/ASO, RLA, SRE/LSE, RRA: shift-or-rotate the memory operand, then
-    // fold it into A with the matching logical/arithmetic op.
-    const slo = (addr: number) => { const r = this.shift("ASL", this.read(addr)); this.write(addr, r); this.a |= r; this.setNZ(this.a); };
-    const rla = (addr: number) => { const r = this.shift("ROL", this.read(addr)); this.write(addr, r); this.a &= r; this.setNZ(this.a); };
-    const sre = (addr: number) => { const r = this.shift("LSR", this.read(addr)); this.write(addr, r); this.a ^= r; this.setNZ(this.a); };
-    const rra = (addr: number) => { const r = this.shift("ROR", this.read(addr)); this.write(addr, r); this.adc(r); };
-    const dcp = (addr: number) => { const r = (this.read(addr) - 1) & 0xff; this.write(addr, r); this.cmp(this.a, r); };
-    const isc = (addr: number) => { const r = (this.read(addr) + 1) & 0xff; this.write(addr, r); this.sbc(r); };
+    // fold it into A with the matching logical/arithmetic op. Each is a
+    // read-modify-write underneath, same as `rmw()`: the unmodified value
+    // goes back to the bus first, a real dummy write, before the modified one.
+    const slo = (addr: number) => { const v = this.read(addr); const r = this.shift("ASL", v); this.write(addr, v); this.write(addr, r); this.a |= r; this.setNZ(this.a); };
+    const rla = (addr: number) => { const v = this.read(addr); const r = this.shift("ROL", v); this.write(addr, v); this.write(addr, r); this.a &= r; this.setNZ(this.a); };
+    const sre = (addr: number) => { const v = this.read(addr); const r = this.shift("LSR", v); this.write(addr, v); this.write(addr, r); this.a ^= r; this.setNZ(this.a); };
+    const rra = (addr: number) => { const v = this.read(addr); const r = this.shift("ROR", v); this.write(addr, v); this.write(addr, r); this.adc(r); };
+    const dcp = (addr: number) => { const v = this.read(addr); const r = (v - 1) & 0xff; this.write(addr, v); this.write(addr, r); this.cmp(this.a, r); };
+    const isc = (addr: number) => { const v = this.read(addr); const r = (v + 1) & 0xff; this.write(addr, v); this.write(addr, r); this.sbc(r); };
     const forms: [Set<number>, (a: number) => void, number[]][] = [
       [new Set([0x07]), slo, [5]], [new Set([0x17]), slo, [6]], [new Set([0x0f]), slo, [6]],
       [new Set([0x1f]), slo, [7]], [new Set([0x03]), slo, [8]], [new Set([0x13]), slo, [8]], [new Set([0x1b]), slo, [7]],

@@ -1,0 +1,92 @@
+import assert from 'node:assert/strict';
+
+/**
+ * Compares chipvoice's own `importPsid(...).events` against an independent
+ * libsidplayfp render of the same PSID/RSID (`native-oracle.mjs`), one SID
+ * write at a time. Mirrors `../nsf-corpus/compare.mjs`'s own two-phase
+ * shift-and-match design; the details differ because a PSID environment's
+ * own ceremony and timing quirks are not the NSF ones.
+ *
+ * libsidplayfp's own reference driver (`psiddrv.a65`'s `cold:` routine)
+ * unconditionally sets the SID's volume register to maximum ($D418=$0F)
+ * once, before it ever calls INIT - real driver ceremony, not anything the
+ * tune itself authored, and always the oracle trace's very first line.
+ * Dropped here the same way `../nsf-corpus/compare.mjs` drops GME's own
+ * reset writes.
+ *
+ * What is left is two clean phases, INIT then PLAY, and each needs its own
+ * cycle alignment:
+ *
+ * INIT phase: `psid-import.ts`'s own environment starts running INIT at
+ * cycle 0. libsidplayfp's `cold:` routine spends many thousands of cycles
+ * first - clearing pending IRQs, priming the CIA and, distinctively,
+ * deliberately waiting for a specific raster line (311) before it ever
+ * calls INIT, so that a real player's audio timing does not depend on how
+ * long INIT itself takes to run. That whole prelude is a constant, one-time
+ * offset with no bearing on either side's own conformance; it is measured
+ * from the first INIT-authored write both sides agree on (`initShift`) and
+ * subtracted back out. Once removed, every INIT-phase write these two
+ * fixtures produce lands on the exact same cycle - confirmed empirically
+ * (see `docs/chips/c64.md`), so INIT-phase events are matched with zero
+ * further tolerance.
+ *
+ * PLAY phase: the first real IRQ after INIT does not land at the same
+ * phase-within-frame on both sides either (chipvoice's own raster model
+ * counts frames from cycle 0, not from "whenever INIT happened to
+ * return"), so PLAY-phase events get their own, separately measured shift
+ * (`playShift`), taken from the first PLAY-phase write. From there, the two
+ * sides' average frame period agrees exactly (`PAL_FRAME_CYCLES` in
+ * `psid-import.ts` is exactly libsidplayfp's own raster IRQ's average
+ * period), but libsidplayfp's real per-line VIC-II/CIA emulation has a
+ * small, bounded per-frame wobble around that average (a three-frame
+ * +1/+1/-2 pattern was measured against `convention-probe.sid`, sourced in
+ * real badline/raster-comparator timing this environment's own once-a-frame
+ * pulse does not reproduce - see `docs/chips/c64.md`'s "Known limits").
+ * PLAY-phase events are matched with a small cycle tolerance
+ * (`PLAY_TOLERANCE`) to absorb exactly that, and only that: a value
+ * mismatch, or a cycle gap wider than the tolerance, is a real divergence
+ * either way.
+ */
+const PLAY_TOLERANCE = 8; // Comfortably past the measured +1/+1/-2 three-frame wobble; about one 6510 instruction.
+const CEREMONY = {addr: 0x18, value: 0x0f}; // `psiddrv.a65`'s own `lda #$0f / sta $d418`, before every INIT call.
+
+export function comparePsidTrace(performance, oracleTrace) {
+  const theirsAll = parseTrace(oracleTrace);
+  if (!theirsAll.length || theirsAll[0].addr !== CEREMONY.addr || theirsAll[0].value !== CEREMONY.value) {
+    throw new Error(`expected libsidplayfp's own pre-INIT $D418=$0F ceremony write as the oracle trace's first line, got ${JSON.stringify(theirsAll[0] ?? null)}`);
+  }
+  const theirs = theirsAll.slice(1);
+  const ours = performance.events;
+  const initCount = performance.initEventCount;
+  const total = ours.length;
+
+  const initShift = theirs.length && ours.length ? theirs[0].at - ours[0].at : 0;
+  const playShift = theirs.length > initCount && ours.length > initCount ? theirs[initCount].at - ours[initCount].at : 0;
+
+  let matched = 0, firstDivergence = null;
+  for (let i = 0; i < total; i++) {
+    const a = ours[i], b = theirs[i] ?? null;
+    const inInit = i < initCount;
+    const shift = inInit ? initShift : playShift;
+    const tolerance = inInit ? 0 : PLAY_TOLERANCE;
+    // `a.addr` is `psid-import.ts`'s own full `$D400`-`$D7FF` address; the
+    // oracle trace logs libsidplayfp's `sidemu::write`'s own 0-31 register
+    // offset (`sidplayfp-harness.cpp`'s `TraceSid`). Both mirror the same
+    // 32-register block, so `& 0x1f` compares like with like.
+    if (b && (a.addr & 0x1f) === b.addr && a.value === b.value && Math.abs(a.at + shift - b.at) <= tolerance) { matched++; continue; }
+    firstDivergence = {index: i, phase: inInit ? 'init' : 'play', ours: a, oracle: b};
+    break;
+  }
+  return {total, matched, firstDivergence, initShift, playShift};
+}
+
+/** Parses `sidplayfp-harness`' own `<cycle> <addr decimal> <value decimal>` lines - the same shape `../nsf-corpus/compare.mjs`'s `parseTrace` reads from `native-oracle.py`. */
+export function parseTrace(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  return trimmed.split('\n').map((line) => {
+    const [at, addr, value] = line.trim().split(/\s+/).map(Number);
+    assert.ok(Number.isSafeInteger(at) && Number.isInteger(addr) && Number.isInteger(value), `malformed oracle trace line: ${line}`);
+    return {at, addr, value};
+  });
+}
