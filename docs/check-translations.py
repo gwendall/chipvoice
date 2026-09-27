@@ -308,13 +308,16 @@ def localized_block(kind, body, templates):
                 line = f'`psid-corpus:sheet`による生成：{match[1]}。参照：libsidplayfp revision `{match[2]}`。'
             elif line == '| Fixture | Events | Matched | First divergence | INIT registers |':
                 line = '| フィクスチャ | イベント数 | 一致 | 最初の相違 | INITレジスタ |'
-            elif re.fullmatch(r'\| \[.+\]\(.+\) \| \d+ \| (?:\d+/\d+|not compared) \| .+ \| (?:-|[A-Z]=\d+(?:/\d+)?(?:, [A-Z]=\d+(?:/\d+)?)*) \|', line):
+            elif re.fullmatch(r'\| \[.+\]\(.+\) \| \d+ \| (?:\d+/\d+|not compared) \| .+ \| (?:-|(?:[A-Z]=(?:\d+(?:/\d+)?|undefined by spec))(?:, [A-Z]=(?:\d+(?:/\d+)?|undefined by spec))*) \|', line):
                 # The title and URL are proper nouns; the INIT-registers cell
                 # is plain `register=value` data (corpus.mjs's own
-                # `formatRegisters`), never translated. Only the divergence
-                # column's fixed vocabulary (corpus.mjs's `formatDivergence`)
-                # is translated.
-                for before, after in {'not compared': '未比較', 'none': 'なし', 'init phase': 'INITフェーズ', 'play phase': 'PLAYフェーズ', ': one side has no more writes': '：それ以上の書き込みがありません', ' vs ': ' 対 ', 'cycle ': 'サイクル '}.items():
+                # `formatRegisters`), never translated, except its own one
+                # fixed phrase for a register `sources.json`'s own
+                # `undefinedRegisters` names (never scored against the
+                # oracle at all - see `compare.mjs`'s own `ignoreAddrs`).
+                # The divergence column's fixed vocabulary (corpus.mjs's
+                # `formatDivergence`) is translated the same way.
+                for before, after in {'not compared': '未比較', 'none': 'なし', 'init phase': 'INITフェーズ', 'play phase': 'PLAYフェーズ', ': one side has no more writes': '：それ以上の書き込みがありません', ' vs ': ' 対 ', 'cycle ': 'サイクル ', 'undefined by spec': '仕様上未定義'}.items():
                     line = line.replace(before, after)
             else:
                 raise ValueError(f'Unknown psid-corpus line: {line}')

@@ -48,17 +48,28 @@ const noOracle = args.includes('--no-oracle');
  * fixture's INIT does not write A/X/Y/P in that exact sequence) - only
  * meaningful for a fixture whose `sources.json` entry names its own
  * `registerNames` (currently just convention-probe.sid). */
-function initRegisterTable(performance, oracleTrace, registerNames) {
+function initRegisterTable(performance, oracleTrace, registerNames, undefinedRegisters) {
   const theirs = parseTrace(oracleTrace).slice(1); // Drop the oracle's own pre-INIT $D418=$0F ceremony write.
   const oursInit = performance.events.slice(0, performance.initEventCount);
   const theirsInit = theirs.slice(0, performance.initEventCount);
   const oursByAddr = new Map(oursInit.map((e) => [e.addr & 0x1f, e.value]));
   const theirsByAddr = new Map(theirsInit.map((e) => [e.addr, e.value]));
+  const undefinedNames = new Set(undefinedRegisters ?? []);
   return Object.entries(registerNames).map(([addr, register]) => ({
-    register, addr: Number(addr),
+    register, addr: Number(addr), undefined: undefinedNames.has(register),
     ours: oursByAddr.get(Number(addr)) ?? null,
     oracle: theirsByAddr.get(Number(addr)) ?? null,
   }));
+}
+
+/** Turns a fixture's own `undefinedRegisters` (register names, matching
+ * `registerNames`' values) into the SID address offsets `comparePsidTrace`'s
+ * own `ignoreAddrs` needs - kept as one field in `sources.json` so the two
+ * never drift apart. */
+function undefinedAddrs(spec) {
+  if (!spec.undefinedRegisters || !spec.registerNames) return new Set();
+  const names = new Set(spec.undefinedRegisters);
+  return new Set(Object.entries(spec.registerNames).filter(([, name]) => names.has(name)).map(([addr]) => Number(addr)));
 }
 
 async function scoreFile(id, file, spec, {expectedSha256} = {}) {
@@ -77,8 +88,8 @@ async function scoreFile(id, file, spec, {expectedSha256} = {}) {
     // and a whole extra second comfortably outlasts both.
     const cycles = Math.round(seconds * performance.clockHz) + Math.round(performance.clockHz);
     const {trace} = await runOracle(file, cycles);
-    comparison = comparePsidTrace(performance, trace);
-    if (spec.registerNames) registers = initRegisterTable(performance, trace, spec.registerNames);
+    comparison = comparePsidTrace(performance, trace, {ignoreAddrs: undefinedAddrs(spec)});
+    if (spec.registerNames) registers = initRegisterTable(performance, trace, spec.registerNames, spec.undefinedRegisters);
   }
   return {id, sha256: digest, events: performance.events.length, comparison, registers};
 }
@@ -86,21 +97,32 @@ async function scoreFile(id, file, spec, {expectedSha256} = {}) {
 /** Kept to a small, fixed set of shapes (see docs/check-translations.py's
  * own `nsf-corpus` rule; this ticket's Japanese sync follows the same
  * convention for `psid-corpus`). */
+/** `ours.at` is shown after its own shift is added back in (not raw): a
+ * value-only divergence that lands on the exact same aligned cycle would
+ * otherwise print as a huge, misleading cycle gap (the oracle's own
+ * thousands-of-cycles cold-start prelude, still present in the raw number).
+ * See `compare.mjs`'s own doc comment for what the shift removes. */
 function formatDivergence(comparison) {
   if (!comparison) return 'not compared';
   if (!comparison.firstDivergence) return 'none';
-  const {phase, ours, oracle} = comparison.firstDivergence;
+  const {phase, ours, oracle, shift} = comparison.firstDivergence;
   if (!ours || !oracle) return `${phase} phase, cycle ${(ours ?? oracle).at}: one side has no more writes`;
-  return `${phase} phase, cycle ${ours.at} vs ${oracle.at}, $${(ours.addr & 0x1f).toString(16)}: ${ours.value} vs ${oracle.value}`;
+  return `${phase} phase, cycle ${ours.at + shift} vs ${oracle.at}, $${(ours.addr & 0x1f).toString(16)}: ${ours.value} vs ${oracle.value}`;
 }
 
 /** `register=value` when both sides agree, `register=ours/oracle` when they
- * do not (convention-probe.sid's own X and Y; see `sources.json`'s own
- * `purpose` for that fixture) - plain data, deliberately free of any word
- * `docs/check-translations.py`'s `psid-corpus` rule would need to translate. */
+ * do not, `register=undefined by spec` for a register `sources.json`'s own
+ * `undefinedRegisters` names (convention-probe.sid's own X and Y - never
+ * scored against the oracle at all, see `compare.mjs`'s own `ignoreAddrs`,
+ * so there is no ours/oracle pair to show) - plain data, deliberately free
+ * of any word `docs/check-translations.py`'s `psid-corpus` rule would need
+ * to translate beyond that one fixed phrase. */
 function formatRegisters(registers) {
   if (!registers) return '';
-  return registers.map((r) => (r.ours === r.oracle ? `${r.register}=${r.ours}` : `${r.register}=${r.ours}/${r.oracle}`)).join(', ');
+  return registers.map((r) => {
+    if (r.undefined) return `${r.register}=undefined by spec`;
+    return r.ours === r.oracle ? `${r.register}=${r.ours}` : `${r.register}=${r.ours}/${r.oracle}`;
+  }).join(', ');
 }
 
 async function main() {
@@ -164,13 +186,13 @@ async function main() {
     fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- psid-corpus:end -->'.length));
   }
 
-  // frame-rate-probe.sid is meant to match in full (its own byte stream has
-  // no register whose value is spec-undefined the way convention-probe's X
-  // and Y are); convention-probe.sid is expected to stop at its own X
-  // register (see sources.json's own `purpose`) and is never held to this
-  // bar. A file matching zero real writes (before that expected stop, if
-  // any) is not a partial divergence, something is structurally broken.
-  const broken = results.filter((r) => r.comparison && r.comparison.matched === 0 && r.comparison.total > 0 && !r.spec.registerNames);
+  // Every fixture is meant to match in full now: a spec-undefined register
+  // (convention-probe.sid's own X and Y) is excluded from `total` entirely
+  // by `ignoreAddrs` (see sources.json's own `undefinedRegisters` and
+  // `purpose`), not counted as a divergence, so there is no longer a
+  // fixture this bar excludes. A file matching zero real writes is not a
+  // partial divergence, something is structurally broken.
+  const broken = results.filter((r) => r.comparison && r.comparison.matched === 0 && r.comparison.total > 0);
   if (broken.length) {
     console.error(`${broken.length} file(s) matched zero writes against the oracle; that is not a partial divergence, something is structurally wrong: ${broken.map((r) => r.id).join(', ')}`);
     process.exitCode = 1;

@@ -261,7 +261,7 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 
 `scores/psid-corpus`は、2本の小さな自作PSIDフィクスチャ（CC0、本チケット自身のもの - HVSCや商用の吸い出しは一切使わない。decision 41）を、ピン留めしたリビジョンでクローン・ビルドしgitignore対象の`.artifacts/`ディレクトリに置いたlibsidplayfpに対して採点します（`native-oracle.mjs`。GPL-2.0-or-later、ベンダリングはしない）。小さな独自実装のロガー（`sidplayfp-harness.cpp`）を、libsidplayfp自身のCPU・CIA・VIC・曲読み込みエンジンへ、その公開`SidConfig::sidEmulation`フックを通して差し込みます - SIDの音声は一切模擬せず、libsidplayfpのソースにも一切パッチを当てません - そして、`psid-import.ts`自身の環境が記録するのと同じ`{cycle, addr, value}`という形で、SIDへのすべての書き込みを正確なクロックサイクルとともに出力します。
 
-- **`convention-probe.sid`**：INITが`A`、`X`、`Y`とPHPで取り出した`P`を、何もしないうちに一度だけ`$D400`〜`$D403`へそのまま格納します - 呼び出し規約そのものを、書き込みストリームとして読み戻すものです。オラクルとのバイトストリーム比較は、設計上`X`レジスタで止まります（上記「既知の限界」参照）。下記の「INITレジスタ」列こそがこのフィクスチャの主眼であり、「一致」列ではありません。
+- **`convention-probe.sid`**：INITが`A`、`X`、`Y`とPHPで取り出した`P`を、何もしないうちに一度だけ`$D400`〜`$D403`へそのまま格納します - 呼び出し規約そのものを、書き込みストリームとして読み戻すものです。`X`と`Y`は比較そのものから除外されます（`compare.mjs`自身の`ignoreAddrs`）。仕様上未定義のレジスタには採点すべき正解がなく、この2つの書き込みは一致としても相違としてもカウントされず、そこで止まらずに走査は先へ進みます。下記の「INITレジスタ」列ではこれらを「仕様上未定義」と表示します。それ以外の`A`、`P`、そして続くPLAYフェーズ全体は通常どおり採点され、「一致」列にそのまま反映されます。
 - **`frame-rate-probe.sid`**：INITが開始マーカーを書き込み、その後PLAYが呼び出しのたびに1つのレジスタを多数フレームにわたってインクリメントします - PLAY自身のカデンスを、小さなサイクル許容誤差付きでオラクルと突き合わせます（理由と許容量の詳細は`compare.mjs`自身のドキュメントコメントを参照）。
 
 `pnpm psid-corpus:sheet`が下記の表を書き込みます。手で編集しないでください。`pnpm psid-corpus:check`（CI、`conformance`ジョブ）は表を書き換えずに再実行します。`--no-oracle`はlibsidplayfpのビルドを省略し、chipvoice自身の`importPsid`が生成するイベント数だけを採点します。
@@ -271,7 +271,7 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 
 | フィクスチャ | イベント数 | 一致 | 最初の相違 | INITレジスタ |
 | --- | --- | --- | --- | --- |
-| [convention-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 54 | 1/54 | INITフェーズ, サイクル 4 対 167997, $1: 0 対 168 | A=0, X=0/168, Y=0, P=52 |
+| [convention-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 54 | 52/52 | なし | A=0, X=仕様上未定義, Y=仕様上未定義, P=52 |
 | [frame-rate-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 1004 | 1004/1004 | なし | - |
 <!-- psid-corpus:end -->
 

@@ -74,14 +74,17 @@ nominal frame period that this project's own simplified once-a-frame raster
 pulse does not reproduce. See `compare.mjs`'s own doc comment for the full
 account, including the specific cycle deltas measured.
 
-`convention-probe.sid`'s own comparison is expected to stop at its `X`
-register (see its `purpose` in `sources.json`): the file format spec never
-defines `X` or `Y`, this project deliberately zeroes them, and libsidplayfp's
-own reference driver leaves them holding whatever incidental value an
-unrelated CIA/raster setup branch happened to load last - not a documented
-value on either side. That expected stop is never counted as a broken file;
-the corpus's own "matched zero writes" check excludes any fixture whose
-`sources.json` entry names its own `registerNames`.
+`convention-probe.sid`'s own `X` and `Y` registers are excluded from the
+comparison entirely (`sources.json`'s own `undefinedRegisters`, turned into
+`compare.mjs`'s own `ignoreAddrs`): the file format spec never defines `X`
+or `Y`, this project deliberately zeroes them, and libsidplayfp's own
+reference driver leaves them holding whatever incidental value an unrelated
+CIA/raster setup branch happened to load last - not a documented value on
+either side, so there is no defined answer to score either write against.
+Those two writes are never counted as matched or as a divergence, and the
+comparison carries on past them instead of stopping there, so the sheet's
+own "Matched" column reflects everything else - `A`, `P`, and the whole
+PLAY phase - genuinely, not just up to the first expected gap.
 
 ## Adding a file
 

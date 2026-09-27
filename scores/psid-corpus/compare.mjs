@@ -46,11 +46,25 @@ import assert from 'node:assert/strict';
  * (`PLAY_TOLERANCE`) to absorb exactly that, and only that: a value
  * mismatch, or a cycle gap wider than the tolerance, is a real divergence
  * either way.
+ *
+ * A probe fixture that deliberately reads out an undefined CPU register
+ * (`convention-probe.sid`'s own `X`/`Y`) is not testing whether the two
+ * engines agree - by design, and by both the file format spec's silence and
+ * libsidplayfp's own driver's own leftover values, there is no defined
+ * answer to agree on. `options.ignoreAddrs` names the SID register offsets
+ * (0-31) such a fixture's INIT writes those undefined values to; a write
+ * there is skipped entirely during the INIT phase only (counted separately
+ * as `ignored`, never as `matched` or as a divergence), and the scan
+ * carries on to the events after it instead of stopping - so a fixture with
+ * one expected, spec-undefined write in its INIT no longer hides whether
+ * everything else, INIT's own remaining writes and the whole PLAY phase
+ * alike, actually matches.
  */
 const PLAY_TOLERANCE = 8; // Comfortably past the measured +1/+1/-2 three-frame wobble; about one 6510 instruction.
 const CEREMONY = {addr: 0x18, value: 0x0f}; // `psiddrv.a65`'s own `lda #$0f / sta $d418`, before every INIT call.
 
-export function comparePsidTrace(performance, oracleTrace) {
+export function comparePsidTrace(performance, oracleTrace, options = {}) {
+  const ignoreAddrs = options.ignoreAddrs ?? new Set();
   const theirsAll = parseTrace(oracleTrace);
   if (!theirsAll.length || theirsAll[0].addr !== CEREMONY.addr || theirsAll[0].value !== CEREMONY.value) {
     throw new Error(`expected libsidplayfp's own pre-INIT $D418=$0F ceremony write as the oracle trace's first line, got ${JSON.stringify(theirsAll[0] ?? null)}`);
@@ -58,26 +72,36 @@ export function comparePsidTrace(performance, oracleTrace) {
   const theirs = theirsAll.slice(1);
   const ours = performance.events;
   const initCount = performance.initEventCount;
-  const total = ours.length;
+  const rawTotal = ours.length;
 
+  // Measured from the first write either side reports past its own
+  // ceremony, the same convention `../nsf-corpus/compare.mjs` uses: both
+  // sides run the tune's own INIT/PLAY code identically, so the number of
+  // cycles from INIT's own entry to its first SID write is the same on
+  // both sides, making "first write" and "INIT's own entry" the same shift.
   const initShift = theirs.length && ours.length ? theirs[0].at - ours[0].at : 0;
   const playShift = theirs.length > initCount && ours.length > initCount ? theirs[initCount].at - ours[initCount].at : 0;
 
-  let matched = 0, firstDivergence = null;
-  for (let i = 0; i < total; i++) {
+  let matched = 0, ignored = 0, firstDivergence = null;
+  for (let i = 0; i < rawTotal; i++) {
     const a = ours[i], b = theirs[i] ?? null;
     const inInit = i < initCount;
     const shift = inInit ? initShift : playShift;
     const tolerance = inInit ? 0 : PLAY_TOLERANCE;
+    if (inInit && ignoreAddrs.has(a.addr & 0x1f)) { ignored++; continue; }
     // `a.addr` is `psid-import.ts`'s own full `$D400`-`$D7FF` address; the
     // oracle trace logs libsidplayfp's `sidemu::write`'s own 0-31 register
     // offset (`sidplayfp-harness.cpp`'s `TraceSid`). Both mirror the same
     // 32-register block, so `& 0x1f` compares like with like.
     if (b && (a.addr & 0x1f) === b.addr && a.value === b.value && Math.abs(a.at + shift - b.at) <= tolerance) { matched++; continue; }
-    firstDivergence = {index: i, phase: inInit ? 'init' : 'play', ours: a, oracle: b};
+    // `ours.at + shift` (not the raw `ours.at`) is what should be compared
+    // by eye against `oracle.at`: reporting the raw, unshifted cycle here
+    // would make an aligned, value-only divergence look like a huge cycle
+    // gap it is not.
+    firstDivergence = {index: i, phase: inInit ? 'init' : 'play', ours: a, oracle: b, shift};
     break;
   }
-  return {total, matched, firstDivergence, initShift, playShift};
+  return {total: rawTotal - ignored, matched, ignored, firstDivergence, initShift, playShift};
 }
 
 /** Parses `sidplayfp-harness`' own `<cycle> <addr decimal> <value decimal>` lines - the same shape `../nsf-corpus/compare.mjs`'s `parseTrace` reads from `native-oracle.py`. */
