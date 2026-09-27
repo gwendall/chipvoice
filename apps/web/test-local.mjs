@@ -75,6 +75,7 @@ try {
     "test-creation-browser.mjs",
     "test-i18n.mjs",
     "test-score-compiler.mjs",
+    "test-whole-song-checks.mjs",
     "test-live-playback.mjs",
     "test-latest-worker.mjs",
     "test-playback-races.mjs",

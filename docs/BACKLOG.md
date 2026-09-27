@@ -293,7 +293,10 @@ real game music, and a real unit.
 
 - GEN-01 and GEN-05: a benchmark of about 50 prompts per console, with
   latency, cost and a listening grid, rerun on every model change.
-- GEN-03: whole-song checks (late clipping, silences, endings, loops).
+- done - GEN-03: whole-song checks (late clipping, level jumps, silence
+  gaps, an unresolved ending, a loop seam, a duration mismatch), pure and
+  tested in `apps/web/src/lib/composition/checks.ts`, run once a generation's
+  render is ready and recorded on it, never rejecting (GEN-04 stays separate).
 - GEN-04: a repair call, only if measured failures justify it.
 - todo - NEXT-18: style, tempo and structure control. GEN-11 and GEN-12:
   targeted revisions and console variants.
