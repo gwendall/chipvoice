@@ -6,6 +6,7 @@ import { canonical, ensureProfile, ownedProfile, getProject, publishProject, Pro
 import { createProjectJob, getProjectJob } from "../project-jobs";
 import { utilityWorker } from "../utility-worker";
 import { compositionConfig, openAIModel, type CompositionModel } from "./model";
+import { compositionAccess, compositionBudget, isInvited, monthSpend, requireBudget, requireInvitation } from "./admission";
 import { compositionRequest, compositionTarget, compositionInstructions, compositionSchema, compositionProject } from "./score";
 
 function error(status: number, code: string, message: string): never { throw new ProjectHttpError(status, code, message); }
@@ -30,8 +31,9 @@ export async function createGeneration(value: unknown, requestKey: string, calle
     return getGeneration(String(existing.id), caller);
   }
   const config = compositionConfig();
-  const daily = Number(process.env.COMPOSITION_DAILY_LIMIT ?? 10);
-  if (!Number.isSafeInteger(daily) || daily < 1 || daily > 100) error(503, "generation_disabled", "Invalid COMPOSITION_DAILY_LIMIT");
+  const daily = dailyLimit();
+  const budget = compositionBudget(config.model, config.maxTokens);
+  await requireInvitation(client, caller.userId!);
   const id = newId(), now = Date.now();
   const tx = await client.transaction("write");
   try {
@@ -46,10 +48,31 @@ export async function createGeneration(value: unknown, requestKey: string, calle
     if (Number(count.total) >= daily) error(429, "generation_limit", "Today's composition allowance has been reached");
     const active = (await tx.execute({ sql: "select id from generations where user_id=? and status not in ('ready','failed','cancelled') and created_at>?", args: [caller.userId!, now - 600000] })).rows;
     if (active.length) error(429, "generation_busy", "Finish or cancel the current composition first");
+    await requireBudget(tx, now, budget);
     await tx.execute({ sql: `insert into generations(id,user_id,profile_id,key_id,agent_id,request_key,request_hash,request,model,status,created_at) values(?,?,?,?,?,?,?,?,?,'queued',?)`, args: [id, caller.userId!, artist.id, caller.keyId, caller.agent?.id ?? null, requestKey, hash, JSON.stringify(request), config.model, now] });
     await tx.commit();
   } catch (e) { await tx.rollback(); throw e; } finally { tx.close(); }
   return getGeneration(id, caller);
+}
+
+function dailyLimit() {
+  const daily = Number(process.env.COMPOSITION_DAILY_LIMIT ?? 10);
+  if (!Number.isSafeInteger(daily) || daily < 1 || daily > 100) error(503, "generation_disabled", "Invalid COMPOSITION_DAILY_LIMIT");
+  return daily;
+}
+
+/** What the composer shows before anyone types a prompt: whether this account
+ * may compose now, and if not, why. It never reveals the budget or the spend. */
+export async function compositionAvailability(caller: Caller) {
+  let access, config, daily, budget;
+  try { access = compositionAccess(); config = compositionConfig(); daily = dailyLimit(); budget = compositionBudget(config.model, config.maxTokens); }
+  catch { return { access: access ?? null, invited: false, available: false, reason: "disabled", dailyLimit: null, usedToday: null }; }
+  const client = await db(), now = Date.now();
+  const invited = access === "open" || await isInvited(client, caller.userId!);
+  const usedToday = Number((await client.execute({ sql: "select count(*) as total from generations where user_id=? and created_at>=?", args: [caller.userId!, Math.floor(now / 86400000) * 86400000] })).rows[0].total);
+  const spent = invited && budget ? await monthSpend(client, now, budget) : null;
+  const reason = !invited ? "invite_required" : spent && budget && spent.usd + budget.reserveUsd > budget.monthlyUsd ? "monthly_budget" : usedToday >= daily ? "daily_limit" : null;
+  return { access, invited, available: reason === null, reason, dailyLimit: daily, usedToday };
 }
 
 export async function getGeneration(id: string, caller: Caller, summary = false) {

@@ -21,15 +21,29 @@ export function generationPaths(publication: unknown) {
       usage: { type: ["object", "null"] },
     },
   };
+  const access = {
+    type: "object", required: ["access", "invited", "available", "reason", "dailyLimit", "usedToday"],
+    properties: {
+      access: { enum: ["invite", "open", null] }, invited: { type: "boolean" }, available: { type: "boolean" },
+      reason: { enum: ["invite_required", "monthly_budget", "daily_limit", "disabled", null] },
+      dailyLimit: { type: ["integer", "null"] }, usedToday: { type: ["integer", "null"] },
+    },
+  };
   const errors = Object.fromEntries([401, 403, 404, 409, 422, 429, 503].map(status => [String(status), { description: "Explicit authentication, input, admission or availability error" }]));
   return {
     "/api/v1/generations": { post: {
       operationId: "generateComposition", summary: "Compose with the configured model and save a normal song",
-      description: "Requires server OPENAI_API_KEY; agents need generate, projects:write and render. Defaults to GPT-6 Astra. Visibility defaults private; explicitly request public or unlisted for sharing. The origin method/model is public; the prompt stays owner-only. Poll the generation, then use the existing project and audio URLs. No duplicate storage or automatic public posting.",
+      description: "Requires server OPENAI_API_KEY; agents need generate, projects:write and render. Defaults to GPT-6 Astra. Visibility defaults private; explicitly request public or unlisted for sharing. The origin method/model is public; the prompt stays owner-only. Poll the generation, then use the existing project and audio URLs. No duplicate storage or automatic public posting. A closed beta: 403 generation_invite_required means the account is not invited; 429 generation_budget means the month's spend cap is reached (Retry-After runs to the first of next month, UTC); 429 generation_limit is the account's daily allowance. GET /api/v1/generations/access answers all three before a prompt is written.",
       security: auth,
       parameters: [{ name: "Idempotency-Key", in: "header", required: true, schema: { type: "string", minLength: 8, maxLength: 80 } }],
       requestBody: { required: true, content: json(request) },
       responses: { "200": { description: "Existing completed request", content: json(result) }, "202": { description: "Composition accepted or in progress", content: json(result) }, ...errors },
+    } },
+    "/api/v1/generations/access": { get: {
+      operationId: "getCompositionAccess", summary: "Whether this account may compose now, and why not",
+      description: "available is true when a POST would be admitted now. reason is null, invite_required (closed beta), monthly_budget (the month's spend cap is reached), daily_limit (usedToday reached dailyLimit) or disabled (composition is not configured). Never reveals the budget or the spend.",
+      security: auth,
+      responses: { "200": { description: "Composition access for the caller", content: json(access) }, ...errors },
     } },
     "/api/v1/generations/{id}/events": { get: {
       operationId: "streamGeneration", summary: "Stream authenticated composition milestones and render progress",

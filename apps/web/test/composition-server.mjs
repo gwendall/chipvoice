@@ -18,8 +18,10 @@ export function fixtureScore(seconds = 10) {
   };
 }
 
-/** A real local Next server, isolated DB and either a recorded HTTP provider or explicit live credentials. */
-export async function compositionServer({ live = false, mailBase } = {}) {
+/** A real local Next server, isolated DB and either a recorded HTTP provider or explicit live credentials.
+ * Composition is open to every account unless a test asks for the closed beta
+ * (`access: "invite"`) or a monthly budget (decision 42). */
+export async function compositionServer({ live = false, mailBase, access = "open", budgetUsd } = {}) {
   if (live && !process.env.OPENAI_API_KEY) throw Error("Set OPENAI_API_KEY in apps/web/.env.local before the live evaluation");
   const directory = await mkdtemp(join(tmpdir(), "chipvoice-composition-"));
   const calls = [];
@@ -60,7 +62,8 @@ export async function compositionServer({ live = false, mailBase } = {}) {
     OPENAI_API_KEY: live ? process.env.OPENAI_API_KEY : "test-not-a-real-key",
     OPENAI_BASE_URL: live ? (process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1/") : `http://127.0.0.1:${provider.address().port}/v1/`,
     OPENAI_MODEL: live ? (process.env.OPENAI_MODEL ?? "gpt-6-astra") : "gpt-6-astra",
-    COMPOSITION_PROVIDER: "openai", COMPOSITION_DAILY_LIMIT: "10",
+    COMPOSITION_PROVIDER: "openai", COMPOSITION_DAILY_LIMIT: "10", COMPOSITION_ACCESS: access,
+    COMPOSITION_MONTHLY_BUDGET_USD: budgetUsd === undefined ? "" : String(budgetUsd),
   };
   const server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", String(port)], { env, stdio: ["ignore", "pipe", "pipe"] });
   let log = "";

@@ -249,6 +249,20 @@ const migrations = [
       );
     },
   },
+  {
+    // Decision 42: the closed beta's invitations. Everyone who had already
+    // composed when invitations began keeps that access.
+    name: "composition-invites",
+    async up(tx: Transaction) {
+      await tx.execute(
+        `create table composition_invites (email text primary key, created_at integer not null, note text)`,
+      );
+      await tx.execute({
+        sql: `insert or ignore into composition_invites (email,created_at,note) select distinct u.email,?,'composed before invitations began' from users u join generations g on g.user_id=u.id`,
+        args: [Date.now()],
+      });
+    },
+  },
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

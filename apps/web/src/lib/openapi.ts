@@ -119,10 +119,20 @@ const ISSUE = {
   properties: {
     level: { type: "string", enum: ["error", "warning"] },
     track: { type: "string" },
-    code: { type: "string", description: "For example pitch_range" },
+    code: {
+      type: "string",
+      description:
+        "For example pitch_range, chord_capacity, vibrato_range, vibrato_resolution, vibrato_rate, " +
+        "slide_range, slide_resolution, volume_step, voice_share or perc_voice. The arrangement-level codes " +
+        "are warnings: the score and the render are unchanged, and the diagnostic exists so a mistake the " +
+        "hardware would otherwise clamp or cut in silence is said out loud instead.",
+    },
     pattern: { type: "integer", description: "Pattern index, zero-based" },
     step: { type: "integer", description: "Which grid step, zero-based" },
     token: { type: "string" },
+    voice: { type: "string", description: "The chip's own voice id, for example p1 or v3, when the issue is about one physical voice" },
+    measured: { type: "number", description: "The value that triggered the diagnostic, in the unit the message states (Hz, cents, frames, seconds or a raw volume step)" },
+    limit: { type: "number", description: "The value measured was checked against, in the same unit" },
     message: { type: "string" },
     silent: {
       type: "boolean",
