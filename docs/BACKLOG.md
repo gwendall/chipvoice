@@ -295,8 +295,21 @@ real game music, and a real unit.
   `ceil(initEnd/period)*period` gives - the standard rate's own half-cycle
   rounding lands on the right cycle already, so this only showed up on a
   custom rate. `packages/chipvoice` was not touched.
-- todo - NEXT-06 GBS, NEXT-07 VGM import, NEXT-09 SID/PSID: each against its
-  reference player (GME, sidplayfp), with a score per file.
+- done - NEXT-06: `importGbs`/`parseGbsHeader` play a `.gbs` on `dmg` through
+  an own SM83 CPU, written from Pan Docs, gbdev's opcode tables and the GBS
+  format spec, never ported from a GPL/LGPL emulator (decision 41). Every
+  opcode, including CB-prefixed, is unit-tested against Pan Docs' own flag
+  and cycle rules (`test/cpu-gb.mjs`). Scored, not asserted, against a pinned
+  Game_Music_Emu `Gbs_Emu` (`scores/gbs-corpus`, `docs/chips/dmg.md#gbs-
+  playback`): on the corpus's one file so far (self-produced, public domain;
+  a real, redistribution-licensed homebrew GBS was not found and verified in
+  time), every register write matches address, value and order for the
+  file's whole run, while the exact cycle timestamps do not - a real, bounded,
+  documented divergence in per-opcode timing from GME's own CPU core, not a
+  bug fixed by copying it. `packages/chipvoice` gained `src/chips/gb/cpu.ts`
+  and `src/gbs-import.ts` only; no existing chip module changed, so the
+  calibration manifest was refreshed but nothing about the mixer or its
+  golden renders moved.
 - done - NEXT-08: `importSpc` plays an `.spc` snapshot (SPC700 + S-DSP, the
   SNES's own music format) through a new SPC700 (S-SMP), timers and I/O
   ports written from fullsnes, Anomie's SPC700/S-DSP documents and the SNES
@@ -309,6 +322,8 @@ real game music, and a real unit.
   matched on the first (self-authored) corpus file. This CPU is also the
   prerequisite for P6-9 below: an embedded driver cannot be checked against
   a real SPC700 without one.
+- todo - NEXT-07 VGM import, NEXT-09 SID/PSID: each against its reference
+  player (GME, sidplayfp), with a score per file.
 - P6-9 (SPC export, now unblocked by NEXT-08's CPU) and todo - NEXT-10 (NSF
   and GBS export): a song that plays on a real console from a flash cart,
   recorded on the step 1 bench.

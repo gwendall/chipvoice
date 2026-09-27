@@ -64,6 +64,20 @@ bytes at $FFC0-$FFFF, published byte for byte in Anomie's SPC700 doc and
 fullsnes) is embedded in `ssmp.ts`, since every known `.spc` snapshot assumes
 it is there; see [decision 45](../../docs/DECISIONS.md#45-the-spc700-and-s-smp-stay-mit-the-ipl-roms-64-bytes-are-the-one-embedded-exception-2026-09-27).
 
+Game Boy playback uses `importGbs(gbsBytes)` and the same
+`renderPerformance(plan, gbChip)` engine. It runs the GBS file's own INIT and
+PLAY routines on an own SM83 (LR35102) CPU - written from Pan Docs, gbdev's
+opcode tables and the GBS format spec, never ported from a GPL/LGPL emulator
+- so the register writes reaching the chip are the source program's own,
+not a reimplementation of its playback. `parseGbsHeader(gbsBytes)` reads a
+file's load/init/play addresses, song count and other header fields without
+running it. Unsupported inputs are rejected by name (an unrecognized header
+version, the undocumented CGB double-speed timer bit, a load address the
+importer's memory model does not cover) rather than played back wrong. See
+[`scores/gbs-corpus`](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/README.md)
+for how it is measured against an independent GBS player; this is a package
+feature only, with no chipvoice.dev counterpart yet.
+
 ```bash
 npm i chipvoice
 ```

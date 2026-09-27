@@ -6,7 +6,7 @@
 
 `planPerformance(score, chip)` balances an adaptation using measured instrument
 responses. The algorithm never reads a song title, source hash or catalogue ID.
-Native command plans from `importVgm` or the NSF captures bypass it entirely.
+Native command plans from `importVgm`, `importGbs` or the NSF captures bypass it entirely.
 `mix: false` preserves the previous control levels, while retaining allocation
 bug fixes. Existing compact `Score` playback keeps its authored instrument
 levels; use `Performance` or the phrase API below to request automatic mixing.

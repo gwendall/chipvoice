@@ -53,6 +53,21 @@ AnomieのSPC700資料とfullsnesが一バイトずつ公開しているもの)�
 同梱されています。知られているどの`.spc`スナップショットもそれがあることを
 前提にしているためです。[決定45](../../docs/DECISIONS_ja.md#45-the-spc700-and-s-smp-stay-mit-the-ipl-roms-64-bytes-are-the-one-embedded-exception-2026-09-27)を参照してください。
 
+ゲームボーイのネイティブ再生は `importGbs(gbsBytes)` と同じ
+`renderPerformance(plan, gbChip)` エンジンを使います。GBSファイル自身の
+INIT・PLAYルーチンを、独自のSM83（LR35102）CPU上でそのまま実行します - Pan
+Docs、gbdevのオペコード表、GBSフォーマット仕様書から書き起こしたもので、
+GPL/LGPLのエミュレータからの移植ではありません。そのためチップに届く
+レジスタ書込みは、ソースプログラム自身のものであり、再生の再実装では
+ありません。`parseGbsHeader(gbsBytes)` は、実行せずにロード・INIT・PLAY
+アドレスや曲数などのヘッダー項目を読み取ります。未対応の入力は名前付きで
+拒否します（未知のヘッダーバージョン、非公式のCGBダブルスピード・タイマー
+ビット、インポーターのメモリーモデルが対応しないロードアドレスなど）。
+誤って再生することはありません。独立したGBSプレイヤーに対してどのように
+測定しているかは[`scores/gbs-corpus`](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/README_ja.md)
+を参照してください。これはパッケージのみの機能で、まだchipvoice.dev側の
+対応はありません。
+
 ```bash
 npm i chipvoice
 ```

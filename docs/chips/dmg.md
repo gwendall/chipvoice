@@ -239,6 +239,89 @@ Against SameBoy, measured with ticket P3-4's oracle, the same change raises the
 identical count on every log with a pulse. blargg's twelve ROMs pass either way;
 none checks this.
 
+## GBS playback
+
+`importGbs(bytes, options)`, in [`gbs-import.ts`](../../packages/chipvoice/src/gbs-import.ts),
+plays a `.gbs` (Game Boy Sound) file through an own SM83 (LR35102) CPU -
+[`cpu.ts`](../../packages/chipvoice/src/chips/gb/cpu.ts) - written from Pan
+Docs and gbdev's opcode tables, not ported from any GPL/LGPL emulator
+(decision 41); it returns a `PerformancePlan` on `dmg`, the same chip this
+sheet's driver targets, so a GBS's own INIT/PLAY routines drive the real
+register model above rather than a separate playback path. `parseGbsHeader`
+is exported alongside it for reading a file's metadata without running it.
+
+The environment it builds per file: the 112-byte header's load/init/play
+addresses and stack pointer; a virtual ROM image built from the program
+bytes with `$2000-$3FFF` bank switching for a multi-bank file (unmasked, a
+raw byte in, unlike an MBC1's own "0 becomes 1" quirk - there is no MBC on a
+GBS's virtual cartridge to reproduce that on); ordinary `JP` stubs written
+into that ROM at every RST and interrupt vector's fixed low address,
+relocated to the load address - the GBS format spec's own documented
+software-player technique, not something specific to any one player; and the
+DMG's post-boot-ROM power-on register ceremony (the same table
+[`packages/conform/src/roms/gb.mjs`](../../packages/conform/src/roms/gb.mjs)
+uses, cited in `gbs-import.ts`) seeded before a file's own INIT ever runs.
+INIT is called once, with `A` set to the zero-based song index; PLAY is then
+called every VBlank (70224 cycles, 59.7 Hz) or at the header's own timer
+rate, whichever the header's timer control bits select - a direct call each
+time, the same way every real GBS player schedules it, not a simulated
+interrupt firing into idle CPU time. A minimal VBlank/timer edge tracker sets
+the matching IF bits at their documented cycle rates purely so a driver's own
+`ei`/`halt` idiom (extremely common as a routine's internal pacing) wakes up
+and reaches the relocated vectors; it is not a PPU, and nothing about
+graphics, joypad input or cartridge RAM persistence is modelled beyond inert,
+DMG-accurate stubs.
+
+Rejected explicitly, by name, rather than silently played wrong: a version
+byte other than 1; a load address outside `$400-$7FFF`; the undocumented CGB
+double-speed timer bit; reserved timer-control bits; a track number outside
+the header's song count; a bank-select write that reaches past the file's
+own bank count; a serial transfer-start write (`$FF02`'s bit 7); and an
+INIT or PLAY call that runs past its frame budget without returning (an
+infinite loop, not a slow one - 4 frames for INIT, 1 for PLAY). None of these
+are guessed at: each throws by name, in `gbs-import.ts`. Not modelled at all,
+because nothing about them can affect a DMG's register stream: the PPU, OAM,
+joypad presses, cartridge RAM persistence across a run, CGB-only I/O, and the
+HALT-bug hardware artifact (a real quirk, deliberately not reproduced).
+
+Every SM83 opcode, including the CB-prefixed block, is tested standalone in
+[`test/cpu-gb.mjs`](../../packages/chipvoice/test/cpu-gb.mjs): flags from
+8-bit and 16-bit adds, DAA, cycle counts per Pan Docs' own machine-cycle
+table, HALT/interrupt polling, and EI's one-instruction delay.
+[`test/gbs-import.mjs`](../../packages/chipvoice/test/gbs-import.mjs) covers
+header parsing, every rejection above by name, INIT/PLAY scheduling and
+pacing, RST relocation, and bank switching.
+
+Measured against [Game_Music_Emu](https://github.com/libgme/game-music-emu)'s
+`Gbs_Emu`, pinned the same way `scores/arrangements/native-oracle.py` pins it
+for NSF, by [`scores/gbs-corpus`](../../scores/gbs-corpus) - a comparison, not
+an assertion: run `pnpm gbs-corpus:check`. The corpus carries one file so far,
+self-produced and public domain (real, redistribution-licensed GBS files with
+a clear source and licence are still being sought; none had been found and
+verified in time for this ticket). On it, every register write matches
+GME's own, address and value, in the same order, for the file's whole run
+(`compare.mjs`'s `valueMatched`) - the CPU decodes and runs the program
+correctly. The exact cycle timestamps do not agree nearly as often: our SM83
+times a `LD r,n`/`LDH` pair a fixed, larger number of T-cycles than GME's own
+`Gb_Cpu` does (self-checked against Pan Docs' own M-cycle table via
+`test/cpu-gb.mjs`, and confirmed by hand against this file's own instruction
+sequence), and unlike NSF's finding for the 2A03, that gap does not close
+once PLAY reaches its steady state - it stays small and bounded, never
+drifting across a six-second, twenty-five-million-cycle capture, but it does
+not reach zero either. This is reported plainly below rather than adjusted
+away: GME's own CPU core evidently does not carry Pan Docs' per-opcode timing
+for the opcodes this file exercises, and matching it exactly would mean
+copying that model rather than building from documents, which decision 41
+does not allow.
+
+<!-- gbs-corpus:begin -->
+Written by `gbs-corpus:sheet` on 2026-09-27, against Game_Music_Emu revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`.
+
+| Song | Driver | Commands | Cycle-exact | Same value+order | First divergence |
+| --- | --- | --- | --- | --- | --- |
+| [Pulse Sweep](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs) | self-produced (hand-assembled SM83) | 724 | 1/724 | 724/724 | cycle 36 vs 15, $ff24: 119 vs 119 |
+<!-- gbs-corpus:end -->
+
 ## Test ROMs
 
 blargg's `dmg_sound` suite, run on the harness's own SM83 with the chip on the

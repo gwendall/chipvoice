@@ -11,6 +11,21 @@ overview.
 
 ## Unreleased
 
+`importGbs(bytes, options)` plays a `.gbs` (Game Boy Sound) file on `dmg`,
+returning a `PerformancePlan` for `renderPerformance` the same way `importVgm`
+does for the Mega Drive. It runs the file's own INIT and PLAY routines on an
+own SM83 (LR35102) CPU - written from Pan Docs, gbdev's opcode tables and the
+GBS format spec, never ported from a GPL/LGPL emulator (decision 41) - so the
+chip sees the source program's own register writes. `parseGbsHeader(bytes)`
+reads a file's header without running it. Unsupported inputs are rejected by
+name: an unrecognized header version, a load address outside `$400-$7FFF`,
+the undocumented CGB double-speed timer bit, reserved timer-control bits, a
+bank-select write past the file's own bank count, a serial transfer-start
+write, and an INIT/PLAY call that overruns its frame budget. See
+[docs/chips/dmg.md](docs/chips/dmg.md#gbs-playback) for the environment, the
+reject list, and how it is measured (not asserted) against Game_Music_Emu's
+`Gbs_Emu`. Package-only for now; there is no chipvoice.dev counterpart.
+
 The SID has a second model: `model: "8580"` on `Chip.create`, on
 `renderPerformance`/`renderProject`'s options, and on a project's
 `settings.model`, next to the default `"6581"`. Every 8580 fact comes from a
