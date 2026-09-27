@@ -88,6 +88,17 @@ export const MD_PATCHES: Record<string, FmPatch> = {
   growl: { algorithm: 0, feedback: 7, ops: [
     op({ mul: 1, tl: 14 }), op({ mul: 1, dt: 3, tl: 18 }), op({ mul: 1, dt: 7, tl: 16 }), op({ mul: 1, tl: 0, rr: 9 }),
   ] },
+  // A tremolo pad: two two-operator stacks like twin, but the carriers' own
+  // `am` catches the chip's LFO for a wobble no hand-written envelope could
+  // reproduce, and `pms` gives the pitch a light waver alongside it (the LFO
+  // is one oscillator for the whole chip; a song that loads this alongside
+  // another patch wanting a different rate keeps whichever asked first).
+  shimmer: { algorithm: 4, feedback: 2, ops: [
+    op({ mul: 1, tl: 24, ar: 18, dr: 2, sl: 1 }),
+    op({ mul: 1, tl: 0, ar: 22, dr: 2, sr: 1, sl: 1, rr: 8, am: true }),
+    op({ mul: 2, dt: 3, tl: 27, ar: 18, dr: 2, sl: 1 }),
+    op({ mul: 1, dt: 7, tl: 4, ar: 22, dr: 2, sr: 1, sl: 1, rr: 8, am: true }),
+  ], ams: 3, pms: 2, lfoFrequency: 3 },
 };
 
 const released = new WeakMap<FmPatch, Map<number, FmPatch>>();
