@@ -2,7 +2,10 @@ name: docs
 
 # ci.yml excludes docs/**/*.md from its triggers, so a docs-only change never
 # runs there. This workflow exists to still catch English/Japanese drift on
-# those changes; the checker itself needs only the standard library.
+# those changes, and a chip sheet's Status line drifting from the public
+# accuracy page's committed data (NEXT-12) - a hand edit to that one line is
+# a docs-only change too, and the corpus JSON it is usually paired with is
+# already covered by ci.yml's `unit` job on any push that also touches code.
 on:
   push:
     branches: [main]
@@ -20,3 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: python3 docs/check-translations.py
+
+  accuracy-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # Regenerate with: pnpm --filter chipvoice-conform status
+      - run: node packages/conform/src/accuracy-data.mjs --check
