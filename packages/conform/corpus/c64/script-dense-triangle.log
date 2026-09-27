@@ -1,0 +1,28 @@
+# chipvoice register log v1
+# name: script-dense-triangle
+# chip: c64
+# clock: 985248
+# cycles: 3054269
+# source: src/corpus/generate-c64.mjs
+# notes: All three voices a triangle at once, held for the whole log at a bass, a mid and a treble pitch: the same density as the sawtooth, on the waveform that folds the accumulator before it is read.
+98525 D400 5A
+98525 D407 67
+98525 D40E 9C
+98529 D401 04
+98529 D408 11
+98529 D40F 45
+98533 D402 00
+98533 D409 00
+98533 D410 00
+98537 D403 08
+98537 D40A 08
+98537 D411 08
+98541 D405 00
+98541 D40C 00
+98541 D413 00
+98545 D406 F0
+98545 D40D F0
+98545 D414 F0
+98549 D404 11
+98549 D40B 11
+98549 D412 11

@@ -1,10 +1,18 @@
+import { splitByVoice } from './change-stream.mjs';
+
 /**
  * Two change streams, compared.
  *
- * A change stream is a list of `{ cycle, voice, value }` in cycle order: the
- * compact form of "the value of every voice on every cycle", which is what
- * both a digital chip and an oracle's summed deltas produce. Comparing the
- * streams is comparing the step functions they describe.
+ * A change stream is a `ChangeStream` (see `change-stream.mjs`): the value
+ * of every voice on every cycle, but only where it changed, in cycle order -
+ * the compact form of "the value of every voice on every cycle", which is
+ * what both a digital chip and an oracle's summed deltas produce. Comparing
+ * the streams is comparing the step functions they describe. Everything
+ * below works on the compact columns directly, index by index, rather than
+ * on one `{ cycle, voice, value }` object per change: a dense waveform can
+ * hold tens of millions of changes per voice, and an object per change (plus,
+ * in `bestShift`'s case, a string built from each one) was what a corpus of
+ * them ran out of memory (P7-11).
  *
  * Three things come out. *Identical cycles* is the count of cycles on which
  * every compared voice has the same value in both, the sheet's headline, and
@@ -16,14 +24,12 @@
  * what a person looks at first when the headline is not 100.
  */
 
-/**
- * @typedef {{ cycle: number, voice: number, value: number }} Change
- * @typedef {{ cycle: number, voice: number, a: number, b: number }} Divergence
- */
+/** @typedef {{ cycle: number, voice: number, a: number, b: number }} Divergence */
+/** @typedef {{ cycle: Float64Array, value: Int32Array, length: number }} VoiceColumn */
 
 /**
- * @param {Change[]} a ours
- * @param {Change[]} b the oracle's
+ * @param {import('./change-stream.mjs').ChangeStream} a ours
+ * @param {import('./change-stream.mjs').ChangeStream} b the oracle's
  * @param {{ cycles: number, voices: number[] }} options which voice indexes to compare, over how many cycles
  */
 export function compare(a, b, { cycles, voices }) {
@@ -31,6 +37,8 @@ export function compare(a, b, { cycles, voices }) {
   const va = new Array(count).fill(0);
   const vb = new Array(count).fill(0);
   const identicalPerVoice = new Array(count).fill(0);
+  const aCycle = a.cycle, aVoice = a.voice, aValue = a.value, aLen = a.length;
+  const bCycle = b.cycle, bVoice = b.voice, bValue = b.value, bLen = b.length;
   let ia = 0;
   let ib = 0;
   let cursor = 0;
@@ -39,10 +47,10 @@ export function compare(a, b, { cycles, voices }) {
   let first = null;
 
   while (cursor < cycles) {
-    while (ia < a.length && a[ia].cycle <= cursor) { va[a[ia].voice] = a[ia].value; ia++; }
-    while (ib < b.length && b[ib].cycle <= cursor) { vb[b[ib].voice] = b[ib].value; ib++; }
-    const nextA = ia < a.length ? a[ia].cycle : Infinity;
-    const nextB = ib < b.length ? b[ib].cycle : Infinity;
+    while (ia < aLen && aCycle[ia] <= cursor) { va[aVoice[ia]] = aValue[ia]; ia++; }
+    while (ib < bLen && bCycle[ib] <= cursor) { vb[bVoice[ib]] = bValue[ib]; ib++; }
+    const nextA = ia < aLen ? aCycle[ia] : Infinity;
+    const nextB = ib < bLen ? bCycle[ib] : Infinity;
     const next = Math.min(nextA, nextB, cycles);
     const span = next - cursor;
 
@@ -59,9 +67,11 @@ export function compare(a, b, { cycles, voices }) {
     cursor = next;
   }
 
+  const columnsA = splitByVoice(a, voices);
+  const columnsB = splitByVoice(b, voices);
   const perVoice = voices.map((v) => {
-    const ea = a.filter((c) => c.voice === v);
-    const eb = b.filter((c) => c.voice === v);
+    const ea = columnsA.get(v);
+    const eb = columnsB.get(v);
     return { voice: v, identical: identicalPerVoice[v], ...edges(ea, eb), ...bestShift(ea, eb), runs: runs(ea, eb) };
   });
   return { cycles, identical, first, perVoice };
@@ -69,6 +79,28 @@ export function compare(a, b, { cycles, voices }) {
 
 /** Edges further apart than this are in different runs: a note ended. */
 const RUN_GAP = 4200;
+
+/**
+ * A voice column's changes, split at every gap wider than `RUN_GAP`, as
+ * `[start, end)` index pairs into its own `cycle`/`value` arrays rather than
+ * copies of them.
+ *
+ * @param {VoiceColumn} column
+ * @returns {[number, number][]}
+ */
+function splitRuns(column) {
+  const { cycle, length } = column;
+  const out = [];
+  let start = 0;
+  for (let i = 1; i < length; i++) {
+    if (cycle[i] - cycle[i - 1] > RUN_GAP) {
+      out.push([start, i]);
+      start = i;
+    }
+  }
+  if (length > 0) out.push([start, length]);
+  return out;
+}
 
 /**
  * The times a run's sequencer stepped, with the steps its edges hide put
@@ -82,23 +114,33 @@ const RUN_GAP = 4200;
  * though every step landed on the same cycle. The period is the run's most
  * common gap; a gap of two periods is one hidden step, and it is put back
  * where it was.
+ *
+ * @param {Float64Array} cycle a voice column's cycles
+ * @param {number} start
+ * @param {number} end
+ * @returns {number[]}
  */
-function stepTimes(run) {
-  if (run.length < 3) return run.map((e) => e.cycle);
+function stepTimes(cycle, start, end) {
+  const n = end - start;
+  if (n < 3) {
+    const times = [];
+    for (let i = start; i < end; i++) times.push(cycle[i]);
+    return times;
+  }
   const gaps = new Map();
-  for (let i = 1; i < run.length; i++) {
-    const g = run[i].cycle - run[i - 1].cycle;
+  for (let i = start + 1; i < end; i++) {
+    const g = cycle[i] - cycle[i - 1];
     gaps.set(g, (gaps.get(g) ?? 0) + 1);
   }
   let period = 0;
   let best = 0;
-  for (const [g, n] of gaps) if (n > best) { best = n; period = g; }
-  const times = [run[0].cycle];
-  for (let i = 1; i < run.length; i++) {
-    const gap = run[i].cycle - run[i - 1].cycle;
+  for (const [g, n2] of gaps) if (n2 > best) { best = n2; period = g; }
+  const times = [cycle[start]];
+  for (let i = start + 1; i < end; i++) {
+    const gap = cycle[i] - cycle[i - 1];
     const steps = Math.max(1, Math.round(gap / period));
-    for (let k = 1; k < steps; k++) times.push(run[i - 1].cycle + Math.round((gap * k) / steps));
-    times.push(run[i].cycle);
+    for (let k = 1; k < steps; k++) times.push(cycle[i - 1] + Math.round((gap * k) / steps));
+    times.push(cycle[i]);
   }
   return times;
 }
@@ -113,37 +155,27 @@ function stepTimes(run) {
  * lined up on its first edge. That is a phase convention per note, and this
  * says so: how many runs there are, how many line up edge for edge under one
  * shift each, and the largest shift it took.
+ *
+ * @param {VoiceColumn} a
+ * @param {VoiceColumn} b
  */
 function runs(a, b) {
-  const split = (list) => {
-    const out = [];
-    let current = [];
-    for (const e of list) {
-      if (current.length > 0 && e.cycle - current[current.length - 1].cycle > RUN_GAP) {
-        out.push(current);
-        current = [];
-      }
-      current.push(e);
-    }
-    if (current.length > 0) out.push(current);
-    return out;
-  };
-  const ra = split(a);
-  const rb = split(b);
+  const ra = splitRuns(a);
+  const rb = splitRuns(b);
   let alignedTimes = 0;
   let alignedValues = 0;
   let maxShift = 0;
   for (let i = 0; i < Math.min(ra.length, rb.length); i++) {
-    const ours = ra[i];
-    const theirs = rb[i];
+    const [aStart, aEnd] = ra[i];
+    const [bStart, bEnd] = rb[i];
     // Candidate shifts: line our first edge up with each of their first few,
     // and theirs with each of ours; keep the one that lines up the most step
     // times, position for position. Times first, values second: a sequencer
     // that started two steps away from the oracle's steps on the same cycles
     // with different values for the rest of the song, and that is worth
     // telling apart from a sequencer that steps at the wrong times.
-    const stepsA = stepTimes(ours);
-    const stepsB = stepTimes(theirs);
+    const stepsA = stepTimes(a.cycle, aStart, aEnd);
+    const stepsB = stepTimes(b.cycle, bStart, bEnd);
     const candidates = new Set();
     for (let j = 0; j < Math.min(4, stepsB.length); j++) candidates.add(stepsB[j] - stepsA[0]);
     for (let j = 0; j < Math.min(4, stepsA.length); j++) candidates.add(stepsB[0] - stepsA[j]);
@@ -158,9 +190,11 @@ function runs(a, b) {
     // position for position. A sequencer two steps away from the oracle's
     // lines every step up and no value.
     let values = 0;
-    const m = Math.min(ours.length, theirs.length);
+    const runLenA = aEnd - aStart;
+    const runLenB = bEnd - bStart;
+    const m = Math.min(runLenA, runLenB);
     for (let k = 0; k < m; k++) {
-      if (ours[k].cycle + best.shift === theirs[k].cycle && ours[k].value === theirs[k].value) values++;
+      if (a.cycle[aStart + k] + best.shift === b.cycle[bStart + k] && a.value[aStart + k] === b.value[bStart + k]) values++;
     }
     // Aligned: every step but the run's first and last two lines up. The
     // ends are where a note's start and stop conventions differ; the middle
@@ -168,7 +202,7 @@ function runs(a, b) {
     if (best.times >= Math.max(stepsA.length, stepsB.length) - 2) {
       alignedTimes++;
       maxShift = Math.max(maxShift, Math.abs(best.shift));
-      if (values >= Math.max(ours.length, theirs.length) - 2) alignedValues++;
+      if (values >= Math.max(runLenA, runLenB) - 2) alignedValues++;
     }
   }
   return { ours: ra.length, theirs: rb.length, alignedTimes, alignedValues, maxShift };
@@ -178,6 +212,9 @@ function runs(a, b) {
  * Matches one voice's transitions between the two streams, in order: the
  * same value on the same cycle is exact, within one cycle is near, and a
  * transition with no partner is only in one stream.
+ *
+ * @param {VoiceColumn} a
+ * @param {VoiceColumn} b
  */
 function edges(a, b) {
   let ia = 0;
@@ -187,14 +224,14 @@ function edges(a, b) {
   let onlyA = 0;
   let onlyB = 0;
   while (ia < a.length || ib < b.length) {
-    const ea = a[ia];
-    const eb = b[ib];
-    if (ea && eb && Math.abs(ea.cycle - eb.cycle) <= 1 && ea.value === eb.value) {
-      if (ea.cycle === eb.cycle) exact++;
+    const hasA = ia < a.length;
+    const hasB = ib < b.length;
+    if (hasA && hasB && Math.abs(a.cycle[ia] - b.cycle[ib]) <= 1 && a.value[ia] === b.value[ib]) {
+      if (a.cycle[ia] === b.cycle[ib]) exact++;
       else near++;
       ia++;
       ib++;
-    } else if (ea && (!eb || ea.cycle < eb.cycle)) {
+    } else if (hasA && (!hasB || a.cycle[ia] < b.cycle[ib])) {
       onlyA++;
       ia++;
     } else {
@@ -210,15 +247,37 @@ function edges(a, b) {
  * that lines up the most of them exactly with ours - and how many that is.
  * A voice whose edges all line up at a shift of two has a two-cycle phase
  * convention, not two thousand bugs.
+ *
+ * The lookup used to be a `Map` keyed on a template string per edge
+ * (`` `${cycle}:${value}` ``); at millions of edges the strings alone were
+ * the harness's biggest allocation. It is a `Map<cycle, value>` now - a
+ * numeric key needs no string, and the rare cycle with more than one value
+ * (two changes of the same voice landing on the same cycle) falls back to a
+ * short array only there.
+ *
+ * @param {VoiceColumn} a
+ * @param {VoiceColumn} b
  */
 function bestShift(a, b) {
   const byCycle = new Map();
-  for (const e of a) byCycle.set(`${e.cycle}:${e.value}`, true);
+  for (let i = 0; i < a.length; i++) {
+    const c = a.cycle[i];
+    const v = a.value[i];
+    const existing = byCycle.get(c);
+    if (existing === undefined) byCycle.set(c, v);
+    else if (Array.isArray(existing)) { if (!existing.includes(v)) existing.push(v); }
+    else if (existing !== v) byCycle.set(c, [existing, v]);
+  }
+  const has = (cycle, value) => {
+    const existing = byCycle.get(cycle);
+    if (existing === undefined) return false;
+    return Array.isArray(existing) ? existing.includes(value) : existing === value;
+  };
   let shift = 0;
   let aligned = 0;
   for (let s = -16; s <= 16; s++) {
     let hits = 0;
-    for (const e of b) if (byCycle.has(`${e.cycle + s}:${e.value}`)) hits++;
+    for (let i = 0; i < b.length; i++) if (has(b.cycle[i] + s, b.value[i])) hits++;
     if (hits > aligned) {
       aligned = hits;
       shift = s;
@@ -232,18 +291,22 @@ function bestShift(a, b) {
  * a person to read. Ours on the left, the oracle's on the right.
  */
 export function dump(a, b, voice, around, radius = 12) {
-  const ea = a.filter((c) => c.voice === voice);
-  const eb = b.filter((c) => c.voice === voice);
-  const ia = Math.max(0, ea.findIndex((c) => c.cycle >= around) - radius);
-  const ib = Math.max(0, eb.findIndex((c) => c.cycle >= around) - radius);
+  const ea = splitByVoice(a, [voice]).get(voice);
+  const eb = splitByVoice(b, [voice]).get(voice);
+  const findFirst = (column, cycle) => {
+    for (let i = 0; i < column.length; i++) if (column.cycle[i] >= cycle) return i;
+    return -1;
+  };
+  const ia = Math.max(0, findFirst(ea, around) - radius);
+  const ib = Math.max(0, findFirst(eb, around) - radius);
   const lines = [];
   const rows = Math.max(0, radius * 2);
   for (let i = 0; i < rows; i++) {
-    const l = ea[ia + i];
-    const r = eb[ib + i];
-    lines.push(
-      `${l ? `${String(l.cycle).padStart(10)} -> ${String(l.value).padStart(2)}` : ' '.repeat(16)}    ${r ? `${String(r.cycle).padStart(10)} -> ${String(r.value).padStart(2)}` : ''}`,
-    );
+    const li = ia + i;
+    const ri = ib + i;
+    const l = li < ea.length ? `${String(ea.cycle[li]).padStart(10)} -> ${String(ea.value[li]).padStart(2)}` : ' '.repeat(16);
+    const r = ri < eb.length ? `${String(eb.cycle[ri]).padStart(10)} -> ${String(eb.value[ri]).padStart(2)}` : '';
+    lines.push(`${l}    ${r}`);
   }
   return lines.join('\n');
 }

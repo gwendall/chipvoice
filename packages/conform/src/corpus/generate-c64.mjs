@@ -14,11 +14,16 @@ import { formatLog } from '../log.mjs';
  * and its reset by the test bit, every attack, decay and release rate, the
  * sustain levels, the ADSR delay bug, gate changes a few cycles apart, sync
  * and ring modulation at several ratios, the test bit on a sync source, the
- * floating output. A log is in PAL cycles; writes are four apart, as a 6510
- * makes them.
+ * floating output, and now (P7-11) a sawtooth, a triangle, a noise rate and a
+ * combined waveform held on all three voices at once for several seconds -
+ * the harness's densest change streams, now that a compact `ChangeStream`
+ * (`change-stream.mjs`) and a streaming compare no longer hold the corpus's
+ * size against its memory. A log is in PAL cycles; writes are four apart, as
+ * a 6510 makes them.
  */
 const CLOCK = 985248;
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'corpus', 'c64');
+const OUT_DENSE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'corpus', 'c64-dense');
 
 const PREROLL = 0.1;
 const second = (s) => Math.round((PREROLL + s) * CLOCK);
@@ -52,9 +57,11 @@ function writer() {
 
 /*
  * A sawtooth or a triangle at an audible pitch changes its twelve bits on
- * nearly every cycle, and the harness holds every change of every stream in
- * memory: the scripts use pulses, which change twice a period, wherever the
- * waveform is not what is under test, and keep the dense ones short.
+ * nearly every cycle, so most of the scripts below use pulses, which change
+ * twice a period, wherever the waveform is not what is under test. The four
+ * `script-dense-*` entries near the end are the exception on purpose: each
+ * holds a dense waveform on every voice at once for the whole log, which is
+ * what a compact `ChangeStream` and a streaming compare (P7-11) are for.
  */
 const SCRIPTS = [
   {
@@ -230,6 +237,92 @@ const SCRIPTS = [
       return w.writes;
     })(),
   },
+  {
+    name: 'script-dense-sawtooth',
+    notes: 'All three voices a sawtooth at once, held for the whole log at a bass, a mid and a treble pitch: the twelve-bit output changes on nearly every cycle, on every voice, for the full duration (P7-11).',
+    cycles: second(3),
+    writes: (() => {
+      const w = writer();
+      w.at(second(0));
+      w.voice(0, { f: F(note(36)), control: 0x21 });
+      w.at(second(0));
+      w.voice(1, { f: F(note(60)), control: 0x21 });
+      w.at(second(0));
+      w.voice(2, { f: F(note(84)), control: 0x21 });
+      return w.writes;
+    })(),
+  },
+  {
+    name: 'script-dense-triangle',
+    notes: 'All three voices a triangle at once, held for the whole log at a bass, a mid and a treble pitch: the same density as the sawtooth, on the waveform that folds the accumulator before it is read.',
+    cycles: second(3),
+    writes: (() => {
+      const w = writer();
+      w.at(second(0));
+      w.voice(0, { f: F(note(36)), control: 0x11 });
+      w.at(second(0));
+      w.voice(1, { f: F(note(60)), control: 0x11 });
+      w.at(second(0));
+      w.voice(2, { f: F(note(84)), control: 0x11 });
+      return w.writes;
+    })(),
+  },
+  {
+    name: 'script-dense-noise',
+    notes: 'All three voices the noise at once, held for the whole log at three rates: the shift register runs at up to sixteen times the frequency a tone would give the same register, denser than a tone at the same rate.',
+    cycles: second(3),
+    writes: (() => {
+      const w = writer();
+      w.at(second(0));
+      w.voice(0, { f: 0x3000, control: 0x81 });
+      w.at(second(0));
+      w.voice(1, { f: 0x6000, control: 0x81 });
+      w.at(second(0));
+      w.voice(2, { f: 0xd000, control: 0x81 });
+      return w.writes;
+    })(),
+  },
+  {
+    name: 'script-dense-combined',
+    notes: 'All three voices a combined waveform at once, held for the whole log: pulse and triangle, pulse and sawtooth, pulse and sawtooth and triangle, each at its own pitch and pulse width.',
+    cycles: second(3),
+    writes: (() => {
+      const w = writer();
+      w.at(second(0));
+      w.voice(0, { f: F(note(40)), pw: 0x800, control: 0x31 });
+      w.at(second(0));
+      w.voice(1, { f: F(note(64)), pw: 0x800, control: 0x51 });
+      w.at(second(0));
+      w.voice(2, { f: F(note(88)), pw: 0x800, control: 0x71 });
+      return w.writes;
+    })(),
+  },
+];
+
+/**
+ * The literal case that ran the old harness out of memory: three sawtooths,
+ * eight seconds, on every voice at once. It is kept out of `corpus/c64` on
+ * purpose - `check:c64`, `baseline:c64` and CI's `conformance` job never read
+ * it - because even the compact harness takes tens of seconds on it, next to
+ * a few seconds for everything above combined; `check:c64:dense` runs it on
+ * demand instead. See docs/chips/c64.md.
+ */
+const DENSE_ON_DEMAND = [
+  {
+    name: 'script-dense-sawtooth-8s',
+    notes: 'The reported case, reproduced exactly: three sawtooths at once, held for eight seconds. Run on demand with check:c64:dense; not part of the corpus check:c64 and CI read.',
+    cycles: second(8),
+    writes: (() => {
+      const w = writer();
+      w.at(second(0));
+      w.voice(0, { f: F(note(36)), control: 0x21 });
+      w.at(second(0));
+      w.voice(1, { f: F(note(60)), control: 0x21 });
+      w.at(second(0));
+      w.voice(2, { f: F(note(84)), control: 0x21 });
+      return w.writes;
+    })(),
+  },
 ];
 
 const PATTERN = {
@@ -269,4 +362,10 @@ fs.mkdirSync(OUT, { recursive: true });
 for (const log of [...SONGS.map(songLog), ...SCRIPTS.map(scriptLog)]) {
   fs.writeFileSync(path.join(OUT, `${log.name}.log`), log.text);
   console.log(`${log.name}.log`);
+}
+
+fs.mkdirSync(OUT_DENSE, { recursive: true });
+for (const log of DENSE_ON_DEMAND.map(scriptLog)) {
+  fs.writeFileSync(path.join(OUT_DENSE, `${log.name}.log`), log.text);
+  console.log(`${log.name}.log (corpus/c64-dense, on demand only)`);
 }

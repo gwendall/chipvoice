@@ -1,0 +1,28 @@
+# chipvoice register log v1
+# name: script-dense-noise
+# chip: c64
+# clock: 985248
+# cycles: 3054269
+# source: src/corpus/generate-c64.mjs
+# notes: All three voices the noise at once, held for the whole log at three rates: the shift register runs at up to sixteen times the frequency a tone would give the same register, denser than a tone at the same rate.
+98525 D400 00
+98525 D407 00
+98525 D40E 00
+98529 D401 30
+98529 D408 60
+98529 D40F D0
+98533 D402 00
+98533 D409 00
+98533 D410 00
+98537 D403 08
+98537 D40A 08
+98537 D411 08
+98541 D405 00
+98541 D40C 00
+98541 D413 00
+98545 D406 F0
+98545 D40D F0
+98545 D414 F0
+98549 D404 81
+98549 D40B 81
+98549 D412 81

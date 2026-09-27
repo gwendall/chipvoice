@@ -12,6 +12,7 @@ import { snesSpc } from './oracles/snes-spc.mjs';
 import { residfp } from './oracles/residfp.mjs';
 import { parseLog } from './log.mjs';
 import { compare, dump } from './compare.mjs';
+import { ChangeStream } from './change-stream.mjs';
 
 /**
  * conform: the harness.
@@ -31,6 +32,13 @@ import { compare, dump } from './compare.mjs';
  * `--report` is given, or unless a `--baseline` is given, in which case it is
  * 1 only when a log's identical count fell below the baseline's: the check CI
  * runs, since an imperfect oracle diverges somewhere by design.
+ *
+ * A chip's and an oracle's `trace()` build a `ChangeStream` (`change-stream.mjs`):
+ * typed-array columns, not one object per change, which is what lets a dense
+ * waveform log run without holding a mountain of `{ cycle, voice, value }`
+ * objects in memory (P7-11). `ChangeStream.from` below accepts either that or
+ * the older array of such objects, so a `trace()` not yet updated for the
+ * compact form still works.
  */
 const CHIPS = { '2a03': chip2a03, dmg: chipDmg, md: chipMd, snes: chipSnes, c64: chipC64 };
 const ORACLES = { 'nes-snd-emu': nesSndEmu, 'gb-snd-emu': gbSndEmu, 'nuked-opn2': nukedOpn2, 'snes-spc': snesSpc, residfp };
@@ -75,8 +83,13 @@ const results = [];
 let anyDivergence = false;
 for (const file of files) {
   const log = parseLog(fs.readFileSync(path.join(corpusDir, file), 'utf8'));
-  const ours = chip.trace(log.writes, log.cycles, log.memory);
-  const theirs = oracle.trace(log.writes, log.cycles, log.memory);
+  // `ChangeStream.from` is a no-op on a wrapper already built against the
+  // compact interface (change-stream.mjs), and only copies for one still
+  // returning the older `{ cycle, voice, value }[]` - so a chip or oracle
+  // wrapper not yet ported here keeps working unchanged. `await` is likewise
+  // harmless on a wrapper that returns its stream synchronously.
+  const ours = ChangeStream.from(await chip.trace(log.writes, log.cycles, log.memory));
+  const theirs = ChangeStream.from(await oracle.trace(log.writes, log.cycles, log.memory));
   const result = compare(ours, theirs, { cycles: log.cycles, voices });
   const pct = (100 * result.identical) / result.cycles;
   const name = file.replace(/\.log$/, '');

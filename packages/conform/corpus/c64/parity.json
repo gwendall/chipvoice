@@ -12,10 +12,10 @@
     "env2",
     "env3"
   ],
-  "date": "2026-09-04",
-  "files": 7,
-  "cycles": 30542688,
-  "identical": 30542688,
+  "date": "2026-09-27",
+  "files": 11,
+  "cycles": 42759764,
+  "identical": 42759764,
   "diverging": 0,
   "results": [
     {
@@ -137,6 +137,502 @@
             "theirs": 17,
             "alignedTimes": 17,
             "alignedValues": 17,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-dense-combined",
+      "source": "src/corpus/generate-c64.mjs",
+      "writes": 21,
+      "cycles": 3054269,
+      "identical": 3054269,
+      "first": null,
+      "edges": [
+        {
+          "voice": "osc1",
+          "identical": 3054269,
+          "a": 82068,
+          "b": 82068,
+          "exact": 82068,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 82068,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc2",
+          "identical": 3054269,
+          "a": 293292,
+          "b": 293292,
+          "exact": 293292,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 293292,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc3",
+          "identical": 3054269,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env1",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env2",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env3",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-dense-noise",
+      "source": "src/corpus/generate-c64.mjs",
+      "writes": 21,
+      "cycles": 3054269,
+      "identical": 3054269,
+      "first": null,
+      "edges": [
+        {
+          "voice": "osc1",
+          "identical": 3054269,
+          "a": 34441,
+          "b": 34441,
+          "exact": 34441,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 34441,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc2",
+          "identical": 3054269,
+          "a": 68942,
+          "b": 68942,
+          "exact": 68942,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 68942,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc3",
+          "identical": 3054269,
+          "a": 149455,
+          "b": 149455,
+          "exact": 149455,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 149455,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env1",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env2",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env3",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-dense-sawtooth",
+      "source": "src/corpus/generate-c64.mjs",
+      "writes": 21,
+      "cycles": 3054269,
+      "identical": 3054269,
+      "first": null,
+      "edges": [
+        {
+          "voice": "osc1",
+          "identical": 3054269,
+          "a": 803875,
+          "b": 803875,
+          "exact": 803875,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 803875,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc2",
+          "identical": 3054269,
+          "a": 2955720,
+          "b": 2955720,
+          "exact": 2955720,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 2955720,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc3",
+          "identical": 3054269,
+          "a": 2955720,
+          "b": 2955720,
+          "exact": 2955720,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 2955720,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env1",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env2",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env3",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-dense-triangle",
+      "source": "src/corpus/generate-c64.mjs",
+      "writes": 21,
+      "cycles": 3054269,
+      "identical": 3054269,
+      "first": null,
+      "edges": [
+        {
+          "voice": "osc1",
+          "identical": 3054269,
+          "a": 803482,
+          "b": 803482,
+          "exact": 803482,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 803482,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc2",
+          "identical": 3054269,
+          "a": 2954404,
+          "b": 2954404,
+          "exact": 2954404,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 2954404,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "osc3",
+          "identical": 3054269,
+          "a": 2955215,
+          "b": 2955215,
+          "exact": 2955215,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 2955215,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env1",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env2",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "env3",
+          "identical": 3054269,
+          "a": 426,
+          "b": 426,
+          "exact": 426,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 426,
+          "runs": {
+            "ours": 2,
+            "theirs": 2,
+            "alignedTimes": 2,
+            "alignedValues": 2,
             "maxShift": 0
           }
         }
