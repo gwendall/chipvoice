@@ -216,13 +216,13 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 <a id="psidrsid-playback"></a>
 ## PSID/RSIDの再生
 
-`importPsid`／`renderPsid`（`packages/chipvoice/src/psid-import.ts`）は、PSIDまたはRSIDファイル（HVSCの`SID_file_format.txt`）のINITとPLAYの機械語コードを、資料から書き起こした6510（`packages/chipvoice/src/psid-cpu6510.ts`）と最小限で開示済みのC64環境上で実際に実行し、曲がSIDへ行ったすべての書き込みを`importVgm`と同じ形の`PerformancePlan`として返します。`renderPerformance(plan, c64Chip, {model: plan.model, clockHz: plan.clockHz})`でレンダリングでき、`renderPsid`なら一度の呼び出しで済みます。両ファイル（`src/psid-cpu6510.ts`、`src/psid-import.ts`）はトップレベルにあり`chips/c64/`配下ではないため、`scores/mixing`のチップハッシュに重みを追加しません。
+`importPsid`／`renderPsid`（`packages/chipvoice/src/psid-import.ts`）は、PSIDまたはRSIDファイル（HVSCの`SID_file_format.txt`）のINITとPLAYの機械語コードを、資料から書き起こした6510（`packages/chipvoice/src/chips/c64/cpu6510.ts`）と最小限で開示済みのC64環境上で実際に実行し、曲がSIDへ行ったすべての書き込みを`importVgm`と同じ形の`PerformancePlan`として返します。`renderPerformance(plan, c64Chip, {model: plan.model, clockHz: plan.clockHz})`でレンダリングでき、`renderPsid`なら一度の呼び出しで済みます。`psid-import.ts`は`vgm-import.ts`と同じくトップレベルのまま、CPUは他のどのチップのコアとも同じく`chips/c64/`配下に置きます。どちらも`scores/mixing/calibrate.mjs`自身の呼び出し経路には無く(キャリブレーションはチップの音符レベルの`ChipCore`だけを駆動し、このインポート／CPU経路には触れません)、そのためエンジンハッシュに重みを追加しません。
 
 ここには参照実装（オラクル）はありません（下記「既知の限界」参照）。適合性確認は、GPLエミュレータのコードを読んだり移植したりするのではなく（decision 41）、公開されたオペコード／サイクル表と6502.orgの10進モード資料に基づく手書きの単体テストで行います。
 
 | | |
 | --- | --- |
-| **コア** | `psid-cpu6510.ts`（6510 CPU）、`psid-import.ts`（ヘッダー、環境、公開API） |
+| **コア** | `chips/c64/cpu6510.ts`（6510 CPU）、`psid-import.ts`（ヘッダー、環境、公開API） |
 | **適合性確認** | `test/cpu6510.mjs`：すべての正式オペコードの結果・フラグ・サイクル数（ページ境界を跨ぐ際のペナルティを含む）。NMOSの10進（BCD）ADC／SBCアルゴリズム。実在のSID曲が使うことが知られている安定した非公式オペコードすべて。不安定な非公式オペコードとJAM／KILオペコードすべてを、名前付きで拒否（推測や停止はしない） |
 | **ライセンス** | パッケージ全体と同じMIT。GPLコードは読んでも移植してもいません（decision 41） |
 

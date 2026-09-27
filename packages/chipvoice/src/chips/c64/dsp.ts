@@ -22,7 +22,6 @@ import type { ChipCore, RegisterEvent } from "../../chip.js";
 import { PAL_CLOCK_HZ, Sid, type SidModel } from "./sid.js";
 
 export const CLOCK_HZ = PAL_CLOCK_HZ;
-
 export const C64_PROCESSOR_NAME = "sid-processor";
 
 /**

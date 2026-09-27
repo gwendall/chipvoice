@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {Cpu6510, IllegalOpcodeError} from '../dist/index.js';
 
 /**
- * The 6510 alone (`psid-cpu6510.ts`): every documented opcode's result,
+ * The 6510 alone (`chips/c64/cpu6510.ts`): every documented opcode's result,
  * flags and cycle count, including page-cross penalties; the NMOS decimal
  * (BCD) ADC/SBC algorithm against 6502.org's own worked cases; the stable
  * illegal opcodes real SID tunes are known to use; and a check that every

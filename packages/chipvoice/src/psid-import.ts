@@ -1,12 +1,12 @@
 import type {PerformancePlan} from './performance.js';
 import {renderPerformance} from './performance.js';
 import type {RenderResult} from './render.js';
-import {Cpu6510, type Cpu6510Bus} from './psid-cpu6510.js';
+import {Cpu6510, type Cpu6510Bus} from './chips/c64/cpu6510.js';
 import {PAL_CLOCK_HZ, NTSC_CLOCK_HZ} from './chips/c64/sid.js';
 import {c64Chip} from './chips/c64/index.js';
 
 /**
- * Plays a PSID or RSID tune through a from-scratch 6510 (`psid-cpu6510.ts`)
+ * Plays a PSID or RSID tune through a from-scratch 6510 (`chips/c64/cpu6510.ts`)
  * and a minimal, disclosed C64 environment, and returns every write the
  * tune's own INIT and PLAY code made to the SID as an ordinary
  * `PerformancePlan` - the same shape `importVgm` returns, so it renders
@@ -14,7 +14,7 @@ import {c64Chip} from './chips/c64/index.js';
  * plan.clockHz})` like any other performance. `renderPsid` is the one-call
  * convenience that does exactly that.
  *
- * The header is HVSC's `SID_file_format.txt`; the 6510 is `psid-cpu6510.ts`.
+ * The header is HVSC's `SID_file_format.txt`; the 6510 is `chips/c64/cpu6510.ts`.
  * What this environment models, and what it does not, is documented next to
  * each piece below and summarized on `docs/chips/c64.md`. In short: one SID
  * at `$D400` (a v3/v4 file naming a second or third SID is rejected, named,
