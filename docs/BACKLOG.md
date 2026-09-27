@@ -250,9 +250,15 @@ real game music, and a real unit.
 
 **Step 4. The same bytes, later and elsewhere.**
 
-- todo - NEXT-11: each saved song records its engine version and can be
-  rendered by that engine again (a stated limit of decision 21, an AUD-2
-  follow-up).
+- done - NEXT-11: this PR. Decision 43. `songs`, `projects` and
+  `project_jobs` each record the `PROJECT_ENGINE_VERSION` active when the row
+  was written; a render always uses the server's current engine and records
+  its own version on the job, so a rendition's `engineVersion` can differ
+  from its publication's (both are shown, on the API and the published page:
+  "published with chipvoice x.y.z, rendered with chipvoice a.b.c" when they
+  differ). Rows written before this PR stay `null` rather than guessed.
+  `/s/{id}` is unchanged: it still revalidates with whatever engine is
+  currently deployed (a stated limit of decision 21, an AUD-2 follow-up).
 - MIX-14: compare render hashes across browsers, Node and physical phones.
 - done - NEXT-12: `/accuracy` and `/ja/accuracy` show all five chips' digital
   parity (per oracle, plus c64's real-6581 combined-waveform check), test ROMs,

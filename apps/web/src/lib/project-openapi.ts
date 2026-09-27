@@ -21,6 +21,7 @@ const response = {
     "visibility",
     "createdAt",
     "contentHash",
+    "engineVersion",
     "profile",
     "favourites",
     "favourited",
@@ -46,12 +47,16 @@ const response = {
       type: "array",
       items: {
         type: "object",
-        required: ["id", "kind", "status", "engine"],
+        required: ["id", "kind", "status", "engine", "engineVersion"],
         properties: {
           id: { type: "string" },
           kind: { enum: ["preview", "full"] },
           status: { type: "string" },
           engine: { type: "string" },
+          engineVersion: {
+            type: ["string", "null"],
+            description: "The chipvoice package version that actually rendered this immutable audio; null for renditions from before decision 43. Always the server's current engine at render time, which can differ from the publication's own engineVersion below if the render happened after a deploy. npm install chipvoice@<this version> and calling renderProject on the publication's stored document reproduces this rendition's exact bytes.",
+          },
         },
       },
     },
@@ -60,6 +65,10 @@ const response = {
     project: PROJECT_SCHEMA,
     visibility: { enum: ["public", "unlisted", "private"] },
     contentHash: { type: "string" },
+    engineVersion: {
+      type: ["string", "null"],
+      description: "The chipvoice package version live when this revision was published; null for revisions from before decision 43. A rendition (in renditions[]) can be rendered later, by a newer engine, and records its own engineVersion for that; this field alone does not tell you what rendered any particular rendition's audio.",
+    },
     profile: artistSchema,
     url: { type: "string" },
     coverUrl: { type: "string" },
@@ -86,6 +95,7 @@ const jobResponse = {
     "kind",
     "status",
     "engine",
+    "engineVersion",
     "progress",
     "bytes",
     "error",
@@ -106,6 +116,10 @@ const jobResponse = {
       ],
     },
     engine: { type: "string", description: "SHA-256 of the bundled renderer" },
+    engineVersion: {
+      type: ["string", "null"],
+      description: "The chipvoice package version that actually rendered this job's audio (always the server's current engine); null for jobs from before decision 43. npm install chipvoice@<this version> and calling renderProject on the publication's stored document reproduces these exact bytes.",
+    },
     progress: { type: "number", minimum: 0, maximum: 1 },
     bytes: { type: "integer" },
     error: { type: ["string", "null"] },
@@ -214,7 +228,10 @@ export const projectPaths = {
               ],
               properties: {
                 version: { const: 1 },
-                engineVersion: { type: "string" },
+                engineVersion: {
+                  type: "string",
+                  description: "The chipvoice package version this server currently renders with. A publication's own engineVersion (decision 43) is the version it was recorded under, which can differ from this one after a deploy.",
+                },
                 contentHash: { type: "string" },
                 semantics: { type: "object" },
                 projectSchemaVersion: { const: 1 },
@@ -383,7 +400,7 @@ export const projectPaths = {
       parameters: [id],
       security: auth,
       description:
-        "Preview: up to 30 seconds. Full: complete source, max 40 MB and 240 seconds processing. Poll the returned job; exceeding limits fails explicitly.",
+        "Preview: up to 30 seconds. Full: complete source, max 40 MB and 240 seconds processing. Poll the returned job; exceeding limits fails explicitly. Always renders with the server's current engine (decision 43); the returned job's own engineVersion, not the publication's, is what actually rendered it, and can differ from the publication's engineVersion if this happens after a deploy.",
       requestBody: {
         required: true,
         content: json({
