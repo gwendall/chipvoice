@@ -253,6 +253,105 @@ const SCRIPTS = [
       return w.writes;
     })(),
   },
+  {
+    name: 'script-psg-edges',
+    notes:
+      'The PSG at its edges: tone 0 at periods 0, 1 and several small values held one at a time; tones 1 and 2 unsilenced straight onto periods 0 and 1; a volume sweep on a steady tone; both noise modes at all three fixed rates and at tone 3\'s rate; a second write to the noise register while it is already running, to confirm the shift register resets again; a long run of white noise.',
+    cycles: second(8),
+    writes: (() => {
+      const w = writer();
+      const period = (ch, n) => {
+        w.psg(0x80 | (ch << 5) | (n & 0x0f));
+        w.psg((n >> 4) & 0x3f);
+      };
+      const volume = (ch, att) => w.psg(0x90 | (ch << 5) | att);
+      w.at(0);
+      for (let ch = 0; ch < 4; ch++) volume(ch, 15);
+
+      // Tone 0 through periods 0, 1 and a handful of small, ordinary values,
+      // each held so a constant output (period 0/1, per our own core) reads
+      // differently from a toggling one (MAME's segapsg has no such case).
+      let t = second(0.05);
+      for (const n of [0, 1, 2, 3, 4, 8, 16, 64]) {
+        w.at(t);
+        period(0, n);
+        volume(0, 0);
+        t += second(0.12);
+      }
+      w.at(t);
+      volume(0, 15);
+      t += second(0.05);
+
+      // Tones 1 and 2, unsilenced straight onto periods 0 and 1, the same
+      // first-unsilencing-since-reset case script-psg never exercises on
+      // these two channels.
+      for (const ch of [1, 2]) {
+        for (const n of [0, 1]) {
+          w.at(t);
+          period(ch, n);
+          volume(ch, 0);
+          t += second(0.1);
+          w.at(t);
+          volume(ch, 15);
+          t += second(0.05);
+        }
+      }
+
+      // A volume sweep on tone 0 at an ordinary period, to read the
+      // attenuation mapping cleanly off a steady tone.
+      w.at(t);
+      period(0, 200);
+      for (let att = 15; att >= 0; att--) {
+        w.at(t);
+        volume(0, att);
+        t += second(0.03);
+      }
+      w.at(t);
+      volume(0, 15);
+      t += second(0.05);
+
+      // Both noise modes, the three fixed rates and tone 3's rate, each
+      // held briefly and then silenced.
+      for (const white of [0, 1]) {
+        for (let rate = 0; rate < 4; rate++) {
+          w.at(t);
+          if (rate === 3) period(2, 40);
+          w.psg(0xe0 | (white << 2) | rate);
+          volume(3, 2);
+          t += second(0.15);
+          w.at(t);
+          volume(3, 15);
+          t += second(0.02);
+        }
+      }
+
+      // The shift register resets on any noise-register write, not only the
+      // first: write the same mode byte again while noise is already
+      // running, which both this oracle and our own core reset
+      // unconditionally.
+      w.at(t);
+      w.psg(0xe4); // white noise, rate 0
+      volume(3, 0);
+      t += second(0.1);
+      w.at(t);
+      w.psg(0xe4); // the same byte again: still a write, still a reset
+      t += second(0.1);
+      w.at(t);
+      volume(3, 15);
+      t += second(0.05);
+
+      // A long run of white noise for practical harness coverage. The full
+      // period from reset (57337 shifts, matching this sheet's documented
+      // figure) is confirmed separately, directly against the built oracle
+      // binary, in the oracle's README: reproducing that here would need
+      // roughly 440 million master cycles, longer than is worth carrying in
+      // the committed corpus.
+      w.at(t);
+      w.psg(0xe4);
+      volume(3, 0);
+      return w.writes;
+    })(),
+  },
 ];
 
 const SONGS = [

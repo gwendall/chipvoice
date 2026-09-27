@@ -12,10 +12,10 @@
     "fm5",
     "fm6"
   ],
-  "date": "2026-09-04",
-  "files": 7,
-  "cycles": 1798721365,
-  "identical": 1798721365,
+  "date": "2026-09-27",
+  "files": 8,
+  "cycles": 2233636083,
+  "identical": 2233636083,
   "diverging": 0,
   "results": [
     {
@@ -385,6 +385,130 @@
             "theirs": 9,
             "alignedTimes": 9,
             "alignedValues": 9,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-psg-edges",
+      "source": "src/corpus/generate-md.mjs",
+      "writes": 98,
+      "cycles": 434914718,
+      "identical": 434914718,
+      "first": null,
+      "edges": [
+        {
+          "voice": "fm1",
+          "identical": 434914718,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm2",
+          "identical": 434914718,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm3",
+          "identical": 434914718,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm4",
+          "identical": 434914718,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm5",
+          "identical": 434914718,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "fm6",
+          "identical": 434914718,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
             "maxShift": 0
           }
         }
