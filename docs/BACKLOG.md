@@ -145,8 +145,8 @@ at four levels: an independent oracle, test ROMs written for the hardware,
 real game music, and a real unit.
 
 - Oracle and ROM level: P1-13, P1-14, P2-1, P3-4, P7-11.
-- done - P5-8: MAME's `sn76496.cpp`, configured as `segapsg_device`, is a
-  second oracle for the Mega Drive's PSG (`packages/conform/oracles/sn76496`).
+- done - P5-8: PR #85. MAME's `sn76496.cpp`, configured as `segapsg_device`,
+  is a second oracle for the Mega Drive's PSG (`packages/conform/oracles/sn76496`).
   Confirmed the white noise LFSR's 57337-shift period against MAME directly;
   diagnosed three real divergences from `sn76489.ts` (a tone period of 0 or 1,
   the polarity a channel starts at before its first reload, tone 3's noise
@@ -361,12 +361,12 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | --- | --- | --- | --- |
 | P5-1 | Nuked-OPN2 vendored as the YM2612 oracle: built natively, driven by a register log, its per-channel outputs traced | done | `packages/conform/oracles/nuked-opn2` |
 | P5-2 | The YM2612 in TypeScript, ported from Nuked-OPN2 line for line, behind `DigitalChip`: six FM channels and the DAC | done | `chips/md/ym2612.ts`; identical to Nuked on every script |
-| P5-3 | The SN76489 from the documents, with formula tests | done | `chips/md/sn76489.ts`; a second oracle now compares it, see P5-8 |
+| P5-3 | The SN76489 from the documents, with formula tests | done | `chips/md/sn76489.ts`; a second oracle now compares it, see P5-8 (PR #85) |
 | P5-4 | The Mega Drive chip: the two behind one `ChipCore`, the ladder DAC and the console's output stage, a worklet | done | `chips/md/dsp.ts`; the output stage is a placeholder |
 | P5-5 | The Mega Drive's driver and arranger: FM patches for the intents, the PSG for the chord, the kit on the noise | done | `chips/md/driver.ts`, `arranger.ts`; FM drums are still to come |
 | P5-6 | VGM for the YM2612 and the PSG, the chip in the API, the studio and the skill | done | `toVgm({ chip: "md" })`; skill 0.6.0 |
 | P5-7 | The Mega Drive sheet: parity with Nuked on every voice, a corpus of scripts and songs | done | `docs/chips/md.md` |
-| P5-8 | A PSG oracle: MAME's `sn76496` behind a shim, or a Master System test ROM | done | `packages/conform/oracles/sn76496`, configured as `segapsg_device`; three diagnosed divergences on the sheet |
+| P5-8 | A PSG oracle: MAME's `sn76496` behind a shim, or a Master System test ROM | done | PR #85. `packages/conform/oracles/sn76496`, configured as `segapsg_device`; three diagnosed divergences on the sheet |
 | P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found MDFourier: named real units across both models, captured through a documented open-source test ROM, but its exact register sequence was not located; see [HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489) |
 | P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the portable arranger's kit is on the PSG noise for now; the native driver (P5-11) streams a PCM kit on the DAC |
 | P5-11 | A game's own driver beside the portable one: all six FM channels, the three tones, the noise and the DAC by name, a text tracker, a bank with a PCM kit, and the render steps a game ships through, extracted from Punk Force | done | `chips/md/native-driver.ts`, `bank.ts`, `tracker.ts`, `src/game-audio.ts`; [MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER.md), decision 32; the game's score compiles and renders to the same bytes |

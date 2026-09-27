@@ -120,7 +120,7 @@
 **ステップ1. 5つのチップを証明する。** 仕様書は、独立したオラクル、実機向けに書かれたテストROM、実際のゲーム音楽、実機という4つの段階それぞれに数値があるときに完成です。
 
 - オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P7-11。
-- done - P5-8: MAMEの`sn76496.cpp`を`segapsg_device`として構成し、メガドライブのPSG向け第2の参照実装にしました（`packages/conform/oracles/sn76496`）。白色ノイズLFSRの57337シフト周期をMAME側でも直接確認し、`sn76489.ts`との3件の実際の相違（周期0または1のトーン、リロード前のチャンネルの極性、tone 3のノイズレート）を診断し、シートに記録しました。
+- done - P5-8: PR #85。MAMEの`sn76496.cpp`を`segapsg_device`として構成し、メガドライブのPSG向け第2の参照実装にしました（`packages/conform/oracles/sn76496`）。白色ノイズLFSRの57337シフト周期をMAME側でも直接確認し、`sn76489.ts`との3件の実際の相違（周期0または1のトーン、リロード前のチャンネルの極性、tone 3のノイズレート）を診断し、シートに記録しました。
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE_ja.md](HARDWARE-EVIDENCE_ja.md)が、5チップすべてについて既に存在する実機の公開録音・測定値をカタログ化しました。掲載前に各出典を開いて検証済みです（decision 38の無償証拠優先の順序）。「測定一つ」スクリプトの条件を満たした候補は1つだけで、C64の組み合わせ波形を実機6581 R4AR（`libsidplayfp/combined-waveforms`）と比較するものです。`pnpm --filter chipvoice-conform evidence:c64:sheet`で採点し、4つの組み合わせにわたり82.0〜94.1%のバイト一致率となり、[docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581)へ書き込みました。アナログ段については何も確定しません（DAC手前の波形ジェネレーターです）が、デジタルモデルが以前は持っていなかった独立したハードウェアによる確認が1つ得られました。他のどのチップにも、正確に既知で再現可能な入力を持つ候補はありませんでした。NESは既にblarggの`apu_mixer`を持っています。取得スクリプト`packages/conform/src/evidence/fetch.mjs`（`evidence:fetch`）は、ライセンスの許す範囲でgitignore対象の`.artifacts/hardware-evidence/`へダウンロードし、`packages/conform/src/evidence/manifest.json`のコミット済みSHA-256で検証します。
 - 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をP7-8／P7-10のレジスタログ不要なアナログ測定への道として見つけましたが未実装です。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。
 
@@ -274,12 +274,12 @@
 | --- | --- | --- | --- |
 | P5-1 | Nuked-OPN2をvendor、native buildしregister logと各channel traceのYM2612参照に | done | `packages/conform/oracles/nuked-opn2` |
 | P5-2 | Nuked逐行TypeScript移植を`DigitalChip`へ、FM6chとDAC | done | `chips/md/ym2612.ts`、全script一致 |
-| P5-3 | 資料からSN76489と数式test | done | `chips/md/sn76489.ts`、第2参照実装で比較（P5-8参照） |
+| P5-3 | 資料からSN76489と数式test | done | `chips/md/sn76489.ts`、第2参照実装で比較（P5-8、PR #85参照） |
 | P5-4 | 2chipを1`ChipCore`へ、ladder DAC、仮出力stage、worklet | done | `chips/md/dsp.ts`、出力はplaceholder |
 | P5-5 | MD driver／arranger、intent→FM patch、chord→PSG、kit→noise | done | `chips/md/driver.ts`、`arranger.ts`。FM drumは後続 |
 | P5-6 | YM／PSG VGM、API／studio／skill | done | `toVgm({ chip: "md" })`、skill 0.6.0 |
 | P5-7 | Nuked全voice比較、script／song corpusのsheet | done | `docs/chips/md.md` |
-| P5-8 | PSG参照：MAME `sn76496` shimまたはMaster System ROM | done | `packages/conform/oracles/sn76496`、`segapsg_device`として構成。3件の相違をシートに記録 |
+| P5-8 | PSG参照：MAME `sn76496` shimまたはMaster System ROM | done | PR #85。`packages/conform/oracles/sn76496`、`segapsg_device`として構成。3件の相違をシートに記録 |
 | P5-9 | 既知scriptでModel 1 line-out測定 | todo | P2-3同様、実機必要。NEXT-04はMDFourierを見つけました。両モデルにわたる名前付き実機、文書化されたオープンソーステストROMによるキャプチャですが、正確なレジスタ列は見つかっていません。[HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489)参照 |
 | P5-10 | channel 6のFM drumとarranger LFO | todo | 移植用arrangerのkitは現状PSG noise。ネイティブdriver（P5-11）はDACでPCM kitを流す |
 | P5-11 | 移植用と並ぶゲーム専用driver：FM 6ch、矩形波3音、noise、DACを名前で指定、テキストtracker、PCM kit付きbank、ゲームが出荷するまでのrender手順。Punk Forceから抽出 | done | `chips/md/native-driver.ts`、`bank.ts`、`tracker.ts`、`src/game-audio.ts`。[MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER_ja.md)、決定32。ゲームの楽譜は同じバイトにcompile・renderされる |
