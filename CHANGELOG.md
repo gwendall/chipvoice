@@ -105,6 +105,18 @@ use their own noise for hats. The kick and the snare stay BRR samples.
 role's real triads across voices were already shipped; this closes the
 ticket's other half. No sound change on any other chip.
 
+`importSpc(spcBytes, options)` plays an `.spc` file - a frozen SPC700 + S-DSP
+snapshot, the Super Nintendo's own music format - through a new SPC700 core
+written from fullsnes, Anomie's SPC700/S-DSP documents and the SNES developer
+wiki, restoring the CPU, the 64 KB of ARAM and every DSP register exactly,
+and returns the same `PerformancePlan` shape `importVgm` does. Length comes
+from `options.seconds` or the file's ID666 tag; a file with neither throws.
+The tag's title, game, artist and length are returned on `id666` when
+present. A truncated or misidentified file throws explicitly. Measured
+against a real reference SPC700 (`packages/conform`'s new `check:spc`): the
+DSP register writes the CPU makes and the output samples both matched on
+the first file checked.
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the

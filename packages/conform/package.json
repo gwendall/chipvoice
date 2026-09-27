@@ -30,6 +30,8 @@
     "corpus:md": "node src/corpus/generate-md.mjs",
     "check:snes": "node src/cli.mjs snes --corpus corpus/snes --oracle snes-spc --baseline corpus/snes/parity.json",
     "baseline:snes": "node src/cli.mjs snes --corpus corpus/snes --oracle snes-spc --baseline corpus/snes/parity.json --write-baseline --sheet ../../docs/chips/snes.md && node src/status.mjs",
+    "check:spc": "node src/spc/check.mjs",
+    "baseline:spc": "node src/spc/check.mjs --sheet ../../docs/chips/snes.md --marker spc",
     "corpus:snes": "node src/corpus/generate-snes.mjs",
     "check:c64": "node src/cli.mjs c64 --corpus corpus/c64 --oracle residfp --baseline corpus/c64/parity.json",
     "baseline:c64": "node src/cli.mjs c64 --corpus corpus/c64 --oracle residfp --baseline corpus/c64/parity.json --write-baseline --sheet ../../docs/chips/c64.md && node src/status.mjs",

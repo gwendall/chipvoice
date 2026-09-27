@@ -14,7 +14,7 @@ SPC700. The method behind every section is in [CONFORMANCE.md](../CONFORMANCE.md
 | | |
 | --- | --- |
 | **Machine** | Super Nintendo, Super Famicom (the SPC700's clock, 1024000 Hz; a sample every 32 clocks, 32000 Hz) |
-| **Status** | **in progress**: the DSP is identical to snes_spc on its output stream, the driver plays every role, the analog stage is unmeasured |
+| **Status** | **in progress**: the DSP is identical to snes_spc on its output stream, the driver plays every role, `.spc` files play back through `importSpc`, the analog stage is unmeasured |
 | **Core** | ported line for line from snes_spc's SPC_DSP (`packages/chipvoice/src/chips/snes/sdsp.ts`) |
 | **Licence of the core** | `sdsp.ts` is a port of snes_spc and carries its LGPL 2.1; everything else in the package is MIT. The package's licence field says both |
 | **Sheet updated** | 2026-09-27, by hand and by `conform` |
@@ -69,6 +69,49 @@ keyed on with the noise routed to some of them and the noise clock stopped,
 which is a constant on the output that grows with an envelope. The IPL ROM
 keyed everything off and a program disabled echo writes first and waited the
 old delay out; the driver, the scripts and the formula tests now do both.
+
+## SPC playback
+
+`importSpc` (`packages/chipvoice/src/spc-import.ts`) plays an `.spc` file - a
+frozen SPC700 + S-DSP snapshot, the SNES's own music format - through this
+package's own S-SMP (`ssmp.ts`) and SPC700 (`spc700.ts`), written from
+fullsnes, Anomie's SPC700 and S-DSP documents, and the SNES developer wiki's
+`.spc`/ID666 layout, never from snes_spc's own CPU. It restores the CPU
+registers, the 64 KB of ARAM and all 128 DSP registers exactly, reads the
+ID666 tag when present (title, game, artist, length), and rejects a
+truncated or misidentified file explicitly. See the package README for the
+function and its options.
+
+Measured by [`check:spc`](../../packages/conform/src/spc/check.mjs) against
+`play-spc` - blargg's real SPC700 (`SPC_CPU.h`), built from the same vendored
+snes_spc `main.cpp` already uses, but driving the CPU this time, not just the
+DSP. Since the DSP itself already matches snes_spc line for line (see
+"Digital parity" above), any divergence here can only be the new CPU, its
+timers, or the snapshot restore. Two things are compared: the sequence of DSP
+register writes the CPU makes (register and value, in order - the pass/fail
+signal; cycle numbers are reported alongside but not asserted equal, since
+blargg's CPU stamps a write with the cycle at the end of its whole
+instruction, this package's own with the cycle of the write's own bus access,
+a fixed labelling difference documented in `spc700.ts` and in `check.mjs`),
+and the output samples, compared the same way "Digital parity" is. The corpus
+is `packages/conform/corpus/snes/spc` (redistributable files only, self-authored
+for now - see its README); a local, gitignored directory can hold anything
+else for a person's own testing without CI depending on it.
+
+<!-- spc:begin -->
+Written by `check:spc` on 2026-09-27, against play-spc (blargg's SPC700, vendored snes_spc).
+
+| | |
+| --- | --- |
+| Files | 1 |
+| Write-sequence divergences | 0 |
+| Sample cycles identical | 2048000 / 2048000 (100.0000 %) |
+| Files with a sample divergence | 0 |
+
+| File | Writes | Samples | First divergence |
+| --- | --- | --- | --- |
+| corpus/snes/spc/selftest.spc | 3/3 | 100.0000 % | none |
+<!-- spc:end -->
 
 ## Test ROMs
 
@@ -158,6 +201,9 @@ See [palette acceptance and measurements](../SNES-PALETTE.md).
 
 ## History
 
+- 2026-09-27: `importSpc`, a new SPC700 (S-SMP) written from documents, and
+  `check:spc` against a real CPU oracle. Matched the oracle on both the DSP
+  register write sequence and the output samples on the first file measured.
 - 2026-09-27: the kit's hats moved from BRR bursts to the DSP's own noise
   generator (`NON`, `FLG`'s clock), the kick and the snare staying BRR
   samples. A new corpus script exercises two voices on the noise at once, the
@@ -174,8 +220,13 @@ See [palette acceptance and measurements](../SNES-PALETTE.md).
 Written from:
 
 - snes_spc 0.9.0, Shay Green, the DSP.
-- Anomie's SPC700 and DSP documents, and Fullsnes, the registers and the BRR format.
+- Anomie's SPC700 and DSP documents, and Fullsnes, the registers, the BRR
+  format, the SPC700 CPU/timers/I/O and the IPL ROM's behaviour.
+- The SNES developer wiki's `.spc` and ID666 file format page, the container
+  `importSpc` reads.
 
 Verified against:
 
 - snes_spc, built natively, in `packages/conform/oracles/snes-spc`.
+- `play-spc`, blargg's real SPC700 built from the same vendored snes_spc, in
+  the same directory: the CPU-capable oracle `check:spc` uses.

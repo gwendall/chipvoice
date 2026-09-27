@@ -38,6 +38,21 @@ const wav = toWav(renderPerformance(plan, snesChip));
 インポーターは未対応コマンドを拒否し、すべての VGM 音源やストリーム形式への
 対応は主張しません。[ネイティブ原典の手順](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README_ja.md)を参照してください。
 
+SNESのネイティブ再生は `importSpc(spcBytes)` を使います。`.spc`ファイル
+（SPC700とS-DSPを凍結したスナップショット、SNES自身の音楽形式）を、この
+パッケージ自作のSPC700コアで再生し、CPU、64KBのARAM、全DSPレジスターを
+正確に復元して、`importVgm`と同じ`PerformancePlan`形式を返します。長さは
+`options.seconds`か、ファイルのID666タグ（"seconds to play"とフェード）
+から決まります。どちらもない場合は例外になります。作った長さでは曲を
+途中で切るか、「安全のため」長めに決めた場合はどのインポートも推測した
+シミュレーション秒数の分だけ静かに負担することになるからです。ID666
+タグのタイトル、ゲーム名、アーティスト、長さは、存在すればプランの
+`id666`フィールドで返されます。壊れたファイルや誤認識したファイルは
+明示的に例外を投げます。CPUの起動用ROM(`IPL_ROM`、$FFC0-$FFFFの64バイトで、
+AnomieのSPC700資料とfullsnesが一バイトずつ公開しているもの)は`ssmp.ts`に
+同梱されています。知られているどの`.spc`スナップショットもそれがあることを
+前提にしているためです。[決定45](../../docs/DECISIONS_ja.md#45-the-spc700-and-s-smp-stay-mit-the-ipl-roms-64-bytes-are-the-one-embedded-exception-2026-09-27)を参照してください。
+
 ```bash
 npm i chipvoice
 ```
