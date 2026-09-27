@@ -268,11 +268,11 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
 }
 
 /** Renders compiled commands, not a second interpretation of the score. */
-export function renderPerformance(plan: PerformancePlan, chip: ChipDefinition, options: {sampleRate?: number; gain?: number; onProgress?: (fraction: number) => void} = {}): RenderResult {
+export function renderPerformance(plan: PerformancePlan, chip: ChipDefinition, options: {sampleRate?: number; gain?: number; model?: string; onProgress?: (fraction: number) => void} = {}): RenderResult {
   if (plan.chip !== chip.spec.id) throw new Error('Plan/chip mismatch');
   const sampleRate = options.sampleRate ?? 44100;
   if (!Number.isInteger(sampleRate) || sampleRate < 8000 || sampleRate > 192000 || !Number.isFinite(plan.seconds) || plan.seconds <= 0 || plan.seconds > 600) throw new Error('Invalid render size');
-  const core = chip.create(sampleRate); core.setGain(options.gain ?? .6);
+  const core = chip.create(sampleRate, { model: options.model }); core.setGain(options.gain ?? .6);
   for (const block of plan.memory) core.load(block.address, block.bytes);
   core.schedule(plan.events);
   const total = Math.round(plan.seconds * sampleRate), left = new Float32Array(total), right = new Float32Array(total);

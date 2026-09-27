@@ -104,14 +104,15 @@ it: a placeholder 14 kHz low-pass and 20 Hz high-pass, and the DAC.
 
 The digital core (`docs/chips/c64.md`) is written from documents, decision 18,
 and is already identical to reSID-fp; the analog stage - the two DACs, the
-filter, the output stage, all in `SID_6581_PROFILE` - has no capture of a unit
-of our own, and the 8580 is not modelled at all.
+filter, the output stage, in `SID_6581_PROFILE` and, since P7-10, its 8580
+counterpart `SID_8580_PROFILE` - has no capture of a unit of our own, for
+either chip.
 
 | Source | Author, unit, capture chain | Exact input; do we have it | Format, sample rate | Licence | Settles / cannot settle |
 | --- | --- | --- | --- | --- | --- |
-| [reSID's `filter.cc`](https://github.com/libsidplayfp/resid/blob/master/filter.cc) | Dag Lem. Direct voltage measurement on the filter's CAP1B/CAP1A pins with the external capacitor removed, on a chip marked "MOS 6581R4AR 0687 14" and a chip marked "CSG 8580R5 1690 25" | A fixed/swept DC voltage on the capacitor pin, not a register sequence; not an input chipvoice runs, but the measured Vin/Vout pairs are embedded as tables in the source itself, fetchable and diffable directly | A source file with embedded numeric op-amp transfer-function tables; not audio | GPL (reSID) | Settles that the sheet's "curve reSID measured on one 6581 R4AR" is a real, named, traceable unit, and hands us an equally named 8580 unit (R5) the sheet does not yet use. Our filter model's curve could be diffed against these tables point by point, with no register log needed - not yet implemented here. Cannot settle the output stage's corners or the DAC ladder's mismatch ratio; those are separate measurements this file does not contain |
+| [reSID's `filter.cc`](https://github.com/libsidplayfp/resid/blob/master/filter.cc) | Dag Lem. Direct voltage measurement on the filter's CAP1B/CAP1A pins with the external capacitor removed, on a chip marked "MOS 6581R4AR 0687 14" and a chip marked "CSG 8580R5 1690 25" | A fixed/swept DC voltage on the capacitor pin, not a register sequence; not an input chipvoice runs, but the measured Vin/Vout pairs are embedded as tables in the source itself, fetchable and diffable directly | A source file with embedded numeric op-amp transfer-function tables; not audio | GPL (reSID) | Settles that the sheet's "curve reSID measured on one 6581 R4AR" is a real, named, traceable unit, and hands us an equally named 8580 unit (R5). **Implemented, P7-10**: the 8580's own fixed-point cutoff expression in this file is an exact line, so `SID_8580_PROFILE.cutoff`/`qLow`/`qHigh` (`docs/chips/c64.md#the-8580`) are read straight from it at its two endpoints, not a point-by-point diff of the whole table - whether the op-amp's shape between those two points really is that plain a line, the way the 6581's kinked curve from the same file is not, is still open. Cannot settle the output stage's corners or the DAC ladder's mismatch ratio; those are separate measurements this file does not contain |
 | [reSID-fp's `Filter6581` docs](https://sidplay-residfp.sourceforge.io/docs/classreSIDfp_1_1Filter6581.html) | libsidplayfp (reSID-fp) Doxygen documentation, the topology reconstructed from Michael Huth's 2008 die photographs | Not applicable; design documentation, not a capture | Prose and a circuit diagram | GPL-2.0 (libsidplayfp) | States the two-integrator-loop biquad topology `SID_6581_PROFILE` assumes "has been confirmed by Bob Yannes [the SID's designer] to be the actual circuit" - settles that the topology is die-derived and designer-confirmed, not guessed. Cannot settle any corner frequency or Q value; those come from `filter.cc` above |
-| [reSID-fp's `Dac` docs](https://sidplay-residfp.sourceforge.io/docs/classreSIDfp_1_1Dac.html) | libsidplayfp (reSID-fp) Doxygen documentation, the R-2R ladder DAC model | Not applicable; a model description | Prose | GPL-2.0 | Settles that the 2R/R mismatch of 2.2 the sheet cites for the 6581 is this project's own figure, and gives the 8580's counterpart, about 2.0 ("very accurately matched," no discontinuities) - a number the sheet currently lacks entirely, since the 8580 is not modelled. Cannot settle which physical chip, if any, that 8580 figure was measured from; the page names no unit |
+| [reSID-fp's `Dac` docs](https://sidplay-residfp.sourceforge.io/docs/classreSIDfp_1_1Dac.html) | libsidplayfp (reSID-fp) Doxygen documentation, the R-2R ladder DAC model | Not applicable; a model description | Prose | GPL-2.0 | Settles that the 2R/R mismatch of 2.2 the sheet cites for the 6581 is this project's own figure, and gives the 8580's counterpart, about 2.0 ("very accurately matched," no discontinuities). **Implemented, P7-10**: `SID_8580_PROFILE.ladderRatio = 2.0`, terminated, which the sheet's `test/c64-8580.mjs` checks makes an exactly linear ladder. Cannot settle which physical chip, if any, that 8580 figure was measured from; the page names no unit |
 | [`libsidplayfp/combined-waveforms`](https://github.com/libsidplayfp/combined-waveforms) | libsidplayfp; hardware samples contributed by Trurl, ltx128 and reFX-Mike, sampling program by Dag Lem, model-fitting tooling by Antti Lankila and Leandro Nini. Raw OSC3 samplings (the top eight of the waveform generator's twelve bits) of 30 named physical units: 6581 R2/R3/R4AR and 8580 R5, each unit's four combined-waveform selections (`src/dump.cpp` confirms the format: a two-byte PRG header, then 4096 raw bytes, one per accumulator index) | The waveform-select register swept through its combinations with the accumulator's value fixed by the test bit, a documented and reproducible register-level input; chipvoice's own `combinedWaveform()` takes the identical index and waveform-selector arguments, confirmed against `src/parameters.h`'s `GetScore8`/`Score` functions, which shift the model's twelve-bit output down by four bits before comparing - the same shift used below | Raw binary, 4098 bytes per file (fetched: see below) | GPL-2.0 | **Implemented below.** Settles how well chipvoice's combined-waveform model - fitted only to reSID-fp's table, itself a fit to kevtris's samplings of a different 6581 R2 - agrees with a second, independent named 6581 on the pre-DAC waveform generator. Cannot settle anything about the analog stage: this is the digital core, before the DACs, and the README warns that older ("broken") captures in this repository are affected by a saw-top-bit writeback bug - the files used here are from the corrected set, not those |
 | [plogue, "SID 6581R3 ADSR tables up close" (2010)](http://ploguechipsounds.blogspot.com/2010/03/sid-6581r3-adsr-tables-up-close.html) | Plogue, already the sheet's cited source for its ADSR findings. A 6581R3, die-photo/LFSR analysis of the rate lookup ROM plus a live capture: CIA-timer-synchronized polling of the real, readable ENV3 register as it decays | A short, reproducible poke-then-poll register sequence is described; we have only Plogue's screen-capture images and a partial ASCII table, not a machine-readable log | Annotated images, an ASCII/LFSR table, a code snippet, a screen-capture image; no raw data file | Not stated (ordinary blog copyright) | Verifies and traces the sheet's existing "plogue's ADSR findings" citation to this specific post and this specific named unit. Cannot supply a numeric conformance input as-is; a from-scratch capture (P7-7, VICE's `testprogs/SID` on a 6510) would have to reproduce this method itself, not read it from the post |
 | [VICE manual, chapter 7](https://vice-emu.sourceforge.io/vice_7.html) | The VICE project | Not applicable | Prose | GPL-2.0 (VICE) | Settles that VICE/reSID's own software distinguishes real chip models (`SidModel`: 6581, 8580, 8580 "Digifix", DTVSID) and exposes filter-bias calibration knobs in millivolts per model - confirms that per-unit filter variation is a known, already-parameterized problem in the strongest available software reference. Cannot settle any specific measurement; the manual documents no methodology |
@@ -161,10 +162,12 @@ a *different* 6581, never to this unit - it is a measurement of how far one
 real 6581 sits from another on the part of the chip the sheet already says
 varies most. It settles nothing about the analog stage: the combined
 waveforms are read before the DACs. `filter.cc`'s op-amp transfer-curve
-tables (the C64 table above) are a second candidate that would need no
-register log at all, only a table diff; they were found late in this search
-and are not yet implemented, noted for whoever picks up P7-8 or a future
-8580 ticket.
+tables (the C64 table above) were a second candidate that needed no register
+log at all; P7-10 read its 8580 entry (an exact fixed-point line, unlike the
+6581's kinked one) into `SID_8580_PROFILE`'s cutoff and Q, endpoint to
+endpoint rather than a full point-by-point diff of every table row - a
+finer-grained diff of the curve's shape between those endpoints, and the same
+treatment for the 6581's own kink, remain open for whoever picks up P7-8.
 
 No other chip had a candidate that qualified. NES: blargg's `apu_mixer`
 already is this measurement, done before this ticket. Game Boy: no
@@ -192,10 +195,11 @@ outright; decision 38's order after the NES still holds. What it does change:
   orders should also settle the filter corners across the four revisions,
   since nothing published can.
 - **C64**: the combined-waveform model now has one independent hardware check
-  the digital side did not have before, and `filter.cc`'s tables are a
-  concrete, register-log-free path to an analog measurement for both a 6581
-  and an 8580 without buying either - the cheapest next step of the five, if
-  someone implements the table diff.
+  the digital side did not have before, and `filter.cc`'s tables gave a
+  concrete, register-log-free analog measurement for both a 6581 and an 8580
+  without buying either (P7-10, endpoint to endpoint); a finer diff of the
+  curve's shape between those endpoints, for both chips, remains the cheapest
+  next step of the five.
 - **Mega Drive**: MDFourier is the strongest lead of the remaining four - named
   units, both models, a documented capture method - but is blocked on finding
   its ROM's register sequence, not on hardware access. Worth another search

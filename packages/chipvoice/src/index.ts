@@ -78,10 +78,11 @@ export { SNES, snesChip } from "./chips/snes/index.js";
 export { SDsp } from "./chips/snes/sdsp.js";
 export { encodeBrr } from "./chips/snes/brr.js";
 export { C64, c64Chip } from "./chips/c64/index.js";
-export { Sid, SID_VOICES, RATE_COMPARE, combinedWaveform, buildWaveTables, COMBINED_6581 } from "./chips/c64/sid.js";
+export { Sid, SID_VOICES, RATE_COMPARE, combinedWaveform, buildWaveTables, COMBINED_6581, COMBINED_8580 } from "./chips/c64/sid.js";
 export type { CombinedModel } from "./chips/c64/sid.js";
-export { SID_6581_PROFILE, ladderWeights } from "./chips/c64/dsp.js";
+export { SID_6581_PROFILE, SID_8580_PROFILE, ladderWeights } from "./chips/c64/dsp.js";
 export type { SidProfile } from "./chips/c64/dsp.js";
+export type { SidModel } from "./chips/c64/sid.js";
 export { c64Kit } from "./chips/c64/arranger.js";
 export type { Pattern, PercussionKit, Song } from "./sequencer.js";
 export { DEFAULT_KIT, NES_ROLES, softKit } from "./sequencer.js";
@@ -140,6 +141,8 @@ export function chipFor(id: string): ChipDefinition | null {
 export interface ChipOptions {
   /** Which chip: `"2a03"` (the default) or `"dmg"`. `chips()` lists them. */
   chip?: string;
+  /** For the few chips with more than one model: the C64's `"6581"` (the default) or `"8580"`. */
+  model?: string;
   /** Supply your own context to share one with the rest of your audio. */
   context?: AudioContext;
   /** 0 to 1. Default 0.78, which leaves headroom for the chip's own mixing. */
@@ -171,7 +174,9 @@ export interface SfxOptions {
  *
  * The same song plays on a Game Boy with `Chip.create({ chip: "dmg" })`: each
  * chip maps the song's four lines onto its own voices, and its own driver
- * writes its registers in its own idiom.
+ * writes its registers in its own idiom. A chip with more than one model
+ * takes `model` too: `Chip.create({ chip: "c64", model: "8580" })` is the
+ * SID's successor instead of the default 6581.
  *
  * `create` must be called from a user gesture, because that is when a browser
  * will let an AudioContext start. Everything after that is free.
@@ -223,7 +228,7 @@ export class Chip {
     master.gain.value = gain;
     master.connect(ctx.destination);
 
-    const apu = new APU(ctx, definition);
+    const apu = new APU(ctx, definition, { model: options.model });
     const ok = await apu.init(master);
     if (!ok) {
       master.disconnect();

@@ -4,14 +4,14 @@ import { chip2a03 } from './chips/2a03.mjs';
 import { chipDmg } from './chips/dmg.mjs';
 import { chipMd } from './chips/md.mjs';
 import { chipSnes } from './chips/snes.mjs';
-import { chipC64 } from './chips/c64.mjs';
+import { chipC64, chipC64_8580 } from './chips/c64.mjs';
 import { nesSndEmu } from './oracles/nes-snd-emu.mjs';
 import { mesen } from './oracles/mesen.mjs';
 import { gbSndEmu } from './oracles/gb-snd-emu.mjs';
 import { sameboy } from './oracles/sameboy.mjs';
 import { nukedOpn2 } from './oracles/nuked-opn2.mjs';
 import { snesSpc } from './oracles/snes-spc.mjs';
-import { residfp } from './oracles/residfp.mjs';
+import { residfp, residfp8580 } from './oracles/residfp.mjs';
 import { sn76496 } from './oracles/sn76496.mjs';
 import { parseLog } from './log.mjs';
 import { compare, dump } from './compare.mjs';
@@ -43,9 +43,16 @@ import { ChangeStream } from './change-stream.mjs';
  * the older array of such objects, so a `trace()` not yet updated for the
  * compact form still works.
  */
-const CHIPS = { '2a03': chip2a03, dmg: chipDmg, md: chipMd, snes: chipSnes, c64: chipC64 };
-const ORACLES = { 'nes-snd-emu': nesSndEmu, mesen, 'gb-snd-emu': gbSndEmu, sameboy, 'nuked-opn2': nukedOpn2, 'snes-spc': snesSpc, residfp, sn76496 };
-const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu', md: 'nuked-opn2', snes: 'snes-spc', c64: 'residfp' };
+/**
+ * `c64-8580` is a second entry here, not just a second oracle, because the
+ * 8580 needs chipvoice's own chip reconfigured too (a second profile and a
+ * second digital core), unlike the other second-oracle rows below where only
+ * the oracle side changes. It reuses `corpus/c64`: same registers, same
+ * songs, run twice.
+ */
+const CHIPS = { '2a03': chip2a03, dmg: chipDmg, md: chipMd, snes: chipSnes, c64: chipC64, 'c64-8580': chipC64_8580 };
+const ORACLES = { 'nes-snd-emu': nesSndEmu, mesen, 'gb-snd-emu': gbSndEmu, sameboy, 'nuked-opn2': nukedOpn2, 'snes-spc': snesSpc, residfp, 'residfp-8580': residfp8580, sn76496 };
+const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu', md: 'nuked-opn2', snes: 'snes-spc', c64: 'residfp', 'c64-8580': 'residfp-8580' };
 
 const args = process.argv.slice(2);
 const chipId = args[0];

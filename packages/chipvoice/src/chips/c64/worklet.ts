@@ -6,22 +6,28 @@
  */
 
 import type { WorkletMessage } from "../../chip.js";
-import { C64_PROCESSOR_NAME, SidCore } from "./dsp.js";
+import { C64_PROCESSOR_NAME, SID_6581_PROFILE, SID_8580_PROFILE, SidCore } from "./dsp.js";
 
 declare const sampleRate: number;
 declare const currentFrame: number;
+/** What `new AudioWorkletNode(ctx, name, { processorOptions })` hands the processor. */
+interface AudioWorkletNodeOptions {
+  processorOptions?: { model?: string };
+}
 declare abstract class AudioWorkletProcessor {
   readonly port: MessagePort;
-  constructor();
+  constructor(options?: AudioWorkletNodeOptions);
 }
-declare function registerProcessor(name: string, processor: new () => AudioWorkletProcessor): void;
+declare function registerProcessor(name: string, processor: new (options?: AudioWorkletNodeOptions) => AudioWorkletProcessor): void;
 
 class SidProcessor extends AudioWorkletProcessor {
-  private readonly core = new SidCore(sampleRate);
+  private readonly core: SidCore;
   private alive = true;
 
-  constructor() {
-    super();
+  constructor(options?: AudioWorkletNodeOptions) {
+    super(options);
+    const profile = options?.processorOptions?.model === "8580" ? SID_8580_PROFILE : SID_6581_PROFILE;
+    this.core = new SidCore(sampleRate, profile);
     this.port.onmessage = (e: MessageEvent<WorkletMessage>) => {
       const data = e.data;
       if (data.type === "events") this.core.schedule(data.events);

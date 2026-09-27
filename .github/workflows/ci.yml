@@ -159,5 +159,6 @@ jobs:
       - run: pnpm --filter chipvoice-conform test:listening
       - run: pnpm --filter chipvoice-conform check:snes
       - run: pnpm --filter chipvoice-conform check:c64
+      - run: pnpm --filter chipvoice-conform check:residfp-8580
       - run: pnpm --filter chipvoice-conform roms:c64
       - run: pnpm --filter chipvoice-conform mixer
