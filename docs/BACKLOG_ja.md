@@ -314,7 +314,7 @@
 | P7-8 | 6581 line-out captureでDAC zero、filter curve、出力をfit | todo | 実機必要 |
 | P7-9 | filterを開くintentとlead sweep | todo | |
 | P7-10 | 8580の合成波形、triangle／saw遅延、線形DAC、独自filterの第2profile／table | todo | |
-| P7-11 | 全trace変化をmemory保持するharnessをstream比較／typed arrayへ | done | 本PR。`ChangeStream`（object単位でなくtyped array列）とstreaming oracle読み取り（巨大bufferの`spawnSync`でなく`spawn`）で置換。`bestShift`の文字列key Mapも廃止。c64 corpusへdense script4本追加、sawtooth・triangle・noise rate・combined waveformを3voice同時保持。旧harnessをOOMさせた3 sawtooth×8秒はオンデマンド（`check:c64:dense`）で実行でき成功 |
+| P7-11 | 全trace変化をmemory保持するharnessをstream比較／typed arrayへ | done | PR #79。`ChangeStream`（object単位でなくtyped array列）とstreaming oracle読み取り（巨大bufferの`spawnSync`でなく`spawn`）で置換。`bestShift`の文字列key Mapも廃止。c64 corpusへdense script4本追加、sawtooth・triangle・noise rate・combined waveformを3voice同時保持。旧harnessをOOMさせた3 sawtooth×8秒はオンデマンド（`check:c64:dense`）で実行でき成功 |
 
 <a id="phase-8-the-site-as-an-instrument"></a>
 ## フェーズ8. サイトを楽器にする
