@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|mixer|hwcombined):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|mixer|hwcombined|nsf-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -127,6 +127,20 @@ def localized_block(kind, body, templates):
                 line = '| 組み合わせ | 一致バイト数 | 誤りビット数 |'
             elif not re.fullmatch(r'\| `[\w+]+` \| \d+(?:\.\d+)? % \(\d+/4096\) \| \d+/32768 \|', line):
                 raise ValueError(f'Unknown hwcombined line: {line}')
+        elif kind == 'nsf-corpus':
+            match = re.fullmatch(r'Written by `nsf-corpus:sheet` on (.+), against Game_Music_Emu revision `(.+)`\.', line)
+            if match:
+                line = f'`nsf-corpus:sheet`による生成：{match[1]}。参照：Game_Music_Emu revision `{match[2]}`。'
+            elif line == '| Song | Driver | Commands | Matched | First divergence |':
+                line = '| 曲 | ドライバー | コマンド数 | 一致 | 最初の相違 |'
+            elif re.fullmatch(r'\| \[.+\]\(.+\) \| .+ \| \d+ \| (?:\d+/\d+|not compared) \| .+ \|', line):
+                # The title, driver name and URL are proper nouns; only the
+                # fixed divergence vocabulary (corpus.mjs's formatDivergence)
+                # is translated.
+                for before, after in {'not compared': '未比較', 'none': 'なし', ' vs ': ' 対 ', 'cycle ': 'サイクル ', ': one side has no more commands': '：一方にそれ以上のコマンドがありません'}.items():
+                    line = line.replace(before, after)
+            else:
+                raise ValueError(f'Unknown nsf-corpus line: {line}')
         lines.append(line)
     return '\n'.join(lines) + '\n'
 

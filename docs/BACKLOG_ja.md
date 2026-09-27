@@ -135,7 +135,7 @@
 
 **ステップ3. 各機種固有の音楽。**
 
-- P1-12: NSFのコーパスを完全な1曲から多数の曲へ広げ、それぞれを参照とコマンド単位で比較します。
+- done - P1-12: NSFのコーパスをMarioの完全な1曲から、独立に作られた実在の8つのNSF（FamiTracker製7曲、Pently製1曲）へ広げました。各ファイルはCC0、CC-BY、zlibのいずれかで再配布可能で、そのsource URL、licence、author、SHA-256を`scores/nsf-corpus/sources.json`に記録しています。8曲すべてが固定したGame_Music_Emuオラクルとコマンド単位で一致し、31,083命令すべてに相違なしと`docs/chips/2a03.md`の生成済みシートに出ています。ここに至るには実際のcapture修正が2つ必要でした。Pentlyのmetadataのみのexportに対するNSF2（version 2）対応と、Pently固有の非標準NTSC rate（$411a=16639、通常の16666ではない）です。後者ではPLAYの開始が単純な`ceil(initEnd/period)*period`より1 cycle遅れていました。標準rateでは半cycleの丸めがたまたま正しいcycleに収まるため、これはcustom rateでだけ表面化していました。`packages/chipvoice`は変更していません。
 - todo - NEXT-06 GBS、NEXT-07 VGMの読み込み、NEXT-08 SPCの再生、NEXT-09 SID/PSID: それぞれ参照プレーヤー（GME、snes_spc、sidplayfp）と比べ、ファイルごとにスコアを出します。
 - P6-9（SPCの書き出し）とtodo - NEXT-10（NSFとGBSの書き出し）: フラッシュカートから実機で鳴る曲を、ステップ1の録音環境で録音します。
 - 商用のリッピングは配布しません。計測用コーパスは非公開にするか、自由に再配布できるものに限ります。
@@ -222,7 +222,7 @@
 | P1-9 | subsetの`conform`をCIへ | done | PR #3、commit済みbaseline比較 |
 | P1-10 | 5-step frameと`$4017`write timing | done | 0.5.0、P1-2と同時。decoderにも必要 |
 | P1-11 | blargg APU ROM用6502 fixture | done | PR #7、29/29、CI対象 |
-| P1-12 | corpus2：logger付き参照で実game NSFを再生 | doing | 最初の完全sourceはMario Ground Theme、41,999命令が固定GMEとexact cycle一致。広いNSF corpusは残件 |
+| P1-12 | corpus2：logger付き参照で実game NSFを再生 | done | Mario Ground Themeの41,999命令の後、実在の8つの再配布可能NSF（FamiTracker製7曲、Pently製1曲）を追加、31,083命令すべてが固定GMEとexact cycle一致。`docs/chips/2a03.md`のnsf-corpusシート、`pnpm nsf-corpus:sheet` |
 | P1-13 | 参照2：Mesen 2 APU／puNESで旧参照とROMが確定しないenvelope、sweep、triangle開始を確認 | done | #84。`packages/conform/oracles/mesen`に同梱したMesen 2 APU。sweep dividerのtimingは不一致でP2-1へ記録 |
 | P1-14 | triangleをrun別時間shiftとsequencer位置offsetで比較し、開始規約だけで低一致にならないmetric | done | PR #4。隠れたstepを復元し全triangle runがstep時刻で整合 |
 
