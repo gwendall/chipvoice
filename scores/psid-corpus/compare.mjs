@@ -38,14 +38,40 @@ import assert from 'node:assert/strict';
  * sides' average frame period agrees exactly (`PAL_FRAME_CYCLES` in
  * `psid-import.ts` is exactly libsidplayfp's own raster IRQ's average
  * period), but libsidplayfp's real per-line VIC-II/CIA emulation has a
- * small, bounded per-frame wobble around that average (a three-frame
- * +1/+1/-2 pattern was measured against `convention-probe.sid`, sourced in
- * real badline/raster-comparator timing this environment's own once-a-frame
- * pulse does not reproduce - see `docs/chips/c64.md`'s "Known limits").
- * PLAY-phase events are matched with a small cycle tolerance
- * (`PLAY_TOLERANCE`) to absorb exactly that, and only that: a value
- * mismatch, or a cycle gap wider than the tolerance, is a real divergence
- * either way.
+ * small, bounded per-frame wobble around that average that this
+ * environment's own once-a-frame raster pulse does not reproduce cycle for
+ * cycle. Rather than fold that wobble into "matched" itself (which used to
+ * make a value-correct, merely-late write look identical to a real content
+ * divergence, and stopped the whole scan at the first one either kind
+ * produced), address/value content and PLAY-phase cycle position are now
+ * two separate, independently reported measurements:
+ *
+ * - `matched`/`total` is content only: does this write carry the exact
+ *   address and value the oracle's own trace carries, at this position in
+ *   the sequence? INIT-phase writes are additionally required to land
+ *   exactly on the shifted cycle (confirmed cycle-exact on every fixture
+ *   measured so far), so an INIT-phase write that is right in content but
+ *   off in cycle still counts against `matched` - PLAY-phase cycle position
+ *   never does.
+ * - `maxCycleDeviation`/`deviatingEvents`/`playTotal` describe PLAY-phase
+ *   cycle position on its own, over every content-correct PLAY-phase write
+ *   in the trace, regardless of how large the deviation: `gt2-dojo.sid` and
+ *   `gt2-hyperspace-alt.sid` (VBI-timed) measure a maximum of a few cycles;
+ *   `gt2-sanction-cia.sid` and `gt2-consultant-alt-cia.sid` (CIA-timed)
+ *   measure up to 128 - a real, understood, and bounded divergence (every
+ *   gap an integer multiple of one VIC-II badline's own 43-cycle DMA steal,
+ *   `BADLINE_STEAL_CYCLES` in `psid-import.ts`; see `docs/chips/c64.md`'s
+ *   "Known limits" and `corpus.mjs`'s own per-fixture bounds), never zero
+ *   content or address mismatches either way. Callers (`corpus.mjs`) apply
+ *   whatever bound suits each fixture; `compare.mjs` itself stays purely
+ *   mechanical and gates nothing.
+ *
+ * The scan always runs to completion - it no longer stops at the first
+ * divergence of either kind - so `matched`/`total` and the cycle-deviation
+ * fields always describe the whole trace, not "whatever came before the
+ * first problem". `firstDivergence`, when present, still names the first
+ * genuine content mismatch (wrong address/value, an INIT-phase write off
+ * cycle, or one side running out of writes) for a human to read.
  *
  * A probe fixture that deliberately reads out an undefined CPU register
  * (`convention-probe.sid`'s own `X`/`Y`) is not testing whether the two
@@ -60,7 +86,6 @@ import assert from 'node:assert/strict';
  * everything else, INIT's own remaining writes and the whole PLAY phase
  * alike, actually matches.
  */
-const PLAY_TOLERANCE = 8; // Comfortably past the measured +1/+1/-2 three-frame wobble; about one 6510 instruction.
 const CEREMONY = {addr: 0x18, value: 0x0f}; // `psiddrv.a65`'s own `lda #$0f / sta $d418`, before every INIT call.
 
 export function comparePsidTrace(performance, oracleTrace, options = {}) {
@@ -83,25 +108,40 @@ export function comparePsidTrace(performance, oracleTrace, options = {}) {
   const playShift = theirs.length > initCount && ours.length > initCount ? theirs[initCount].at - ours[initCount].at : 0;
 
   let matched = 0, ignored = 0, firstDivergence = null;
+  let maxCycleDeviation = 0, deviatingEvents = 0, playTotal = 0;
   for (let i = 0; i < rawTotal; i++) {
     const a = ours[i], b = theirs[i] ?? null;
     const inInit = i < initCount;
     const shift = inInit ? initShift : playShift;
-    const tolerance = inInit ? 0 : PLAY_TOLERANCE;
     if (inInit && ignoreAddrs.has(a.addr & 0x1f)) { ignored++; continue; }
     // `a.addr` is `psid-import.ts`'s own full `$D400`-`$D7FF` address; the
     // oracle trace logs libsidplayfp's `sidemu::write`'s own 0-31 register
     // offset (`sidplayfp-harness.cpp`'s `TraceSid`). Both mirror the same
     // 32-register block, so `& 0x1f` compares like with like.
-    if (b && (a.addr & 0x1f) === b.addr && a.value === b.value && Math.abs(a.at + shift - b.at) <= tolerance) { matched++; continue; }
-    // `ours.at + shift` (not the raw `ours.at`) is what should be compared
-    // by eye against `oracle.at`: reporting the raw, unshifted cycle here
-    // would make an aligned, value-only divergence look like a huge cycle
-    // gap it is not.
-    firstDivergence = {index: i, phase: inInit ? 'init' : 'play', ours: a, oracle: b, shift};
-    break;
+    const contentMatch = b && (a.addr & 0x1f) === b.addr && a.value === b.value;
+    if (!contentMatch) {
+      // A content mismatch (or the oracle running out of writes) never
+      // stops the scan; it is recorded as the first one seen (if not
+      // already) and counted against `matched`, but later events - which
+      // may well still be content-correct - are still measured.
+      if (!firstDivergence) firstDivergence = {index: i, phase: inInit ? 'init' : 'play', ours: a, oracle: b, shift};
+      continue;
+    }
+    // `a.at + shift` (not the raw `a.at`) is what should be compared by eye
+    // against `b.at`: reporting the raw, unshifted cycle here would make an
+    // aligned, content-only divergence look like a huge cycle gap it is not.
+    const deviation = Math.abs(a.at + shift - b.at);
+    if (inInit) {
+      if (deviation === 0) { matched++; continue; }
+      if (!firstDivergence) firstDivergence = {index: i, phase: 'init', ours: a, oracle: b, shift};
+      continue;
+    }
+    matched++;
+    playTotal++;
+    if (deviation > maxCycleDeviation) maxCycleDeviation = deviation;
+    if (deviation > 0) deviatingEvents++;
   }
-  return {total: rawTotal - ignored, matched, ignored, firstDivergence, initShift, playShift};
+  return {total: rawTotal - ignored, matched, ignored, firstDivergence, initShift, playShift, maxCycleDeviation, deviatingEvents, playTotal};
 }
 
 /** Parses `sidplayfp-harness`' own `<cycle> <addr decimal> <value decimal>` lines - the same shape `../nsf-corpus/compare.mjs`'s `parseTrace` reads from `native-oracle.py`. */

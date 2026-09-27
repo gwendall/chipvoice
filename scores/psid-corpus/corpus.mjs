@@ -12,8 +12,10 @@ import {runOracle} from './native-oracle.mjs';
  * (`native-oracle.mjs`), one file at a time - `../nsf-corpus/corpus.mjs`'s
  * own design, grown for PSID's own two-phase (INIT then PLAY) comparator
  * instead of NSF's single-shift one. See `compare.mjs`'s own doc comment
- * for what "matched" means here and why a cycle can differ within a small
- * tolerance without being a divergence.
+ * for what "matched" means here (address/value content, plus INIT-phase
+ * cycle position); PLAY-phase cycle position is a separate measurement,
+ * gated below by `PLAY_TOLERANCE`/`CIA_CYCLE_BOUND`, one per fixture
+ * family, not folded into "matched" itself.
  *
  *   node scores/psid-corpus/corpus.mjs [--json out.json] [--sheet docs/chips/c64.md]
  *   node scores/psid-corpus/corpus.mjs --no-oracle   # skip the libsidplayfp build+run entirely
@@ -36,6 +38,40 @@ const ROOT = path.resolve(HERE, '..', '..');
 const FILES_DIR = path.join(HERE, 'files');
 const PRIVATE_DIR = path.join(ROOT, '.artifacts', 'psid-private');
 const ORACLE_REVISION = 'ecd932b3ef87746008472bc7e65b0c419a483e02';
+
+// PLAY-phase cycle position is never gated by `compare.mjs` itself (see its
+// own doc comment); the bound belongs here, one per fixture family, because
+// it is corpus policy, not comparator mechanics. Measured directly against
+// this revision: convention-probe.sid and frame-rate-probe.sid deviate by
+// at most 2 cycles, gt2-dojo.sid by 3, gt2-hyperspace-alt.sid by 5 - real,
+// bounded per-line VIC-II/CIA jitter around the nominal frame period that
+// this environment's own simplified once-a-frame raster pulse does not
+// reproduce cycle for cycle, not a growing drift. PLAY_TOLERANCE is set to
+// the highest of those four measurements, not a round number, so any of the
+// four regressing past its own true best case is still caught here.
+const PLAY_TOLERANCE = 5;
+
+// The two CIA-timed fixtures (gt2-sanction-cia.sid, gt2-consultant-alt-cia.sid)
+// have a second, understood source of PLAY-phase cycle deviation on top of
+// that same per-line jitter: a CIA timer's own dispatch period is not a
+// multiple of the VIC-II badline's own 504-cycle recurrence
+// (`BADLINE_STEAL_CYCLES = 43` in `psid-import.ts`), so which PLAY calls
+// land near a badline - and how many badlines this environment's own
+// once-a-frame raster model crosses versus libsidplayfp's real per-line one
+// - varies call to call by up to a few badline periods before the pattern
+// repeats. Measured directly against this revision: 128 cycles maximum for
+// both files (matching 2 badline periods within a cycle or two, not 3),
+// stable across a 20-second/~31000-event capture (4x this corpus's default
+// budget) - not a growing, unbounded drift. See docs/chips/c64.md's "Known
+// limits", docs/BACKLOG.md's NEXT-09 follow-up, and scores/psid-corpus/
+// README.md for the full account, including what was tried to close this
+// gap and why it was reverted. The bound below is exactly that mechanism, 3
+// badline periods (a real margin over the measured 2) plus the same
+// PLAY_TOLERANCE jitter every other fixture already allows - not a number
+// picked to make today's measurement pass.
+const CIA_TIMED = new Set(['gt2-sanction-cia', 'gt2-consultant-alt-cia']);
+const CIA_CYCLE_BOUND = 3 * 43 + PLAY_TOLERANCE; // 134
+const cycleBoundFor = (id) => (CIA_TIMED.has(id) ? CIA_CYCLE_BOUND : PLAY_TOLERANCE);
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
@@ -110,6 +146,20 @@ function formatDivergence(comparison) {
   return `${phase} phase, cycle ${ours.at + shift} vs ${oracle.at}, $${(ours.addr & 0x1f).toString(16)}: ${ours.value} vs ${oracle.value}`;
 }
 
+/** PLAY-phase cycle position, reported separately from content matching
+ * (see `compare.mjs`'s own doc comment): "0 cycles" when every PLAY-phase
+ * write lands exactly where the oracle's own does after `playShift`, or the
+ * measured maximum deviation and how many of the fixture's PLAY-phase
+ * writes carry any deviation at all - never gated here, just shown; the
+ * actual per-fixture bound (`PLAY_TOLERANCE`/`CIA_CYCLE_BOUND`) is applied
+ * separately, in `main`'s own gate below. */
+function formatCycleDeviation(comparison) {
+  if (!comparison) return 'not compared';
+  if (!comparison.playTotal) return '-';
+  if (comparison.maxCycleDeviation === 0) return '0 cycles';
+  return `max ${comparison.maxCycleDeviation} cycles (${comparison.deviatingEvents}/${comparison.playTotal} events off)`;
+}
+
 /** `register=value` when both sides agree, `register=ours/oracle` when they
  * do not, `register=undefined by spec` for a register `sources.json`'s own
  * `undefinedRegisters` names (convention-probe.sid's own X and Y - never
@@ -164,6 +214,10 @@ async function main() {
         purpose: r.spec.purpose, events: r.events,
         matched: r.comparison?.matched ?? null, total: r.comparison?.total ?? null,
         firstDivergence: r.comparison?.firstDivergence ?? null, registers: r.registers ?? null,
+        maxCycleDeviation: r.comparison?.maxCycleDeviation ?? null,
+        deviatingEvents: r.comparison?.deviatingEvents ?? null,
+        playTotal: r.comparison?.playTotal ?? null,
+        cycleBound: r.comparison ? cycleBoundFor(r.id) : null,
       })),
     };
     fs.writeFileSync(jsonPath, JSON.stringify(payload, null, 2) + '\n');
@@ -178,23 +232,38 @@ async function main() {
       '<!-- psid-corpus:begin -->',
       `Written by \`psid-corpus:sheet\` on ${new Date().toISOString().slice(0, 10)}, against libsidplayfp revision \`${ORACLE_REVISION}\`.`,
       '',
-      '| Fixture | Events | Matched | First divergence | INIT registers |',
-      '| --- | --- | --- | --- | --- |',
-      ...results.map((r) => `| [${r.spec.title}](${r.spec.url}) | ${r.events} | ${r.comparison ? `${r.comparison.matched}/${r.comparison.total}` : 'not compared'} | ${formatDivergence(r.comparison)} | ${r.registers ? formatRegisters(r.registers) : '-'} |`),
+      '| Fixture | Events | Matched | PLAY cycle deviation | First divergence | INIT registers |',
+      '| --- | --- | --- | --- | --- | --- |',
+      ...results.map((r) => `| [${r.spec.title}](${r.spec.url}) | ${r.events} | ${r.comparison ? `${r.comparison.matched}/${r.comparison.total}` : 'not compared'} | ${formatCycleDeviation(r.comparison)} | ${formatDivergence(r.comparison)} | ${r.registers ? formatRegisters(r.registers) : '-'} |`),
       '<!-- psid-corpus:end -->',
     ];
     fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- psid-corpus:end -->'.length));
   }
 
-  // Every fixture is meant to match in full now: a spec-undefined register
-  // (convention-probe.sid's own X and Y) is excluded from `total` entirely
-  // by `ignoreAddrs` (see sources.json's own `undefinedRegisters` and
-  // `purpose`), not counted as a divergence, so there is no longer a
-  // fixture this bar excludes. A file matching zero real writes is not a
-  // partial divergence, something is structurally broken.
-  const broken = results.filter((r) => r.comparison && r.comparison.matched === 0 && r.comparison.total > 0);
-  if (broken.length) {
-    console.error(`${broken.length} file(s) matched zero writes against the oracle; that is not a partial divergence, something is structurally wrong: ${broken.map((r) => r.id).join(', ')}`);
+  // Content (address and value, plus INIT-phase cycle position) is gated
+  // exactly: every fixture is meant to match in full, not just avoid zero.
+  // A spec-undefined register (convention-probe.sid's own X and Y) is
+  // excluded from `total` entirely by `ignoreAddrs` (see sources.json's own
+  // `undefinedRegisters` and `purpose`), not counted as a divergence, so
+  // there is no fixture this bar excludes; a regression on any file, down
+  // to a single write, fails here instead of only a total-loss one.
+  const contentBroken = results.filter((r) => r.comparison && r.comparison.matched !== r.comparison.total);
+  if (contentBroken.length) {
+    console.error(`${contentBroken.length} file(s) did not match the oracle's own address/value sequence (and INIT-phase cycle position) in full: ${contentBroken.map((r) => `${r.id} (${r.comparison.matched}/${r.comparison.total})`).join(', ')}`);
+    process.exitCode = 1;
+  }
+
+  // PLAY-phase cycle position is gated separately, and by a different bound
+  // per fixture: PLAY_TOLERANCE for everything but the two CIA-timed files,
+  // which are held to the wider, mechanism-derived CIA_CYCLE_BOUND instead
+  // (see both constants' own comments above). A regression past either
+  // bound is a real, new problem; today's own measurements sit comfortably
+  // under both (5 cycles across the four PLAY_TOLERANCE fixtures against a
+  // bound of 5; 128 cycles across the two CIA fixtures against a bound of
+  // 134).
+  const cycleBroken = results.filter((r) => r.comparison && r.comparison.maxCycleDeviation > cycleBoundFor(r.id));
+  if (cycleBroken.length) {
+    console.error(`${cycleBroken.length} file(s) exceeded their own PLAY-phase cycle-position bound: ${cycleBroken.map((r) => `${r.id} (max ${r.comparison.maxCycleDeviation}c > ${cycleBoundFor(r.id)}c)`).join(', ')}`);
     process.exitCode = 1;
   }
 }

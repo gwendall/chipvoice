@@ -239,7 +239,7 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 | 内容 | 理由 |
 | --- | --- |
 | INITでは`X`と`Y`を0にしている。この規約は単に未確認なのではなく、未定義であると確認済み | ファイル形式の仕様書はこれらを一切文書化していない（`A`のみ、しかもRSID＋BASICの場合のみ）。libsidplayfp自身の参照ドライバーも、無関係なCIA／ラスター設定の分岐が最後に読み込んだ値を保持しているだけで、安定した値を持たない - `scores/psid-corpus`の`convention-probe.sid`に対して直接計測済み。下記の表を参照 |
-| PLAY自身のフレームごとのタイミングは、実機のライン単位VIC-IIと数サイクルずれることがある | この環境が模擬するフレームごと1回のラスターパルスは正確で固定周期。実機自身のライン単位ラスター比較器には、同じ平均値を中心とした小さな揺らぎがある - `frame-rate-probe.sid`に対して3フレーム周期の+1／+1／-2サイクルというパターンを計測済みで、`scores/psid-corpus/compare.mjs`自身のPLAYフェーズ一致判定の許容範囲に十分収まる |
+| CIA駆動（ラスター非同期）のPSIDでは、PLAYフェーズの書き込みがlibsidplayfpとは異なるサイクルに着地することがある - レジスタや値を誤ることは決してない：内容（アドレスと値）は他のすべてのフィクスチャと同じ`matched === total`のゲートで完全一致する。書き込み自身のサイクル位置だけが異なり、それは`matched`に混ぜ込まず単独で報告し（シートの「PLAYサイクル偏差」列、`compare.mjs`の`maxCycleDeviation`／`deviatingEvents`）、他の4フィクスチャ自身のより小さな`PLAY_TOLERANCE`ではなく、より広い、仕組みから導いた境界（`corpus.mjs`の`CIA_CYCLE_BOUND`）で別途ゲートする | VBI駆動の曲は毎回同じバッドライン回数になる（常に同じラスター行から呼び出され、PALの1フレームはちょうど39バッドライン周期であるため）ので、`compare.mjs`が使う1ファイルごとの単一校正から相殺される - `gt2-dojo.sid`と`gt2-hyperspace-alt.sid`で正確に確認済みで、どちらも完全一致し、PLAYフェーズの最大サイクル偏差はそれぞれ3と5サイクル、コーパスのどのフィクスチャにも見られる同じ小さなライン単位の揺らぎである。CIA駆動の曲は自身のディスパッチ周期（自身がプログラムしたCIAラッチ）がバッドライン自身の504サイクル周期の倍数ではないため、どの呼び出しがバッドラインの近くに着地するかは呼び出しごとに変わり、libsidplayfp自身のトレースが*どの*変動を示すかは、`cold:`ドライバーの儀式がINITを最初に呼ぶ時点で実際にどのラスター位相にあるかに依存する - これはPSID/RSID形式がまったく定義しない量（実機のディスクロードとKERNALブートのタイミングは実際に変動する）で、libsidplayfp自身の`SidConfig::powerOnDelay`はまさに通常利用時にこれを*ランダム化*するために存在し、このコーパス自身の決定的なテストのためだけに1つの固定した再現可能な値に固定している。両方のCIAタイムドフィクスチャに対して精密に計測済み：全トレース（それぞれ8218と7766イベント）を通じて内容の不一致はゼロ、すべてのサイクル差は`BADLINE_STEAL_CYCLES`（43）の整数倍、両ファイルとも実測最大偏差は128サイクル（バッドライン2周期分、1～2サイクルの誤差内）で、20秒・約31000イベントのキャプチャ（このコーパス自身の既定予算の4倍）を通じて安定しており、増大し続けるものではない。この1つの固定されたオラクル実装の詳細をビットレベルで一致させること、つまりこの環境自身のラスター位相をINIT時点で同じ値に固定することは試みたが元に戻した - このギャップは大きく縮まるものの、上記のVBI駆動フィクスチャに同程度のギャップを新たに生み、その理由のすべてがまだ解明されていない。実測したビフォー／アフターの数値と試したことについては`docs/BACKLOG_ja.md`のNEXT-09フォローアップを参照 |
 | 自前の実機キャプチャコーパスがない | ここでは再生したPSIDを、実機キャプチャのトレースではなくlibsidplayfp自身のエミュレーションとしか比較していない |
 
 <a id="klaus-dormann-and-bruce-clarks-own-6502-tests"></a>
@@ -262,21 +262,21 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 `scores/psid-corpus`は、2本の小さな自作PSIDフィクスチャ（CC0、本チケット自身のもの - HVSCや商用の吸い出しは一切使わない。decision 41）を、ピン留めしたリビジョンでクローン・ビルドしgitignore対象の`.artifacts/`ディレクトリに置いたlibsidplayfpに対して採点します（`native-oracle.mjs`。GPL-2.0-or-later、ベンダリングはしない）。小さな独自実装のロガー（`sidplayfp-harness.cpp`）を、libsidplayfp自身のCPU・CIA・VIC・曲読み込みエンジンへ、その公開`SidConfig::sidEmulation`フックを通して差し込みます - SIDの音声は一切模擬せず、libsidplayfpのソースにも一切パッチを当てません - そして、`psid-import.ts`自身の環境が記録するのと同じ`{cycle, addr, value}`という形で、SIDへのすべての書き込みを正確なクロックサイクルとともに出力します。
 
 - **`convention-probe.sid`**：INITが`A`、`X`、`Y`とPHPで取り出した`P`を、何もしないうちに一度だけ`$D400`〜`$D403`へそのまま格納します - 呼び出し規約そのものを、書き込みストリームとして読み戻すものです。`X`と`Y`は比較そのものから除外されます（`compare.mjs`自身の`ignoreAddrs`）。仕様上未定義のレジスタには採点すべき正解がなく、この2つの書き込みは一致としても相違としてもカウントされず、そこで止まらずに走査は先へ進みます。下記の「INITレジスタ」列ではこれらを「仕様上未定義」と表示します。それ以外の`A`、`P`、そして続くPLAYフェーズ全体は通常どおり採点され、「一致」列にそのまま反映されます。
-- **`frame-rate-probe.sid`**：INITが開始マーカーを書き込み、その後PLAYが呼び出しのたびに1つのレジスタを多数フレームにわたってインクリメントします - PLAY自身のカデンスを、小さなサイクル許容誤差付きでオラクルと突き合わせます（理由と許容量の詳細は`compare.mjs`自身のドキュメントコメントを参照）。
+- **`frame-rate-probe.sid`**：INITが開始マーカーを書き込み、その後PLAYが呼び出しのたびに1つのレジスタを多数フレームにわたってインクリメントします - PLAY自身のカデンスです。内容（アドレスと値）は完全に一致し、PLAYフェーズのサイクル位置は「PLAYサイクル偏差」という独自の列で、独自の境界に対して別途計測・報告されます（理由と数値の詳細は`compare.mjs`と`corpus.mjs`自身のドキュメントコメントを参照）。
 
 `pnpm psid-corpus:sheet`が下記の表を書き込みます。手で編集しないでください。`pnpm psid-corpus:check`（CI、`conformance`ジョブ）は表を書き換えずに再実行します。`--no-oracle`はlibsidplayfpのビルドを省略し、chipvoice自身の`importPsid`が生成するイベント数だけを採点します。
 
 <!-- psid-corpus:begin -->
 `psid-corpus:sheet`による生成：2026-09-27。参照：libsidplayfp revision `ecd932b3ef87746008472bc7e65b0c419a483e02`。
 
-| フィクスチャ | イベント数 | 一致 | 最初の相違 | INITレジスタ |
-| --- | --- | --- | --- | --- |
-| [convention-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 54 | 52/52 | なし | A=0, X=仕様上未定義, Y=仕様上未定義, P=52 |
-| [frame-rate-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 1004 | 1004/1004 | なし | - |
-| [Dojo](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 3978 | 3978/3978 | なし | - |
-| [On a sanction from CIA](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 8218 | 4/8218 | PLAYフェーズ, サイクル 194325 対 194284, $16: 0 対 0 | - |
-| [My Own Hyperspace](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 3914 | 3914/3914 | なし | - |
-| [The Consultant](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 7766 | 10/7766 | PLAYフェーズ, サイクル 194325 対 194284, $16: 0 対 0 | - |
+| フィクスチャ | イベント数 | 一致 | PLAYサイクル偏差 | 最初の相違 | INITレジスタ |
+| --- | --- | --- | --- | --- | --- |
+| [convention-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 54 | 52/52 | 最大2サイクル（33/50件がずれ） | なし | A=0, X=仕様上未定義, Y=仕様上未定義, P=52 |
+| [frame-rate-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 1004 | 1004/1004 | 最大2サイクル（668/1002件がずれ） | なし | - |
+| [Dojo](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 3978 | 3978/3978 | 最大3サイクル（2737/3978件がずれ） | なし | - |
+| [On a sanction from CIA](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 8218 | 8218/8218 | 最大128サイクル（8189/8218件がずれ） | なし | - |
+| [My Own Hyperspace](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 3914 | 3914/3914 | 最大5サイクル（3829/3914件がずれ） | なし | - |
+| [The Consultant](https://sourceforge.net/projects/goattracker2/files/GoatTracker%202/2.77/GoatTracker_2.77.zip/download) | 7766 | 7766/7766 | 最大128サイクル（7765/7766件がずれ） | なし | - |
 <!-- psid-corpus:end -->
 
 <a id="known-deviations"></a>
@@ -300,6 +300,8 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 <a id="history"></a>
 ## 履歴
 
+- 2026-09-28：`scores/psid-corpus`自身の比較器が、最初の相違で止まらず各フィクスチャの全トレースを最後まで走査するように。これにより、以前は完全一致していたファイルの実際の後退が（従来は「このファイルが1つでも書き込みに一致したか」だけでゲートしていたため）見落としやすい部分点として読めてしまう問題がなくなり、CIが正しく失敗するようになった。内容（アドレスと値）とPLAYフェーズのサイクル位置は、1つの複合許容誤差ではなく、いまや独立に計測・独立にゲートする2つの指標になった：`matched === total`をすべてのフィクスチャに内容だけで要求し、PLAYフェーズのサイクル偏差はシート独自の列と、フィクスチャの種類ごとの独自の境界を持つ（CIAが絡まない4フィクスチャには、想定ではなく直接計測した`PLAY_TOLERANCE = 5`；CIA駆動の2フィクスチャには、バッドライン周期から導いたより広い`CIA_CYCLE_BOUND = 134`）。CIA駆動の2フィクスチャ自身のシート行は、もはや「最初の相違より前の一致数」（実際には内容に何も問題がないのに、誤解を招くほど小さく見える数値）としては読めない。この変更が促した、ラスター位相の実験については、上記「既知の限界」と`docs/BACKLOG_ja.md`のNEXT-09フォローアップを参照（NEXT-09）。
+- 2026-09-28：VIC-IIのバッドラインDMAスティール（対象となるラスター行ごとに43サイクル、その行に入ってから実際のトリガー地点である11サイクル目に発生）をモデル化。データシートの丸めた数値ではなく、libsidplayfp自身のサイクル精度のVIC-IIコアに対して直接計測した。`frame-rate-probe.sid`自身の3フレーム周期の揺らぎ（従来は許容誤差だけで吸収していた）はいまや正確に一致し、CIA駆動の`gt2-sanction-cia.sid`／`gt2-consultant-alt-cia.sid`フィクスチャ自身に残る相違は完全に特性が判明し（値やアドレスの不一致はゼロ、すべてのサイクル差は43サイクルのスティールの整数倍）、未診断のまま放置せず正確に説明できるようになった - 「既知の限界」を参照（NEXT-09）。
 - 2026-09-27：フィルターをアレンジャーから到達可能に。`lead: "sweep"`はノート全体でカットオフを開き、`bass: "resonant"`は高レゾナンスでパルスを通す。いずれもローパス。各ボイスは自分のルーティングビットだけを立て・下ろし、チップ共通のレゾナンス・カットオフ・モードは実際に後から時間的に書き込まれたボイスのものになる。`SidDriver`はフィルターを使うボイスの書き込みを、そのボイス自身の直前フレームとだけ比較し、他のボイスの書き込みとは比較しない。そのため真の時間順とは異なる順で処理されたノートが、後から重なる別ノート自身の書き込みを覆い隠すことはない。2ボイスが同時に異なるフィルター設定を求めると`validateSong`の`filter_conflict`で診断する。フレームごとのパルス幅スイープも追加、公開の`Instrument.pulseWidth`フィールド。`script-filter`と`song-filter`をコーパスに追加、全ストリームで依然reSID-fpと一致（フィルターはアナログ段のみでデジタルは動かないため）（P7-9、P8-13）。
 - 2026-09-27：libsidplayfpベースのオラクル（`scores/psid-corpus`、GPL-2.0-or-later、ピン留めしたリビジョンからビルドしgitignore対象の`.artifacts/`に置く、ベンダリングはしない - decision 41）が、INIT自身の呼び出し規約を実測で確定。`A`（曲番号、0始まり）と`P`（`PHP`前の0x24）はlibsidplayfp自身の参照ドライバーと厳密に一致。`X`と`Y`は一致せず、ファイル形式の仕様書とlibsidplayfp自身のドライバーの両方から見て本当に未定義であることを確認 - これらを0にするのは意図的で仕様上中立なデフォルトのまま。同じオラクルが実在する適合性の欠落も発見：`Cpu6510`のリードモディファイライト命令にNMOS 6502が仕様として持つダミー書き込み（変更後の値を書き込む前に未変更の値を一度バスへ書き戻す動作）が欠けており、一部のPSID／RSID曲がSIDのフェイクなゲート再トリガーのために意図的に利用するものだったが、いまは修正済み（NEXT-09）。
 - 2026-09-27：Klaus Dormannの6502機能テストとBruce Clarkの10進テストを、非公開の適合性確認ツール（`packages/conform`、decision 41）としてベンダリングし、この同じ`Cpu6510`に対して実行。手書きのオペコード／サイクル一式とVICEのSIDプログラムに加わる独立した第二の証明で、CIの`conformance`ジョブへ`check:6510`として組み込み済み（NEXT-09）。

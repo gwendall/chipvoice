@@ -306,18 +306,19 @@ def localized_block(kind, body, templates):
             match = re.fullmatch(r'Written by `psid-corpus:sheet` on (.+), against libsidplayfp revision `(.+)`\.', line)
             if match:
                 line = f'`psid-corpus:sheet`による生成：{match[1]}。参照：libsidplayfp revision `{match[2]}`。'
-            elif line == '| Fixture | Events | Matched | First divergence | INIT registers |':
-                line = '| フィクスチャ | イベント数 | 一致 | 最初の相違 | INITレジスタ |'
-            elif re.fullmatch(r'\| \[.+\]\(.+\) \| \d+ \| (?:\d+/\d+|not compared) \| .+ \| (?:-|(?:[A-Z]=(?:\d+(?:/\d+)?|undefined by spec))(?:, [A-Z]=(?:\d+(?:/\d+)?|undefined by spec))*) \|', line):
+            elif line == '| Fixture | Events | Matched | PLAY cycle deviation | First divergence | INIT registers |':
+                line = '| フィクスチャ | イベント数 | 一致 | PLAYサイクル偏差 | 最初の相違 | INITレジスタ |'
+            elif re.fullmatch(r'\| \[.+\]\(.+\) \| \d+ \| (?:\d+/\d+|not compared) \| (?:not compared|-|0 cycles|max \d+ cycles \(\d+/\d+ events off\)) \| .+ \| (?:-|(?:[A-Z]=(?:\d+(?:/\d+)?|undefined by spec))(?:, [A-Z]=(?:\d+(?:/\d+)?|undefined by spec))*) \|', line):
                 # The title and URL are proper nouns; the INIT-registers cell
                 # is plain `register=value` data (corpus.mjs's own
                 # `formatRegisters`), never translated, except its own one
                 # fixed phrase for a register `sources.json`'s own
                 # `undefinedRegisters` names (never scored against the
                 # oracle at all - see `compare.mjs`'s own `ignoreAddrs`).
-                # The divergence column's fixed vocabulary (corpus.mjs's
-                # `formatDivergence`) is translated the same way.
-                for before, after in {'not compared': '未比較', 'none': 'なし', 'init phase': 'INITフェーズ', 'play phase': 'PLAYフェーズ', ': one side has no more writes': '：それ以上の書き込みがありません', ' vs ': ' 対 ', 'cycle ': 'サイクル ', 'undefined by spec': '仕様上未定義'}.items():
+                # The divergence column's and the PLAY-cycle-deviation
+                # column's fixed vocabulary (corpus.mjs's `formatDivergence`
+                # and `formatCycleDeviation`) are translated the same way.
+                for before, after in {'not compared': '未比較', 'none': 'なし', 'init phase': 'INITフェーズ', 'play phase': 'PLAYフェーズ', ': one side has no more writes': '：それ以上の書き込みがありません', ' vs ': ' 対 ', 'cycle ': 'サイクル ', 'undefined by spec': '仕様上未定義', '0 cycles': '0サイクル', 'max ': '最大', ' cycles (': 'サイクル（', ' events off)': '件がずれ）'}.items():
                     line = line.replace(before, after)
             else:
                 raise ValueError(f'Unknown psid-corpus line: {line}')

@@ -50,35 +50,43 @@ relocator writes an all-ones speed word instead - CIA #1-timed. See each
 entry's own `purpose` in `sources.json` for the exact command line and the
 distribution's own md5.
 
-Both VBI-timed files match libsidplayfp in full. Both CIA-timed files
-diverge within the first few PLAY-phase writes (`sources.json`'s own
-`purpose` names the exact command; the sheet below has the numbers), though
-never on a register or a value - every one of the 8218 and 7766 events in
-`gt2-sanction-cia.sid` and `gt2-consultant-alt-cia.sid` carries the exact
-address and value libsidplayfp's own trace does, and every cycle gap is an
-integer multiple of one VIC-II badline's own 43-cycle DMA steal
-(`BADLINE_STEAL_CYCLES` in `psid-import.ts`), plus the same few cycles of
-instruction-boundary jitter a raster-synced dispatch already has. This is
-not a CIA-emulation bug: a VBI-driven tune's own badline count is the same
-every call (one PAL frame is exactly 39 badline periods), so it cancels out
-of this comparator's own single per-file calibration - confirmed exactly by
-`gt2-dojo.sid` and `gt2-hyperspace-alt.sid`. A CIA-driven tune's own
-dispatch period is not a multiple of that 504-cycle recurrence, so which
-calls land near a badline varies call to call in a way that depends on the
-exact raster phase libsidplayfp's own `cold:` driver ceremony happens to be
-at when it first calls INIT - a quantity the PSID/RSID format does not
+All six files match libsidplayfp's own address/value sequence in full,
+scanned end to end rather than stopped at a first mismatch: every one of the
+8218 and 7766 events in `gt2-sanction-cia.sid` and `gt2-consultant-alt-cia.sid`
+carries the exact register and value libsidplayfp's own trace does, gated
+`matched === total` the same way every other fixture is (`compare.mjs`'s
+`comparePsidTrace`, `corpus.mjs`'s own content gate). What the two CIA-timed
+files do not match, and are not gated on content for, is *when* each PLAY-phase
+write lands: every cycle gap between this environment's own write and
+libsidplayfp's is an integer multiple of one VIC-II badline's own 43-cycle DMA
+steal (`BADLINE_STEAL_CYCLES` in `psid-import.ts`), plus the same few cycles of
+instruction-boundary jitter a raster-synced dispatch already has. This is not
+a CIA-emulation bug: a VBI-driven tune's own badline count is the same every
+call (one PAL frame is exactly 39 badline periods), so it cancels out of this
+comparator's own single per-file calibration - confirmed exactly by
+`gt2-dojo.sid` and `gt2-hyperspace-alt.sid`, both at a maximum PLAY-phase
+cycle deviation of 3 and 5 cycles, ordinary per-line jitter. A CIA-driven
+tune's own dispatch period is not a multiple of that 504-cycle recurrence, so
+which calls land near a badline varies call to call in a way that depends on
+the exact raster phase libsidplayfp's own `cold:` driver ceremony happens to
+be at when it first calls INIT - a quantity the PSID/RSID format does not
 define (real disk-load and KERNAL-boot timing genuinely varies) and that
 libsidplayfp's own `SidConfig::powerOnDelay` exists specifically to
 *randomize* in normal use, pinned to one fixed value only for this corpus's
-own deterministic testing. Forcing this project's own raster phase to that
-one pinned value was tried; it closed this gap but broke the three files
-above (a boundary case tied to libsidplayfp's own randomized-by-default
-boot delay, not something a real C64 or a real-hardware-verified
-implementation is expected to reproduce), so it was reverted. Left on the
-sheet as a precisely-characterized, structurally-explained residual, not
-silently patched over or left vague; see "Known limits" on
-`docs/chips/c64.md` and `packages/chipvoice/src/psid-import.ts`'s own
-`badlineSteal` for the full account.
+own deterministic testing. Measured precisely: maximum cycle deviation 128 on
+both CIA-timed files (two badline periods, within a cycle or two), reported
+on its own (the sheet's "PLAY cycle deviation" column) and gated against a
+wider, mechanism-derived bound (`CIA_CYCLE_BOUND = 134` in `corpus.mjs`, not
+the four other fixtures' own smaller `PLAY_TOLERANCE = 5`), never folded into
+the content match. Forcing this project's own raster phase at INIT to
+libsidplayfp's own measured value was tried; it substantially closes this gap
+but opens a comparable one on the two VBI-timed files above, and not all of
+why is understood yet, so it was reverted. Left on the sheet as a
+precisely-characterized, structurally-explained residual, not silently
+patched over or left vague; see "Known limits" on `docs/chips/c64.md`,
+`packages/chipvoice/src/psid-import.ts`'s own `badlineSteal`, and
+`docs/BACKLOG.md`'s NEXT-09 follow-up (the measured before/after numbers and
+what was tried) for the full account.
 
 HVSC and commercial rips are never eligible, here or anywhere in this
 project (decision 41).
@@ -115,12 +123,17 @@ libsidplayfp's own cold-start routine waits for a fixed raster line before
 ever calling INIT (for deterministic timing regardless of how long INIT
 itself takes to run), which offsets INIT's own absolute cycle count from
 ours by a large, one-time amount that PLAY's own steady-state cadence does
-not share. INIT-phase events are matched at zero tolerance after that
-shift (confirmed cycle-exact); PLAY-phase events allow a small tolerance (8
-cycles) to absorb the real, bounded per-line VIC-II jitter around the
-nominal frame period that this project's own simplified once-a-frame raster
-pulse does not reproduce. See `compare.mjs`'s own doc comment for the full
-account, including the specific cycle deltas measured.
+not share. INIT-phase events are matched at zero cycle tolerance after that
+shift (confirmed cycle-exact on every fixture) as part of the content gate
+itself. PLAY-phase content (address and value) is matched in full the same
+way, but PLAY-phase cycle *position* is measured and gated separately,
+never folded into "matched": `corpus.mjs` bounds it at `PLAY_TOLERANCE = 5`
+cycles (measured directly, the real maximum across the four non-CIA
+fixtures) for a raster-synchronized tune, and at a wider,
+badline-period-derived `CIA_CYCLE_BOUND = 134` for the two CIA-timed
+fixtures, whose own dispatch is not raster-synchronized (see "What is in the
+corpus" above). See `compare.mjs`'s own doc comment for the full account,
+including the specific cycle deltas measured.
 
 `convention-probe.sid`'s own `X` and `Y` registers are excluded from the
 comparison entirely (`sources.json`'s own `undefinedRegisters`, turned into
