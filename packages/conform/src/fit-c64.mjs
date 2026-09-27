@@ -1,18 +1,22 @@
-import { combinedWaveform, COMBINED_6581 } from 'chipvoice';
-import { residfp } from './oracles/residfp.mjs';
+import { combinedWaveform, COMBINED_6581, COMBINED_8580 } from 'chipvoice';
+import { residfp, residfp8580 } from './oracles/residfp.mjs';
 
 /**
  * Fits the SID's combined-waveform model against the oracle's tables.
  *
- *   node src/fit-c64.mjs            # score the parameters the chip ships
- *   node src/fit-c64.mjs --search   # look for better ones from where they are
+ *   node src/fit-c64.mjs                     # score the 6581 parameters the chip ships
+ *   node src/fit-c64.mjs --search            # look for better ones from where they are
+ *   node src/fit-c64.mjs --model 8580        # same, against the 8580's tables
  *
  * The model has six numbers per combination and 4096 entries to match; the
  * search is a coordinate descent on each number with a shrinking step,
  * which is enough for a fit that starts near. Prints one line per
  * combination: how many entries match, and the parameters.
  */
-const tables = residfp.tables();
+const model8580 = process.argv.includes('8580');
+const oracle = model8580 ? residfp8580 : residfp;
+const startingPoint = model8580 ? COMBINED_8580 : COMBINED_6581;
+const tables = oracle.tables();
 const search = process.argv.includes('--search');
 const KEYS = ['bias', 'pull', 'top', 'below', 'above', 'mix'];
 
@@ -25,7 +29,7 @@ function score(model, wf) {
 
 const results = {};
 for (const wf of [3, 5, 6, 7]) {
-  let model = { ...COMBINED_6581[wf] };
+  let model = { ...startingPoint[wf] };
   let best = score(model, wf);
   if (search) {
     for (let step = 0.05; step > 0.0002; step /= 2) {

@@ -284,12 +284,21 @@ export interface ChipDriver {
   memory?(): { address: number; bytes: Uint8Array }[];
 }
 
+/**
+ * Which variant of a chip to build, for the few chips that have more than
+ * one: the C64's SID is a 6581 by default, or `{ model: "8580" }`. A chip
+ * with only one model ignores this.
+ */
+export interface ChipCreateOptions {
+  model?: string;
+}
+
 export interface ChipDefinition {
   spec: ChipSpec;
   /** Builds a core at a sample rate. */
-  create(sampleRate: number): ChipCore;
+  create(sampleRate: number, options?: ChipCreateOptions): ChipCore;
   /** Builds the digital chip alone, for a harness. */
-  digital(): DigitalChip;
+  digital(options?: ChipCreateOptions): DigitalChip;
   /** Builds the chip's own driver. */
   driver(): ChipDriver;
   /** The worklet source, ready to be handed to `addModule` as a blob. */

@@ -19,9 +19,12 @@ import type { PercussionKit } from "../../sequencer.js";
  * comment says who wins its shared registers when two ask for it at once.
  * Two intents reach it: `lead: "sweep"`, a cutoff opening across the note,
  * and `bass: "resonant"`, a pulse held closed at a high resonance for a
- * narrow, squelchy low end. A "sweep" lead and a "resonant" bass together do
- * not fight over the filter's registers - a chord or a drum played at the
- * same time as either would, and the later write is what plays.
+ * narrow, squelchy low end. They share the filter's one cutoff and one
+ * resonance, so a "sweep" lead and a "resonant" bass sounding at once do
+ * fight over those registers, the same as a chord or a drum would if either
+ * asked for the filter too: whichever voice's write actually lands later in
+ * time is what plays, and `validateSong`'s `filter_conflict` names the song
+ * moments where that happens rather than leaving it to be heard.
  */
 const LEAD_VOLUME = [15, 15, 14, 13, 12, 12, 11, 11, 10, 10, 10, 9, 9, 9, 8];
 const LEAD_VIBRATO = { depth: 0.18, rate: 8, delay: 12 };

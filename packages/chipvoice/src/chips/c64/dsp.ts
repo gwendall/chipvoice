@@ -19,7 +19,7 @@ import {forkState} from "../../checkpoint.js";
  */
 
 import type { ChipCore, RegisterEvent } from "../../chip.js";
-import { PAL_CLOCK_HZ, Sid } from "./sid.js";
+import { PAL_CLOCK_HZ, Sid, type SidModel } from "./sid.js";
 
 export const CLOCK_HZ = PAL_CLOCK_HZ;
 export const C64_PROCESSOR_NAME = "sid-processor";
@@ -82,6 +82,8 @@ function dacTable(bits: number, ratio: number, terminated: boolean): Float32Arra
 
 export interface SidProfile {
   name: string;
+  /** Which digital core (`sid.ts`) this profile's DACs and filter go with. */
+  model: SidModel;
   /** 2R/R of the DAC ladders, and whether their far end is terminated. */
   ladderRatio: number;
   ladderTerminated: boolean;
@@ -109,6 +111,7 @@ export interface SidProfile {
  */
 export const SID_6581_PROFILE: SidProfile = {
   name: "6581",
+  model: "6581",
   ladderRatio: 2.2,
   ladderTerminated: false,
   waveZero: 0x380,
@@ -120,6 +123,41 @@ export const SID_6581_PROFILE: SidProfile = {
   ],
   qLow: 0.707,
   qHigh: 1.707,
+  highPassHz: 16,
+  lowPassHz: 16000,
+  scale: 0.3 / (2048 * 256),
+};
+
+/**
+ * The 8580: near-linear DACs (reSID-fp's `Dac.cpp`, `kinkedDac` - a 2R/R of
+ * 2.00 and, unlike the 6581, a terminated ladder, which is what makes it
+ * near-linear rather than exactly so), and the simple, linear filter curve
+ * plain reSID's `filter.cc` documents for this chip (`Filter::set_w0`,
+ * "MOS 8580 cutoff: 0 - 12.5kHz", `w0 = 82355*(fc+1) >> 11`, which is
+ * `12500 * (fc+1) / 2048` Hz - unlike the 6581's, this one is not a fit to a
+ * sampled curve, so two points and this file's own linear interpolation
+ * reproduce it exactly) and resonance (`Filter::set_Q`'s
+ * `_1024_div_Q_table`, index 0 and 15: 1024/1448 and 1024/395). reSID-fp's
+ * own, later, nonlinear op-amp model for this chip (`FilterModelConfig8580`)
+ * is not used: it has no simple Hz-vs-register curve to measure against, and
+ * reducing it to one was judged too large for this ticket (see
+ * HARDWARE-EVIDENCE.md). `waveZero` is `WaveformGenerator.cpp`'s
+ * `setChipModel`, which centres the 8580's DAC on 0x9c0 rather than the
+ * 6581's 0x380. The output stage's corners are carried over unmeasured, the
+ * same as the 6581's.
+ */
+export const SID_8580_PROFILE: SidProfile = {
+  name: "8580",
+  model: "8580",
+  ladderRatio: 2.0,
+  ladderTerminated: true,
+  waveZero: 0x9c0,
+  cutoff: [
+    [0, 6.1035],
+    [2047, 12500],
+  ],
+  qLow: 0.7072,
+  qHigh: 2.5924,
   highPassHz: 16,
   lowPassHz: 16000,
   scale: 0.3 / (2048 * 256),
@@ -218,7 +256,7 @@ export class SidOutputStage {
 export class SidCore implements ChipCore {
   fork(): SidCore { return forkState(this, () => new SidCore(this.sampleRate, this.stage.profile)); }
   readonly sampleRate: number;
-  readonly chip = new Sid();
+  readonly chip: Sid;
   readonly stage: SidOutputStage;
   private remainder = 0;
   private nextSample = -1;
@@ -226,6 +264,7 @@ export class SidCore implements ChipCore {
 
   constructor(sampleRate: number, profile: SidProfile = SID_6581_PROFILE) {
     this.sampleRate = sampleRate;
+    this.chip = new Sid(profile.model);
     this.stage = new SidOutputStage(sampleRate, profile);
   }
 

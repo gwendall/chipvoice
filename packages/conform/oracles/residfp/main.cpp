@@ -17,6 +17,10 @@
 // `--tables` prints the 6581's eight waveform tables instead, one per line,
 // 4096 values each: the combined waveforms are a model fitted to samplings
 // of one chip, and chipvoice's own model is fitted against these.
+//
+// `--model 8580` runs either mode as an 8580 instead: reSID-fp's SID takes
+// a `ChipModel`, so this is a second block of tables and a second trace, not
+// a second binary.
 
 #include <algorithm>
 #include <cassert>
@@ -58,9 +62,9 @@ static bool before( const Change& a, const Change& b ) {
 	return a.voice < b.voice;
 }
 
-static int tables()
+static int tables( reSIDfp::ChipModel model )
 {
-	matrix_t* t = reSIDfp::WaveformCalculator::getInstance()->buildTable( reSIDfp::MOS6581 );
+	matrix_t* t = reSIDfp::WaveformCalculator::getInstance()->buildTable( model );
 	for ( int wf = 0; wf < 8; wf++ )
 	{
 		for ( int i = 0; i < 4096; i++ )
@@ -70,10 +74,20 @@ static int tables()
 	return 0;
 }
 
+/** `--model 6581` (the default) or `--model 8580`, wherever it appears among the arguments. */
+static reSIDfp::ChipModel model_from_args( int argc, char** argv )
+{
+	for ( int i = 1; i + 1 < argc; i++ )
+		if ( strcmp( argv [i], "--model" ) == 0 )
+			return strcmp( argv [i + 1], "8580" ) == 0 ? reSIDfp::MOS8580 : reSIDfp::MOS6581;
+	return reSIDfp::MOS6581;
+}
+
 int main( int argc, char** argv )
 {
+	reSIDfp::ChipModel model = model_from_args( argc, argv );
 	if ( argc > 1 && strcmp( argv [1], "--tables" ) == 0 )
-		return tables();
+		return tables( model );
 	// `--debug <voice> <from> <to>`: the envelope's state per cycle, for a look inside.
 	int debug_voice = -1;
 	long debug_from = 0, debug_to = 0;
@@ -120,7 +134,7 @@ int main( int argc, char** argv )
 	}
 
 	reSIDfp::SID sid;
-	sid.setChipModel( reSIDfp::MOS6581 );
+	sid.setChipModel( model );
 	sid.reset();
 
 	std::vector<Change> changes;

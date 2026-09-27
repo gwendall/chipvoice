@@ -91,6 +91,18 @@ function eventSteps(line: string[], step: number): number {
   return end - step;
 }
 
+/** Which steps a track's line is actually sounding at: true from a note
+ * until a cut ("=") or the pattern's end, false before the first note and
+ * on ".". */
+function soundingSteps(trackTokens: string[]): boolean[] {
+  let sounding = false;
+  return trackTokens.map((token) => {
+    if (token === "=") sounding = false;
+    else if (token !== ".") sounding = true;
+    return sounding;
+  });
+}
+
 /**
  * What a song asks of one instrument that no note in particular caused: a
  * vibrato rate the frame clock cannot resolve, or a volume step the chip's
@@ -411,13 +423,7 @@ function checkPattern(
   // cutting the chord for the hit and resuming it after - but it is a fact
   // about the arrangement worth naming at the step it happens.
   if (roles.chord === roles.perc) {
-    const chordTokens = tokens(pattern.chord);
-    let chordSounding = false;
-    const sounding: boolean[] = chordTokens.map((token) => {
-      if (token === "=") chordSounding = false;
-      else if (token !== ".") chordSounding = true;
-      return chordSounding;
-    });
+    const sounding = soundingSteps(tokens(pattern.chord));
     tokens(pattern.perc).forEach((token, step) => {
       if (PERCUSSION.has(token) && sounding[step]) {
         issues.push({
@@ -451,6 +457,38 @@ function checkPattern(
       }
       previous = { step, token };
     });
+  }
+
+  // A shared filter (the SID's, so far) has one cutoff, one resonance and
+  // one mode for every voice that asks for it. Two tracks that both ask,
+  // with settings that actually differ, silently overwrite each other while
+  // they sound together - whichever write lands later in time wins, and
+  // nothing else says so. Name the first step where that happens per pair,
+  // rather than leave it to be discovered by ear.
+  {
+    const filtered = TRACKS.filter((track): track is Exclude<TrackName, 'perc'> => {
+      if (track === 'perc') return false;
+      return !!song[track]?.filter;
+    });
+    for (let i = 0; i < filtered.length; i++) {
+      for (let j = i + 1; j < filtered.length; j++) {
+        const a = filtered[i], b = filtered[j];
+        const filterA = song[a]!.filter!, filterB = song[b]!.filter!;
+        if (JSON.stringify(filterA) === JSON.stringify(filterB)) continue;
+        const soundingA = soundingSteps(tokens(pattern[a]));
+        const soundingB = soundingSteps(tokens(pattern[b]));
+        for (let step = 0; step < Math.min(soundingA.length, soundingB.length); step++) {
+          if (soundingA[step] && soundingB[step]) {
+            issues.push({
+              level: 'warning', code: 'filter_conflict', pattern: patternIndex, track: a, step,
+              message: `${where}${a} and ${b} both ask for ${chip.id}'s filter with different settings, and both sound at step ${step}. There is one cutoff, resonance and mode for the whole chip, so whichever writes later plays and the other's filtering is lost while they overlap. Give them the same filter, keep them from sounding together, or accept that one wins.`,
+              silent: false,
+            });
+            break;
+          }
+        }
+      }
+    }
   }
 
   if (!Array.isArray(pattern.chordShape) || pattern.chordShape.length === 0) {

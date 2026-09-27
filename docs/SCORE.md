@@ -135,9 +135,17 @@ Two levels, and the `silent` flag survives both.
   physical voice, such as the SID's chord and percussion both on v3
   (`voice_share`), and a drum arriving before the previous one's own decay
   has finished on a chip with one shared voice per kit part, such as the
-  2A03's single noise channel (`perc_voice`). The score and the render are
-  both unchanged; every one of these is a diagnostic, not a fix. Unknown
-  sample banks are not fully diagnosed.
+  2A03's single noise channel (`perc_voice`). A shared register is diagnosed
+  the same way too: the SID's filter is one cutoff, one resonance and one
+  mode for every voice that asks for it, so a lead's `sweep` and a bass's
+  `resonant` sounding together are not two filters but one, and whichever
+  voice's write actually lands later in time is what plays. `filter_conflict`
+  names the first step where two tracks that ask for different filter
+  settings both sound at once, rather than leaving the loser to be found by
+  ear; the rule itself - later write wins, nothing arbitrates it - is
+  unchanged and is `SidDriver`'s to keep straight, not the score's. The score
+  and the render are both unchanged; every one of these is a diagnostic, not
+  a fix. Unknown sample banks are not fully diagnosed.
 
 ## Export
 

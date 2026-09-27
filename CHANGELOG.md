@@ -11,6 +11,25 @@ overview.
 
 ## Unreleased
 
+The SID has a second model: `model: "8580"` on `Chip.create`, on
+`renderPerformance`/`renderProject`'s options, and on a project's
+`settings.model`, next to the default `"6581"`. Every 8580 fact comes from a
+document or a measurement against the oracle's own tables, never from porting
+its GPL source (decision 41): the combined waveforms are fitted independently
+against reSID-fp's own 8580 tables, landing short of the 6581's exact match
+since reSID-fp's own 8580 code uses a more detailed transistor model than
+this package's shared one; the floating-waveform output and the noise
+register's test-bit reset decay over a longer capacitor discharge; OSC3
+(`$D41B`) reads the sawtooth/triangle pipeline a cycle later than the
+waveform output; the DACs are near-linear instead of kinked; and the filter
+reads reSID's `filter.cc` 8580 R5 cutoff line and Q table directly, rather
+than the 6581's measured curve. A second oracle block, reSID-fp configured as
+an 8580, checks the digital side (`corpus/c64/parity-residfp-8580.json`,
+`check:residfp-8580`, in CI): 99.28 % identical, the two divergences both
+explained by the combined-waveform fit's own shortfall. See
+[docs/chips/c64.md#the-8580](docs/chips/c64.md#the-8580). The 6581 default is
+unchanged.
+
 A Game Boy pulse note's trigger (ch1, ch2) keeps the low two bits of its
 frequency timer instead of zeroing them, as Pan Docs' "Obscure Behavior"
 describes ("When triggering Ch1 and Ch2, the low two bits of the frequency
@@ -41,8 +60,16 @@ The SID's filter is now reachable from the arranger's own words, not a
 simulated substitute. A lead's `sweep` opens the cutoff across the note; a
 bass's `resonant` holds a fixed high resonance; both are low-pass. A voice
 sets and clears only its own routing bit in `$D417`; the shared resonance,
-cutoff and mode are whichever voice last wrote them, the same arbitration
-real hardware has, since the SID has one filter for all three voices. A new
+cutoff and mode are whichever voice's write actually lands later in time,
+the same arbitration real hardware has, since the SID has one filter for
+all three voices. `SidDriver` dedups a filtered voice's writes against that
+voice's own last frame only, never against another voice's: a note is
+dispatched whole, and notes are dispatched in the order they start rather
+than the order their writes land in time, so comparing against a shared,
+cross-voice last-written value could skip a write that was actually needed.
+`validateSong` gains `filter_conflict`, naming the first step where two
+tracks that ask for the filter with different settings both sound at once,
+so the one that loses is named rather than just heard. A new
 `Instrument.pulseWidth` field gives a per-frame pulse-width sweep at the
 driver level; no built-in preset uses it yet. `script-filter` and
 `song-filter` join the C64 conformance corpus; parity against reSID-fp holds

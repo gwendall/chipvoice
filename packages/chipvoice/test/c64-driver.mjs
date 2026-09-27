@@ -118,6 +118,57 @@ const F = (hz) => Math.round((hz * 16777216) / CLOCK);
   check('a note off never touches the filter, only the gate', noteOff.length === 1 && noteOff[0].addr === V(0) + 4);
 }
 
+{
+  // The bug PR #94's review found: `note()` gets a whole note at once, and
+  // notes are dispatched in the order they start (as `performance.ts` and
+  // the live APU path both do), not the order their writes land in time. A
+  // long sweep dispatched first can finish writing every frame of itself
+  // before a shorter, later-starting note that genuinely overlaps it is even
+  // dispatched - so a naive dedup against "the last value this instance
+  // wrote" compares a note's first frame against the wrong moment. Here the
+  // lead's ten-frame sweep (cutoff 60 to 2047) is dispatched first, in full;
+  // then a first bass note claims cutoff 480; then a second bass note, at
+  // the sweep's midpoint, asks for that same 480 again - the exact value the
+  // dedup's own state already holds, purely because the bass wrote it
+  // itself last, not because it is still true. The time-ordered stream must
+  // still carry the second bass note's own write.
+  const driver = c64Chip.driver();
+  driver.powerOn();
+  const sweep = { mode: 'lowpass', resonance: 8 };
+  const resonant = { mode: 'lowpass', resonance: 15, cutoff: 480 };
+  const leadFrames = Array.from({ length: 10 }, (_, i) => frame(i * 1000, {
+    filter: { ...sweep, cutoff: Math.round(60 + (2047 - 60) * (i / 9)) },
+  }));
+  // Dispatch order matches what `performance.ts` (and the live APU path)
+  // actually does: by ascending note-start tick, not by when a write lands.
+  // The lead's note starts at tick 0 and runs the whole span, so it is
+  // dispatched, in full, before the bass's second note even though that
+  // note's own ticks fall well inside the lead's still-sounding span.
+  const lead = driver.note('v1', leadFrames);
+  const bass1 = driver.note('v2', [frame(0, { filter: resonant })]);
+  const bass2 = driver.note('v2', [frame(5500, { filter: resonant })]);
+
+  const stream = [...lead, ...bass1, ...bass2].sort((a, b) => a.at - b.at);
+  const bassStart = bass2[0].at; // v2's stagger already applied
+  const bassEnd = Math.max(...bass2.map((e) => e.at)); // bass2's own writes span several cycles, the filter registers last
+  check('the second bass note writes its own cutoff, not nothing',
+    stream.some((e) => e.at >= bassStart && (e.addr === 0xd415 || e.addr === 0xd416)),
+    JSON.stringify(stream.filter((e) => e.at >= bassStart)));
+
+  let cutoffLow = 0, cutoffHigh = 0, routing = 0;
+  for (const e of stream) {
+    if (e.at > bassEnd) break;
+    if (e.addr === 0xd415) cutoffLow = e.value;
+    else if (e.addr === 0xd416) cutoffHigh = e.value;
+    else if (e.addr === 0xd417) routing = e.value;
+  }
+  check('by the second bass note\'s own write, the time-ordered cutoff reads back as 480, not the sweep\'s mid-point',
+    (cutoffLow | (cutoffHigh << 3)) === 480,
+    `${cutoffLow | (cutoffHigh << 3)}`);
+  check('$D417 at that moment routes both voices, the ones actually sounding',
+    (routing & 0x03) === 0x03, routing.toString(16));
+}
+
 if (failures > 0) {
   console.error(`${failures} failed`);
   process.exit(1);

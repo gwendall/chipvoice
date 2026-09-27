@@ -1,14 +1,21 @@
-import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
-import { C64_PROCESSOR_NAME, CLOCK_HZ, SidCore } from "./dsp.js";
+import { registerChip, type ChipCreateOptions, type ChipDefinition, type ChipSpec } from "../../chip.js";
+import { C64_PROCESSOR_NAME, CLOCK_HZ, SID_6581_PROFILE, SID_8580_PROFILE, SidCore, type SidProfile } from "./dsp.js";
 import { SidDriver } from "./driver.js";
 import { Sid } from "./sid.js";
 import { WORKLET_SOURCE } from "./worklet-inline.js";
 
+/** `{ model: "8580" }`, or anything else including none, is the default 6581. */
+function profileFor(options?: ChipCreateOptions): SidProfile {
+  return options?.model === "8580" ? SID_8580_PROFILE : SID_6581_PROFILE;
+}
+
 /**
- * The Commodore 64's SID, the 6581: the fifth chip, and the first with fewer
- * voices than the score has lines. Three voices, each of which can be any
- * of four waveforms, with an envelope of its own and a filter they share.
- * Written from the documents; the harness checks it against reSID-fp.
+ * The Commodore 64's SID: the fifth chip, and the first with fewer voices
+ * than the score has lines. Three voices, each of which can be any of four
+ * waveforms, with an envelope of its own and a filter they share. A 6581 by
+ * default; `Chip.create({ chip: "c64", model: "8580" })` builds its
+ * successor instead, with its own combined waveforms, DACs and filter.
+ * Written from the documents; the harness checks both against reSID-fp.
  */
 export const C64: ChipSpec = {
   id: "c64",
@@ -30,8 +37,8 @@ export const C64: ChipSpec = {
 
 export const c64Chip: ChipDefinition = {
   spec: C64,
-  create: (sampleRate: number) => new SidCore(sampleRate),
-  digital: () => new Sid(),
+  create: (sampleRate: number, options?: ChipCreateOptions) => new SidCore(sampleRate, profileFor(options)),
+  digital: (options?: ChipCreateOptions) => new Sid(profileFor(options).model),
   driver: () => new SidDriver(),
   workletSource: WORKLET_SOURCE,
   processorName: C64_PROCESSOR_NAME,

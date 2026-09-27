@@ -24,17 +24,30 @@ import { CLOCK_HZ } from "./dsp.js";
  * The filter is `$D415`-`$D418`: an eleven-bit cutoff split high/low, a
  * resonance and three routing bits in `$D417`, a mode and the master volume
  * in `$D418`. It is one filter for three voices, so those four registers are
- * chip-wide rather than per-voice, and this class keeps the last byte written
- * to each as instance state, across every voice's calls, the way the rest of
- * this file keeps `waveBits`. A voice asking for the filter sets its own
- * routing bit and writes whatever cutoff, resonance and mode its instrument
- * names; a voice not asking for it clears its own bit and leaves the other
- * three registers alone. When two voices ask for different cutoffs,
- * resonances or modes at once, there is only one register for each and the
- * later write wins - exactly as real hardware would, a byte at a time - so
- * the earlier voice stays routed through the filter but is heard through
- * whatever the later voice set, until it writes its own again. A note off
- * touches only the gate; the filter is left as it was.
+ * chip-wide rather than per-voice. A voice's own routing bit is tracked as
+ * persistent instance state, the way `waveBits` is - safe because only that
+ * voice's own calls ever touch its own bit. The shared resonance, cutoff and
+ * mode are never compared against another voice's write, only against this
+ * voice's own previous frame, and are written unconditionally again on a
+ * filtered note's first frame. That is because `note()` receives a whole
+ * note at once, and `performance.ts` (and the live APU path in `driver.ts`)
+ * hand notes to it in the order they start, not the order their register
+ * writes actually land in time; a long note started earlier can finish
+ * being processed, and so finish writing every frame of its own sweep, before
+ * a shorter note that started later - but genuinely overlaps it - is even
+ * dispatched. Comparing that later note's first frame against whatever the
+ * earlier note's last frame left behind would sometimes skip a write this
+ * note genuinely needs, because the two values coincide by accident while the
+ * true hardware value at that moment was something else entirely. A voice
+ * asking for the filter sets its own routing bit and writes whatever cutoff,
+ * resonance and mode its instrument names; a voice not asking for it clears
+ * its own bit and leaves the other three registers alone. When two voices ask
+ * for different cutoffs, resonances or modes at once, there is only one
+ * register for each, so whichever write actually lands later in absolute
+ * time wins - exactly as real hardware would, a byte at a time - and
+ * `validateSong`'s `filter_conflict` names that moment on the song rather
+ * than leaving the arbitration to be discovered by ear. A note off touches
+ * only the gate; the filter is left as it was.
  */
 
 const BASE = 0xd400;
@@ -71,19 +84,21 @@ function bent(freq: number, offset: number): number {
 export class SidDriver implements ChipDriver {
   /** Each voice's waveform bits, for a note off that keeps the waveform. */
   private waveBits = [0x40, 0x40, 0x40];
-  /** The last byte written to `$D417`: resonance, and the three routing bits. */
-  private lastResonanceRouting = 0x00;
-  /** The last byte written to `$D418`: the filter mode, and the master volume. */
-  private lastModeVolume = 0x0f;
-  /** The last eleven-bit cutoff written across `$D415`-`$D416`. */
-  private lastCutoff = 0;
+  /** Each voice's own routing bit into `$D417`, bit `index`: safe as
+   * persistent cross-call state because only that voice's own calls ever
+   * set or clear it. */
+  private routingBits = 0x00;
+  /** The resonance nibble last written to `$D417`, kept only so a
+   * routing-bit-only write (a voice starting or stopping asking for the
+   * filter, with its resonance unchanged) can preserve it rather than
+   * clobber it - never read as a dedup target for another voice's write. */
+  private sharedResonanceNibble = 0x00;
 
   /** Volume full, nothing filtered, the cutoff at the bottom. */
   powerOn(): RegisterEvent[] {
     this.waveBits = [0x40, 0x40, 0x40];
-    this.lastResonanceRouting = 0x00;
-    this.lastModeVolume = 0x0f;
-    this.lastCutoff = 0;
+    this.routingBits = 0x00;
+    this.sharedResonanceNibble = 0x00;
     return [
       { at: 0, addr: 0xd418, value: 0x0f },
       { at: GAP, addr: 0xd417, value: 0x00 },
@@ -106,6 +121,16 @@ export class SidDriver implements ChipDriver {
     let lastPw = -1;
     let lastVolume = -1;
     let lastWave = -1;
+    // This voice's own last-known filter fields, local to this note - reset
+    // for every call so the note's first frame always writes its own
+    // resonance, cutoff and mode unconditionally (-1 matches no real value),
+    // rather than being compared against another voice's write, or against a
+    // value this same instance held before this note existed. See the class
+    // doc comment for why that comparison would be unsafe.
+    let ownResonance = -1;
+    let ownMode = -1;
+    let ownCutoffLow = -1;
+    let ownCutoffHigh = -1;
     frames.forEach((s, f) => {
       t = s.at + STAGGER * index;
       const wave = WAVE_BITS[s.waveform ?? "pulse"];
@@ -146,31 +171,43 @@ export class SidDriver implements ChipDriver {
       lastWave = wave;
 
       // The filter: chip-wide, shared by three voices. This voice's own
-      // routing bit follows whether this frame asks for the filter; the
-      // resonance, cutoff and mode - one register each for the whole chip -
-      // follow whichever voice last asked, so two voices fighting over them
-      // resolve the way two writes to one byte always do.
+      // routing bit compares against `routingBits`, safe across calls since
+      // only this voice's own calls ever touch its own bit (see the class
+      // doc comment). The resonance nibble that rides along with it, and the
+      // cutoff and mode below, compare only against this note's own previous
+      // frame - never against `routingBits`' resonance half, which exists
+      // only so a routing-bit-only write can preserve it unchanged.
       const bit = 1 << index;
-      const routing = (this.lastResonanceRouting & 0x07 & ~bit) | (s.filter ? bit : 0);
-      const resonance = s.filter
+      const wantsFilter = !!s.filter;
+      const currentBit = this.routingBits & bit;
+      const resonanceNibble = s.filter
         ? Math.max(0, Math.min(15, Math.round(s.filter.resonance))) << 4
-        : this.lastResonanceRouting & 0xf0;
-      const resonanceRouting = resonance | routing;
-      if (resonanceRouting !== this.lastResonanceRouting) {
-        write(0xd417, resonanceRouting);
-        this.lastResonanceRouting = resonanceRouting;
+        : this.sharedResonanceNibble;
+      const resonanceChanged = wantsFilter && resonanceNibble !== ownResonance;
+      if ((wantsFilter ? bit : 0) !== currentBit || resonanceChanged) {
+        this.routingBits = (this.routingBits & ~bit) | (wantsFilter ? bit : 0);
+        this.sharedResonanceNibble = resonanceNibble;
+        write(0xd417, resonanceNibble | this.routingBits);
+        if (wantsFilter) ownResonance = resonanceNibble;
       }
       if (s.filter) {
-        const modeVolume = FILTER_MODE_BITS[s.filter.mode] | (this.lastModeVolume & 0x0f);
-        if (modeVolume !== this.lastModeVolume) {
-          write(0xd418, modeVolume);
-          this.lastModeVolume = modeVolume;
+        const modeBits = FILTER_MODE_BITS[s.filter.mode];
+        if (modeBits !== ownMode) {
+          // The low nibble is the master volume, always full: nothing else
+          // in this driver ever writes `$D418`.
+          write(0xd418, modeBits | 0x0f);
+          ownMode = modeBits;
         }
         const cutoff = Math.max(0, Math.min(0x7ff, Math.round(s.filter.cutoff)));
-        if (cutoff !== this.lastCutoff) {
-          if ((cutoff & 0x07) !== (this.lastCutoff & 0x07)) write(0xd415, cutoff & 0x07);
-          if (cutoff >> 3 !== this.lastCutoff >> 3) write(0xd416, cutoff >> 3);
-          this.lastCutoff = cutoff;
+        const cutoffLow = cutoff & 0x07;
+        const cutoffHigh = cutoff >> 3;
+        if (cutoffLow !== ownCutoffLow) {
+          write(0xd415, cutoffLow);
+          ownCutoffLow = cutoffLow;
+        }
+        if (cutoffHigh !== ownCutoffHigh) {
+          write(0xd416, cutoffHigh);
+          ownCutoffHigh = cutoffHigh;
         }
       }
     });

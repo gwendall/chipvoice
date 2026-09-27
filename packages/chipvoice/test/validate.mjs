@@ -66,6 +66,22 @@ const warn = short.issues.find((i) => i.level === 'warning');
 check('a short loop warns but passes', short.ok && !!warn, warn?.message);
 check('and says why it matters', /repeat rather than as a piece/.test(warn?.message ?? ''), warn?.message);
 
+// ---- the SID's one shared filter: two tracks asking for it with different
+// settings, sounding together, is a conflict worth naming, not leaving to be
+// heard as one voice's filtering silently winning over the other's
+const c64Filtered = (bassFilter) => ({
+  ...good, chip: 'c64',
+  lead: { filter: { mode: 'lowpass', resonance: 8, cutoff: [60, 2047] } },
+  bass: { filter: bassFilter },
+});
+const conflict = validateSong(c64Filtered({ mode: 'lowpass', resonance: 15, cutoff: 480 }));
+const conflictIssue = conflict.issues.find((i) => i.code === 'filter_conflict');
+check('a lead\'s sweep and a bass\'s resonance sounding together is a filter conflict', !!conflictIssue, JSON.stringify(conflictIssue));
+check('and names the one shared cutoff, resonance and mode', /one cutoff, resonance and mode/.test(conflictIssue?.message ?? ''), conflictIssue?.message);
+
+const sameFilter = validateSong(c64Filtered({ mode: 'lowpass', resonance: 8, cutoff: [60, 2047] }));
+check('the same filter on both tracks is not a conflict', !sameFilter.issues.some((i) => i.code === 'filter_conflict'), JSON.stringify(sameFilter.issues.filter((i) => i.code === 'filter_conflict')));
+
 // ---- rubbish in
 check('a non-object is rejected', !validateSong(null).ok);
 check('an unknown chip is rejected', !validateSong({ ...good, chip: 'ym2612' }).ok);

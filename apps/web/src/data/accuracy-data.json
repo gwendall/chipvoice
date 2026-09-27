@@ -406,6 +406,21 @@
             "identical": 50149124,
             "diverging": 0,
             "firstDivergence": null
+          },
+          {
+            "marker": "parity-residfp-8580",
+            "oracle": "reSID-fp (libsidplayfp, drfiemost), as an 8580",
+            "files": 11,
+            "cycles": 42759764,
+            "identical": 42452501,
+            "diverging": 2,
+            "firstDivergence": {
+              "file": "script-combined",
+              "cycle": 98781,
+              "voice": "osc1",
+              "ours": 7,
+              "theirs": 3
+            }
           }
         ],
         "hardwareCombined": {

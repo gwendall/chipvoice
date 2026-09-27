@@ -1,6 +1,7 @@
 import { EventQueue } from "../../event-queue.js";
 /**
- * The MOS 6581 SID, the Commodore 64's sound chip: the digital part.
+ * The MOS 6581 SID, the Commodore 64's sound chip, and its successor the
+ * 8580: the digital part.
  *
  * Three voices, each an oscillator and an envelope. The oscillator is a
  * 24-bit accumulator that a 16-bit frequency is added to every cycle; its top
@@ -21,6 +22,13 @@ import { EventQueue } from "../../event-queue.js";
  * power-on. The harness checks all of it against reSID-fp, which stays in
  * the harness: see decision 18.
  *
+ * The 8580 shares this whole state machine; where it differs (the combined
+ * waveforms, the capacitor timings, the pulse+noise formula, an accumulator
+ * pulldown the 6581 has and it does not, a half-cycle delay on OSC3 for
+ * triangle or sawtooth), the difference is a branch on `SidModel`, cited to
+ * reSID-fp's `WaveformGenerator`. See the sheet's 8580 section for what is
+ * measured and what is still assumed to carry over unchanged.
+ *
  * What comes out is two digital values per voice, the twelve-bit waveform
  * and the eight-bit envelope, before the DACs. The DACs, the filter and the
  * output stage are the analog part, in `dsp.ts`, and a profile.
@@ -35,6 +43,17 @@ export const NTSC_CLOCK_HZ = 1022727;
 
 /** The order `trace` reports voices in: three waveforms, then three envelopes. */
 export const SID_VOICES = ["osc1", "osc2", "osc3", "env1", "env2", "env3"] as const;
+
+/**
+ * Which SID this is: the original 6581 or its successor, the 8580. Almost
+ * everything below is shared; where the two chips differ, a branch on this
+ * is next to the 6581 behaviour it replaces, cited to reSID-fp's
+ * `WaveformGenerator.cpp`/`.h`, which keeps the same `is6581` branches for
+ * the same reasons (its own reverse-engineering, run as a measurement
+ * oracle here, not ported: decision 41). The DACs and filter, which also
+ * differ, are a profile in `dsp.ts`.
+ */
+export type SidModel = "6581" | "8580";
 
 /**
  * The envelope rates: how many cycles between steps of the counter, for each
@@ -67,11 +86,13 @@ const EXPONENTIAL_PERIOD: Record<number, number> = { 0xff: 1, 0x5d: 2, 0x36: 4, 
 /**
  * Cycles the waveform output holds its last value with no waveform
  * selected, and cycles the test bit takes to clear the noise register: both
- * are a capacitor discharging and vary with temperature and chip. These are
- * a warm 6581 R3's.
+ * are a capacitor discharging and vary with temperature and chip. reSID-fp
+ * (`WaveformGenerator.cpp`'s `FLOATING_OUTPUT_TTL_*`/`SHIFT_REGISTER_RESET_*`)
+ * documents a warm 6581 R3 and a warm 8580 R5 side by side; the 8580's
+ * capacitor holds its charge roughly ten times longer.
  */
-const FLOATING_TTL = 95000;
-const NOISE_RESET = 210000;
+const FLOATING_TTL: Record<SidModel, number> = { "6581": 95000, "8580": 1000000 };
+const NOISE_RESET: Record<SidModel, number> = { "6581": 210000, "8580": 2800000 };
 
 /**
  * The noise register's output taps: which of its twenty-three bits become
@@ -123,6 +144,27 @@ export const COMBINED_6581: Record<3 | 5 | 6 | 7, CombinedModel> = {
   5: { bias: 0.93088, pull: 2.4843, top: 0, below: 1.1484, above: 1.0353, mix: 0 },
   6: { bias: 0.90988, pull: 2.26303, top: 1.13126, below: 1.13801, above: 1.0035, mix: 0 },
   7: { bias: 0.91, pull: 1.192, top: 0, below: 1.2, above: 1.0169, mix: 0.637 },
+};
+
+/**
+ * The same six numbers, fitted the same way against reSID-fp's 8580 tables
+ * (`pnpm --filter chipvoice-conform fit:c64 -- --model 8580`, a coordinate
+ * descent from many random starting points, keeping the best per
+ * combination) rather than ported from reSID-fp's own 8580 parameters
+ * (decision 41): the 8580's transistors pull differently, so the
+ * neighbour-pull model lands on different numbers, and does not land on as
+ * good a fit as the 6581's, since reSID-fp's own 8580 table comes from a
+ * different, more detailed transistor model than this one. Match per
+ * combination against the oracle's table: saw+triangle 99.05% (4057/4096),
+ * pulse+triangle 97.51% (3994/4096), pulse+saw 95.00% (3891/4096),
+ * pulse+saw+triangle 92.60% (3793/4096). The sheet has the same numbers,
+ * written by the same command.
+ */
+export const COMBINED_8580: Record<3 | 5 | 6 | 7, CombinedModel> = {
+  3: { bias: 0.966523, pull: 0.4416, top: 0.979879, below: 2.43583, above: 1.833178, mix: 0.975194 },
+  5: { bias: 0.93168, pull: 1.815241, top: 0.2411, below: 1.387096, above: 1.09157, mix: 0 },
+  6: { bias: 0.953986, pull: 2.150044, top: 0.97874, below: 1.339673, above: 1.086813, mix: 0.5049 },
+  7: { bias: 1.31, pull: 1.192, top: 0, below: 1.2, above: 1.0169, mix: 0.637 },
 };
 
 export function combinedWaveform(model: CombinedModel, waveform: number, index: number): number {
@@ -181,6 +223,8 @@ export function buildWaveTables(combined: Record<3 | 5 | 6 | 7, CombinedModel>):
 }
 
 const TABLES_6581 = buildWaveTables(COMBINED_6581);
+const TABLES_8580 = buildWaveTables(COMBINED_8580);
+const TABLES: Record<SidModel, Int16Array[]> = { "6581": TABLES_6581, "8580": TABLES_8580 };
 
 class Oscillator {
   /** Even bits high at power-on; a reset does not touch it. */
@@ -205,11 +249,25 @@ class Oscillator {
   pulseLevel = 0xfff;
   /** The twelve-bit waveform output. */
   output = 0;
+  /**
+   * What OSC3 reads. On the 6581 this is always `output`. On the 8580, a
+   * triangle or sawtooth in the mix is delayed half a cycle before the DAC,
+   * which the die does not bother pipelining for the register readback: OSC3
+   * sees the table's raw value from one cycle back instead (reSID-fp's
+   * `tri_saw_pipeline`).
+   */
+  osc3 = 0;
+  /** The 8580's one-cycle-late triangle/sawtooth table value; see `osc3`. */
+  triSawPipeline = 0x555;
   /** Cycles the output still holds with no waveform selected. */
   floating = 0;
   /** Whether the accumulator's top bit went high on this cycle. */
   msbRose = false;
   table = TABLES_6581[0];
+
+  constructor(readonly model: SidModel) {
+    this.table = TABLES[model][0];
+  }
 
   /** The accumulator, and the noise register when bit 19 rises. */
   clock() {
@@ -242,15 +300,30 @@ class Oscillator {
   compute(ring: Oscillator) {
     if (this.waveform !== 0) {
       const index = (this.accumulator ^ (~ring.accumulator & this.ringMask)) >>> 12;
-      let out = this.table[index];
+      const raw = this.table[index];
+      let out = raw;
       if (this.waveform & 4) out &= this.pulseLevel;
       if (this.waveform & 8) out &= this.noiseOut;
-      // Pulse with noise: only a run of high bits survives.
-      if ((this.waveform & 0xc) === 0xc) out = out < 0xf00 ? 0 : out & (out << 1) & (out << 2);
+      // Pulse with noise: only a run of high bits survives; the 8580's
+      // comparator saturates differently (WaveformGenerator.h,
+      // noise_pulse6581/noise_pulse8580).
+      if ((this.waveform & 0xc) === 0xc) {
+        out = this.model === "8580" ? (out < 0xfc0 ? out & (out << 1) : 0xfc0) : out < 0xf00 ? 0 : out & (out << 1) & (out << 2);
+      }
       this.output = out;
+      if ((this.waveform & 3) !== 0 && this.model === "8580") {
+        // OSC3 lags one cycle behind the DAC on the 8580; see `osc3`.
+        const pulseMask = this.waveform & 4 ? this.pulseLevel : 0xfff;
+        const noiseMask = this.waveform & 8 ? this.noiseOut : 0xfff;
+        this.osc3 = this.triSawPipeline & pulseMask & noiseMask;
+        this.triSawPipeline = raw;
+      } else {
+        this.osc3 = out;
+      }
       // With the sawtooth in a combination, a low top bit pulls the
-      // accumulator's own down.
-      if (this.waveform & 2 && this.waveform & 0xd) this.accumulator &= (out << 12) | 0x7fffff;
+      // accumulator's own down. Only the 6581 does this (WaveformGenerator.h:
+      // "In the 6581 the top bit of the accumulator may be driven low...").
+      if (this.model === "6581" && this.waveform & 2 && this.waveform & 0xd) this.accumulator &= (out << 12) | 0x7fffff;
       // A combination with noise writes its output back over the register's
       // taps, except while a shift is half way through.
       if (this.waveform > 8 && !this.test && this.shiftPipeline !== 1) {
@@ -259,6 +332,7 @@ class Oscillator {
       }
     } else if (this.floating !== 0 && --this.floating === 0) {
       this.output = 0;
+      this.osc3 = 0;
     }
     this.pulseLevel = this.accumulator >>> 12 >= this.pulseWidth ? 0xfff : 0;
   }
@@ -271,20 +345,21 @@ class Oscillator {
     this.sync = (value & 0x02) !== 0;
     this.ringMask = value & 0x04 && !(value & 0x20) ? 0x800000 : 0;
     if (this.waveform !== wasWaveform) {
-      this.table = TABLES_6581[this.waveform & 7];
-      if (this.waveform === 0) this.floating = FLOATING_TTL;
+      this.table = TABLES[this.model][this.waveform & 7];
+      if (this.waveform === 0) this.floating = FLOATING_TTL[this.model];
     }
     if (this.test !== wasTest) {
       if (this.test) {
         this.accumulator = 0;
         this.shiftPipeline = 0;
-        this.noiseReset = NOISE_RESET;
+        this.noiseReset = NOISE_RESET[this.model];
       } else {
         // Releasing the test bit finishes a shift. A combination with noise
         // writes its output back first, unless it was pulse with noise, is
-        // becoming noise alone, or swaps the triangle for the sawtooth.
+        // becoming noise alone, or - on the 6581 only (WaveformGenerator.cpp's
+        // `do_pre_writeback`) - swaps the triangle for the sawtooth.
         const swap = ((wasWaveform & 3) === 1 && (this.waveform & 3) === 2) || ((wasWaveform & 3) === 2 && (this.waveform & 3) === 1);
-        if (wasWaveform > 8 && this.waveform !== 8 && wasWaveform !== 0xc && !swap) this.noise &= noiseWriteback(this.output);
+        if (wasWaveform > 8 && this.waveform !== 8 && wasWaveform !== 0xc && !(this.model === "6581" && swap)) this.noise &= noiseWriteback(this.output);
         // With the test bit in the feedback, bit 0 takes NOT bit 17.
         this.shiftNoise(((~this.noise) >> 17) & 1);
       }
@@ -299,7 +374,7 @@ class Oscillator {
     this.test = false;
     this.sync = false;
     this.ringMask = 0;
-    this.table = TABLES_6581[0];
+    this.table = TABLES[this.model][0];
     this.pulseLevel = 0xfff;
     this.noise = 0x7fffff;
     this.noiseReset = 0;
@@ -307,6 +382,7 @@ class Oscillator {
     this.shiftNoise(((~this.noise) >> 17) & 1);
     this.shiftPipeline = 0;
     this.output = 0;
+    this.osc3 = 0;
     this.floating = 0;
   }
 }
@@ -480,7 +556,8 @@ class Envelope {
  */
 export class Sid implements DigitalChip {
   readonly voices = SID_VOICES;
-  readonly osc = [new Oscillator(), new Oscillator(), new Oscillator()];
+  readonly model: SidModel;
+  readonly osc: [Oscillator, Oscillator, Oscillator];
   readonly env = [new Envelope(), new Envelope(), new Envelope()];
   /** `$D415-$D416`: the filter cutoff, eleven bits. */
   cutoff = 0;
@@ -500,7 +577,9 @@ export class Sid implements DigitalChip {
   private readonly events = new EventQueue();
 
   /** Power-on is a reset: the accumulators and counters keep their power-on values. */
-  constructor() {
+  constructor(model: SidModel = "6581") {
+    this.model = model;
+    this.osc = [new Oscillator(model), new Oscillator(model), new Oscillator(model)];
     this.reset();
   }
 
@@ -541,7 +620,7 @@ export class Sid implements DigitalChip {
   read(addr: number): number {
     if ((addr & 0xfc00) !== 0xd400) return 0xff;
     switch (addr & 0x1f) {
-      case 0x1b: this.bus = this.osc[2].output >> 4; break;
+      case 0x1b: this.bus = this.osc[2].osc3 >> 4; break;
       case 0x1c: this.bus = this.env[2].env3; break;
     }
     return this.bus;
