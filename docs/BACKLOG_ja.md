@@ -139,8 +139,22 @@
 **ステップ3. 各機種固有の音楽。**
 
 - done - P1-12: NSFのコーパスをMarioの完全な1曲から、独立に作られた実在の8つのNSF（FamiTracker製7曲、Pently製1曲）へ広げました。各ファイルはCC0、CC-BY、zlibのいずれかで再配布可能で、そのsource URL、licence、author、SHA-256を`scores/nsf-corpus/sources.json`に記録しています。8曲すべてが固定したGame_Music_Emuオラクルとコマンド単位で一致し、31,083命令すべてに相違なしと`docs/chips/2a03.md`の生成済みシートに出ています。ここに至るには実際のcapture修正が2つ必要でした。Pentlyのmetadataのみのexportに対するNSF2（version 2）対応と、Pently固有の非標準NTSC rate（$411a=16639、通常の16666ではない）です。後者ではPLAYの開始が単純な`ceil(initEnd/period)*period`より1 cycle遅れていました。標準rateでは半cycleの丸めがたまたま正しいcycleに収まるため、これはcustom rateでだけ表面化していました。`packages/chipvoice`は変更していません。
-- todo - NEXT-06 GBS、NEXT-07 VGMの読み込み、NEXT-08 SPCの再生、NEXT-09 SID/PSID: それぞれ参照プレーヤー（GME、snes_spc、sidplayfp）と比べ、ファイルごとにスコアを出します。
-- P6-9（SPCの書き出し）とtodo - NEXT-10（NSFとGBSの書き出し）: フラッシュカートから実機で鳴る曲を、ステップ1の録音環境で録音します。
+- todo - NEXT-06 GBS、NEXT-07 VGMの読み込み、NEXT-09 SID/PSID: それぞれ参照プレーヤー（GME、sidplayfp）と比べ、ファイルごとにスコアを出します。
+- done - NEXT-08: `importSpc`は`.spc`スナップショット（SPC700とS-DSP、SNES
+  自身の音楽形式）を、fullsnes、AnomieのSPC700／S-DSPドキュメント、SNES
+  開発者wikiから書いた新しいSPC700（S-SMP）、タイマー、I/Oポートで再生
+  します - snes_spc自身のCPUからは一切ポートしておらず、それは
+  `packages/conform`の参照実装のままです。CPUはAnomieの資料に対して
+  オペコードごとに単体テスト済み（`packages/chipvoice/test/spc700.mjs`）。
+  `check:spc`は同じ`.spc`ファイルを、同じ蓄積済みsnes_spcから作った実
+  参照SPC700である`play-spc`（今度はそのCPUを駆動）で再生し、DSPレジス
+  ター書き込み列と出力サンプルを比較します。測定した最初の（自作）
+  コーパスファイルで両方一致しました。このCPUは以下のP6-9の前提条件
+  でもあります。実SPC700に対して検証できるembedded driverはこれなしでは
+  作れません。
+- P6-9（SPCの書き出し、NEXT-08のCPUにより着手可能に）とtodo - NEXT-10
+  （NSFとGBSの書き出し）: フラッシュカートから実機で鳴る曲を、ステップ1の
+  録音環境で録音します。
 - 商用のリッピングは配布しません。計測用コーパスは非公開にするか、自由に再配布できるものに限ります。
 
 **ステップ4. 後になっても、別の場所でも同じバイト列。**
@@ -309,8 +323,8 @@
 | P6-6 | API／studio／skill。VGMにS-DSPなし、SPC内driverは後続 | done | skill 0.7.0、SPCはP6-9 |
 | P6-7 | output streamでsnes_spc比較するsheetとcorpus | done | `docs/chips/snes.md` |
 | P6-8 | 既知scriptでDSP streamまたは実機line-out capture | todo | 実機必要。NEXT-04によれば、誰かが実機のS-DSP線を捉えた唯一のロジックアナライザーキャプチャはリンク切れで、唯一のフィルター周波数見積もりは実機キャプチャでなく回路図シミュレーションです。[HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp)参照 |
-| P6-9 | file内driverで任意SPC playerから再生できるexport | todo | |
-| P6-10 | 複数ボイスの実三和音とハードウェアノイズのハット | done | このPR。三和音と内部ミキサー検査は実装・検証済みです。キットのハットは既定でDSP自身のハードウェアノイズ（`NON`、電源投入シーケンスの最初の書き込みで設定しその後は別の値へ書き換えない`FLG`の時計）を使い、キックとスネアはBRRサンプルのままです。`Instrument.noiseMode`でBRRバーストへ戻せます。新しいコーパススクリプトが2ボイス同時ノイズ、保持中の時計変更、`FLG`のリセット／ミュートビットを検証します。マージ前のレビューで、時計が実際には四分の一秒後の後段の書き込みからしか有効になっておらず、曲の最初の250msに入るハイハットはレート0で鳴っていたことが分かり、最初の書き込みへ時計を移して修正しました |
+| P6-9 | file内driverで任意SPC playerから再生できるexport | todo | NEXT-08により着手可能に。exportは実SPC700に対して検証する必要があり、`check:spc`の`play-spc`参照実装がそれを提供する |
+| P6-10 | 複数ボイスの実三和音とハードウェアノイズのハット | done | このPR。三和音と内部ミキサー検査は実装・検証済みです。キットのハットは既定でDSP自身のハードウェアノイズ(`NON`、電源投入シーケンスの最初の書き込みで設定しその後は別の値へ書き換えない`FLG`の時計)を使い、キックとスネアはBRRサンプルのままです。`Instrument.noiseMode`でBRRバーストへ戻せます。新しいコーパススクリプトが2ボイス同時ノイズ、保持中の時計変更、`FLG`のリセット／ミュートビットを検証します。マージ前のレビューで、時計が実際には四分の一秒後の後段の書き込みからしか有効になっておらず、曲の最初の250msに入るハイハットはレート0で鳴っていたことが分かり、最初の書き込みへ時計を移して修正しました |
 
 <a id="phase-7-c64"></a>
 ## フェーズ7. C64

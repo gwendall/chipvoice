@@ -402,6 +402,8 @@ export {planPerformance, renderPerformance, performanceClock, validatePerformanc
 export type {Performance, PerformancePart, PerformanceNote, PerformancePlan, PerformanceOptions, PerformanceLoss} from './performance.js';
 
 export {importVgm} from "./vgm-import.js";
+export {importSpc} from "./spc-import.js";
+export type {Id666Tag, SpcPerformancePlan} from "./spc-import.js";
 export {isolateNativePerformance} from "./native-performance.js";
 export {calibrateMixInstrument, MixProfileBank, MIX_PROFILE_VERSION} from './mix-calibration.js';
 export type {MixProfile, MixCalibrationOptions} from './mix-calibration.js';

@@ -1,0 +1,1794 @@
+[
+ {
+  "mnemonic": "ADC",
+  "operands": "(X), (Y)",
+  "opcode": "99",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, #i",
+  "opcode": "88",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, (X)",
+  "opcode": "86",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, [d]+Y",
+  "opcode": "97",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, [d+X]",
+  "opcode": "87",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, d",
+  "opcode": "84",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, d+X",
+  "opcode": "94",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, !a",
+  "opcode": "85",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, !a+X",
+  "opcode": "95",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "A, !a+Y",
+  "opcode": "96",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "dd, ds",
+  "opcode": "89",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "ADC",
+  "operands": "d, #i",
+  "opcode": "98",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ADDW",
+  "operands": "YA, d",
+  "opcode": "7A",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "(X), (Y)",
+  "opcode": "39",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, #i",
+  "opcode": "28",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, (X)",
+  "opcode": "26",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, [d]+Y",
+  "opcode": "37",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, [d+X]",
+  "opcode": "27",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, d",
+  "opcode": "24",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, d+X",
+  "opcode": "34",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, !a",
+  "opcode": "25",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, !a+X",
+  "opcode": "35",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "A, !a+Y",
+  "opcode": "36",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "dd, ds",
+  "opcode": "29",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "AND",
+  "operands": "d, #i",
+  "opcode": "38",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "AND1",
+  "operands": "C, /m.b",
+  "opcode": "6A",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "AND1",
+  "operands": "C, m.b",
+  "opcode": "4A",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "ASL",
+  "operands": "A",
+  "opcode": "1C",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "ASL",
+  "operands": "d",
+  "opcode": "0B",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "ASL",
+  "operands": "d+X",
+  "opcode": "1B",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ASL",
+  "operands": "!a",
+  "opcode": "0C",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.0, r",
+  "opcode": "13",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.1, r",
+  "opcode": "33",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.2, r",
+  "opcode": "53",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.3, r",
+  "opcode": "73",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.4, r",
+  "opcode": "93",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.5, r",
+  "opcode": "B3",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.6, r",
+  "opcode": "D3",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBC",
+  "operands": "d.7, r",
+  "opcode": "F3",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.0, r",
+  "opcode": "03",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.1, r",
+  "opcode": "23",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.2, r",
+  "opcode": "43",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.3, r",
+  "opcode": "63",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.4, r",
+  "opcode": "83",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.5, r",
+  "opcode": "A3",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.6, r",
+  "opcode": "C3",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BBS",
+  "operands": "d.7, r",
+  "opcode": "E3",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "BCC",
+  "operands": "r",
+  "opcode": "90",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BCS",
+  "operands": "r",
+  "opcode": "B0",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BEQ",
+  "operands": "r",
+  "opcode": "F0",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BMI",
+  "operands": "r",
+  "opcode": "30",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BNE",
+  "operands": "r",
+  "opcode": "D0",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BPL",
+  "operands": "r",
+  "opcode": "10",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BVC",
+  "operands": "r",
+  "opcode": "50",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BVS",
+  "operands": "r",
+  "opcode": "70",
+  "bytes": 2,
+  "cycles": "2/4"
+ },
+ {
+  "mnemonic": "BRA",
+  "operands": "r",
+  "opcode": "2F",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CALL",
+  "operands": "!a",
+  "opcode": "3F",
+  "bytes": 3,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "CBNE",
+  "operands": "d+X, r",
+  "opcode": "DE",
+  "bytes": 3,
+  "cycles": "6/8"
+ },
+ {
+  "mnemonic": "CBNE",
+  "operands": "d, r",
+  "opcode": "2E",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.0",
+  "opcode": "12",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.1",
+  "opcode": "32",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.2",
+  "opcode": "52",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.3",
+  "opcode": "72",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.4",
+  "opcode": "92",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.5",
+  "opcode": "B2",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.6",
+  "opcode": "D2",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CLR1",
+  "operands": "d.7",
+  "opcode": "F2",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "(X), (Y)",
+  "opcode": "79",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, #i",
+  "opcode": "68",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, (X)",
+  "opcode": "66",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, [d]+Y",
+  "opcode": "77",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, [d+X]",
+  "opcode": "67",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, d",
+  "opcode": "64",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, d+X",
+  "opcode": "74",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, !a",
+  "opcode": "65",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, !a+X",
+  "opcode": "75",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "A, !a+Y",
+  "opcode": "76",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "X, #i",
+  "opcode": "C8",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "X, d",
+  "opcode": "3E",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "X, !a",
+  "opcode": "1E",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "Y, #i",
+  "opcode": "AD",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "Y, d",
+  "opcode": "7E",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "Y, !a",
+  "opcode": "5E",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "dd, ds",
+  "opcode": "69",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "CMP",
+  "operands": "d, #i",
+  "opcode": "78",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "CMPW",
+  "operands": "YA, d",
+  "opcode": "5A",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "DAA",
+  "operands": "A",
+  "opcode": "DF",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "DAS",
+  "operands": "A",
+  "opcode": "BE",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "DBNZ",
+  "operands": "Y, r",
+  "opcode": "FE",
+  "bytes": 2,
+  "cycles": "4/6"
+ },
+ {
+  "mnemonic": "DBNZ",
+  "operands": "d, r",
+  "opcode": "6E",
+  "bytes": 3,
+  "cycles": "5/7"
+ },
+ {
+  "mnemonic": "DEC",
+  "operands": "A",
+  "opcode": "9C",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "DEC",
+  "operands": "X",
+  "opcode": "1D",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "DEC",
+  "operands": "Y",
+  "opcode": "DC",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "DEC",
+  "operands": "d",
+  "opcode": "8B",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "DEC",
+  "operands": "d+X",
+  "opcode": "9B",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "DEC",
+  "operands": "!a",
+  "opcode": "8C",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "DECW",
+  "operands": "d",
+  "opcode": "1A",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "DIV",
+  "operands": "YA, X",
+  "opcode": "9E",
+  "bytes": 1,
+  "cycles": "12"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "(X), (Y)",
+  "opcode": "59",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, #i",
+  "opcode": "48",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, (X)",
+  "opcode": "46",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, [d]+Y",
+  "opcode": "57",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, [d+X]",
+  "opcode": "47",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, d",
+  "opcode": "44",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, d+X",
+  "opcode": "54",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, !a",
+  "opcode": "45",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, !a+X",
+  "opcode": "55",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "A, !a+Y",
+  "opcode": "56",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "dd, ds",
+  "opcode": "49",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "EOR",
+  "operands": "d, #i",
+  "opcode": "58",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "EOR1",
+  "operands": "C, m.b",
+  "opcode": "8A",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "INC",
+  "operands": "A",
+  "opcode": "BC",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "INC",
+  "operands": "X",
+  "opcode": "3D",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "INC",
+  "operands": "Y",
+  "opcode": "FC",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "INC",
+  "operands": "d",
+  "opcode": "AB",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "INC",
+  "operands": "d+X",
+  "opcode": "BB",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "INC",
+  "operands": "!a",
+  "opcode": "AC",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "INCW",
+  "operands": "d",
+  "opcode": "3A",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "JMP",
+  "operands": "[!a+X]",
+  "opcode": "1F",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "JMP",
+  "operands": "!a",
+  "opcode": "5F",
+  "bytes": 3,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "LSR",
+  "operands": "A",
+  "opcode": "5C",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "LSR",
+  "operands": "d",
+  "opcode": "4B",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "LSR",
+  "operands": "d+X",
+  "opcode": "5B",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "LSR",
+  "operands": "!a",
+  "opcode": "4C",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "(X)+, A",
+  "opcode": "AF",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "(X), A",
+  "opcode": "C6",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "[d]+Y, A",
+  "opcode": "D7",
+  "bytes": 2,
+  "cycles": "7"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "[d+X], A",
+  "opcode": "C7",
+  "bytes": 2,
+  "cycles": "7"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, #i",
+  "opcode": "E8",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, (X)",
+  "opcode": "E6",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, (X)+",
+  "opcode": "BF",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, [d]+Y",
+  "opcode": "F7",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, [d+X]",
+  "opcode": "E7",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, X",
+  "opcode": "7D",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, Y",
+  "opcode": "DD",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, d",
+  "opcode": "E4",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, d+X",
+  "opcode": "F4",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, !a",
+  "opcode": "E5",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, !a+X",
+  "opcode": "F5",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "A, !a+Y",
+  "opcode": "F6",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "SP, X",
+  "opcode": "BD",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "X, #i",
+  "opcode": "CD",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "X, A",
+  "opcode": "5D",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "X, SP",
+  "opcode": "9D",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "X, d",
+  "opcode": "F8",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "X, d+Y",
+  "opcode": "F9",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "X, !a",
+  "opcode": "E9",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "Y, #i",
+  "opcode": "8D",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "Y, A",
+  "opcode": "FD",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "Y, d",
+  "opcode": "EB",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "Y, d+X",
+  "opcode": "FB",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "Y, !a",
+  "opcode": "EC",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "dd, ds",
+  "opcode": "FA",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "d+X, A",
+  "opcode": "D4",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "d+X, Y",
+  "opcode": "DB",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "d+Y, X",
+  "opcode": "D9",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "d, #i",
+  "opcode": "8F",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "d, A",
+  "opcode": "C4",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "d, X",
+  "opcode": "D8",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "d, Y",
+  "opcode": "CB",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "!a+X, A",
+  "opcode": "D5",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "!a+Y, A",
+  "opcode": "D6",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "!a, A",
+  "opcode": "C5",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "!a, X",
+  "opcode": "C9",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV",
+  "operands": "!a, Y",
+  "opcode": "CC",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOV1",
+  "operands": "C, m.b",
+  "opcode": "AA",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "MOV1",
+  "operands": "m.b, C",
+  "opcode": "CA",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "MOVW",
+  "operands": "YA, d",
+  "opcode": "BA",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MOVW",
+  "operands": "d, YA",
+  "opcode": "DA",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "MUL",
+  "operands": "YA",
+  "opcode": "CF",
+  "bytes": 1,
+  "cycles": "9"
+ },
+ {
+  "mnemonic": "NOT1",
+  "operands": "m.b",
+  "opcode": "EA",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "(X), (Y)",
+  "opcode": "19",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, #i",
+  "opcode": "08",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, (X)",
+  "opcode": "06",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, [d]+Y",
+  "opcode": "17",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, [d+X]",
+  "opcode": "07",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, d",
+  "opcode": "04",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, d+X",
+  "opcode": "14",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, !a",
+  "opcode": "05",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, !a+X",
+  "opcode": "15",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "A, !a+Y",
+  "opcode": "16",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "dd, ds",
+  "opcode": "09",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "OR",
+  "operands": "d, #i",
+  "opcode": "18",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "OR1",
+  "operands": "C, /m.b",
+  "opcode": "2A",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "OR1",
+  "operands": "C, m.b",
+  "opcode": "0A",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "PCALL",
+  "operands": "u",
+  "opcode": "4F",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "POP",
+  "operands": "A",
+  "opcode": "AE",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "POP",
+  "operands": "PSW",
+  "opcode": "8E",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "POP",
+  "operands": "X",
+  "opcode": "CE",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "POP",
+  "operands": "Y",
+  "opcode": "EE",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "PUSH",
+  "operands": "A",
+  "opcode": "2D",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "PUSH",
+  "operands": "PSW",
+  "opcode": "0D",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "PUSH",
+  "operands": "X",
+  "opcode": "4D",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "PUSH",
+  "operands": "Y",
+  "opcode": "6D",
+  "bytes": 1,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "ROL",
+  "operands": "A",
+  "opcode": "3C",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "ROL",
+  "operands": "d",
+  "opcode": "2B",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "ROL",
+  "operands": "d+X",
+  "opcode": "3B",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ROL",
+  "operands": "!a",
+  "opcode": "2C",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ROR",
+  "operands": "A",
+  "opcode": "7C",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "ROR",
+  "operands": "d",
+  "opcode": "6B",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "ROR",
+  "operands": "d+X",
+  "opcode": "7B",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "ROR",
+  "operands": "!a",
+  "opcode": "6C",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "(X), (Y)",
+  "opcode": "B9",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, #i",
+  "opcode": "A8",
+  "bytes": 2,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, (X)",
+  "opcode": "A6",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, [d]+Y",
+  "opcode": "B7",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, [d+X]",
+  "opcode": "A7",
+  "bytes": 2,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, d",
+  "opcode": "A4",
+  "bytes": 2,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, d+X",
+  "opcode": "B4",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, !a",
+  "opcode": "A5",
+  "bytes": 3,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, !a+X",
+  "opcode": "B5",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "A, !a+Y",
+  "opcode": "B6",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "dd, ds",
+  "opcode": "A9",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "SBC",
+  "operands": "d, #i",
+  "opcode": "B8",
+  "bytes": 3,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.0",
+  "opcode": "02",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.1",
+  "opcode": "22",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.2",
+  "opcode": "42",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.3",
+  "opcode": "62",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.4",
+  "opcode": "82",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.5",
+  "opcode": "A2",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.6",
+  "opcode": "C2",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SET1",
+  "operands": "d.7",
+  "opcode": "E2",
+  "bytes": 2,
+  "cycles": "4"
+ },
+ {
+  "mnemonic": "SUBW",
+  "operands": "YA, d",
+  "opcode": "9A",
+  "bytes": 2,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "0",
+  "opcode": "01",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "1",
+  "opcode": "11",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "2",
+  "opcode": "21",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "3",
+  "opcode": "31",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "4",
+  "opcode": "41",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "5",
+  "opcode": "51",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "6",
+  "opcode": "61",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "7",
+  "opcode": "71",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "8",
+  "opcode": "81",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "9",
+  "opcode": "91",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "10",
+  "opcode": "A1",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "11",
+  "opcode": "B1",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "12",
+  "opcode": "C1",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "13",
+  "opcode": "D1",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "14",
+  "opcode": "E1",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCALL",
+  "operands": "15",
+  "opcode": "F1",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "TCLR1",
+  "operands": "!a",
+  "opcode": "4E",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "TSET1",
+  "operands": "!a",
+  "opcode": "0E",
+  "bytes": 3,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "XCN",
+  "operands": "A",
+  "opcode": "9F",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "BRK",
+  "operands": "",
+  "opcode": "0F",
+  "bytes": 1,
+  "cycles": "8"
+ },
+ {
+  "mnemonic": "CLRC",
+  "operands": "",
+  "opcode": "60",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "CLRP",
+  "operands": "",
+  "opcode": "20",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "CLRV",
+  "operands": "",
+  "opcode": "E0",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "DI",
+  "operands": "",
+  "opcode": "C0",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "EI",
+  "operands": "",
+  "opcode": "A0",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "NOP",
+  "operands": "",
+  "opcode": "00",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "NOTC",
+  "operands": "",
+  "opcode": "ED",
+  "bytes": 1,
+  "cycles": "3"
+ },
+ {
+  "mnemonic": "RET",
+  "operands": "",
+  "opcode": "6F",
+  "bytes": 1,
+  "cycles": "5"
+ },
+ {
+  "mnemonic": "RET1",
+  "operands": "",
+  "opcode": "7F",
+  "bytes": 1,
+  "cycles": "6"
+ },
+ {
+  "mnemonic": "SETC",
+  "operands": "",
+  "opcode": "80",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "SETP",
+  "operands": "",
+  "opcode": "40",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "SLEEP",
+  "operands": "",
+  "opcode": "EF",
+  "bytes": 1,
+  "cycles": "2"
+ },
+ {
+  "mnemonic": "STOP",
+  "operands": "",
+  "opcode": "FF",
+  "bytes": 1,
+  "cycles": "2"
+ }
+]

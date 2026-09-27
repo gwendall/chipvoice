@@ -295,11 +295,23 @@ real game music, and a real unit.
   `ceil(initEnd/period)*period` gives - the standard rate's own half-cycle
   rounding lands on the right cycle already, so this only showed up on a
   custom rate. `packages/chipvoice` was not touched.
-- todo - NEXT-06 GBS, NEXT-07 VGM import, NEXT-08 SPC playback, NEXT-09
-  SID/PSID: each against its reference player (GME, snes_spc, sidplayfp),
-  with a score per file.
-- P6-9 (SPC export) and todo - NEXT-10 (NSF and GBS export): a song that plays
-  on a real console from a flash cart, recorded on the step 1 bench.
+- todo - NEXT-06 GBS, NEXT-07 VGM import, NEXT-09 SID/PSID: each against its
+  reference player (GME, sidplayfp), with a score per file.
+- done - NEXT-08: `importSpc` plays an `.spc` snapshot (SPC700 + S-DSP, the
+  SNES's own music format) through a new SPC700 (S-SMP), timers and I/O
+  ports written from fullsnes, Anomie's SPC700/S-DSP documents and the SNES
+  developer wiki - never ported from snes_spc's own CPU, which stays an
+  oracle in `packages/conform`. The CPU is unit-tested opcode by opcode
+  against Anomie's doc (`packages/chipvoice/test/spc700.mjs`); `check:spc`
+  plays the same `.spc` file through `play-spc`, a real reference SPC700
+  built from the same vendored snes_spc but driving its CPU this time, and
+  compares the DSP register write sequence and the output samples. Both
+  matched on the first (self-authored) corpus file. This CPU is also the
+  prerequisite for P6-9 below: an embedded driver cannot be checked against
+  a real SPC700 without one.
+- P6-9 (SPC export, now unblocked by NEXT-08's CPU) and todo - NEXT-10 (NSF
+  and GBS export): a song that plays on a real console from a flash cart,
+  recorded on the step 1 bench.
 - No commercial rip is distributed; the measurement corpus stays private or
   freely redistributable.
 
@@ -528,7 +540,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P6-6 | The chip in the API, the studio and the skill. VGM has no S-DSP; SPC export is a driver in the file and comes later | done | skill 0.7.0; SPC export is P6-9 |
 | P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
 | P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit. NEXT-04 found the one real logic-analyser capture of a console's S-DSP lines anyone made is dead-linked, and the one filter-frequency estimate is a schematic simulation, not a capture: see [HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp) |
-| P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | |
+| P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | unblocked by NEXT-08: an export needs to be checked against a real SPC700, which `check:spc`'s `play-spc` oracle now gives it |
 | P6-10 | Real triads across voices and hardware-noise hats | done | this PR. Triads are implemented and tested, including internal mixer checks. The kit's hats default to the DSP's own hardware noise (`NON`, `FLG`'s clock set from the very first write at power-on, never rewritten to a different value), the kick and snare staying BRR samples; `Instrument.noiseMode` opts a hat back to its BRR burst. A corpus script exercises two noise voices at once, a held note's clock changed, and `FLG`'s reset and mute bits over an active noise voice. A review pass before merge found the clock was live only from the later, quarter-second write, leaving any hat in a song's first 250 ms clocked at rate 0; fixed by moving it into the first write |
 
 ## Phase 7. C64

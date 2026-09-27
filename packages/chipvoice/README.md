@@ -50,6 +50,17 @@ the hardware voice while retaining shared bus timing. The bounded VGM importer
 rejects unsupported commands; it does not claim every VGM chip/stream format.
 See the [native source method](https://github.com/gwendall/chipvoice/blob/main/scores/arrangements/README.md).
 
+Native SNES playback uses `importSpc(spcBytes)`: it plays an `.spc` file (a
+frozen SPC700 + S-DSP snapshot, the Super Nintendo's own music format)
+through this package's own SPC700 core, restoring the CPU, the 64 KB of ARAM
+and every DSP register exactly, and returns the same `PerformancePlan` shape
+`importVgm` does. Length comes from `options.seconds` or the file's ID666 tag
+("seconds to play" plus fade); a file with neither throws, since a made-up
+length would either cut the song short or silently make every import pay for
+a guessed-long simulation. The ID666 tag's title, game, artist and length are
+returned on the plan's `id666` field when present. A truncated or
+misidentified file throws explicitly.
+
 ```bash
 npm i chipvoice
 ```
