@@ -300,7 +300,11 @@ See [palette acceptance and measurements](../SNES-PALETTE.md).
   player's own code, for a capture using this driver's usual page). Fixing
   the second alone took the round-trip envelope correlation on `zelda`, the
   one published arrangement measured small enough to fit in 64 KB, from
-  0.51 to 0.96.
+  0.51 to 0.7491 at the encoding's own 1-tick grain - still short of the
+  0.95 threshold, from sub-tick phase noise, not a remaining content bug
+  (see `envelopeMatch`'s doc comment in `check-export.mjs`); widening the
+  window to four ticks, on its own merits, brought the same, now-correct
+  export to 0.9623, above threshold.
 - 2026-09-27: `importSpc`, a new SPC700 (S-SMP) written from documents, and
   `check:spc` against a real CPU oracle. Matched the oracle on both the DSP
   register write sequence and the output samples on the first file measured.
