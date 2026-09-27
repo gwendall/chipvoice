@@ -162,7 +162,7 @@ hand. Each chip's sheet has the detail behind every cell, and
 | Commodore 64 | MOS 6581 SID | **50 %** | ✅ 100 % | ⬜ | ❌ profile | ✅ 3/3 | [c64](docs/chips/c64.md) |
 | Later | PC Engine, GBA, Amiga, POKEY, YM2151, YM2610 | 0 % | ⬜ | ⬜ | ⬜ | ⬜ | later |
 
-Written by `conform` on 2026-09-04. The columns:
+Written by `conform` on 2026-09-27. The columns:
 
 - **Machine**: the console or computer, and **Chip**: its sound chip, as the package names it.
 - **Done**: the mean of the four measures that follow, as a rough single number. The sheet, not this, is the contract.
@@ -180,7 +180,7 @@ Written by `conform` on 2026-09-04. The columns:
 
 **Super Nintendo** (S-DSP, since 0.12.0). Digital: snes_spc 0.9.0 (blargg), 5 logs, 23.9M cycles; runs aligned on step times 100.0 % (183 of 183); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The S-DSP is snes_spc ported line for line and compared with it on the output stream: parity sample for sample, including the echo and its FIR. Analog: unmeasured; the DAC and the console's filter are a placeholder. A capture of the DSP's output would compare directly with the stream. Driver: a build-time BRR sample bank with hardware envelopes; lead, bass and percussion plus up to five simultaneous chord voices, with a shared chord volume budget. Remains: a unit's line-out; SPC export.
 
-**Commodore 64** (MOS 6581 SID, since 0.13.0). Digital: reSID-fp (libsidplayfp, drfiemost), as a 6581, 7 logs, 30.5M cycles; runs aligned on step times 100.0 % (1207 of 1207); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter. Analog: a profile from the documents, unmeasured: the 6581's non-linear DAC ladders, the filter on a measured cutoff curve, the output stage's corners. The 8580 is not modelled. Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did. Remains: the filter in the arranger; the 8580; a unit's line-out; VICE's SID test programs on a 6510.
+**Commodore 64** (MOS 6581 SID, since 0.13.0). Digital: reSID-fp (libsidplayfp, drfiemost), as a 6581, 11 logs, 42.8M cycles; runs aligned on step times 100.0 % (1242 of 1242); identical cycles 100.0 %, the rest the oracle's own conventions, read on the sheet. The SID is written from the documents and compared with reSID-fp, which stays in the harness (GPL): parity on both digital values of every voice, the waveform before its DAC and the envelope counter. Analog: a profile from the documents, unmeasured: the 6581's non-linear DAC ladders, the filter on a measured cutoff curve, the output stage's corners. The 8580 is not modelled. Driver: all three voices, the chord and the kit sharing the third, the drums cutting the chord as C64 tunes did. Remains: the filter in the arranger; the 8580; a unit's line-out; VICE's SID test programs on a 6510.
 
 **Later** (PC Engine, GBA, Amiga, POKEY, YM2151, YM2610). After the five, by demand.
 <!-- status:end -->

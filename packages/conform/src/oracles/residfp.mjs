@@ -3,13 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatLog } from '../log.mjs';
+import { traceProcess } from '../change-stream.mjs';
 
 /**
  * reSID-fp, built natively and driven over a pipe: the SID's generators as
  * reverse-engineered from the die and from sampling real chips, run as a
  * 6581. Its two digital values per voice - the waveform output and the
  * envelope counter, before the DACs - are what parity is measured on. GPL,
- * and in the harness only; see `oracles/residfp/README.md`.
+ * and in the harness only; see `oracles/residfp/README.md`. `trace()` streams
+ * its stdout through `traceProcess` (change-stream.mjs) into a `ChangeStream`
+ * rather than buffering the whole run as one string, since three sawtoothed
+ * voices for a few seconds already change on nearly every cycle.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/residfp/main.cpp', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'residfp');
@@ -56,18 +60,11 @@ export const residfp = {
   /**
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
+   * @returns {Promise<import('../change-stream.mjs').ChangeStream>}
    */
   trace(writes, cycles) {
     this.build();
     const input = formatLog({ chip: 'c64', clock: 985248, cycles }, writes);
-    const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
-    const changes = [];
-    for (const line of result.stdout.split('\n')) {
-      if (!line) continue;
-      const [cycle, voice, value] = line.split(' ').map(Number);
-      changes.push({ cycle, voice, value });
-    }
-    return changes;
+    return traceProcess(BINARY, [], input);
   },
 };

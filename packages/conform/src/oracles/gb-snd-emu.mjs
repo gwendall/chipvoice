@@ -3,12 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatLog } from '../log.mjs';
+import { traceProcess } from '../change-stream.mjs';
 
 /**
  * Gb_Snd_Emu, blargg's Game Boy APU from 2005, built natively and driven
  * over a pipe: the same arrangement as the 2A03's oracle, with the same
  * recording sink in place of Blip_Buffer. See `oracles/gb-snd-emu/README.md`
- * for what is his, what is ours, and what it is trusted for.
+ * for what is his, what is ours, and what it is trusted for. `trace()`
+ * streams its stdout through `traceProcess` (change-stream.mjs) into a
+ * `ChangeStream` rather than buffering the whole run as one string.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/gb-snd-emu/main.cpp', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'gb-snd-emu');
@@ -45,18 +48,11 @@ export const gbSndEmu = {
   /**
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
+   * @returns {Promise<import('../change-stream.mjs').ChangeStream>}
    */
   trace(writes, cycles) {
     this.build();
     const input = formatLog({ chip: 'dmg', clock: 4194304, cycles }, writes);
-    const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
-    const changes = [];
-    for (const line of result.stdout.split('\n')) {
-      if (!line) continue;
-      const [cycle, voice, value] = line.split(' ').map(Number);
-      changes.push({ cycle, voice, value });
-    }
-    return changes;
+    return traceProcess(BINARY, [], input);
   },
 };

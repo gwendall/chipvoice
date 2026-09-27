@@ -3,12 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatLog } from '../log.mjs';
+import { traceProcess } from '../change-stream.mjs';
 
 /**
  * snes_spc's S-DSP, blargg's "highly accurate" one, built natively and driven
  * over a pipe: the core the chip's S-DSP is ported from, written against the
  * hardware's own output. Parity with it on the output stream is parity with
- * the DSP, sample for sample. See `oracles/snes-spc/README.md`.
+ * the DSP, sample for sample. See `oracles/snes-spc/README.md`. `trace()`
+ * streams its stdout through `traceProcess` (change-stream.mjs) into a
+ * `ChangeStream` rather than buffering the whole run as one string.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/snes-spc/main.cpp', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'snes-spc');
@@ -34,18 +37,11 @@ export const snesSpc = {
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
    * @param {{ address: number, bytes: Uint8Array }[]} [memory] the samples
+   * @returns {Promise<import('../change-stream.mjs').ChangeStream>}
    */
   trace(writes, cycles, memory = []) {
     this.build();
     const input = formatLog({ chip: 'snes', clock: 1024000, cycles, memory }, writes);
-    const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
-    const changes = [];
-    for (const line of result.stdout.split('\n')) {
-      if (!line) continue;
-      const [cycle, voice, value] = line.split(' ').map(Number);
-      changes.push({ cycle, voice, value });
-    }
-    return changes;
+    return traceProcess(BINARY, [], input);
   },
 };

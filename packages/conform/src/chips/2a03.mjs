@@ -1,8 +1,10 @@
 import { nesChip } from 'chipvoice';
+import { ChangeStream } from '../change-stream.mjs';
 
 /**
  * chipvoice's 2A03, as the harness drives it: the digital chip alone, fed the
- * log's writes on their cycles, its voices' changes collected.
+ * log's writes on their cycles, its voices' changes collected straight into a
+ * `ChangeStream` (change-stream.mjs) rather than one object per change.
  */
 export const chip2a03 = {
   id: '2a03',
@@ -14,13 +16,14 @@ export const chip2a03 = {
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
    * @param {{ address: number, bytes: Uint8Array }[]} [memory] for the DMC
+   * @returns {ChangeStream}
    */
   trace(writes, cycles, memory = []) {
     const chip = nesChip.digital();
     for (const block of memory) chip.load(block.address, block.bytes);
     chip.schedule(writes.map((w) => ({ at: w.at, addr: w.addr, value: w.value })));
-    const changes = [];
-    chip.trace(cycles, (cycle, voice, value) => changes.push({ cycle, voice, value }));
+    const changes = new ChangeStream();
+    chip.trace(cycles, (cycle, voice, value) => changes.push(cycle, voice, value));
     return changes;
   },
 };

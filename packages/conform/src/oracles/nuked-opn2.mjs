@@ -3,12 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatLog } from '../log.mjs';
+import { traceProcess } from '../change-stream.mjs';
 
 /**
  * Nuked-OPN2, built natively and driven over a pipe: the die-derived YM3438
  * core the chip's YM2612 is ported from, in YM2612 mode. Parity with it on
  * the six FM voices is parity with the silicon, to the internal cycle. The
- * PSG is not this oracle's; see `oracles/nuked-opn2/README.md`.
+ * PSG is not this oracle's; see `oracles/nuked-opn2/README.md`. `trace()`
+ * streams its stdout through `traceProcess` (change-stream.mjs) into a
+ * `ChangeStream` rather than buffering the whole run as one string - the
+ * master clock is 53.7 MHz, and a song's worth of it is the corpus's largest
+ * single run today.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/nuked-opn2/main.cpp', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'nuked-opn2');
@@ -36,18 +41,11 @@ export const nukedOpn2 = {
   /**
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
+   * @returns {Promise<import('../change-stream.mjs').ChangeStream>}
    */
   trace(writes, cycles) {
     this.build();
     const input = formatLog({ chip: 'md', clock: 53693175, cycles }, writes);
-    const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
-    const changes = [];
-    for (const line of result.stdout.split('\n')) {
-      if (!line) continue;
-      const [cycle, voice, value] = line.split(' ').map(Number);
-      changes.push({ cycle, voice, value });
-    }
-    return changes;
+    return traceProcess(BINARY, [], input);
   },
 };
