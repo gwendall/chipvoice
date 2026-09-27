@@ -11,10 +11,10 @@
     "noise"
   ],
   "date": "2026-09-27",
-  "files": 8,
-  "cycles": 2233636083,
-  "identical": 1990757028,
-  "diverging": 4,
+  "files": 10,
+  "cycles": 2566533768,
+  "identical": 2321902638,
+  "diverging": 5,
   "results": [
     {
       "name": "script-algorithms",
@@ -256,6 +256,92 @@
         {
           "voice": "noise",
           "identical": 273835193,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "script-native-lfo-ch3",
+      "source": "src/chips/md/native-driver.ts (compileMdVoices)",
+      "writes": 268,
+      "cycles": 118124985,
+      "identical": 118124985,
+      "first": null,
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 118124985,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 118124985,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 118124985,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 118124985,
           "a": 0,
           "b": 0,
           "exact": 0,
@@ -545,33 +631,33 @@
     {
       "name": "song-bright",
       "source": "the same lines with a bright lead and a bright bass",
-      "writes": 2038,
+      "writes": 1801,
       "cycles": 214772700,
-      "identical": 188579310,
+      "identical": 187703355,
       "first": {
-        "cycle": 6223425,
-        "voice": 9,
-        "a": 0,
-        "b": 13
+        "cycle": 560130,
+        "voice": 6,
+        "a": 9,
+        "b": 0
       },
       "edges": [
         {
           "voice": "psg1",
           "identical": 214772580,
-          "a": 2071,
-          "b": 2071,
-          "exact": 2066,
+          "a": 2127,
+          "b": 2125,
+          "exact": 2120,
           "near": 0,
-          "onlyA": 5,
+          "onlyA": 7,
           "onlyB": 5,
           "shift": 0,
-          "aligned": 2066,
+          "aligned": 2120,
           "runs": {
-            "ours": 2071,
-            "theirs": 2071,
-            "alignedTimes": 2071,
-            "alignedValues": 2071,
-            "maxShift": 30
+            "ours": 2126,
+            "theirs": 2125,
+            "alignedTimes": 2125,
+            "alignedValues": 2125,
+            "maxShift": 1597590
           }
         },
         {
@@ -614,21 +700,21 @@
         },
         {
           "voice": "noise",
-          "identical": 188579415,
-          "a": 20691,
-          "b": 20692,
-          "exact": 3116,
+          "identical": 187703475,
+          "a": 21146,
+          "b": 21151,
+          "exact": 139,
           "near": 0,
-          "onlyA": 17575,
-          "onlyB": 17576,
+          "onlyA": 21007,
+          "onlyB": 21012,
           "shift": 0,
-          "aligned": 3116,
+          "aligned": 139,
           "runs": {
-            "ours": 2840,
-            "theirs": 2834,
-            "alignedTimes": 2377,
-            "alignedValues": 2303,
-            "maxShift": 8695680
+            "ours": 2938,
+            "theirs": 2932,
+            "alignedTimes": 2490,
+            "alignedValues": 2409,
+            "maxShift": 8311920
           }
         }
       ]
@@ -636,33 +722,33 @@
     {
       "name": "song-golden",
       "source": "packages/chipvoice/test/golden-md.mjs",
-      "writes": 1900,
+      "writes": 1947,
       "cycles": 214772700,
-      "identical": 188579205,
+      "identical": 187703295,
       "first": {
-        "cycle": 6223425,
-        "voice": 9,
-        "a": 0,
-        "b": 13
+        "cycle": 560130,
+        "voice": 6,
+        "a": 11,
+        "b": 0
       },
       "edges": [
         {
           "voice": "psg1",
-          "identical": 214772475,
-          "a": 2075,
-          "b": 2075,
-          "exact": 2066,
+          "identical": 214772490,
+          "a": 2131,
+          "b": 2129,
+          "exact": 2120,
           "near": 0,
-          "onlyA": 9,
+          "onlyA": 11,
           "onlyB": 9,
           "shift": 0,
-          "aligned": 2066,
+          "aligned": 2120,
           "runs": {
-            "ours": 2074,
-            "theirs": 2074,
-            "alignedTimes": 2074,
-            "alignedValues": 2074,
-            "maxShift": 30
+            "ours": 2129,
+            "theirs": 2128,
+            "alignedTimes": 2128,
+            "alignedValues": 2128,
+            "maxShift": 1597590
           }
         },
         {
@@ -705,21 +791,112 @@
         },
         {
           "voice": "noise",
-          "identical": 188579415,
-          "a": 20691,
-          "b": 20692,
-          "exact": 3116,
+          "identical": 187703475,
+          "a": 21146,
+          "b": 21151,
+          "exact": 139,
           "near": 0,
-          "onlyA": 17575,
-          "onlyB": 17576,
+          "onlyA": 21007,
+          "onlyB": 21012,
           "shift": 0,
-          "aligned": 3116,
+          "aligned": 139,
           "runs": {
-            "ours": 2840,
-            "theirs": 2834,
-            "alignedTimes": 2377,
-            "alignedValues": 2303,
-            "maxShift": 8695680
+            "ours": 2938,
+            "theirs": 2932,
+            "alignedTimes": 2490,
+            "alignedValues": 2409,
+            "maxShift": 8311920
+          }
+        }
+      ]
+    },
+    {
+      "name": "song-punchy",
+      "source": "the same lines with a bright lead (its own pitch LFO) and the FM drum kit on channel six (perc: \"punchy\")",
+      "writes": 3784,
+      "cycles": 214772700,
+      "identical": 214772490,
+      "first": {
+        "cycle": 560130,
+        "voice": 6,
+        "a": 11,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "psg1",
+          "identical": 214772490,
+          "a": 2131,
+          "b": 2129,
+          "exact": 2120,
+          "near": 0,
+          "onlyA": 11,
+          "onlyB": 9,
+          "shift": 0,
+          "aligned": 2120,
+          "runs": {
+            "ours": 2129,
+            "theirs": 2128,
+            "alignedTimes": 2128,
+            "alignedValues": 2128,
+            "maxShift": 1597590
+          }
+        },
+        {
+          "voice": "psg2",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "psg3",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "noise",
+          "identical": 214772700,
+          "a": 0,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 0,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
           }
         }
       ]
