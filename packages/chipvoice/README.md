@@ -89,7 +89,8 @@ A Commodore 64 SID music file plays with `importPsid(psidBytes)` and
 `renderPsid(performance)`. A from-scratch 6510 runs the file's INIT and PLAY
 routines against a minimal, disclosed C64 environment (CIA1 timer A, the VIC
 raster IRQ, SID register mirroring), built entirely from HVSC's own PSID/RSID
-file format document, with no oracle and no ported GPL code. PAL/NTSC clock
+file format document, with no ported GPL code, and checked against an
+independent libsidplayfp oracle (`scores/psid-corpus`). PAL/NTSC clock
 and 6581/8580 model header flags are honored. Multi-SID files, RSID files
 that also need BASIC, and the MUS player format are rejected by name
 (`PsidFormatError`), as are the 7 unstable and 12 JAM 6502/6510 opcodes

@@ -218,13 +218,17 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 
 `importPsid`／`renderPsid`（`packages/chipvoice/src/psid-import.ts`）は、PSIDまたはRSIDファイル（HVSCの`SID_file_format.txt`）のINITとPLAYの機械語コードを、資料から書き起こした6510（`packages/chipvoice/src/chips/c64/cpu6510.ts`）と最小限で開示済みのC64環境上で実際に実行し、曲がSIDへ行ったすべての書き込みを`importVgm`と同じ形の`PerformancePlan`として返します。`renderPerformance(plan, c64Chip, {model: plan.model, clockHz: plan.clockHz})`でレンダリングでき、`renderPsid`なら一度の呼び出しで済みます。`psid-import.ts`は`vgm-import.ts`と同じくトップレベルのまま、CPUは他のどのチップのコアとも同じく`chips/c64/`配下に置きます。どちらも`scores/mixing/calibrate.mjs`自身の呼び出し経路には無く(キャリブレーションはチップの音符レベルの`ChipCore`だけを駆動し、このインポート／CPU経路には触れません)、そのためエンジンハッシュに重みを追加しません。
 
-ここには参照実装（オラクル）はありません（下記「既知の限界」参照）。適合性確認は、GPLエミュレータのコードを読んだり移植したりするのではなく（decision 41）、公開されたオペコード／サイクル表と6502.orgの10進モード資料に基づく手書きの単体テストで行います。
+適合性確認は、出荷または移植されたGPLコードを一切含まない3本柱に基づきます（decision 41）：公開されたオペコード／サイクル表と6502.orgの10進モード資料に基づく手書きの単体テスト。Klaus DormannとBruce Clark自身の自己検証型6502テストプログラムを、`packages/conform`内の非公開の適合性確認ツールとしてベンダリングし、この同じ`Cpu6510`に対して実行するもの。そして本チケットから加わった独立参照実装（オラクル） - libsidplayfp自身をピン留めしたリビジョンでクローン・ビルドし、gitignore対象の`.artifacts/`ディレクトリに置く（`scores/psid-corpus/native-oracle.mjs`。Game_Music_Emuに対して`scores/arrangements/native-oracle.py`が使うのと同じピン留めクローンのパターン）。`packages/chipvoice`には一切同梱せず、ベンダリングもしません。
+
+オラクル自身のSID書き込みトレースは、ログをパッチで仕込むのではなくlibsidplayfpの公開`SidConfig::sidEmulation`フックを通して差し込んだもので、INITの呼び出し規約を推測のままにせず実測で確定させました：`A`（曲番号、0始まり）と`P`（`PHP`前の0x24）は、libsidplayfp自身の参照ドライバーと厳密に一致します。`X`と`Y`は一致せず、いまや本当に未定義であることが確認されています - ファイル形式の仕様書が単に沈黙しているだけでなく、libsidplayfp自身のドライバーも、無関係なCIA／ラスター設定の分岐が最後に読み込んだ値をそのまま保持しているだけで、文書化された値ではありません。これらを0にするという本パッケージ自身の選択は、文書化されていない規約を推測したものではなく、意図的で仕様上中立なデフォルトのままです。詳しくは下記「既知の限界」とコーパスの表を参照してください。
+
+同じオラクルは、既に修正済みの実在する適合性の欠落も発見しました：`Cpu6510`のリードモディファイライト命令（`INC`／`DEC`／`ASL`／`LSR`／`ROL`／`ROR`、および非公式のSLO／RLA／SRE／RRA／DCP／ISCの組み合わせ）には、NMOS 6502が仕様として持つダミー書き込みが欠けていました - 実機では、RMW命令は変更後の値を書き込む前に、未変更の値を一度バスへ書き戻します。1サイクル離れた2回の書き込みであって1回ではありません - 実在するPSID／RSID曲の中には、SIDレジスタへの`INC`／`ASL`を直接使ってフェイクのゲート再トリガーを意図的に利用するものもあります。`Cpu6510`はこれまで2回目の書き込みしか行っていませんでしたが、いまは両方を行い、オラクル自身のサイクル精度のトレースに対して検証済みです。
 
 | | |
 | --- | --- |
 | **コア** | `chips/c64/cpu6510.ts`（6510 CPU）、`psid-import.ts`（ヘッダー、環境、公開API） |
-| **適合性確認** | `test/cpu6510.mjs`：すべての正式オペコードの結果・フラグ・サイクル数（ページ境界を跨ぐ際のペナルティを含む）。NMOSの10進（BCD）ADC／SBCアルゴリズム。実在のSID曲が使うことが知られている安定した非公式オペコードすべて。不安定な非公式オペコードとJAM／KILオペコードすべてを、名前付きで拒否（推測や停止はしない） |
-| **ライセンス** | パッケージ全体と同じMIT。GPLコードは読んでも移植してもいません（decision 41） |
+| **適合性確認** | `test/cpu6510.mjs`：すべての正式オペコードの結果・フラグ・サイクル数（ページ境界を跨ぐ際のペナルティを含む）。NMOSの10進（BCD）ADC／SBCアルゴリズムとRMW自身のダミー書き込み。実在のSID曲が使うことが知られている安定した非公式オペコードすべて。不安定な非公式オペコードとJAM／KILオペコードすべてを、名前付きで拒否（推測や停止はしない）。`test/psid-import.mjs`：ヘッダー解析、下記の名前付き拒否、PAL／NTSCと6581／8580の選択、そしてエンドツーエンドのレンダリング。`packages/conform`の`check:6510`：Klaus Dormannの6502機能テストとBruce Clarkの10進テストという、独立した第二の証明。`scores/psid-corpus`：上記のlibsidplayfpオラクル |
+| **ライセンス** | パッケージ全体と同じMIT。GPLコードは読んでも移植しても同梱してもいません（decision 41） - Klaus Dormann／Bruce Clarkのテストとlibsidplayfpオラクルは、どちらも非公開の適合性確認ツールに過ぎません |
 
 **この環境が模擬するもの。** `$D400`の1基のSID。CIA 1タイマーAを60Hzの割り込み源として、「上位バイトの書き込みでカウンターも即時ロードされる」という既知の癖ごと。VICはフレームごとに1回のラスター割り込みパルスに単純化し、ファイル形式自身が定めるPAL（19656サイクル）またはNTSC（17045サイクル）周期を使います。ファイル形式自身が定めるデフォルト環境：PSIDではspeedフラグが0のときのみVICラスター割り込みを有効化し、CIA 1タイマーAは常時稼働ながらspeedフラグが1のときのみ割り込みを有効化。RSIDではCIA 1タイマーAは稼働かつ割り込み有効の状態で開始し、VICラスターは設定だけして無効のままにします（RSID曲は自前のハンドラーを組み込み管理するため）。バンクレジスタ`$01`は、PSIDではINIT／PLAY呼び出しの直前ごとにファイル形式自身の式で書き込みます（RSIDは自前のハンドラーが入った後は自分で管理）。`playAddress`が0でないPSIDには、`$0334`に小さな環境インストール型トランポリンを用意し、PLAYを呼ぶ前に模擬している両方の割り込み源を確認応答します（どちらが発火しても同じハンドラーに入るため）。`playAddress`が0のPSIDと、すべてのRSIDでは、代わりにINIT中に曲自身がインストールしたハンドラーをそのまま使います。INITが戻った後は、CPUを`$0350`の自己`JMP`アイドルループに置きます。実機が割り込みの間に行っていることと同じで、戻り先番地に何があるか分からないまま実行させることはしません。
 
@@ -234,9 +238,42 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 
 | 内容 | 理由 |
 | --- | --- |
-| オラクル（libsidplayfp）もKlaus Dormannのテストスイートもない | どちらもGPLのため。適合性確認は代わりに、公開されたオペコード／サイクル表と6502.orgの10進モード資料に基づく手書きの単体テストで行う（decision 41） |
-| INITの呼び出し規約（`A` = 曲番号マイナス1）は推測 | ファイル形式の仕様書がこれを明記しているのはRSID＋BASICの場合のみ（「$030Cには曲番号を設定する…曲1なら0x00」）。他の規約が文書化されていないため、これを一般化して採用 |
-| 自前の実機キャプチャコーパスがない | オラクルがないのと同じ理由：ここでは再生したPSIDを実機キャプチャのトレースと比較していない |
+| INITでは`X`と`Y`を0にしている。この規約は単に未確認なのではなく、未定義であると確認済み | ファイル形式の仕様書はこれらを一切文書化していない（`A`のみ、しかもRSID＋BASICの場合のみ）。libsidplayfp自身の参照ドライバーも、無関係なCIA／ラスター設定の分岐が最後に読み込んだ値を保持しているだけで、安定した値を持たない - `scores/psid-corpus`の`convention-probe.sid`に対して直接計測済み。下記の表を参照 |
+| PLAY自身のフレームごとのタイミングは、実機のライン単位VIC-IIと数サイクルずれることがある | この環境が模擬するフレームごと1回のラスターパルスは正確で固定周期。実機自身のライン単位ラスター比較器には、同じ平均値を中心とした小さな揺らぎがある - `frame-rate-probe.sid`に対して3フレーム周期の+1／+1／-2サイクルというパターンを計測済みで、`scores/psid-corpus/compare.mjs`自身のPLAYフェーズ一致判定の許容範囲に十分収まる |
+| 自前の実機キャプチャコーパスがない | ここでは再生したPSIDを、実機キャプチャのトレースではなくlibsidplayfp自身のエミュレーションとしか比較していない |
+
+<a id="klaus-dormann-and-bruce-clarks-own-6502-tests"></a>
+### Klaus DormannとBruce Clark自身の6502テスト
+
+さらに2本の自己検証型プログラムを、この同じ`Cpu6510`に対して実行します。どちらも、第二のエミュレータと突き合わせるのではなく、メモリ内か固定のプログラムカウンタに自身の判定結果を残します：Klaus Dormannの6502機能テスト（すべての正式オペコード、アドレッシングモード、フラグ更新）と、Bruce Clarkの10進モードテスト（計算済みの予測値に対する全130,050件のBCD ADC／SBCケース）。どちらもGPLで、非公開の適合性確認ツールとしてのみ`packages/conform/roms/klaus-6502`にベンダリングしています（decision 41。`packages/chipvoice`には一切含めません） - 各バイナリの出所、ライセンス、SHA-256はそのディレクトリ自身の`README.md`を参照してください。`pnpm --filter chipvoice-conform check:6510`が両方を実行し、CIの`conformance`ジョブが変更のたびに実行します。
+
+<!-- cpu6510:begin -->
+`conform`の`check:6510`で2026-09-27に実行：2 / 2成功。
+
+| テスト | 結果 | 実際の出力（原文） |
+| --- | --- | --- |
+| `functional` | 成功 | success trap at $3469 |
+| `decimal` | 成功 | all 130,050 decimal ADC/SBC cases matched the predicted result (ERROR=0) |
+<!-- cpu6510:end -->
+
+<a id="oracle-libsidplayfp"></a>
+### オラクル：libsidplayfp
+
+`scores/psid-corpus`は、2本の小さな自作PSIDフィクスチャ（CC0、本チケット自身のもの - HVSCや商用の吸い出しは一切使わない。decision 41）を、ピン留めしたリビジョンでクローン・ビルドしgitignore対象の`.artifacts/`ディレクトリに置いたlibsidplayfpに対して採点します（`native-oracle.mjs`。GPL-2.0-or-later、ベンダリングはしない）。小さな独自実装のロガー（`sidplayfp-harness.cpp`）を、libsidplayfp自身のCPU・CIA・VIC・曲読み込みエンジンへ、その公開`SidConfig::sidEmulation`フックを通して差し込みます - SIDの音声は一切模擬せず、libsidplayfpのソースにも一切パッチを当てません - そして、`psid-import.ts`自身の環境が記録するのと同じ`{cycle, addr, value}`という形で、SIDへのすべての書き込みを正確なクロックサイクルとともに出力します。
+
+- **`convention-probe.sid`**：INITが`A`、`X`、`Y`とPHPで取り出した`P`を、何もしないうちに一度だけ`$D400`〜`$D403`へそのまま格納します - 呼び出し規約そのものを、書き込みストリームとして読み戻すものです。オラクルとのバイトストリーム比較は、設計上`X`レジスタで止まります（上記「既知の限界」参照）。下記の「INITレジスタ」列こそがこのフィクスチャの主眼であり、「一致」列ではありません。
+- **`frame-rate-probe.sid`**：INITが開始マーカーを書き込み、その後PLAYが呼び出しのたびに1つのレジスタを多数フレームにわたってインクリメントします - PLAY自身のカデンスを、小さなサイクル許容誤差付きでオラクルと突き合わせます（理由と許容量の詳細は`compare.mjs`自身のドキュメントコメントを参照）。
+
+`pnpm psid-corpus:sheet`が下記の表を書き込みます。手で編集しないでください。`pnpm psid-corpus:check`（CI、`conformance`ジョブ）は表を書き換えずに再実行します。`--no-oracle`はlibsidplayfpのビルドを省略し、chipvoice自身の`importPsid`が生成するイベント数だけを採点します。
+
+<!-- psid-corpus:begin -->
+`psid-corpus:sheet`による生成：2026-09-27。参照：libsidplayfp revision `ecd932b3ef87746008472bc7e65b0c419a483e02`。
+
+| フィクスチャ | イベント数 | 一致 | 最初の相違 | INITレジスタ |
+| --- | --- | --- | --- | --- |
+| [convention-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 54 | 1/54 | INITフェーズ, サイクル 4 対 167997, $1: 0 対 168 | A=0, X=0/168, Y=0, P=52 |
+| [frame-rate-probe](https://github.com/gwendall/chipvoice/tree/main/scores/psid-corpus/make-fixtures.mjs) | 1004 | 1004/1004 | なし | - |
+<!-- psid-corpus:end -->
 
 <a id="known-deviations"></a>
 ## 既知の差異
@@ -260,6 +297,8 @@ const chip = await Chip.create(ctx, { chip: "c64", model: "8580" });
 ## 履歴
 
 - 2026-09-27：フィルターをアレンジャーから到達可能に。`lead: "sweep"`はノート全体でカットオフを開き、`bass: "resonant"`は高レゾナンスでパルスを通す。いずれもローパス。各ボイスは自分のルーティングビットだけを立て・下ろし、チップ共通のレゾナンス・カットオフ・モードは実際に後から時間的に書き込まれたボイスのものになる。`SidDriver`はフィルターを使うボイスの書き込みを、そのボイス自身の直前フレームとだけ比較し、他のボイスの書き込みとは比較しない。そのため真の時間順とは異なる順で処理されたノートが、後から重なる別ノート自身の書き込みを覆い隠すことはない。2ボイスが同時に異なるフィルター設定を求めると`validateSong`の`filter_conflict`で診断する。フレームごとのパルス幅スイープも追加、公開の`Instrument.pulseWidth`フィールド。`script-filter`と`song-filter`をコーパスに追加、全ストリームで依然reSID-fpと一致（フィルターはアナログ段のみでデジタルは動かないため）（P7-9、P8-13）。
+- 2026-09-27：libsidplayfpベースのオラクル（`scores/psid-corpus`、GPL-2.0-or-later、ピン留めしたリビジョンからビルドしgitignore対象の`.artifacts/`に置く、ベンダリングはしない - decision 41）が、INIT自身の呼び出し規約を実測で確定。`A`（曲番号、0始まり）と`P`（`PHP`前の0x24）はlibsidplayfp自身の参照ドライバーと厳密に一致。`X`と`Y`は一致せず、ファイル形式の仕様書とlibsidplayfp自身のドライバーの両方から見て本当に未定義であることを確認 - これらを0にするのは意図的で仕様上中立なデフォルトのまま。同じオラクルが実在する適合性の欠落も発見：`Cpu6510`のリードモディファイライト命令にNMOS 6502が仕様として持つダミー書き込み（変更後の値を書き込む前に未変更の値を一度バスへ書き戻す動作）が欠けており、一部のPSID／RSID曲がSIDのフェイクなゲート再トリガーのために意図的に利用するものだったが、いまは修正済み（NEXT-09）。
+- 2026-09-27：Klaus Dormannの6502機能テストとBruce Clarkの10進テストを、非公開の適合性確認ツール（`packages/conform`、decision 41）としてベンダリングし、この同じ`Cpu6510`に対して実行。手書きのオペコード／サイクル一式とVICEのSIDプログラムに加わる独立した第二の証明で、CIの`conformance`ジョブへ`check:6510`として組み込み済み（NEXT-09）。
 - 2026-09-27：OSC3またはENV3の読み出しが、読んだ値をチップのデータバスに残すように。実機で走らせるVICEの`busvalue`テストの期待通りで、VICEの14本全てが成功（P2-1）。ドライバーはSIDを読まないため、音は変わりません。
 - 2026-09-27：ハーネスが新たに持つ6510で、独立した第二の検証。VICEの`testprogs/SID`から14本を実行し13本成功。`busvalue`が実差異（OSC3／ENV3読み出しでバスラッチが更新されない）を発見し、P2-1の知見として残す。`envrate`はDag Lemの実機検証済みレート表と完全一致。
 - 2026-09-27：鋸歯状波・三角波・ノイズ・組み合わせ波形を3ボイス同時に保持する密なスクリプトを4本追加。これらもreSID-fpと一致。かつてハーネスをメモリ不足にした3鋸歯状波8秒のケースは、いまはオンデマンドで実行でき、成功する（P7-11）。

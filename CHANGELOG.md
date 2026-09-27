@@ -195,21 +195,37 @@ the first file checked.
 PSID/RSID files play through two new exports, `importPsid` and `renderPsid`,
 on a from-scratch 6510 (`Cpu6510`) run against a minimal, disclosed C64
 environment (CIA1 timer A, the VIC raster IRQ, SID register mirroring) built
-entirely from HVSC's own file format document, with no libsidplayfp or other
-oracle and no ported GPL code (decision 41). Every documented 6502/6510
-opcode is implemented, along with the stable illegal opcodes; the 7 unstable
-and 12 JAM opcodes are named and rejected (`IllegalOpcodeError`, kind
-`"unstable"` or `"jam"`) rather than guessed at, since no document gives
-their CPU-internal-state-dependent results. PAL/NTSC clock and 6581/8580
-model header flags are honored; multi-SID files, RSID files that also need
-BASIC, and the MUS player format are rejected by name rather than silently
-misplayed. With no oracle for this chip, conformance is a hand-written unit
-suite instead of a corpus comparison: every documented opcode's cycle count
-and flags, decimal-mode ADC/SBC against 6502.org's own worked examples, and
-every stable illegal and named-rejected opcode. See
+entirely from HVSC's own file format document, with no ported GPL code
+(decision 41). Every documented 6502/6510 opcode is implemented, along with
+the stable illegal opcodes; the 7 unstable and 12 JAM opcodes are named and
+rejected (`IllegalOpcodeError`, kind `"unstable"` or `"jam"`) rather than
+guessed at, since no document gives their CPU-internal-state-dependent
+results. PAL/NTSC clock and 6581/8580 model header flags are honored;
+multi-SID files, RSID files that also need BASIC, and the MUS player format
+are rejected by name rather than silently misplayed.
+
+Conformance now rests on three legs, none of them shipped or ported GPL code
+(decision 41): a hand-written unit suite (every documented opcode's cycle
+count and flags, decimal-mode ADC/SBC against 6502.org's own worked
+examples, and every stable illegal and named-rejected opcode); Klaus
+Dormann's 6502 functional test and Bruce Clark's decimal test, vendored as
+non-shipping conformance tools (`packages/conform`, `check:6510`, in CI) and
+run against this same `Cpu6510`; and a new independent oracle, libsidplayfp,
+cloned and built at a pinned revision into gitignored local artifacts
+(`scores/psid-corpus`) and never vendored into `packages/chipvoice`. That
+oracle settled INIT's own calling convention by measurement instead of
+inference: `A` (the zero-based song number) and `P` (0x24 before the PHP)
+match libsidplayfp's own reference driver exactly; `X` and `Y` do not, and
+are now confirmed genuinely undefined by both the file format document's
+silence and libsidplayfp's own driver's own leftover values, not merely
+unconfirmed. The same oracle also found a real conformance gap, now fixed:
+`Cpu6510`'s read-modify-write instructions were missing the dummy write real
+NMOS 6502 hardware always makes before the modified one, which some real
+PSID/RSID tunes deliberately exploit for a fake SID gate retrigger. See
 [docs/chips/c64.md#psidrsid-playback](docs/chips/c64.md#psidrsid-playback)
-for what this environment models, what it does not, and the known limits
-(no Klaus Dormann suite, an inferred INIT calling convention, no
+for the oracle's own numbers and the remaining known limits (`X`/`Y`
+confirmed undefined rather than merely unconfirmed, a small measured
+per-frame cycle wobble against the real per-line VIC-II, and no
 self-produced hardware capture corpus).
 
 ## 0.19.1: Console changes without a dropout
