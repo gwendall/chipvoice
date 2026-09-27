@@ -54,21 +54,11 @@ export async function createProjectJob(
     }
     return jobView(row);
   }
-  // A publication's document is immutable once written; its first render
-  // must be the engine decision 43 recorded for it, or a mismatch would be
-  // rendered under an id that claims a different engine made it. A known,
-  // older engine refuses clearly rather than silently rendering with a
-  // newer one; publish a new revision to render (and record) the current
-  // engine. Pre-decision-43 publications have no recorded version to check.
-  if (
-    publication.engineVersion !== null &&
-    publication.engineVersion !== PROJECT_ENGINE_VERSION
-  )
-    throw new ProjectHttpError(
-      409,
-      "engine_upgraded",
-      `Published with chipvoice ${publication.engineVersion}; this server renders with chipvoice ${PROJECT_ENGINE_VERSION}. Publish a new revision to render with the current engine, or install chipvoice@${publication.engineVersion} to reproduce the original.`,
-    );
+  // A render always uses whatever engine is live on the server now (decision
+  // 43); it is never refused for differing from the publication's own
+  // engineVersion. The job records the version that actually rendered it,
+  // which is honest on its own: a rendition never claims to be a recording
+  // it is not, whether or not its version matches the publication's.
   await admitProject(`render:${viewerUser(userId)}`, 3);
   await client.execute({
     sql: "insert into project_jobs(id,project_id,kind,status,engine,engine_version,created_at) values(?,?,?,'queued',?,?,?) on conflict(project_id,kind) do nothing",

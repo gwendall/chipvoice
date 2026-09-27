@@ -192,9 +192,12 @@ try {
   const anonymous=await api.audioGet(new Request(`https://chipvoice.test/api/v1/jobs/${job.id}/audio`,{headers:{range:'bytes=0-43'}}),{params:Promise.resolve({id:job.id})});assert.equal(anonymous.status,404,'range never bypasses private ownership');
 
   // Decision 43: a publication recorded against an engine this server no
-  // longer runs refuses its first render clearly, rather than rendering
-  // silently under a different engine than the one the id claims.
-  const stale = await api.publishProject(bob.userId, {
+  // longer runs still renders, with the current engine; the job records
+  // that current version, honestly, alongside the publication's older one,
+  // rather than refusing or pretending to be the publication's own engine.
+  // A fresh account keeps this off bob's and alice's render: rate budget.
+  const carol = await account("carol@example.test");
+  const stale = await api.publishProject(carol.userId, {
     project: tiny,
     visibility: "private",
     requestKey: "project-test-stale-engine",
@@ -203,17 +206,29 @@ try {
     sql: "update projects set engine_version='0.0.1-stale' where id=?",
     args: [stale.id],
   });
-  await assert.rejects(
-    () => api.createProjectJob(stale.id, bob.userId, "full"),
-    (error) => error.status === 409 && error.code === "engine_upgraded",
+  const mismatched = await api.createProjectJob(stale.id, carol.userId, "full");
+  assert.equal(mismatched.engineVersion, PROJECT_ENGINE_VERSION);
+  assert.equal(
+    (await api.getProject(stale.id, carol.userId)).engineVersion,
+    "0.0.1-stale",
+    "the publication's own recorded version is unaffected by a later render",
   );
-  // A publication saved before decision 43 (null engine_version) has
-  // nothing to compare against, so it renders with the current engine.
+  // A publication saved before decision 43 (null engine_version) renders
+  // the same way, recording the current version on its job.
+  const unrecorded = await api.publishProject(carol.userId, {
+    project: tiny,
+    visibility: "private",
+    requestKey: "project-test-unrecorded-engine",
+  });
   await client.execute({
     sql: "update projects set engine_version=null where id=?",
-    args: [stale.id],
+    args: [unrecorded.id],
   });
-  const unknown = await api.createProjectJob(stale.id, bob.userId, "full");
+  const unknown = await api.createProjectJob(
+    unrecorded.id,
+    carol.userId,
+    "full",
+  );
   assert.equal(unknown.engineVersion, PROJECT_ENGINE_VERSION);
 
   await client.execute({

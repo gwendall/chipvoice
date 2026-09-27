@@ -41,6 +41,9 @@ export default function PublishedProject({ id }: { id: string }) {
     publication?.renditions?.find(
       (r) => r.kind === "full" && r.status === "ready",
     ) ?? publication?.renditions?.find((r) => r.status === "ready");
+  // A rendition always renders with the current engine (decision 43); it can
+  // differ from the publication's own engineVersion after a deploy.
+  const renderedVersion = rendition?.engineVersion ?? null;
 
   return (
     <>
@@ -173,7 +176,21 @@ export default function PublishedProject({ id }: { id: string }) {
                   : t("No reuse licence granted")}
               </p>
               <p>
-                {publication.engineVersion
+                {publication.engineVersion &&
+                renderedVersion &&
+                publication.engineVersion !== renderedVersion
+                  ? t(
+                      "Published with chipvoice {published}, rendered with chipvoice {rendered}",
+                      {
+                        published: publication.engineVersion,
+                        rendered: renderedVersion,
+                      },
+                    )
+                  : renderedVersion && renderedVersion !== publication.engineVersion
+                  ? t("Rendered with chipvoice {version}", {
+                      version: renderedVersion,
+                    })
+                  : publication.engineVersion
                   ? t("Made with chipvoice {version}", {
                       version: publication.engineVersion,
                     })

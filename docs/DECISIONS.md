@@ -1098,14 +1098,15 @@ byte the same build".
   current sound. The recorded version is a fact about authorship ("made with
   chipvoice x.y.z"), not a pin on what `/s/{id}` renders next.
 - **Complete projects** (`/api/v1/projects`, the `projects` table) record the
-  version live at publish time. The document and, once rendered, the audio in
-  `project_jobs`/`project_audio` are already immutable (decisions 27 and 40);
-  recording the version turns "immutable" into "identifiable and
-  reproducible": installing that exact `chipvoice` release and calling
-  `renderProject` on the stored document is now a known, exact operation, not
-  a guess at which release to try.
-- **Immutable publications' renditions** (`project_jobs`) record the version
-  that actually rendered them, alongside the existing bundle hash.
+  version live at publish time. The document itself is already immutable
+  (decision 27); recording the version makes the document reproducible on its
+  own terms - installing that exact `chipvoice` release and calling
+  `renderProject` on it is a known, exact operation, not a guess.
+- **Immutable publications' renditions** (`project_jobs`, decision 40) record
+  the version that actually rendered them, alongside the existing bundle
+  hash. A render always uses whatever engine is current, so a rendition's own
+  version can differ from its publication's; it is the rendition's version,
+  not the publication's, that reproduces its exact bytes.
 
 **How an older engine is obtained: not installed on the server.** Considered
 aliasing exact past npm releases (`"chipvoice-0.19.1": "npm:chipvoice@0.19.1"`)
@@ -1117,25 +1118,30 @@ publication can in principle need any release ever shipped. That cost is paid
 on every cold start whether or not that release is ever actually requested,
 and it means never dropping a version even after a security fix in one of its
 dependencies, because some old publication might name it. Against that,
-nothing here actually needs the server to re-render an old publication: its
-bytes are already pinned forever once rendered (decisions 27, 40), and the one
-real gap - a project published moments before a deploy, rendered moments after
-it - is rare and is exactly what should refuse rather than silently render
-under the wrong name.
+nothing here actually needs the server to re-render with an old engine: a
+render always uses whatever engine is current and simply records that fact,
+so there is no case where the server must reach for a version it does not
+have installed.
 
 So the policy is the one decision 21 already named: the server always renders
 with its current engine, and never keeps an old one installed to pick from.
-`createProjectJob` now checks a publication's recorded `engineVersion` against
-the server's current one before starting a publication's first render of a
-kind; a mismatch refuses with `409 engine_upgraded` naming both versions,
-instead of quietly rendering an old document with a new engine and calling the
-result the old version's recording. The caller's remedy is the same one
-decision 21 gave: publish a new revision (which records the current engine),
-or install the named `chipvoice` version and render the document locally,
-which reproduces the original bytes exactly because the document and that
-release are both fixed. Reproduction is therefore always possible in
-principle and sometimes requires the caller's own `npm install`, never the
-site's.
+Considered having `createProjectJob` check a publication's recorded
+`engineVersion` against the server's current one before its first render of a
+kind, and refuse with `409 engine_upgraded` on a mismatch. Rejected: job
+kinds are only `preview` and `full`, so a publication whose `full` render
+nobody happened to request before the next chipvoice release would become
+unrenderable by anyone but its owner republishing it under a new id, breaking
+shared links - on every release, including ones that touched nothing about
+that publication's chip. The refusal also bought no honesty the recording did
+not already give: a rendition's own `engine_version` already says which
+engine actually made it, so nothing needs to claim it is the publication's
+engine's recording when it is not. So a render always proceeds, and the job
+records the version that actually rendered it, whether or not that matches
+the publication's own. The caller's remedy for an exact historical
+reproduction is unchanged: install the named `chipvoice` version - a
+rendition's own, since that is the one that actually produced its bytes - and
+render the document locally, which reproduces those bytes exactly because the
+document and that release are both fixed.
 
 **Rows written before this shipped get `engine_version = null`, read as
 "unknown", not guessed.** Backfilling from a publication's own recording was
@@ -1149,19 +1155,24 @@ does not. `null` costs nothing and claims nothing false.
 **What is shown.** The song, project and job API responses, and their OpenAPI
 schemas, all carry `engineVersion` (nullable). `/api/v1/capabilities` keeps
 its own `engineVersion` field, which is the server's current engine, not any
-one song's; its description now says so, since the two can differ after a
-deploy. The skill explains both: a recorded version is what to install to
-reproduce that object exactly, and a `null` one predates this decision. The
-published-song page shows a "made with chipvoice x.y.z" note, or "engine
-version not recorded" for `null`, in English and Japanese.
+one song's or rendition's; its description now says so. A rendition's own
+`engineVersion` is the one to install to reproduce its exact bytes; a
+publication's own `engineVersion` can differ from it after a deploy, and
+neither is a promise about the other. The published-song page shows "made
+with chipvoice x.y.z" when a ready rendition's version matches its
+publication's, "published with chipvoice x.y.z, rendered with chipvoice
+a.b.c" when it does not, and "engine version not recorded" when nothing is
+known, in English and Japanese. The skill explains the same distinction.
 
 **Why.** The stated limit was never about capability, only about record-
 keeping: decision 21 already knew installing the exact npm version reproduces
 a rendering, and decision 27/40 already made a publication's bytes immutable.
-What was missing was the version number itself, and a refusal instead of a
-silent substitution at the one point a mismatch could occur. Both are small,
-bounded, and testable; multi-version hosting is none of those on a serverless
-deployment with no ceiling on how many releases ship over the project's life.
+What was missing was only the version number itself, recorded honestly for
+whichever engine actually did the rendering. That is small, bounded, and
+testable; multi-version hosting is none of those on a serverless deployment
+with no ceiling on how many releases ship over the project's life, and a
+refusal at render time would have traded a rare, already-honest gap for a
+real one: a publication nobody could ever render again.
 
 **What it does not do.** It does not make `/s/{id}` archival; that URL still
 tracks the current engine by decision 21's own design, and this only adds a
