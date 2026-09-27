@@ -48,6 +48,17 @@ import { CLOCK_HZ } from "./dsp.js";
  * `validateSong`'s `filter_conflict` names that moment on the song rather
  * than leaving the arbitration to be discovered by ear. A note off touches
  * only the gate; the filter is left as it was.
+ *
+ * This still leans on the arranger's own contract: `sweep` and `resonant`
+ * hold a note's routing and resonance fixed from its first frame to its
+ * last, so a note's first frame is the only frame that can change either,
+ * and a first frame is exactly what lands in true time order no matter what
+ * order notes are dispatched in. A caller-built `NoteFrame[]` that turns the
+ * filter on or off, or changes resonance, partway through a note - no
+ * built-in instrument does this - loses that guarantee: routing and
+ * resonance changes are only resolved correctly at note starts, and a
+ * mid-note change to either, overlapped by another voice's later-starting
+ * note, is resolved in dispatch order rather than time order.
  */
 
 const BASE = 0xd400;

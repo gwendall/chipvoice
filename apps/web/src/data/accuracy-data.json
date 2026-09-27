@@ -410,9 +410,9 @@
           {
             "marker": "parity-residfp-8580",
             "oracle": "reSID-fp (libsidplayfp, drfiemost), as an 8580",
-            "files": 11,
-            "cycles": 42759764,
-            "identical": 42452501,
+            "files": 13,
+            "cycles": 50149124,
+            "identical": 49841861,
             "diverging": 2,
             "firstDivergence": {
               "file": "script-combined",
