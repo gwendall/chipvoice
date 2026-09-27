@@ -40,7 +40,11 @@ ROMs are the better authority wherever the two disagree. In short:
 - A trigger does not reload its period timer, and a voice starting from
   silence takes its first step at once: the hardware reloads the timer and
   steps a full period later. Every note therefore starts one step apart, and
-  the comparison's runs line up under a shift of their own.
+  the comparison's runs line up under a shift of their own. A pulse started
+  from silence also plays its duty pattern from the trigger on, where the
+  hardware outputs a digital zero until that first step (Pan Docs).
+  chipvoice does since 2026-09-27 (P2-1), which cost this comparison a few
+  thousand identical cycles on the pulses and needed a new baseline.
 - Its sweep applies the frequency it computed a period earlier, and clamps
   rather than checks overflow on the trigger.
 - It has no DACs and no power switch: a voice with volume 0 is silent, the

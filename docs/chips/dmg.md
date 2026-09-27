@@ -30,22 +30,22 @@ baseline:dmg`); the reading of them below is a person's. CI reruns the corpus an
 fails if any voice's identical count falls below the committed baseline.
 
 <!-- parity:begin -->
-Written by `conform` on 2026-09-04, against Gb_Snd_Emu 0.1.4 (blargg), on ch1, ch2, ch3, ch4.
+Written by `conform` on 2026-09-27, against Gb_Snd_Emu 0.1.4 (blargg), on ch1, ch2, ch3, ch4.
 
 | | |
 | --- | --- |
 | Oracle | Gb_Snd_Emu 0.1.4 (blargg) |
 | Corpus | 7 logs, 145122916 cycles |
-| Identical cycles | 83302844 / 145122916 (57.4016 %) |
+| Identical cycles | 83287893 / 145122916 (57.3913 %) |
 | Logs with a divergence | 7 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
-| script-envelopes | 42.8954 % | cycle 421021, ch1: ours 0, oracle 15 | ch1 52.6273 %, 2/0/6385; runs 3130: 3124 on times, 3103 on values, shift <= 1153097; ch2 82.1732 %, 2/0/1298; runs 631: 631 on times, 631 on values, shift <= 180313; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-lengths | 79.9115 % | cycle 421433, ch1: ours 0, oracle 15 | ch1 94.3392 %, 1/0/492; runs 245: 245 on times, 245 on values, shift <= 5343; ch2 95.4827 %, 1/0/438; runs 217: 217 on times, 217 on values, shift <= 13914379; ch3 90.8527 %, 0/0/3901; runs 1: 0 on times, 0 on values, shift <= 0; ch4 99.2370 %, 0/0/1270; runs 1: 0 on times, 0 on values, shift <= 0 |
+| script-envelopes | 42.8880 % | cycle 419430, ch1: ours 0, oracle 15 | ch1 52.6199 %, 1/0/6385; runs 3129: 3123 on times, 3103 on values, shift <= 1146729; ch2 82.1732 %, 2/0/1298; runs 631: 631 on times, 631 on values, shift <= 180313; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-lengths | 79.8947 % | cycle 419430, ch1: ours 0, oracle 15 | ch1 94.3298 %, 0/0/492; runs 244: 244 on times, 244 on values, shift <= 12343767; ch2 95.4753 %, 0/0/438; runs 216: 216 on times, 216 on values, shift <= 13925083; ch3 90.8527 %, 0/0/3901; runs 1: 0 on times, 0 on values, shift <= 0; ch4 99.2370 %, 0/0/1270; runs 1: 0 on times, 0 on values, shift <= 0 |
 | script-noise | 63.8646 % | cycle 419878, ch4: ours 0, oracle 15 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 63.8646 %, 4/32991/301956 (32995 at -7); runs 472: 326 on times, 289 on values, shift <= 157119 |
-| script-pulses | 43.3680 % | cycle 423437, ch2: ours 0, oracle 15 | ch1 67.7054 %, 2/198/7284 (198 at -1); runs 1957: 1953 on times, 1952 on values, shift <= 9767; ch2 64.0178 %, 4/0/3924; runs 1417: 1415 on times, 1415 on values, shift <= 32033; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-sweep | 78.7780 % | cycle 424197, ch1: ours 0, oracle 15 | ch1 78.7780 %, 1/0/1461; runs 633: 625 on times, 625 on values, shift <= 3326555; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-pulses | 43.3493 % | cycle 419430, ch2: ours 0, oracle 15 | ch1 67.7054 %, 2/198/7284 (198 at -1); runs 1957: 1953 on times, 1952 on values, shift <= 9767; ch2 63.9991 %, 3/0/3924; runs 1416: 1414 on times, 1413 on values, shift <= 28055; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-sweep | 78.7511 % | cycle 419430, ch1: ours 0, oracle 15 | ch1 78.7511 %, 0/0/1459; runs 631: 625 on times, 625 on values, shift <= 2919121; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
 | script-wave | 74.0036 % | cycle 419430, ch3: ours 0, oracle 1 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 74.0036 %, 6/0/14612; runs 912: 909 on times, 908 on values, shift <= 1513; ch4 100.0000 %, 0/0/0 |
 | song-golden | 8.4267 % | cycle 419430, ch3: ours 0, oracle 1 | ch1 60.7225 %, 8/41/6257 (41 at -1); runs 1579: 1561 on times, 1555 on values, shift <= 94210; ch2 76.5812 %, 0/0/4146; runs 1036: 1036 on times, 1036 on values, shift <= 128888; ch3 14.7736 %, 17/0/11879; runs 410: 391 on times, 391 on values, shift <= 2679; ch4 77.6376 %, 5/0/104673 (22293 at +7); runs 328: 212 on times, 190 on values, shift <= 638199 |
 <!-- parity:end -->
@@ -68,6 +68,18 @@ lists them; none is a chipvoice deviation from Pan Docs or from blargg's ROMs,
 which check the hardware to the cycle and pass. What this oracle confirms that
 no ROM does: the short noise sequence's pattern, and the envelope's steps. A
 stronger oracle is ticket P3-4.
+
+**A pulse started from silence.** Since 2026-09-27 (P2-1), a pulse triggered
+while off outputs a digital zero until its first duty step, whatever its
+pattern holds where it starts. Pan Docs: "When first starting up a pulse
+channel, it will _always_ output a (digital) zero." SameBoy's `apu.c` does the
+same, suppressing the sample on every trigger that starts the channel until its
+first tick. Gb_Snd_Emu plays the pattern at once, so the baseline above was
+rewritten with fewer identical cycles on the pulse lines whose notes start from
+silence, 5759 at most (`script-sweep`'s ch1), one step's worth per such note.
+Against SameBoy, measured with ticket P3-4's oracle, the same change raises the
+identical count on every log with a pulse. blargg's twelve ROMs pass either way;
+none checks this.
 
 ## Test ROMs
 
@@ -167,6 +179,9 @@ harness's Game Boy writes those before a ROM runs.
 
 ## History
 
+- 2026-09-27: a pulse started from silence outputs a digital zero until its
+  first duty step, as Pan Docs and SameBoy have it (P2-1); the Gb_Snd_Emu
+  baseline was rewritten for it.
 - 2026-09-04: the chip, from Pan Docs and blargg's notes; twelve of twelve
   dmg_sound ROMs after one fix, the wave corruption window moved to the two
   cycles before the fetch (`f636b9f`).

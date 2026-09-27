@@ -131,6 +131,13 @@ class Pulse implements Voice {
   enabled = false;
   duty = 0;
   position = 0;
+  /**
+   * A voice started from silence outputs a digital zero until its first duty
+   * step, whatever its pattern holds at the position it starts on (Pan Docs:
+   * "when first starting up a pulse channel, it will always output a
+   * (digital) zero"). A trigger while it plays keeps it playing.
+   */
+  starting = false;
   frequency = 0;
   timer = 0;
   length = 0;
@@ -159,10 +166,11 @@ class Pulse implements Voice {
     if (--this.timer > 0) return;
     this.timer = (2048 - this.frequency) * 4;
     this.position = (this.position + 1) & 7;
+    this.starting = false;
   }
 
   output(): number {
-    if (!this.enabled || !this.dacOn()) return 0;
+    if (!this.enabled || !this.dacOn() || this.starting) return 0;
     return DUTY[this.duty][this.position] ? this.env.volume : 0;
   }
 
@@ -453,6 +461,7 @@ export class GbApu implements DigitalChip {
   }
 
   private triggerPulse(ch: Pulse) {
+    if (!ch.enabled) ch.starting = true;
     this.triggerLength(ch, 64);
     ch.timer = (2048 - ch.frequency) * 4;
     ch.env.trigger();

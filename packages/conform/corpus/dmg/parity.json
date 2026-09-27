@@ -10,10 +10,10 @@
     "ch3",
     "ch4"
   ],
-  "date": "2026-09-04",
+  "date": "2026-09-27",
   "files": 7,
   "cycles": 145122916,
-  "identical": 83302844,
+  "identical": 83287893,
   "diverging": 7,
   "results": [
     {
@@ -21,9 +21,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 49,
       "cycles": 21390950,
-      "identical": 9175737,
+      "identical": 9174146,
       "first": {
-        "cycle": 421021,
+        "cycle": 419430,
         "voice": 0,
         "a": 0,
         "b": 15
@@ -31,21 +31,21 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 11257481,
-          "a": 3208,
+          "identical": 11255890,
+          "a": 3206,
           "b": 3181,
-          "exact": 2,
+          "exact": 1,
           "near": 0,
-          "onlyA": 3206,
-          "onlyB": 3179,
+          "onlyA": 3205,
+          "onlyB": 3180,
           "shift": 0,
-          "aligned": 2,
+          "aligned": 1,
           "runs": {
-            "ours": 3130,
+            "ours": 3129,
             "theirs": 3139,
-            "alignedTimes": 3124,
+            "alignedTimes": 3123,
             "alignedValues": 3103,
-            "maxShift": 1153097
+            "maxShift": 1146729
           }
         },
         {
@@ -112,9 +112,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 45,
       "cycles": 21390950,
-      "identical": 17093833,
+      "identical": 17090239,
       "first": {
-        "cycle": 421433,
+        "cycle": 419430,
         "voice": 0,
         "a": 0,
         "b": 15
@@ -122,40 +122,40 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 20180049,
-          "a": 246,
+          "identical": 20178046,
+          "a": 244,
           "b": 248,
-          "exact": 1,
+          "exact": 0,
           "near": 0,
-          "onlyA": 245,
-          "onlyB": 247,
+          "onlyA": 244,
+          "onlyB": 248,
           "shift": 0,
-          "aligned": 1,
+          "aligned": 0,
           "runs": {
-            "ours": 245,
+            "ours": 244,
             "theirs": 247,
-            "alignedTimes": 245,
-            "alignedValues": 245,
-            "maxShift": 5343
+            "alignedTimes": 244,
+            "alignedValues": 244,
+            "maxShift": 12343767
           }
         },
         {
           "voice": "ch2",
-          "identical": 20424655,
-          "a": 218,
+          "identical": 20423064,
+          "a": 216,
           "b": 222,
-          "exact": 1,
+          "exact": 0,
           "near": 0,
-          "onlyA": 217,
-          "onlyB": 221,
+          "onlyA": 216,
+          "onlyB": 222,
           "shift": 0,
-          "aligned": 1,
+          "aligned": 0,
           "runs": {
-            "ours": 217,
+            "ours": 216,
             "theirs": 219,
-            "alignedTimes": 217,
-            "alignedValues": 217,
-            "maxShift": 13914379
+            "alignedTimes": 216,
+            "alignedValues": 216,
+            "maxShift": 13925083
           }
         },
         {
@@ -294,9 +294,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 152,
       "cycles": 21390950,
-      "identical": 9276824,
+      "identical": 9272817,
       "first": {
-        "cycle": 423437,
+        "cycle": 419430,
         "voice": 1,
         "a": 0,
         "b": 15
@@ -323,21 +323,21 @@
         },
         {
           "voice": "ch2",
-          "identical": 13694012,
-          "a": 1964,
+          "identical": 13690005,
+          "a": 1962,
           "b": 1968,
-          "exact": 4,
+          "exact": 3,
           "near": 0,
-          "onlyA": 1960,
-          "onlyB": 1964,
+          "onlyA": 1959,
+          "onlyB": 1965,
           "shift": 0,
-          "aligned": 4,
+          "aligned": 3,
           "runs": {
-            "ours": 1417,
+            "ours": 1416,
             "theirs": 1416,
-            "alignedTimes": 1415,
-            "alignedValues": 1415,
-            "maxShift": 32033
+            "alignedTimes": 1414,
+            "alignedValues": 1413,
+            "maxShift": 28055
           }
         },
         {
@@ -385,9 +385,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 33,
       "cycles": 21390950,
-      "identical": 16851366,
+      "identical": 16845607,
       "first": {
-        "cycle": 424197,
+        "cycle": 419430,
         "voice": 0,
         "a": 0,
         "b": 15
@@ -395,21 +395,21 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 16851366,
-          "a": 735,
+          "identical": 16845607,
+          "a": 731,
           "b": 728,
-          "exact": 1,
+          "exact": 0,
           "near": 0,
-          "onlyA": 734,
-          "onlyB": 727,
+          "onlyA": 731,
+          "onlyB": 728,
           "shift": 0,
-          "aligned": 1,
+          "aligned": 0,
           "runs": {
-            "ours": 633,
+            "ours": 631,
             "theirs": 630,
             "alignedTimes": 625,
             "alignedValues": 625,
-            "maxShift": 3326555
+            "maxShift": 2919121
           }
         },
         {
