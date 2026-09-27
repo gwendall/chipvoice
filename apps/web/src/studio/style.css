@@ -187,7 +187,7 @@ button:disabled { opacity: .35; }
 .instruments-main .instrument-plot { display: block; width: 100%; height: 40px; background: var(--paper); border-radius: 4px; }
 .instruments-main .instrument-envelope polyline { stroke: var(--ink); stroke-width: 1.5; }
 .instruments-main .instrument-plot-marker { stroke: var(--edge); stroke-width: 1; stroke-dasharray: 2 2; }
-.instruments-main .instrument-spectrum rect { fill: var(--ink); }
+.instruments-main .instrument-spectrum path { fill: var(--ink); }
 .instruments-main .instrument-plot-label { display: block; margin-top: 3px; font-size: var(--text-label); color: var(--muted); }
 .instruments-main .instrument-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin: 0; }
 .instruments-main .instrument-numbers div { min-width: 0; }

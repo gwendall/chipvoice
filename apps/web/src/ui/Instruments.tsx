@@ -1,7 +1,7 @@
-'use client';
-import {useEffect, useMemo, useRef, useState} from 'react';
-import {useT} from '@/i18n/react';
-import {SiteHeader, SiteFooter, PlayButton} from '@/ui/components';
+import {createTranslator, isLocale} from '@/i18n/core';
+import {getMessages} from '@/i18n/server';
+import {SiteHeader, SiteFooter} from '@/ui/components';
+import InstrumentPreviewButton from '@/ui/InstrumentPreviewButton';
 import {MACHINES, ROLE_NAMES, type ChipId} from '../studio/machines';
 import catalogueData from '@/data/instrument-catalogue.json';
 
@@ -10,6 +10,15 @@ import catalogueData from '@/data/instrument-catalogue.json';
  * `src/data/instrument-catalogue.json` - see that file, `scores/instruments/presets.mjs`
  * and `scores/instruments/provenance.mjs`. Nothing here is typed by hand:
  * every number and plot on the page below comes straight from this import.
+ *
+ * This is a server component, not `'use client'`: the catalogue is 89
+ * presets and their measured envelopes and spectra (650 KB of JSON), and a
+ * client component ships its whole module-scope import to the browser. Read
+ * here, at build time, only the numbers, labels and plots (plain SVG, no
+ * hooks) reach the page as static HTML; the JSON itself never does. The one
+ * thing that needs the browser, the play button, is the small client island
+ * `InstrumentPreviewButton`, which gets a file and a name per preset, not
+ * the catalogue.
  */
 type Timbre =
   | {kind: 'sample'; sample: string}
@@ -72,16 +81,24 @@ function SpectrumPlot({bands}: {bands: {hz: number; db: number | null}[]}) {
   const max = Math.max(...values.filter(Number.isFinite));
   const min = max - 48;
   const barWidth = width / bands.length;
+  const w = Math.max(0.5, barWidth - 0.5);
+  // One path with a closed subpath per bar, not a `<rect>` each: this is the
+  // same 64 bars, server-rendered now instead of drawn by client JS (see the
+  // module comment on `Instruments`), and a `<rect>` per bar was the biggest
+  // single cost in that static markup - one compact `M..h..v..h..z` per bar
+  // cuts it by more than half with an identical fill.
+  const d = bands.map((band, index) => {
+    const level = band.db === null ? 0 : Math.max(0, Math.min(1, (band.db - min) / (max - min)));
+    const barHeight = level * (height - 2);
+    const x = (index * barWidth).toFixed(1), y = (height - barHeight).toFixed(1);
+    return `M${x} ${y}h${w.toFixed(1)}v${barHeight.toFixed(1)}h${(-w).toFixed(1)}z`;
+  }).join('');
   return <svg className="instrument-plot instrument-spectrum" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
-    {bands.map((band, index) => {
-      const level = band.db === null ? 0 : Math.max(0, Math.min(1, (band.db - min) / (max - min)));
-      const barHeight = level * (height - 2);
-      return <rect key={band.hz} x={index * barWidth} y={height - barHeight} width={Math.max(0.5, barWidth - 0.5)} height={barHeight}/>;
-    })}
+    <path d={d}/>
   </svg>;
 }
 
-function timbreLabel(t: ReturnType<typeof useT>, timbre: Timbre): string {
+function timbreLabel(t: ReturnType<typeof createTranslator>, timbre: Timbre): string {
   switch (timbre.kind) {
     case 'sample': return t('Sample: {name}', {name: timbre.sample});
     case 'fm': return t('FM, algorithm {algorithm}, {operators} operators', {algorithm: timbre.algorithm, operators: timbre.operators});
@@ -94,7 +111,7 @@ function timbreLabel(t: ReturnType<typeof useT>, timbre: Timbre): string {
   }
 }
 
-function presetName(t: ReturnType<typeof useT>, preset: Preset): string {
+function presetName(t: ReturnType<typeof createTranslator>, preset: Preset): string {
   if (preset.role === 'perc') return t(DRUM_NAMES[preset.token ?? 'H']);
   const programs = preset.programs ?? [preset.program ?? 0];
   return programs.length > 1
@@ -102,48 +119,30 @@ function presetName(t: ReturnType<typeof useT>, preset: Preset): string {
     : t('GM program {first}', {first: programs[0]});
 }
 
-function tonalBalance(t: ReturnType<typeof useT>, flatness: number): string {
+function tonalBalance(t: ReturnType<typeof createTranslator>, flatness: number): string {
   return flatness < 0.05 ? t('tonal') : flatness > 0.3 ? t('noisy') : t('mixed');
 }
 
-export default function Instruments() {
-  const t = useT();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+function groupByChip(presets: Preset[]) {
+  const groups = new Map<ChipId, Map<Role, Preset[]>>();
+  for (const preset of presets) {
+    if (!groups.has(preset.chip)) groups.set(preset.chip, new Map());
+    const chipGroup = groups.get(preset.chip)!;
+    if (!chipGroup.has(preset.role)) chipGroup.set(preset.role, []);
+    chipGroup.get(preset.role)!.push(preset);
+  }
+  return groups;
+}
 
-  useEffect(() => {
-    const audio = new Audio();
-    audio.addEventListener('ended', () => setPlayingId(null));
-    audio.addEventListener('error', () => { setPlayingId(null); setLoadingId(null); });
-    audioRef.current = audio;
-    return () => { audio.pause(); audio.removeAttribute('src'); audioRef.current = null; };
-  }, []);
-
-  const toggle = (preset: Preset) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playingId === preset.id) { audio.pause(); setPlayingId(null); return; }
-    setLoadingId(preset.id);
-    audio.src = preset.audio.file;
-    audio.play().then(() => { setLoadingId(null); setPlayingId(preset.id); }).catch(() => { setLoadingId(null); setPlayingId(null); });
-  };
-
-  const byChip = useMemo(() => {
-    const groups = new Map<ChipId, Map<Role, Preset[]>>();
-    for (const preset of data.presets) {
-      if (!groups.has(preset.chip)) groups.set(preset.chip, new Map());
-      const chipGroup = groups.get(preset.chip)!;
-      if (!chipGroup.has(preset.role)) chipGroup.set(preset.role, []);
-      chipGroup.get(preset.role)!.push(preset);
-    }
-    return groups;
-  }, []);
+export default async function Instruments({locale: value}: {locale: string}) {
+  const locale = isLocale(value) ? value : 'en';
+  const t = createTranslator(await getMessages(locale));
+  const byChip = groupByChip(data.presets);
 
   return <><SiteHeader active="instruments"/><main className="demo-main about-main instruments-main">
     <span className="micro">{t("WHAT THE CHIP REALLY PLAYS")}</span>
     <h1>{t("The instrument catalogue.")}</h1>
-    <p>{t("Every preset a user can pick - the lead, chord and bass programs and the percussion kit, for every chip - played as one fixed probe: pitch {note}, velocity {velocity}, held for {noteOn} ms of a {total} ms render. What differs below is only what the chip does with it: an envelope and a spectrum measured from the render itself, never from the instrument's declared parameters. The method is in ", {note: noteName(data.probe.pitch), velocity: data.probe.velocity, noteOn: data.probe.noteOnMs, total: data.probe.totalMs})}<code>scores/instruments/generate.mjs</code>{t(".")}</p>
+    <p>{t("Every preset a user can pick - the lead, chord and bass programs and the percussion kit, for every chip - played as one fixed probe: pitch {note}, velocity {velocity}, held for {noteOn} ms of a {total} ms render. What differs below is only what the chip does with it: an envelope and a spectrum measured from the render itself, never from the instrument's declared parameters. The method is in", {note: noteName(data.probe.pitch), velocity: data.probe.velocity, noteOn: data.probe.noteOnMs, total: data.probe.totalMs})} <code>scores/instruments/generate.mjs</code>{t(".")}</p>
     {CHIP_ORDER.filter(id => byChip.has(id)).map(chipId => {
       const machine = MACHINES.find(m => m.id === chipId);
       const roles = byChip.get(chipId)!;
@@ -155,11 +154,11 @@ export default function Instruments() {
           <h3 className={`instrument-role-heading instrument-role-${role}`}>{t(ROLE_NAMES[role])}</h3>
           <div className="instrument-cards">
             {roles.get(role)!.map(preset => {
-              const playing = playingId === preset.id, loading = loadingId === preset.id;
+              const name = presetName(t, preset);
               return <article className="instrument-card" key={preset.id}>
                 <div className="instrument-card-head">
-                  <h4>{presetName(t, preset)}</h4>
-                  <PlayButton playing={playing} loading={loading} aria-label={t('Play {name} preview', {name: presetName(t, preset)})} onClick={() => toggle(preset)}/>
+                  <h4>{name}</h4>
+                  <InstrumentPreviewButton id={preset.id} file={preset.audio.file} name={name}/>
                 </div>
                 <p className="instrument-timbre">{timbreLabel(t, preset.timbre)}</p>
                 <div className="instrument-plots">
@@ -180,6 +179,6 @@ export default function Instruments() {
         </div>)}
       </section>;
     })}
-    <p className="accuracy-regenerate">{t("Regenerated whenever the engine changes: ")}<code>pnpm instruments:build</code>{t(" measures every preset again and writes this page's data file and previews.")}</p>
+    <p className="accuracy-regenerate">{t("Regenerated whenever the engine changes:")} <code>pnpm instruments:build</code>{t(" measures every preset again and writes this page's data file and previews.")}</p>
   </main><SiteFooter/></>;
 }

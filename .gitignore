@@ -38,6 +38,7 @@ apps/web/public/arrangement-data/*-view.json
 # here as their manifest. `pnpm audio:pull` fetches a verified local copy.
 apps/web/public/lab-data/*/
 apps/web/public/arrangement-data/*.flac
+apps/web/public/instrument-data/*.flac
 
 packages/chipvoice/src/project-worker-inline.ts
 

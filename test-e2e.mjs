@@ -248,9 +248,15 @@ section("the published recordings");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const arrangementReport = await (await fetch(`${SITE}/arrangement-data/report.json`)).json();
 const labReport = await (await fetch(`${SITE}/lab-data/report.json`)).json();
+// The instrument catalogue's manifest (NEXT-05) is a source file, not a public
+// one, so there is nothing to fetch it from - this checkout is the deployed
+// commit (see `e2e.yml`), so it is read straight off disk, the same file the
+// build embedded into the catalogue page.
+const catalogue = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "apps/web/src/data/instrument-catalogue.json"), "utf8"));
 const recordings = [
   ["an arrangement", arrangementReport.pieces[0].cases[0].asset],
   ["a lab recording", Object.values(labReport.cases[0].assets)[0]],
+  ["an instrument preview", catalogue.presets[0].audio],
 ];
 for (const [name, asset] of recordings) {
   const response = await fetch(`${SITE}${asset.file}`);
