@@ -242,7 +242,7 @@
 | P3-1 | Pan Docs／blargg資料からDMG APU、SM83でdmg_sound確認 | done | `packages/chipvoice/src/chips/gb`、`packages/conform/src/roms/{sm83,gb}.mjs` |
 | P3-2 | 2chipに基づく`ChipSpec`、`RegisterEvent`、楽器モデル | done | `ChipDriver`、`FrameState`、`ChipSpec.roles`、`chips/{nes,gb}/driver.ts`。2A03 golden不変 |
 | P3-3 | Game Boy自動sheet | done | `docs/chips/dmg.md` |
-| P3-4 | 強い参照：register log駆動SameBoy、またはSM83上のGBSから実曲log | done | PR #83。SameBoyのDMG-B `apu.c`を第二参照として同梱（`packages/conform/oracles/sameboy`）。矩形波とノイズが共有する実在の差分（トリガー直後は実機では瞬時でない、今はP2-1が追跡）を発見。スイープのオーバーフローとゾンビモードの差分は未解決 |
+| P3-4 | 強い参照：register log駆動SameBoy、またはSM83上のGBSから実曲log | done | PR #83。SameBoyのDMG-B `apu.c`を第二参照として同梱（`packages/conform/oracles/sameboy`）。`main.c`の不要な`qsort`が同一サイクルの書き込み間の順序をgccとclangで異なる形に崩し、同一のソースをコンパイラ間で非決定的にしていた駆動系のバグを発見・修正。修正後に残った、より狭い2つの実在差分は今はP2-1が追跡（矩形波トリガー直後の最初のデューティエッジの遅れ、ノイズのコールドスタートが1ノート分丸ごと遅れる点）。ゾンビモードの複合ケースの差分は未解決のまま |
 | P3-5 | 既知scriptでDMG line-out測定 | todo | P2-3同様、実機が必要。NEXT-04はシートの仮モデルと一致するパブリックドメインの式（gbdev Pan Docs）とダイ解析を見つけましたが、どの実機の測定録音も見つかっていません。[HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg)参照 |
 | P3-6 | API／studio／skillで`chip: "dmg"`を受理しrender／再生、editor selectorと変更説明 | done | `apps/web`、skill 0.4.0 |
 

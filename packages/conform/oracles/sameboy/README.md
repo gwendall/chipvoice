@@ -59,6 +59,21 @@ nothing `apu.c` itself relies on changes, only that one declaration becomes
 visible; the flag lives in `sameboy.mjs`'s `build()`, not in the vendored
 file, which stays untouched.
 
+`main.c` used to re-sort the parsed write list with `qsort` before driving
+the APU with it, comparing only by cycle. Two things make that both
+redundant and dangerous: `formatLog` (`log.mjs`) writes the log with a
+stable sort already, and `main.c`'s own read loop already rejects any file
+where a cycle goes backwards, so the array `qsort` ran on was already
+non-decreasing by cycle. `qsort`'s ordering of writes that share a cycle -
+common in the corpus, where a channel's setup registers and its trigger are
+routinely logged on the same cycle - is unspecified by the C standard, and
+glibc's and Apple libc's implementations resolved those ties differently in
+practice: the same, unmodified `vendor/apu.c` produced a materially
+different trace on gcc/Linux than on clang/macOS, caught by CI. The fix is
+in `main.c`, not the vendored file: the redundant sort is gone, so the
+writes are applied in exactly the order the log already puts them in, on
+every platform.
+
 ## The frame sequencer's phase
 
 `dsp.ts`'s frame sequencer is the falling and rising edge of bit 0x1000 of
@@ -100,17 +115,21 @@ chipvoice, per voice, with cycles and both values, is on the sheet
 ([`docs/chips/dmg.md`](../../../../docs/chips/dmg.md), "Against SameBoy").
 In short:
 
-- A freshly triggered pulse or noise voice is not instant on real hardware
-  (SameBoy's own `sample_surpressed` flag and trigger-time `delay` field);
-  chipvoice's `Pulse` and `Noise` read the current duty or LFSR bit the
-  moment the trigger lands, unlike its wave channel, which already models
-  this delay. This is the majority of every log's remaining gap and is a
-  chipvoice finding for a later ticket (P2-1), not a fix here.
-- SameBoy's sweep checks overflow against a shadow frequency plus a doubled
-  sweep addend (`sweep_calculation_done`'s own comment: "APU bug: sweep
-  frequency is checked after adding the sweep delta twice"), a documented
-  DMG quirk that at small shifts can mask an overflow chipvoice's single,
-  undoubled check would catch.
+- A freshly triggered pulse voice's very first duty edge is not instant on
+  real hardware (SameBoy's own `sample_surpressed` flag and trigger-time
+  `delay` field); chipvoice's `Pulse` reads the current duty bit the moment
+  the trigger lands, unlike its wave channel, which already models this
+  delay. Every edge after that first one matches exactly, so this is now a
+  small, one-edge-per-trigger gap, not the majority of the log it looked
+  like before the `qsort` fix above; still a chipvoice finding for a later
+  ticket (P2-1), not a fix here.
+- The noise channel's cold start is a separate, much larger gap: chipvoice's
+  first noise note plays immediately, SameBoy's matching note does not
+  start until a full note-length later, after which the two stay in
+  lockstep. Unlike the pulses' one-edge lag, this one was unaffected by the
+  `qsort` fix (this log's simultaneous writes already landed in file order
+  on both compilers either way), so it is real and independent of it; also
+  P2-1, not a fix here.
 - SameBoy's zombie-mode glitch (`nrx2_glitch`) runs a DMG-B-specific
   two-step model through an intermediate `0xFF`, which its own comment
   acknowledges is partly non-deterministic on real pre-CGB hardware; it

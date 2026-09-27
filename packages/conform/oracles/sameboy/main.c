@@ -44,12 +44,6 @@ typedef struct {
     unsigned value;
 } Write;
 
-static int before_write(const void *a, const void *b) {
-    long da = ((const Write *)a)->at - ((const Write *)b)->at;
-    if (da != 0) return da < 0 ? -1 : 1;
-    return 0;
-}
-
 /* The APU-relevant half of Core/timing.c's GB_set_internal_div_counter: the
    TIMA/serial edges it also checks never apply, since nothing here reads a
    timer or the link cable. */
@@ -111,7 +105,18 @@ int main(void) {
         fprintf(stderr, "no `# cycles:` header before the first write\n");
         return 1;
     }
-    qsort(writes, n_writes, sizeof(*writes), before_write);
+    /* No re-sort here: the loop above already rejected any file where `at`
+       goes backwards, so `writes[]` is already non-decreasing by cycle.
+       Writes sharing a cycle (a channel's setup registers landing on the
+       same cycle as its trigger, common in the corpus) are already in the
+       log's intended order too, since `formatLog` (log.mjs) builds the file
+       with a stable sort. A `qsort` used to run here anyway "just in case";
+       qsort's order for equal keys is unspecified by the C standard, and
+       glibc's and Apple libc's qsort disagreed on it in practice, silently
+       reordering a channel's simultaneous setup-then-trigger writes
+       differently by platform - the actual cause of a cross-compiler trace
+       mismatch this oracle once had. Removing the redundant sort removes
+       the only thing that could still reorder them. */
 
     /* Zero-initialized: power off, every register 0, div_counter 0 - the
        same reset state as dsp.ts's `reset()` (divider = 0, frameStep = 7 is

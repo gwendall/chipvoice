@@ -86,116 +86,100 @@ Written by `conform` on 2026-09-27, against SameBoy (DMG-B), on ch1, ch2, ch3, c
 | --- | --- |
 | Oracle | SameBoy (DMG-B) |
 | Corpus | 7 logs, 145122916 cycles |
-| Identical cycles | 94903246 / 145122916 (65.3951 %) |
-| Logs with a divergence | 7 |
+| Identical cycles | 127912812 / 145122916 (88.1410 %) |
+| Logs with a divergence | 6 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
-| script-envelopes | 35.9201 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 40.3142 %, 7/0/5006; runs 3130: 1760 on times, 1742 on values, shift <= 8746022; ch2 89.6732 %, 6/0/1111; runs 631: 463 on times, 463 on values, shift <= 1863679; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-lengths | 92.8843 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 98.0820 %, 0/0/460; runs 245: 214 on times, 214 on values, shift <= 12589601; ch2 95.8000 %, 0/0/314; runs 217: 96 on times, 96 on values, shift <= 15103782; ch3 100.0000 %, 1946/0/0; runs 1: 1 on times, 1 on values, shift <= 0; ch4 99.0024 %, 0/0/626; runs 1: 0 on times, 0 on values, shift <= 0 |
+| script-envelopes | 97.4381 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 97.4558 %, 49/0/6315 (2903 at -6); runs 3130: 3119 on times, 3085 on values, shift <= 1140361; ch2 99.9807 %, 22/0/1252 (292 at -6); runs 631: 631 on times, 631 on values, shift <= 10; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-lengths | 98.9641 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 99.9792 %, 0/0/490 (244 at -10); runs 245: 244 on times, 244 on values, shift <= 12345782; ch2 99.9825 %, 0/0/434 (216 at -10); runs 217: 216 on times, 216 on values, shift <= 13922350; ch3 100.0000 %, 1946/0/0; runs 1: 1 on times, 1 on values, shift <= 0; ch4 99.0024 %, 0/0/626; runs 1: 0 on times, 0 on values, shift <= 0 |
 | script-noise | 52.1127 % | cycle 419909, ch4: ours 15, oracle 0 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 52.1127 %, 7/0/338741 (132099 at -8); runs 472: 293 on times, 254 on values, shift <= 1351482 |
-| script-pulses | 49.6683 % | cycle 419430, ch2: ours 15, oracle 0 | ch1 54.8284 %, 0/0/7174 (1 at -6); runs 1957: 1607 on times, 1606 on values, shift <= 3598818; ch2 90.7619 %, 5/0/3444 (1418 at -6); runs 1417: 1005 on times, 1004 on values, shift <= 6156926; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-sweep | 78.6408 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 78.6408 %, 0/0/1567 (1 at -7); runs 633: 627 on times, 626 on values, shift <= 6400228; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-wave | 86.0895 % | cycle 6720891, ch3: ours 10, oracle 11 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 86.0895 %, 7001/0/1927; runs 912: 907 on times, 907 on values, shift <= 2097224; ch4 100.0000 %, 0/0/0 |
-| song-golden | 61.6399 % | cycle 424229, ch4: ours 13, oracle 0 | ch1 96.3677 %, 20/0/6313 (772 at -4); runs 1579: 1561 on times, 1560 on values, shift <= 103170; ch2 99.9433 %, 0/0/4144 (836 at -6); runs 1036: 1036 on times, 1036 on values, shift <= 6; ch3 99.9822 %, 2969/2988/0 (2988 at +1); runs 410: 400 on times, 400 on values, shift <= 1; ch4 63.5568 %, 564/535/159956 (1813 at -3); runs 328: 184 on times, 134 on values, shift <= 6634087 |
+| script-pulses | 99.8058 % | cycle 419430, ch2: ours 15, oracle 0 | ch1 99.8789 %, 8/0/7668 (3108 at -6); runs 1957: 1956 on times, 1956 on values, shift <= 10; ch2 99.9252 %, 7/0/3912 (1890 at -6); runs 1417: 1416 on times, 1414 on values, shift <= 27818; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-sweep | 99.9354 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 99.9354 %, 0/0/1466 (438 at -10); runs 633: 625 on times, 625 on values, shift <= 3385211; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-wave | 100.0000 % | none | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 7312/0/0; runs 912: 912 on times, 912 on values, shift <= 0; ch4 100.0000 %, 0/0/0 |
+| song-golden | 63.3933 % | cycle 424229, ch4: ours 13, oracle 0 | ch1 99.9157 %, 22/0/6304 (817 at -4); runs 1579: 1566 on times, 1566 on values, shift <= 6; ch2 99.9433 %, 0/0/4144 (836 at -6); runs 1036: 1036 on times, 1036 on values, shift <= 6; ch3 99.9822 %, 2969/2988/0 (2988 at +1); runs 410: 400 on times, 400 on values, shift <= 1; ch4 63.4914 %, 564/535/160272 (1813 at -3); runs 328: 184 on times, 134 on values, shift <= 6634087 |
 <!-- parity-sameboy:end -->
 
 **What the numbers say.** SameBoy reloads a triggered voice's timer, ticks its
 frame sequencer on the divider's own bit 12, and its duty patterns are Pan
 Docs' order, so none of Gb_Snd_Emu's constant-shift causes (its own 256 Hz
-clock, its untimed trigger, its rotated duties) apply here. What is left
-instead is one dominant, previously undiagnosed cause common to almost every
-log, plus four narrower findings, each below with both values, a cycle, and
-the source it cites. None of them is a chipvoice deviation from Pan Docs or
-blargg's ROMs, which continue to pass; every cycle, voice and value pair is in
+clock, its untimed trigger, its rotated duties) apply here. Most of what an
+earlier version of this table read as a large, hardware-level gap turned out
+to be this driver's own bug, not SameBoy's or ours: `main.c` re-sorted an
+already-ordered write list with `qsort`, and `qsort`'s ordering of writes
+that share a cycle - common in the corpus, where a channel's setup registers
+and its trigger are routinely logged on the same cycle - is unspecified by
+the C standard and came out differently on glibc and on Apple's libc, so the
+one, unmodified `vendor/apu.c` genuinely disagreed with itself across
+compilers (CI caught it: gcc and clang produced different traces from the
+same build). The writes were already in the log's own correct order
+(`formatLog` in `log.mjs` sorts stably before writing the file, and `main.c`'s
+own read loop already rejects anything out of order), so the sort was both
+redundant and the only non-deterministic step in the whole driver; removing
+it (see `main.c`) fixed the cross-compiler mismatch and, as a side effect,
+raised every script log from the 35-90 % range to 97-100 % - including
+`script-sweep` and `script-wave`, whose apparent hardware disagreements in an
+earlier version of this table were entirely this bug and are not findings.
+What is left, identical on both compilers now, is below: one real, narrow
+startup lag that touches most logs a little, a separate and much larger open
+gap specific to noise, and a zombie-mode compound case. None of them is a
+chipvoice deviation from Pan Docs or blargg's ROMs, which continue to pass;
+every cycle, voice and value pair is in
 [`corpus/dmg/parity-sameboy.json`](../../packages/conform/corpus/dmg/parity-sameboy.json).
 
-- **A freshly-triggered pulse or noise voice is not instant on real hardware,
-  and we do not model that.** This is the majority of every log's remaining
-  gap (`script-envelopes` 35.92 %, `script-pulses` 49.67 %, `script-noise`
-  52.11 %). At `script-pulses`' first divergence, cycle 419430, `ours` reads
-  15 the instant NR14's trigger bit lands; SameBoy reads 0 there and keeps
-  reading 0 until cycle 457327 (pulse 1, `script-sweep`) or a comparable gap
-  elsewhere, then jumps straight to the value the duty position and volume
-  say it should be. `vendor/apu.c`'s NR14/NR24 trigger case sets a `delay`
-  field (`6 + lf_div * ...` cold, `4 - lf_div + extra_delay` if the channel
-  was already active) into the timer reload and marks the channel
-  `sample_surpressed` until its own first natural tick clears it, with the
-  comment: "The volume changes caused by NRx4 sound start take effect
-  instantly ... The playback itself is not instant which is why we don't
-  update the sample for other cases." `dsp.ts`'s wave channel already models
-  exactly this (the "first fetch after a trigger is 6 cycles late" row
-  below); `Pulse` and `Noise` do not, and read the current duty or LFSR bit
-  the moment the trigger lands. This is a real gap worth its own ticket
-  (P2-1), not something to fix here.
-- **Sweep, in the low shift/period regime, disagrees on whether overflow
-  silences the channel** ([Pan Docs, "Sound Channel 1 - Pulse with period
-  sweep"](https://gbdev.io/pandocs/Audio_Registers.html#ff10--nr10-channel-1-sweep)).
-  `script-sweep`'s first segment (NR10 = `$11`: period 1, add, shift 1, from
-  frequency 856 at cycle 419430) is the clearest case: `ours` steps the
-  frequency up three times and then goes silent for good at cycle 483327
-  (frequency crossed 2047), matching Pan Docs' "if this new frequency is
-  2047 or more, this channel is turned off" and the corpus's other four
-  segments, where the two traces agree closely. SameBoy instead keeps
-  outputting a steady tone at a period of 32768 cycles all the way to the
-  next trigger at cycle 3774874, 3.3 million cycles later. `vendor/apu.c`'s
-  own comment on `sweep_calculation_done` explains why: "APU bug: sweep
-  frequency is checked after adding the sweep delta twice" - SameBoy checks
-  overflow against a shadow frequency plus a doubled sweep addend
-  (`shadow_sweep_sample_length`, `sweep_length_addend`, both built up across
-  `trigger_sweep_calculation` and a delayed `square_sweep_calculate_countdown`),
-  a documented DMG quirk that at small shifts can mask an overflow the
-  single, undoubled check our model performs would catch. blargg's ROM 05,
-  "sweep details", targets exactly this doubling; the scripted corpus's other
-  five sweep segments (larger shifts and periods, or subtract) do not expose
-  it and read within the same small residual shift as every other voice.
+- **A freshly-triggered pulse voice's very first duty edge lands a few
+  thousand cycles late; every edge after that matches exactly.** At
+  `script-envelopes`'s first note (cycle 419430), `ours` reads 15 the
+  instant NR14's trigger bit lands; SameBoy's matching edge is at cycle
+  427399, 7969 cycles later, after which both traces tick down through the
+  same envelope steps on the same cycles (458751, for instance, in both).
+  `vendor/apu.c`'s NR14/NR24 trigger case sets a `delay` field (`6 + lf_div *
+  ...` cold, `4 - lf_div + extra_delay` if the channel was already active)
+  into the timer reload and marks the channel `sample_surpressed` until its
+  own first natural tick clears it, with the comment: "The volume changes
+  caused by NRx4 sound start take effect instantly ... The playback itself
+  is not instant which is why we don't update the sample for other cases."
+  `dsp.ts`'s wave channel already models exactly this (the "first fetch
+  after a trigger is 6 cycles late" row below); `Pulse` does not, and reads
+  the current duty position the moment the trigger lands. Small
+  (`script-envelopes` 97.44 %, `script-pulses` 99.81 %, `script-sweep`
+  99.94 %) now that the write-order bug above is fixed, but real: worth its
+  own ticket (P2-1), scoped to this one edge per trigger, not "every
+  triggered note" as an earlier version of this sheet said.
 - **Length counters agree**: `script-lengths` is the corpus's best log
-  (92.88 %); channel 3's 1946 edges are all exact and channel 4's are 99.00 %,
-  so the 256 Hz clock and the "extra clock on an NRx4 write" glitch
+  (98.96 %); channel 3's 1946 edges are all exact and channel 4's are
+  99.00 %, so the 256 Hz clock and the "extra clock on an NRx4 write" glitch
   ([Pan Docs, "Length Timer"](https://gbdev.io/pandocs/Audio_Registers.html#length-timer),
   blargg's ROM 07) read the same on both. Channels 1 and 2's remaining gap
-  (98.08 % and 95.80 %) is the same cold-trigger-silence cause above, not a
-  length-specific one; this log never writes NR52 to power off, so it does
-  not exercise power-cycle survival either way (a gap in the corpus, not a
-  result).
-- **The wave channel's first sample after a trigger matches; a later sample
-  is occasionally one step early, then self-corrects.** At `script-wave`'s
-  own trigger, cycle 6710886, both traces read 2 on the same cycle: SameBoy's
-  `wave_channel` delay model and `dsp.ts`'s (Known deviations, below) are too
-  close for this driver's timing resolution to tell apart, so this run
-  neither confirms nor newly contradicts the "6 cycles late" claim. The
-  log's one real divergence is mid-playback, far from any trigger: at cycle
-  6720891, `ours` reads sample value 10 where SameBoy reads 11, one step
-  ahead of schedule; SameBoy's very next sample (500 cycles later, at
-  6721391) reverts to 10 and both traces are exact again from the following
-  sample on, with no lasting shift. This shape (one sample early, then an
-  immediate, exact resync) recurs 912 times over the log, 907 of them lining
-  up under a shift of their own, which is this oracle's own 2-T-cycle
-  `apu_cycles` batching (see the oracle's
-  [README](../../packages/conform/oracles/sameboy/README.md)), not a
-  wave-sequence disagreement: every sample's value is right, only one
-  transition's cycle is occasionally rounded to the wrong side of a 2-cycle
-  boundary.
+  (99.98 % each) is the same startup lag above, not a length-specific one;
+  this log never writes NR52 to power off, so it does not exercise
+  power-cycle survival either way (a gap in the corpus, not a result).
 - **The noise LFSR's silent-at-trigger convention is the same, spelled with
-  opposite polarity; its cold-start is the same suppression as the squares'.**
-  `dsp.ts` seeds the LFSR to `0x7fff` and reads bit 0 as "silent"; SameBoy's
-  `prepare_noise_start` seeds it to 0 and reads bit 0 as "on" - complementary
-  encodings of the same fact, both silent the instant a fresh noise channel
-  is triggered, per Pan Docs' "Noise Channel" and the `NR43` width bit's two
-  feedback taps (bit 14 always, bit 6 added when the width bit is set),
-  which both implementations use. `script-noise`'s 52.11 % is the same
-  cold-trigger-silence cause as the pulses, not a fresh finding about the
-  LFSR itself: channel 4's edges align 132099 of 154713 under a shift of -8,
-  the signature of a suppressed cold start followed by an exact resync.
+  opposite polarity; its long cold start is real, and is a different, larger
+  gap than the squares' one-edge lag above.** `dsp.ts` seeds the LFSR to
+  `0x7fff` and reads bit 0 as "silent"; SameBoy's `prepare_noise_start` seeds
+  it to 0 and reads bit 0 as "on" - complementary encodings of the same
+  fact, per Pan Docs' "Noise Channel" and the `NR43` width bit's two feedback
+  taps (bit 14 always, bit 6 added when the width bit is set), which both
+  implementations use. `script-noise` is unchanged by the write-order fix
+  above (52.11 % before and after: this log's simultaneous NR41-NR44 writes
+  happened to already land in file order on both compilers) and stays the
+  corpus's largest remaining gap: `ours` starts its first note at cycle
+  419909; SameBoy's matching note does not begin until cycle 1887875,
+  1467966 cycles - an entire note - later, after which the two stay in
+  lockstep (132099 of 154713 edges align under a shift of -8) for the rest
+  of the log. This is a real, open gap, worth its own look under P2-1
+  independently of the squares' lag above, not the same cause as an earlier
+  version of this sheet said.
 - **Zombie-mode envelope writes are exercised (`script-envelopes`' own notes
   say so: "a zombie write mid-note") and the two models agree on the
   simple case, diverge on the compound one.** At cycle 20132659, NR12 is
   written `$A0` to `$A1` while channel 1 is running (period 0 to 1, same
   direction): `dsp.ts`'s `oldPeriod === 0 -> volume++` reads 10 to 11 at
   the write itself; SameBoy's volume also becomes 11 (confirmed at its next
-  natural duty edge, cycle 20134147, 1488 cycles later - within one duty
-  period, and the only reason it is not visible at the write's own cycle is
-  that channel 1's duty bit happened to be low there). At cycle 20552090,
+  natural duty edge, cycle 20138149, within one duty period, and the only
+  reason it is not visible at the write's own cycle is that channel 1's
+  duty bit happened to be low there). At cycle 20552090,
   NR12 is written `$A1` to `$A9` (period still 1, but the envelope's
   direction flips): `dsp.ts` reads 3, SameBoy reads 7, and each holds its
   own value afterwards rather than converging. `vendor/apu.c`'s own comment
