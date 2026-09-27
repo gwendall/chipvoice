@@ -1221,11 +1221,14 @@ optional `iplRom?: Uint8Array` (64 bytes), stored on the instance instead of
 imported as a module constant; (2) `read()` throws a named error - for
 example `SpcIplRomRequiredError` - instead of indexing into `IPL_ROM` when
 $FFC0-$FFFF is read with the ROM bit set and no ROM was supplied, rather than
-silently returning zeros or RAM; (3) `importSpc` keeps today's behaviour by
-passing the same 64 bytes as a default argument at the call site, so no
-existing caller's behaviour changes. This is written down, not implemented:
-nothing today requires removing them, and no caller has asked for a
-non-Sony-ROM SPC700.
+silently returning zeros or RAM; (3) `importSpc` gains its own `iplRom?:
+Uint8Array` option, passed through to `Ssmp`; a caller who wants today's
+exact behaviour keeps working only by supplying the same 64 bytes itself,
+since the package would no longer ship them - a caller who supplies nothing
+gets the same named error from (2) the moment a snapshot reads or executes
+$FFC0-$FFFF with the ROM bit set, not a silent substitute. This is written
+down, not implemented: nothing today requires removing them, and no caller
+has asked for a non-Sony-ROM SPC700.
 
 **What does not change.** `packages/chipvoice`'s licence field stays `(MIT
 AND LGPL-2.1-or-later)`, unchanged by this file: the LGPL half still names
