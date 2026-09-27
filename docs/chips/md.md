@@ -97,6 +97,10 @@ None run. No community test ROM probes the YM2612 the way blargg's probe the
 The YM2612's DAC model is marked "not verified" by Nuked's own author; the mix
 of the two chips and the Model 1's filter are placeholders. A real unit's
 line-out under a known script is what it needs (P5-8).
+[docs/HARDWARE-EVIDENCE.md](../HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489)
+has what published evidence exists short of that: named units and a
+documented capture method (MDFourier), but no register sequence found yet to
+render the same input against.
 
 ## Driver coverage
 

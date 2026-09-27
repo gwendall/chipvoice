@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|mixer):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|mixer|hwcombined):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -119,6 +119,14 @@ def localized_block(kind, body, templates):
                 line = '| テスト | 本コア | blarggのNES録音 |'
             elif not re.fullmatch(r'\| `apu_mixer/[\w-]+` \| -?\d+(?:\.\d+)? dB \| -?\d+(?:\.\d+)? dB \|', line):
                 raise ValueError(f'Unknown mixer line: {line}')
+        elif kind == 'hwcombined':
+            match = re.fullmatch(r"Written by `conform` on (.+), against libsidplayfp/combined-waveforms' sampling of (.+) \(OSC3, the top eight of the twelve bits\), on (.+)\.", line)
+            if match:
+                line = f'`conform`による生成：{match[1]}。libsidplayfp/combined-waveformsによる{match[2]}のサンプリング（OSC3、12ビット中上位8ビット）との比較。対象：{match[3]}。'
+            elif line == '| Combination | Bytes matching | Wrong bits |':
+                line = '| 組み合わせ | 一致バイト数 | 誤りビット数 |'
+            elif not re.fullmatch(r'\| `[\w+]+` \| \d+(?:\.\d+)? % \(\d+/4096\) \| \d+/32768 \|', line):
+                raise ValueError(f'Unknown hwcombined line: {line}')
         lines.append(line)
     return '\n'.join(lines) + '\n'
 
@@ -156,7 +164,7 @@ def check(sync=False):
         if sync:
             target.write_text(translated)
         label = str(target.relative_to(ROOT))
-        if '\ufffd' in translated or re.search(r'\{\{(?:code\d+|parity(?:-[\w-]+)?|roms|mixer)\}\}', translated):
+        if '\ufffd' in translated or re.search(r'\{\{(?:code\d+|parity(?:-[\w-]+)?|roms|mixer|hwcombined)\}\}', translated):
             errors.append(f'{label}: replacement character or unexpanded template')
         if [h.count('#', 0, h.index(' ')) for h in headings(original)] != [h.count('#', 0, h.index(' ')) for h in headings(translated)]:
             errors.append(f'{label}: heading structure differs')

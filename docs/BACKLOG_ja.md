@@ -120,8 +120,8 @@
 **ステップ1. 5つのチップを証明する。** 仕様書は、独立したオラクル、実機向けに書かれたテストROM、実際のゲーム音楽、実機という4つの段階それぞれに数値があるときに完成です。
 
 - オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P5-8、P7-11。
-- todo - NEXT-04: 実機を買う前に、各チップについて実機の公開録音を集めます（決定38）。
-- 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。
+- done - NEXT-04: [docs/HARDWARE-EVIDENCE_ja.md](HARDWARE-EVIDENCE_ja.md)が、5チップすべてについて既に存在する実機の公開録音・測定値をカタログ化しました。掲載前に各出典を開いて検証済みです（decision 38の無償証拠優先の順序）。「測定一つ」スクリプトの条件を満たした候補は1つだけで、C64の組み合わせ波形を実機6581 R4AR（`libsidplayfp/combined-waveforms`）と比較するものです。`pnpm --filter chipvoice-conform evidence:c64:sheet`で採点し、4つの組み合わせにわたり82.0〜94.1%のバイト一致率となり、[docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581)へ書き込みました。アナログ段については何も確定しません（DAC手前の波形ジェネレーターです）が、デジタルモデルが以前は持っていなかった独立したハードウェアによる確認が1つ得られました。他のどのチップにも、正確に既知で再現可能な入力を持つ候補はありませんでした。NESは既にblarggの`apu_mixer`を持っています。取得スクリプト`packages/conform/src/evidence/fetch.mjs`（`evidence:fetch`）は、ライセンスの許す範囲でgitignore対象の`.artifacts/hardware-evidence/`へダウンロードし、`packages/conform/src/evidence/manifest.json`のコミット済みSHA-256で検証します。
+- 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をP7-8／P7-10のレジスタログ不要なアナログ測定への道として見つけましたが未実装です。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。
 
 **ステップ2. 各チップが持つすべての楽器。**
 
@@ -229,7 +229,7 @@
 | --- | --- | --- | --- |
 | P2-1 | 全相違を修正するか参照側の誤りを説明 | todo | |
 | P2-2 | DMC | done | PR #5、0.6.0。1bit周期差で同じstep。末尾参照 |
-| P2-3 | analog参照実機をcapture／測定 | doing | PR #8、blargg NES録音と同等にmix相殺。filterはline-out待ち |
+| P2-3 | analog参照実機をcapture／測定 | doing | PR #8、blargg NES録音と同等にmix相殺。filterはline-out待ち。NEXT-04がフィルター境界の出自をblargg自身のキャプチャとlidnariqの解析まで追跡しましたが、ファイルは失われ、リビジョンも未特定です。[HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03)参照 |
 | P2-4 | package README／skillにsheetをリンクしてrelease | done | READMEはすべてのsheetに、skillは各ターゲットのsheetにリンク |
 
 <a id="phase-3-game-boy"></a>
@@ -241,7 +241,7 @@
 | P3-2 | 2chipに基づく`ChipSpec`、`RegisterEvent`、楽器モデル | done | `ChipDriver`、`FrameState`、`ChipSpec.roles`、`chips/{nes,gb}/driver.ts`。2A03 golden不変 |
 | P3-3 | Game Boy自動sheet | done | `docs/chips/dmg.md` |
 | P3-4 | 強い参照：register log駆動SameBoy、またはSM83上のGBSから実曲log | todo | Gb_Snd_Emuは2005年製でtrigger時に初step |
-| P3-5 | 既知scriptでDMG line-out測定 | todo | P2-3同様、実機が必要 |
+| P3-5 | 既知scriptでDMG line-out測定 | todo | P2-3同様、実機が必要。NEXT-04はシートの仮モデルと一致するパブリックドメインの式（gbdev Pan Docs）とダイ解析を見つけましたが、どの実機の測定録音も見つかっていません。[HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg)参照 |
 | P3-6 | API／studio／skillで`chip: "dmg"`を受理しrender／再生、editor selectorと変更説明 | done | `apps/web`、skill 0.4.0 |
 
 <a id="phase-4-the-portable-score"></a>
@@ -279,7 +279,7 @@
 | P5-6 | YM／PSG VGM、API／studio／skill | done | `toVgm({ chip: "md" })`、skill 0.6.0 |
 | P5-7 | Nuked全voice比較、script／song corpusのsheet | done | `docs/chips/md.md` |
 | P5-8 | PSG参照：MAME `sn76496` shimまたはMaster System ROM | todo | noise系列とperiod 0は資料由来 |
-| P5-9 | 既知scriptでModel 1 line-out測定 | todo | P2-3同様、実機必要 |
+| P5-9 | 既知scriptでModel 1 line-out測定 | todo | P2-3同様、実機必要。NEXT-04はMDFourierを見つけました。両モデルにわたる名前付き実機、文書化されたオープンソーステストROMによるキャプチャですが、正確なレジスタ列は見つかっていません。[HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489)参照 |
 | P5-10 | channel 6のFM drumとarranger LFO | todo | 移植用arrangerのkitは現状PSG noise。ネイティブdriver（P5-11）はDACでPCM kitを流す |
 | P5-11 | 移植用と並ぶゲーム専用driver：FM 6ch、矩形波3音、noise、DACを名前で指定、テキストtracker、PCM kit付きbank、ゲームが出荷するまでのrender手順。Punk Forceから抽出 | done | `chips/md/native-driver.ts`、`bank.ts`、`tracker.ts`、`src/game-audio.ts`。[MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER_ja.md)、決定32。ゲームの楽譜は同じバイトにcompile・renderされる |
 | P5-12 | ネイティブdriverのLFOとchannel 3特殊モード | todo | 起動時に`$22` = 0を書くため、`ams`、`pms`、`am`は書かれるが効かない |
@@ -296,7 +296,7 @@
 | P6-5 | intent別sample、ADSR、特徴的echo、sample kitのdriver／arranger | done | `chips/snes/driver.ts`、`arranger.ts` |
 | P6-6 | API／studio／skill。VGMにS-DSPなし、SPC内driverは後続 | done | skill 0.7.0、SPCはP6-9 |
 | P6-7 | output streamでsnes_spc比較するsheetとcorpus | done | `docs/chips/snes.md` |
-| P6-8 | 既知scriptでDSP streamまたは実機line-out capture | todo | 実機必要 |
+| P6-8 | 既知scriptでDSP streamまたは実機line-out capture | todo | 実機必要。NEXT-04によれば、誰かが実機のS-DSP線を捉えた唯一のロジックアナライザーキャプチャはリンク切れで、唯一のフィルター周波数見積もりは実機キャプチャでなく回路図シミュレーションです。[HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp)参照 |
 | P6-9 | file内driverで任意SPC playerから再生できるexport | todo | |
 | P6-10 | 複数ボイスの実三和音とハードウェアノイズのハット | doing | 同時三和音と内部ミキサー検査は実装・検証済みです。ハードウェアノイズのハットは別の残件で、現在のキットは BRR サンプルを使います |
 
@@ -312,9 +312,9 @@
 | P7-5 | API／studio／skill | done | schema、openapi、skill 0.8.0、llms.txt、studio |
 | P7-6 | reSID-fp digital比較sheetとcorpus | done | `docs/chips/c64.md`、`corpus/c64`、CI `check:c64` |
 | P7-7 | 6510でVICE `testprogs/SID`を実行しOSC3／ENV3を読む第2検証 | done | `packages/conform/roms/vice-sid`、`src/roms/c64.mjs`、CI `roms:c64`。14本中13本成功、`busvalue`はP2-1の知見 |
-| P7-8 | 6581 line-out captureでDAC zero、filter curve、出力をfit | todo | 実機必要 |
+| P7-8 | 6581 line-out captureでDAC zero、filter curve、出力をfit | todo | 実機必要。NEXT-04はreSIDの`filter.cc`に既に名前付き6581 R4AR自身のオペアンプ伝達曲線表があり、レジスタログ不要でモデルと比較できることを見つけましたが未実装です。[HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580)参照。もう1つの名前付き6581（`libsidplayfp/combined-waveforms`）に対する組み合わせ波形の比較も実装しました。[c64_ja.md#combined-waveforms-against-a-real-6581](chips/c64_ja.md#combined-waveforms-against-a-real-6581)参照 |
 | P7-9 | filterを開くintentとlead sweep | todo | |
-| P7-10 | 8580の合成波形、triangle／saw遅延、線形DAC、独自filterの第2profile／table | todo | |
+| P7-10 | 8580の合成波形、triangle／saw遅延、線形DAC、独自filterの第2profile／table | todo | NEXT-04はreSIDの`filter.cc`に名前付き8580 R5（自身のオペアンプ伝達曲線）を、reSID-fpの`Dac`ドキュメントにそのDACミスマッチ比（約2.0）を見つけましたが、どちらも未実装です。[HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580)参照 |
 | P7-11 | 全trace変化をmemory保持するharnessをstream比較／typed arrayへ | done | PR #79。`ChangeStream`（object単位でなくtyped array列）とstreaming oracle読み取り（巨大bufferの`spawnSync`でなく`spawn`）で置換。`bestShift`の文字列key Mapも廃止。c64 corpusへdense script4本追加、sawtooth・triangle・noise rate・combined waveformを3voice同時保持。旧harnessをOOMさせた3 sawtooth×8秒はオンデマンド（`check:c64:dense`）で実行でき成功 |
 
 <a id="phase-8-the-site-as-an-instrument"></a>

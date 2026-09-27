@@ -34,6 +34,9 @@
     "roms:c64": "node src/roms/run.mjs --chip c64",
     "roms:c64:sheet": "node src/roms/run.mjs --chip c64 --sheet ../../docs/chips/c64.md --json corpus/c64/roms.json && node src/status.mjs",
     "fit:c64": "node src/fit-c64.mjs",
+    "evidence:fetch": "node src/evidence/fetch.mjs",
+    "evidence:c64": "node src/evidence/c64-combined.mjs",
+    "evidence:c64:sheet": "node src/evidence/c64-combined.mjs --sheet ../../docs/chips/c64.md --json corpus/c64/hardware-combined.json",
     "test:listening": "node src/listening/test.mjs && node src/listening/test-snes.mjs"
   },
   "dependencies": {

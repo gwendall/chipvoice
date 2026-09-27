@@ -1,0 +1,30 @@
+[
+  {
+    "chip": "c64",
+    "filename": "6581R4AR_3789_14-wf30.dat.prg",
+    "url": "https://raw.githubusercontent.com/libsidplayfp/combined-waveforms/master/src/sidwaves/6581R4AR_3789_14/6581wf30.dat.prg",
+    "sha256": "f87c111be7c2002593692741176ea8c183b5f30510f1fead9a8347894238309b",
+    "note": "saw+triangle (waveform 3), a real 6581 R4AR, top eight bits of the accumulator's twelve, one byte per index 0..4095, a two-byte PRG header first. libsidplayfp/combined-waveforms, GPL 2."
+  },
+  {
+    "chip": "c64",
+    "filename": "6581R4AR_3789_14-wf50.dat.prg",
+    "url": "https://raw.githubusercontent.com/libsidplayfp/combined-waveforms/master/src/sidwaves/6581R4AR_3789_14/6581wf50.dat.prg",
+    "sha256": "618b89beff9f1460b7b95af39d55369c590d181936ccfc01dd878e2af5b93576",
+    "note": "pulse+triangle (waveform 5), same unit and format as wf30."
+  },
+  {
+    "chip": "c64",
+    "filename": "6581R4AR_3789_14-wf60.dat.prg",
+    "url": "https://raw.githubusercontent.com/libsidplayfp/combined-waveforms/master/src/sidwaves/6581R4AR_3789_14/6581wf60.dat.prg",
+    "sha256": "60c7922daf1a34ce8b2cbcfff666c00a89bc0da0533c12352c3343b74d73f229",
+    "note": "pulse+saw (waveform 6), same unit and format as wf30."
+  },
+  {
+    "chip": "c64",
+    "filename": "6581R4AR_3789_14-wf70.dat.prg",
+    "url": "https://raw.githubusercontent.com/libsidplayfp/combined-waveforms/master/src/sidwaves/6581R4AR_3789_14/6581wf70.dat.prg",
+    "sha256": "ad316735d9e1671be673b41c3bfa86f79777886f91f3948a3ac9ef86c56b77c4",
+    "note": "pulse+saw+triangle (waveform 7), same unit and format as wf30."
+  }
+]

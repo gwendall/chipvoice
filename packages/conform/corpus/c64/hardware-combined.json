@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-27",
+  "unit": "6581R4AR_3789_14",
+  "results": [
+    {
+      "wf": 3,
+      "name": "saw+triangle",
+      "exact": 3358,
+      "bits": 1500
+    },
+    {
+      "wf": 5,
+      "name": "pulse+triangle",
+      "exact": 3404,
+      "bits": 922
+    },
+    {
+      "wf": 6,
+      "name": "pulse+saw",
+      "exact": 3072,
+      "bits": 1623
+    },
+    {
+      "wf": 7,
+      "name": "pulse+saw+triangle",
+      "exact": 3854,
+      "bits": 457
+    }
+  ]
+}

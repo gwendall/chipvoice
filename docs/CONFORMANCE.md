@@ -204,6 +204,11 @@ band-limited step synthesis give different aliasing, and neither is "the hardwar
 the hardware's output is continuous. Parity is measured before it; its effect is
 reported here.
 
+Before a unit is bought, [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md)
+catalogues what published recordings and measurements of real hardware already
+exist for each chip, per decision 38's order: free evidence first, then a
+capture bench.
+
 ## The sheet
 
 One per chip, at `docs/chips/<id>.md`, from [chips/TEMPLATE.md](chips/TEMPLATE.md).

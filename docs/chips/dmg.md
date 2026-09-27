@@ -130,6 +130,10 @@ and the corruption a retrigger causes on the DMG.
 The DMG's DACs, its mixer and its headphone amplifier are unmeasured. The output
 stage is a placeholder built to be replaced by a measurement: a linear DAC, a
 sum, a high-pass. A real unit's line-out under a known script is what it needs.
+[docs/HARDWARE-EVIDENCE.md](../HARDWARE-EVIDENCE.md#game-boy-dmg) has what was
+found short of that: a public-domain formula for the high-pass that agrees
+with the placeholder, and a teardown of the DMG's amplifier against the CGB's,
+neither tied to a captured unit.
 
 ## Driver coverage
 

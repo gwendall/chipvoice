@@ -100,6 +100,10 @@ The DAC and the console's filter are placeholders. A capture of a real unit's
 line-out under a known script is what it needs (P6-8); a capture of the DSP's
 digital stream, which exists for some consoles, would compare directly with
 the trace.
+[docs/HARDWARE-EVIDENCE.md](../HARDWARE-EVIDENCE.md#snes-s-dsp) has what was
+found short of that: the one logic-analyser capture anyone made of a real
+console's S-DSP lines is dead-linked, and the one frequency estimate for the
+output filter is a schematic simulation, not a captured unit.
 
 ## Driver coverage
 
