@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { formatLog } from '../log.mjs';
+import { traceProcess } from '../change-stream.mjs';
 
 /**
  * Mesen 2's NES APU, built natively and driven over a pipe.
@@ -12,7 +13,9 @@ import { formatLog } from '../log.mjs';
  * minimal shims of our own under `oracles/mesen/shim`. See the README there
  * for what is Mesen's, what is ours, the pinned commit, and the voice-value
  * mapping. It is built with the system C++ compiler the first time it is
- * needed, or whenever a source is newer than the binary.
+ * needed, or whenever a source is newer than the binary. `trace()` streams
+ * its stdout through `traceProcess` (change-stream.mjs) into a `ChangeStream`
+ * rather than buffering the whole run as one string.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/mesen/main.cpp', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'mesen');
@@ -73,18 +76,11 @@ export const mesen = {
    * @param {{ at: number, addr: number, value: number }[]} writes
    * @param {number} cycles
    * @param {{ address: number, bytes: Uint8Array }[]} [memory] for the DMC
+   * @returns {Promise<import('../change-stream.mjs').ChangeStream>}
    */
   trace(writes, cycles, memory = []) {
     this.build();
     const input = formatLog({ chip: '2a03', clock: 1789773, cycles, memory }, writes);
-    const result = spawnSync(BINARY, [], { input, encoding: 'utf8', maxBuffer: 1 << 30 });
-    if (result.status !== 0) throw new Error(`the oracle failed: ${result.stderr}`);
-    const changes = [];
-    for (const line of result.stdout.split('\n')) {
-      if (!line) continue;
-      const [cycle, voice, value] = line.split(' ').map(Number);
-      changes.push({ cycle, voice, value });
-    }
-    return changes;
+    return traceProcess(BINARY, [], input);
   },
 };
