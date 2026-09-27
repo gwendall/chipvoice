@@ -115,10 +115,11 @@
 - done - P2-4: パッケージのREADMEは5つの仕様書すべてにリンクし、スキルは各ターゲットの仕様書にリンクします。`test-agent-guide.mjs`が確かめます。
 - doing - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、書き込みにはシークレット`CHIPVOICE_E2E_KEY`があればそれを使います。専用テストアカウントとそのキーはまだ作成していません。
 - done - NEXT-03: `test-creation-browser.mjs`が失敗したのはロードアベレージ70のときだけで、原因はPlaywrightの既定の30秒待機でした。すべての待機にテストの準備時間と同じ2分を与えます。エディター自体は、ページのCPUを6倍遅くしてもテンポ変更の間Pauseを表示し続けました。
+- done - P7-7: 最小限の6510・VIC-IIラスタ行・CIA1（`src/roms/c64.mjs`）でVICEの`testprogs/SID`から14本を実行します。KERNALなしで判定を出せるものを選び、13本が成功、CIでも実行します（`roms:c64`）。`busvalue`は失敗します。OSC3またはENV3の読み出しが実機のように内部バスラッチを更新しないためで、P2-1の知見として残し、ここでは直しません。`envrate`はDag Lemの実機検証済みレート表と完全に一致しました。
 
 **ステップ1. 5つのチップを証明する。** 仕様書は、独立したオラクル、実機向けに書かれたテストROM、実際のゲーム音楽、実機という4つの段階それぞれに数値があるときに完成です。
 
-- オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P5-8、P7-7、P7-11。
+- オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P5-8、P7-11。
 - todo - NEXT-04: 実機を買う前に、各チップについて実機の公開録音を集めます（決定38）。
 - 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。
 
@@ -310,7 +311,7 @@
 | P7-4 | intent波形／envelope、4roleを3voiceへ共有するdriver／arranger | done | `chips/c64/driver.ts`、`arranger.ts`。規則は`Sequencer.scheduleStep` |
 | P7-5 | API／studio／skill | done | schema、openapi、skill 0.8.0、llms.txt、studio |
 | P7-6 | reSID-fp digital比較sheetとcorpus | done | `docs/chips/c64.md`、`corpus/c64`、CI `check:c64` |
-| P7-7 | 6510でVICE `testprogs/SID`を実行しOSC3／ENV3を読む第2検証 | todo | NESの6502同様6510が必要 |
+| P7-7 | 6510でVICE `testprogs/SID`を実行しOSC3／ENV3を読む第2検証 | done | `packages/conform/roms/vice-sid`、`src/roms/c64.mjs`、CI `roms:c64`。14本中13本成功、`busvalue`はP2-1の知見 |
 | P7-8 | 6581 line-out captureでDAC zero、filter curve、出力をfit | todo | 実機必要 |
 | P7-9 | filterを開くintentとlead sweep | todo | |
 | P7-10 | 8580の合成波形、triangle／saw遅延、線形DAC、独自filterの第2profile／table | todo | |

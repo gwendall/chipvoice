@@ -1,0 +1,105 @@
+{
+  "date": "2026-09-27",
+  "passed": 13,
+  "total": 14,
+  "results": [
+    {
+      "name": "busvalue/busvalue",
+      "status": 1,
+      "passed": false,
+      "text": "$D7FF = $ff, border 2",
+      "resets": 0
+    },
+    {
+      "name": "envelope/testADSRDelayBug",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "osc_topbit/osc_topbit_test_noise_old",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "osc_topbit/osc_topbit_test_pulse_old",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "osc_topbit/osc_topbit_test_triangle_old",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "osc3-wave0/osc3-wave0",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "oscinit/allinit",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "oscinit/noiseinit",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "oscinit/oscinit",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    },
+    {
+      "name": "resid-test/envrate",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 13",
+      "resets": 0
+    },
+    {
+      "name": "resid-test/envsustain",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 13",
+      "resets": 0
+    },
+    {
+      "name": "resid-test/envtime",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 13",
+      "resets": 0
+    },
+    {
+      "name": "resid-test/noisetest",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 13",
+      "resets": 0
+    },
+    {
+      "name": "ringmod/ringmodtest",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
+      "resets": 0
+    }
+  ]
+}

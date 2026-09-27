@@ -56,10 +56,32 @@
 <a id="test-roms"></a>
 ## テストROM
 
-未実行。VICEの`testprogs/SID`は6510でOSC3／ENV3を読みますが、ハーネスにはまだそのCPUがありません（P7-7）。これらのプログラムと実機サンプリングに基づくreSID-fpを参照にします。
+ハーネスが持つ6510で実行し（`pnpm --filter chipvoice-conform roms:c64`）、毎pushでCIが流します。VICEはSID用のテストプログラム一式（`testprogs/SID`、GPL-2、r46273固定）を持ち、6510からOSC3とENV3を読み戻し、KERNALなしで判定を出します。判定はVICE自身のデバッグカートリッジ規約です。`$D7FF`の1バイト（0で成功、`$ff`で失敗）と`$D020`のボーダー色、その後は自分自身へのジャンプ。8グループ14本を[`packages/conform/roms/vice-sid`](../../packages/conform/roms/vice-sid)に同梱し、そのためだけに用意した最小限の6510・VIC-IIラスタ行・CIA1タイマーで実行します（[`packages/conform/src/roms/c64.mjs`](../../packages/conform/src/roms/c64.mjs)）。残りはKERNAL、ディスク、耳、このハーネスが読めない画面のいずれかを必要とするか、対話的または事前実行に依存するか、このチップが実装しない8580専用です。同梱readmeが個々の理由を記します。選んだ14本に8580専用はなく、ここでの「対象外」判定はありません。
 
 <!-- roms:begin -->
+`conform`の6510 fixtureで2026-09-27に実行：13 / 14成功。
+
+| ROM | 結果 | 実際の出力（原文） |
+| --- | --- | --- |
+| `busvalue/busvalue` | 失敗 | $D7FF = $ff, border 2 |
+| `envelope/testADSRDelayBug` | 成功 | $D7FF = $00, border 5 |
+| `osc_topbit/osc_topbit_test_noise_old` | 成功 | $D7FF = $00, border 5 |
+| `osc_topbit/osc_topbit_test_pulse_old` | 成功 | $D7FF = $00, border 5 |
+| `osc_topbit/osc_topbit_test_triangle_old` | 成功 | $D7FF = $00, border 5 |
+| `osc3-wave0/osc3-wave0` | 成功 | $D7FF = $00, border 5 |
+| `oscinit/allinit` | 成功 | $D7FF = $00, border 5 |
+| `oscinit/noiseinit` | 成功 | $D7FF = $00, border 5 |
+| `oscinit/oscinit` | 成功 | $D7FF = $00, border 5 |
+| `resid-test/envrate` | 成功 | $D7FF = $00, border 13 |
+| `resid-test/envsustain` | 成功 | $D7FF = $00, border 13 |
+| `resid-test/envtime` | 成功 | $D7FF = $00, border 13 |
+| `resid-test/noisetest` | 成功 | $D7FF = $00, border 13 |
+| `ringmod/ringmodtest` | 成功 | $D7FF = $00, border 5 |
 <!-- roms:end -->
+
+**数値の意味。** 13本が成功し、上のデジタル一致率とは独立した検証です。`oscinit`、`noiseinit`、`allinit`は位相蓄積器とノイズレジスタの電源投入値を実機の6581・8580サンプリングと照合し、`osc_topbit`と`osc3-wave0`は合成波形の最上位ビットとOSC3での読み戻しを、`ringmodtest`はOSC3から読むリング変調を、`testADSRDelayBug`はステップ途中のレート変更を検査します。`resid-test`の4本はCIAタイマーを32ビットカウンターに連結し、エンベロープのレート、サステイン比較、ADSRのミリ秒、ノイズLFSRの周期をサイクル単位で測ります。`envrate`が出力する表はDag Lem自身の、実機で検証済みの参照表と1サイクル違わず一致します（`envrate.a65`："verified: C64C+8580, C64+6581"）。数式テストがkevtrisの実測値と照合済みの同じ15レートを、今度は実機向けに書かれ実機でも走らせたプログラムに対しても確認したことになります。
+
+`busvalue/busvalue`は失敗し、この回で見つかった唯一の実差異です（P2-1、本チケットでは直しません。失敗はここでの知見であり、潰すべきバグではありません）。書き込み専用レジスタへ書き、読み出し専用レジスタ（OSC3）を読み、続けて存在しないレジスタを読んで、直前の読み出し値が返るはずだと期待します。実機は内部データバスのラッチを持ち、その説明によれば「書き込みだけでなく、読み出し専用レジスタへの正当な読み出しでも更新される」とのことです。ところが`Sid.write()`はすべての書き込みで`this.bus`を更新する一方、`Sid.read()`はOSC3とENV3に対して`this.osc[2].output >> 4`と`this.env[2].env3`を直接返し（`packages/chipvoice/src/chips/c64/sid.ts`）、`this.bus`には触れません。どちらを読んでもバスは直前の書き込み値のままです。ドライバーはSIDを読み戻さず、一致率のコーパスも読み出し専用レジスタの直後に存在しないレジスタを読むことがないため、この隙間はreSID-fpとの相違としてまだ表面化していませんでした。
 
 <a id="formula-tests"></a>
 ## 数式テスト
@@ -110,6 +132,7 @@
 | 合成波形は1台の6581 R2をkevtrisが測ったデータに基づくreSID-fp表への近似 | はい | 独自実測がない。隣接ビットが引き合う公開モデルを使用 | 別個体の合成波形ビット |
 | testビットのノイズリセット時間と波形未選択時の減衰は温まった6581 R3相当 | はい | いずれもコンデンサー放電で個体と温度に依存。参照も同じ | test保持時間、OSC3が古い値を返す時間 |
 | 8580は未モデル化 | 現時点でははい | 合成波形、三角波／鋸歯状波遅延、アナログ全体が異なる | C64後半世代 |
+| OSC3またはENV3の読み出しは内部データバスのラッチを更新しないため、直後に書き込み専用または存在しないレジスタを読むと、直前の読み出し値でなく直前の書き込み値が返る | いいえ | `busvalue`（テストROM）が発見。未修正（P2-1） | 読み出し専用レジスタの直後に書き込み専用または存在しないレジスタを読み、バスが読み出し値を保持すると期待するプログラム。VICEの`busvalue`テストの通り。他はここに該当しない |
 
 <a id="power-on-state"></a>
 ## 電源投入状態
@@ -119,6 +142,7 @@
 <a id="history"></a>
 ## 履歴
 
+- 2026-09-27：ハーネスが新たに持つ6510で、独立した第二の検証。VICEの`testprogs/SID`から14本を実行し13本成功。`busvalue`が実差異（OSC3／ENV3読み出しでバスラッチが更新されない）を発見し、P2-1の知見として残す。`envrate`はDag Lemの実機検証済みレート表と完全一致。
 - 2026-09-04：チップ、ドライバー、コーパス。電源投入をリセットにしレート8を392へ修正後、全ログでreSID-fpと一致。
 - 2026-09-27：鋸歯状波・三角波・ノイズ・組み合わせ波形を3ボイス同時に保持する密なスクリプトを4本追加。これらもreSID-fpと一致。かつてハーネスをメモリ不足にした3鋸歯状波8秒のケースは、いまはオンデマンドで実行でき、成功する（P7-11）。
 

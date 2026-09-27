@@ -31,6 +31,8 @@
     "baseline:c64": "node src/cli.mjs c64 --corpus corpus/c64 --oracle residfp --baseline corpus/c64/parity.json --write-baseline --sheet ../../docs/chips/c64.md && node src/status.mjs",
     "check:c64:dense": "node src/cli.mjs c64 --corpus corpus/c64-dense --oracle residfp --report",
     "corpus:c64": "node src/corpus/generate-c64.mjs",
+    "roms:c64": "node src/roms/run.mjs --chip c64",
+    "roms:c64:sheet": "node src/roms/run.mjs --chip c64 --sheet ../../docs/chips/c64.md --json corpus/c64/roms.json && node src/status.mjs",
     "fit:c64": "node src/fit-c64.mjs",
     "test:listening": "node src/listening/test.mjs && node src/listening/test-snes.mjs"
   },
