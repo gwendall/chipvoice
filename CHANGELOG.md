@@ -51,16 +51,19 @@ many times within a single frame, not DMA sample playback - is rejected as
 `NsfExportError('dmc_unsupported', ...)`, as is sample memory outside
 `$C000-$FFFF`, a loop point outside the capture, over-length or non-ASCII
 metadata, and a frame with more writes than the encoding can address -
-rather than silently dropped or approximated. Proven three ways against the
+rather than silently dropped or approximated. Proven four ways against the
 same pinned Game_Music_Emu oracle `nsf-corpus` uses: the exported command
 stream matches exactly on every exportable file in a corpus of real
 hardware recordings, this project's own 2A03 driver output and
 independently authored, redistribution-licensed NSFs (including the three
-DMC-using files, now that sample memory is carried through); a same-DSP
-export-loss gate compares GME's replay of the export against this
-project's own untouched render, both through this project's own renderer,
-isolating the export's own frame-quantization cost; a GME-vs-ours mixer
-comparison is reported for visibility but does not gate. See
+DMC-using files, now that sample memory is carried through); the source
+capture's own writes and GME's trace of the export match exactly, frame for
+frame, after one constant offset (a deterministic proof, not an audio one);
+a same-DSP export-loss gate compares GME's replay of the export against
+this project's own untouched render, both through this project's own
+renderer, isolating the residual cost of a write landing at its frame's
+start rather than its own real cycle; a GME-vs-ours mixer comparison is
+reported for visibility but does not gate. See
 [docs/chips/2a03.md#nsf-export](docs/chips/2a03.md#nsf-export). The studio
 now offers a Download NSF button next to VGM's, for NES songs.
 

@@ -18,25 +18,47 @@ import {loadArrangement} from '../arrangements/check.mjs';
  * reusing its build (`../arrangements/native-oracle.py`, same output
  * directory as `nsf-corpus:check`, so CI's cache step covers both).
  *
- * Three proofs, per file, matching the ticket:
+ * Four proofs, per file:
  *
  *   1. Command stream: the export, replayed by GME, must produce the exact
  *      write stream `scores/capture-nsf.mjs` (this project's own offline
  *      6502) gets from replaying the very same export. Both sides execute
  *      identical bytes; disagreeing means the player program itself is
- *      wrong, not a quantization question.
- *   2. Export loss (the pass/fail audio gate): GME's own trace of playing
+ *      wrong, not a quantization question. This is a player-correctness
+ *      check - the export against itself - and says nothing on its own
+ *      about whether the export reproduces the *source*; proof #2 does.
+ *   2. Frame writes (deterministic, tests fidelity to the source): the
+ *      source capture's own register writes and GME's trace of the export,
+ *      each bucketed into 60 Hz frames (`Math.floor(at / PERIOD)`), must
+ *      list the exact same writes - address, value, order - frame for
+ *      frame, after one constant frame offset (`compareFrameWrites`, found
+ *      by the same small search `compareEnvelopes` uses). This is not an
+ *      audio measurement, so it cannot be fooled by a mixer or an alignment
+ *      choice: on every one of this corpus's 12 files it is 100% (one
+ *      harmless exception, noted on its row - the last captured frame of
+ *      `zelda-rendition` lands exactly on the loop point, where GME's trace
+ *      has already wrapped to the next lap by the time our fixed-length
+ *      capture stops watching; `corpus.mjs`'s own comment on `runOracle`
+ *      already documents that GME's trace legitimately outlives the
+ *      capture). It is the reason proof #3's threshold can be trusted: it
+ *      proves the export carries every command, in the right frame, with
+ *      nothing dropped or reordered, independent of anyone's mixer.
+ *   3. Export loss (the pass/fail audio gate): GME's own trace of playing
  *      the export, parsed back into register writes and rendered through
  *      this project's own `renderPerformance`, against a render of the
  *      *source* capture's untouched events through that same
  *      `renderPerformance`. Both sides go through the identical 2A03 DSP,
- *      so the only thing left to differ is what the export itself changed:
- *      frame quantization, and a burst of writes a source driver spaced a
- *      few cycles apart (the 2A03 driver's smooth-vibrato `$4017` sequence
- *      among them) collapsing to however far apart PLAY's own instructions
- *      land them. The threshold is set from the measured band on this
- *      corpus with a small margin, below.
- *   3. GME mixer comparison (informational, not a gate): GME's rendered PCM
+ *      so the only thing left to differ is what the export itself changed.
+ *      Given proof #2, that is not missing or wrong commands - it is when,
+ *      within a frame, a write lands: this project's exported player
+ *      applies a whole frame's writes back to back at the very start of its
+ *      PLAY call, while a source driver spreads them across its own, longer
+ *      PLAY routine, so a note-on that a driver reaches only partway into
+ *      its frame plays for more of that one frame in the export than it did
+ *      in the source (see `EXPORT_LOSS_RMS_THRESHOLD`'s own comment for the
+ *      measured evidence). The threshold is set from the measured band on
+ *      this corpus with a small margin, below.
+ *   4. GME mixer comparison (informational, not a gate): GME's rendered PCM
  *      of the export against this project's own render of the source. This
  *      crosses two independently written 2A03 emulators (GME's and this
  *      project's), so a sizeable residual is expected even for a perfect
@@ -66,36 +88,77 @@ const WORK_DIR = path.join(ROOT, '.artifacts', 'nsf-export');
 const ORACLE_REVISION = 'fe8da4b6d3876d7542c2fb69d94487e19836d678';
 const CPU_HZ = nesChip.spec.clockHz;
 const PERIOD = (262 * 341 * 4 - 2) / 12;
-// The pass/fail gate (proof #2, module comment): both renders go through
+// The pass/fail gate (proof #3, module comment): both renders go through
 // this project's own 2A03 DSP, so a residual here is the export's own loss
-// alone - frame quantization plus intra-frame burst-write collapse - not a
-// cross-emulator mixing-curve difference. Measured on a real run of this
-// corpus (`--json` output): 4.5-8.9% on Mario/Zelda (real hardware capture
-// and this project's own driver rendition alike, including its
-// smooth-vibrato `$4017` burst - see the module doc comment - which is
-// already inside that band), and 13.3-50.7% on the independently authored,
-// tracker-driven NSFs (including the three that use DMC sample memory),
-// whose engines update pitch/volume effects faster than 60 Hz: exactly the
-// writes a burst-per-PLAY-call replay collapses together, so their higher
-// loss is the quantization cost this proof exists to show, not a bug. 55%
-// sits a small margin above that whole measured band; a genuinely broken
-// export (a dropped channel, a wrong note, a loop gone wrong) collapses a
-// section's envelope to silence or a different shape rather than merely
-// losing sub-frame effect resolution, and would clear it by a wide margin
-// the way the pre-alignment-fix version of this metric did (well over
-// 100%).
-const EXPORT_LOSS_RMS_THRESHOLD = 0.55;
+// alone, not a cross-emulator mixing-curve difference.
+//
+// An earlier version of this metric aligned each side on its own
+// independently computed `firstSoundFrame` and measured 13.3-50.7% on the
+// eight tracker-driven NSFs - a number that was then wrongly written up here
+// as "sub-60 Hz quantization cost". That explanation does not survive
+// contact with the files: every one of them (checked against their own NSF
+// header, `$411a`) plays at 16666-16639 microseconds per PLAY call, i.e.
+// once per 60 Hz frame - their own drivers cannot update anything faster
+// than this project's own exported player replays it, so there is no
+// sub-frame update rate to lose. The real cause was `compareEnvelopes`
+// itself: two independently INIT'd NSF players never agree on which frame
+// index is "PLAY call zero" (every player's own INIT-to-first-PLAY overhead
+// differs - GME's own reset ceremony alone consumes a full frame before it
+// ever calls the exported player's PLAY routine), so the two
+// independently-chosen onsets routinely land one frame apart, and on
+// percussive content that one frame of slip is enough by itself to produce
+// an error of exactly this size. `compareFrameWrites` (proof #2) proves
+// this directly: bucketing the source capture's own writes and GME's trace
+// of the export into 60 Hz frames and comparing them for exact
+// address/value/order equality (not loudness) shows a 100% match, on every
+// file in this corpus, at one constant frame offset - the export carries
+// every command, in the right frame, unchanged. `compareEnvelopes` now
+// searches a small window of frame offsets around each side's own guess and
+// keeps whichever minimizes the RMS error, instead of trusting the guesses
+// to already agree; measured export loss on the same corpus, same GME
+// revision, dropped to 4.5-21.9%.
+//
+// That remaining residual is real, and traced to a different, correctly
+// named mechanism: proof #2 checks *which frame* a write lands in, not
+// *when within the frame*. This project's exported player applies a whole
+// frame's writes back to back within a few hundred cycles of PLAY starting;
+// a source driver spends its own, longer PLAY routine on other bookkeeping
+// first and only reaches a given channel's registers well into the frame.
+// On `after-the-rain` (21.9%, this corpus's highest), the pulse-1 envelope
+// restart (`$4003`) for the note at its second frame lands at cycle 6718 of
+// the source's own ~29780-cycle frame (about 23% in) but at cycle 546 of the
+// export's corresponding frame (under 2% in) - the new note plays for
+// noticeably more of that one frame in the export, which is exactly the
+// 0.51-vs-0.61 (peak-normalized) envelope jump measured there. A shift of a
+// few thousand cycles within one 16.7 ms frame is inaudible on its own (at
+// most it moves a note's attack a couple of milliseconds), but concentrated
+// into the one or two frames where a note actually starts, it is large
+// enough on a loudness-envelope metric to be measured, without indicating
+// any dropped, wrong, or reordered command - proof #2 already rules that
+// out. This is the same effect `nsf.ts`'s own module comment already
+// documents ("A pitch or volume change mid-frame lands at the start of the
+// frame it falls in instead, at most one frame (~16.7ms) early") named
+// correctly instead of attributed to a nonexistent faster-than-60Hz update
+// rate. 30% sits a real margin above the whole corrected measured band
+// (4.5-21.9%); a genuinely broken export (a dropped channel, a wrong note, a
+// loop gone wrong) collapses a section's envelope to silence or a different
+// shape across many frames at once rather than shifting one attack frame's
+// energy within a single 16.7 ms window, and would clear it by a wide margin
+// the way the pre-alignment-fix version of this metric did (well over 100%).
+const EXPORT_LOSS_RMS_THRESHOLD = 0.3;
 
-// Informational only (proof #3, module comment): a cross-implementation
+// Informational only (proof #4, module comment): a cross-implementation
 // comparison (GME's mixer against this project's own), not a same-DSP
 // quantization measurement. Every exportable source in this corpus matches
 // GME's command stream exactly (proof #1, matched === total, "none"
-// divergence) and clears the export-loss gate above, yet still measures
-// 21-52% here: GME's DAC/mixer curve and this project's own do not level a
-// note's loudness identically, so the two envelopes track the same shape a
-// beat apart in gain even when every write landed correctly. This has no
-// threshold and never gates CI (see `formatResult`, `main`); it is reported
-// so the gap is visible, not because either side is being called wrong.
+// divergence) and matches it frame for frame (proof #2, 100%) and clears
+// the export-loss gate above, yet still measures 21.3-51.6% here: GME's
+// DAC/mixer curve and this project's own do not level a note's loudness
+// identically, so the two envelopes track the same shape a beat apart in
+// gain even when every write landed correctly, in the right frame. This has
+// no threshold and never gates CI (see `formatResult`, `main`); it is
+// reported so the gap is visible, not because either side is being called
+// wrong.
 
 const run = promisify(execFile);
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -176,25 +239,51 @@ function firstSoundFrame(env, threshold = 0.01) {
   return 0;
 }
 
-/** Shared by both audio proofs: peak-normalize each side on its own, align
- * each on its own first-sound frame (see `firstSoundFrame`), and take the
- * relative RMS error over whichever side runs out of frames first. Neither
- * side is assumed to be the "correct" one here - that judgment belongs to
- * the caller, which is why proof #2 gates on this and proof #3 only reports
- * it (module comment). */
+/** Shared by both audio proofs: peak-normalize each side on its own, then
+ * find the constant frame offset that lines them up best.
+ *
+ * `firstSoundFrame` gives a starting guess for each side, but it is only a
+ * guess: every NSF player's own INIT-to-first-PLAY overhead is different
+ * (this project's own exported player's INIT is a handful of instructions;
+ * a tracker driver's INIT does its own setup; GME's own reset ceremony
+ * before it ever calls the exported player's PLAY routine, `compare.mjs`'s
+ * own doc comment) so there is no reason the two sides' first audible frame
+ * should be the *same* frame index - it is routinely one whole frame apart,
+ * a fixed, expected latency, not a difference in content. A per-frame
+ * write-list comparison of this exact corpus (`compareFrameWrites`, the
+ * per-file diagnostic behind it: bucket both sides by
+ * `floor(cycle / PERIOD)`, the frame index `firstSoundFrame` cannot see)
+ * shows every one of the 8 tracker-driven corpus files matches every write,
+ * in order, on every frame, at exactly one constant offset - so searching a
+ * small window around the two guesses and keeping whichever offset
+ * minimizes the relative RMS error recovers the real alignment instead of
+ * assuming the guesses already agree. On percussive content (a noise-channel
+ * hit decaying over 2-3 frames) leaving that one frame of slip uncorrected
+ * is enough on its own to produce an error of several times this proof's
+ * real size - which is exactly what the unsearched version of this function
+ * measured. */
+const MAX_FRAME_OFFSET_SEARCH = 8;
 function compareEnvelopes(envA, envB) {
-  const startA = firstSoundFrame(envA), startB = firstSoundFrame(envB);
+  const baseA = firstSoundFrame(envA), baseB = firstSoundFrame(envB);
   const peakA = Math.max(1e-9, ...envA), peakB = Math.max(1e-9, ...envB);
-  const frames = Math.min(envA.length - startA, envB.length - startB);
-  let sumSq = 0, refSumSq = 0;
-  for (let f = 0; f < frames; f++) {
-    const a = envA[f + startA] / peakA, b = envB[f + startB] / peakB;
-    const d = a - b;
-    sumSq += d * d;
-    refSumSq += b * b;
+  let best = null;
+  for (let offset = -MAX_FRAME_OFFSET_SEARCH; offset <= MAX_FRAME_OFFSET_SEARCH; offset++) {
+    const startA = baseA, startB = baseB + offset;
+    if (startB < 0 || startB >= envB.length) continue;
+    const frames = Math.min(envA.length - startA, envB.length - startB);
+    if (frames <= 0) continue;
+    let sumSq = 0, refSumSq = 0;
+    for (let f = 0; f < frames; f++) {
+      const a = envA[f + startA] / peakA, b = envB[f + startB] / peakB;
+      const d = a - b;
+      sumSq += d * d;
+      refSumSq += b * b;
+    }
+    const rms = Math.sqrt(sumSq / frames), refRms = Math.sqrt(refSumSq / frames);
+    const relativeRmsError = refRms > 0 ? rms / refRms : rms;
+    if (!best || relativeRmsError < best.relativeRmsError) best = {frames, startA, startB, offset, relativeRmsError};
   }
-  const rms = Math.sqrt(sumSq / frames), refRms = Math.sqrt(refSumSq / frames);
-  return {frames, alignment: {aLeadInFrames: startA, bLeadInFrames: startB}, relativeRmsError: refRms > 0 ? rms / refRms : rms};
+  return {frames: best.frames, alignment: {aLeadInFrames: best.startA, bLeadInFrames: best.startB, offsetFrames: best.offset}, relativeRmsError: best.relativeRmsError};
 }
 
 /** A `renderPerformance` result's per-frame loudness envelope. */
@@ -225,6 +314,57 @@ function compareMixer(pcm, reference) {
  * the identical 2A03 DSP, so what is left is the export's own loss alone. */
 function compareExportLoss(replayed, original) {
   return compareEnvelopes(renderedEnvelope(replayed), renderedEnvelope(original));
+}
+
+/** The new deterministic proof (round 2 item 2): buckets the source
+ * capture's own register writes and GME's trace of the export by 60 Hz
+ * frame (`Math.floor(at / PERIOD)`, this format's own replay granularity -
+ * `quantizeToFrames`'s `Math.round` frame boundaries differ from `floor` by
+ * at most half a cycle, never enough to move a write across a frame
+ * boundary on this corpus) and requires the two sides' write lists
+ * (address, value, order) to match exactly, frame by frame, after one
+ * constant frame offset - the same kind of offset search `compareEnvelopes`
+ * does, but on exact command content instead of loudness, so unlike proofs
+ * #2 and #3 it says nothing about the mixer or the DSP and cannot be
+ * fooled by one. For a once-per-frame source (every file in this corpus)
+ * this is expected to be 100%: this project's own exported player replays
+ * whatever `quantizeToFrames` bucketed the source into, one bucket per PLAY
+ * call, byte for byte. A source that genuinely bursts writes from more than
+ * one frame into a single PLAY call (a burst of updates a few cycles apart,
+ * inside one frame boundary - `quantizeToFrames`'s own doc comment) would
+ * show as one source frame's writes appearing merged into a neighbouring
+ * frame here, which this proof reports by frame number rather than folding
+ * into a percentage. */
+function bucketWritesByFrame(events) {
+  const buckets = new Map();
+  for (const e of events) {
+    if (e.addr < 0x4000 || e.addr > 0x4017 || e.addr === 0x4014 || e.addr === 0x4016) continue;
+    const f = Math.floor(e.at / PERIOD);
+    if (!buckets.has(f)) buckets.set(f, []);
+    buckets.get(f).push({addr: e.addr, value: e.value});
+  }
+  return buckets;
+}
+
+function writeListsEqual(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i].addr !== b[i].addr || a[i].value !== b[i].value) return false;
+  return true;
+}
+
+function compareFrameWrites(sourceEvents, gmeEvents) {
+  const source = bucketWritesByFrame(sourceEvents);
+  const gme = bucketWritesByFrame(gmeEvents);
+  const frameNumbers = [...source.keys()].sort((a, b) => a - b);
+  const total = frameNumbers.length;
+  let best = {offset: 0, matched: -1};
+  for (let offset = -MAX_FRAME_OFFSET_SEARCH; offset <= MAX_FRAME_OFFSET_SEARCH; offset++) {
+    let matched = 0;
+    for (const f of frameNumbers) if (writeListsEqual(source.get(f), gme.get(f + offset))) matched++;
+    if (matched > best.matched) best = {offset, matched};
+  }
+  const mismatchedFrames = frameNumbers.filter(f => !writeListsEqual(source.get(f), gme.get(f + best.offset)));
+  return {total, matched: best.matched, offset: best.offset, mismatchedFrames};
 }
 
 function renderReference(events, seconds, memory = []) {
@@ -276,34 +416,39 @@ async function scoreSource(source) {
   const frames = Math.ceil(source.cycles / PERIOD) + 4;
   const ourReplay = captureNsf(file, {frames, track: 0});
 
-  let comparison = null, exportLoss = null, mixerDiff = null;
+  let comparison = null, exportLoss = null, mixerDiff = null, frameWrites = null;
   if (!noOracle) {
     await fs.promises.mkdir(WORK_DIR, {recursive: true});
     const nsfPath = path.join(WORK_DIR, `${source.id}.nsf`);
     await fs.promises.writeFile(nsfPath, file);
     const seconds = Math.min(600, Math.max(1, Math.ceil(source.cycles / CPU_HZ) + 1));
     const {trace, pcm} = await runOracle(nsfPath, seconds, 0);
+    const gmeEvents = parseTrace(trace);
     comparison = compareNsfTrace(ourReplay, trace);
+    // Proof #4 (new, deterministic, not audio-based): the source capture's
+    // own writes against GME's trace of the export, bucketed by frame -
+    // exact command content, not loudness (module comment).
+    frameWrites = compareFrameWrites(source.events, gmeEvents);
     const original = renderReference(source.events, source.cycles / CPU_HZ, source.memory ?? []);
     // Proof #2: what GME actually played back from the export, rendered by
     // our own DSP, against our own render of the untouched source - both
     // sides identical except for what the export itself changed.
-    const replayed = renderReference(parseTrace(trace), source.cycles / CPU_HZ, source.memory ?? []);
+    const replayed = renderReference(gmeEvents, source.cycles / CPU_HZ, source.memory ?? []);
     exportLoss = compareExportLoss(replayed, original);
     // Proof #3 (informational): GME's own PCM of the export against our
     // render of the source - two independent emulators, not a same-DSP
     // measurement (module comment).
     mixerDiff = compareMixer(pcm, original);
   }
-  return {id: source.id, title: source.title, url: source.url, bytes: file.length, comparison, exportLoss, mixerDiff};
+  return {id: source.id, title: source.title, url: source.url, bytes: file.length, comparison, exportLoss, mixerDiff, frameWrites};
 }
 
 /** Kept to a small, fixed set of shapes (translated verbatim in
  * docs/check-translations.py's `nsf-export` rule). */
 function formatResult(r) {
-  if (r.skipped) return {commands: 'not rendered', loss: '-', mixer: '-', note: r.skipped};
-  if (r.exportError) return {commands: `not exportable: ${r.exportError.code}`, loss: '-', mixer: '-', note: r.exportError.message};
-  if (!r.comparison) return {commands: `${r.bytes} bytes`, loss: 'not compared', mixer: 'not compared', note: 'none'};
+  if (r.skipped) return {commands: 'not rendered', frameWrites: '-', loss: '-', mixer: '-', note: r.skipped};
+  if (r.exportError) return {commands: `not exportable: ${r.exportError.code}`, frameWrites: '-', loss: '-', mixer: '-', note: r.exportError.message};
+  if (!r.comparison) return {commands: `${r.bytes} bytes`, frameWrites: 'not compared', loss: 'not compared', mixer: 'not compared', note: 'none'};
   const divergence = r.comparison.firstDivergence
     ? (r.comparison.firstDivergence.ours && r.comparison.firstDivergence.gme
         ? `cycle ${r.comparison.firstDivergence.ours.at} vs ${r.comparison.firstDivergence.gme.at}, $${r.comparison.firstDivergence.ours.addr.toString(16)}: ${r.comparison.firstDivergence.ours.value} vs ${r.comparison.firstDivergence.gme.value}`
@@ -311,7 +456,8 @@ function formatResult(r) {
     : 'none';
   const lossText = `${(r.exportLoss.relativeRmsError * 100).toFixed(1)}%${r.exportLoss.relativeRmsError > EXPORT_LOSS_RMS_THRESHOLD ? ' (over threshold)' : ''}`;
   const mixerText = `GME's mixer differs from ours by ${(r.mixerDiff.relativeRmsError * 100).toFixed(1)}%`;
-  return {commands: `${r.comparison.matched}/${r.comparison.total}`, loss: lossText, mixer: mixerText, note: divergence};
+  const frameWritesText = `${r.frameWrites.matched}/${r.frameWrites.total} (offset ${r.frameWrites.offset >= 0 ? '+' : ''}${r.frameWrites.offset})${r.frameWrites.mismatchedFrames.length ? `, frames ${r.frameWrites.mismatchedFrames.slice(0, 8).join(', ')}${r.frameWrites.mismatchedFrames.length > 8 ? ', ...' : ''} differ` : ''}`;
+  return {commands: `${r.comparison.matched}/${r.comparison.total}`, frameWrites: frameWritesText, loss: lossText, mixer: mixerText, note: divergence};
 }
 
 async function main() {
@@ -321,7 +467,7 @@ async function main() {
     const result = await scoreSource(source);
     results.push(result);
     const formatted = formatResult(result);
-    console.log(`${result.id}: ${formatted.commands}, export loss ${formatted.loss}, ${formatted.mixer}, first divergence: ${formatted.note}`);
+    console.log(`${result.id}: ${formatted.commands}, frame writes ${formatted.frameWrites}, export loss ${formatted.loss}, ${formatted.mixer}, first divergence: ${formatted.note}`);
   }
 
   const jsonPath = option('json', null);
@@ -337,11 +483,11 @@ async function main() {
     if (begin < 0 || end < 0) throw new Error(`${sheetPath} has no nsf-export markers`);
     const lines = [
       '<!-- nsf-export:begin -->',
-      `Written by \`nsf-export:sheet\` on ${new Date().toISOString().slice(0, 10)}, against Game_Music_Emu revision \`${ORACLE_REVISION}\`. Export loss: relative RMS error, after peak-normalizing and lead-in aligning, between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - this is the pass/fail column, threshold ${(EXPORT_LOSS_RMS_THRESHOLD * 100).toFixed(0)}%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated.`,
+      `Written by \`nsf-export:sheet\` on ${new Date().toISOString().slice(0, 10)}, against Game_Music_Emu revision \`${ORACLE_REVISION}\`. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into 60 Hz frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency - every NSF player's own INIT-to-first-PLAY overhead differs) - this is a deterministic command-content proof, not an audio measurement. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - this is the pass/fail column, threshold ${(EXPORT_LOSS_RMS_THRESHOLD * 100).toFixed(0)}%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated.`,
       '',
-      '| Song | Commands | Export loss | GME mixer | First divergence |',
-      '| --- | --- | --- | --- | --- |',
-      ...results.map(r => { const f = formatResult(r); const name = r.url ? `[${r.title}](${r.url})` : r.title; return `| ${name} | ${f.commands} | ${f.loss} | ${f.mixer} | ${f.note} |`; }),
+      '| Song | Commands | Frame writes | Export loss | GME mixer | First divergence |',
+      '| --- | --- | --- | --- | --- | --- |',
+      ...results.map(r => { const f = formatResult(r); const name = r.url ? `[${r.title}](${r.url})` : r.title; return `| ${name} | ${f.commands} | ${f.frameWrites} | ${f.loss} | ${f.mixer} | ${f.note} |`; }),
       '<!-- nsf-export:end -->',
     ];
     fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- nsf-export:end -->'.length));
