@@ -13,7 +13,7 @@
   "date": "2026-09-27",
   "files": 7,
   "cycles": 145122916,
-  "identical": 127912812,
+  "identical": 127928953,
   "diverging": 6,
   "results": [
     {
@@ -21,9 +21,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 49,
       "cycles": 21390950,
-      "identical": 20842937,
+      "identical": 20844528,
       "first": {
-        "cycle": 419430,
+        "cycle": 427389,
         "voice": 0,
         "a": 15,
         "b": 0
@@ -31,21 +31,21 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 20846729,
-          "a": 3208,
+          "identical": 20848320,
+          "a": 3206,
           "b": 3205,
           "exact": 49,
           "near": 0,
-          "onlyA": 3159,
+          "onlyA": 3157,
           "onlyB": 3156,
           "shift": -6,
           "aligned": 2903,
           "runs": {
-            "ours": 3130,
+            "ours": 3129,
             "theirs": 3130,
-            "alignedTimes": 3119,
-            "alignedValues": 3085,
-            "maxShift": 1140361
+            "alignedTimes": 3128,
+            "alignedValues": 3124,
+            "maxShift": 10694
           }
         },
         {
@@ -112,9 +112,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 45,
       "cycles": 21390950,
-      "identical": 21169354,
+      "identical": 21172948,
       "first": {
-        "cycle": 419430,
+        "cycle": 429449,
         "voice": 0,
         "a": 15,
         "b": 0
@@ -122,40 +122,40 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 21386507,
-          "a": 246,
+          "identical": 21388510,
+          "a": 244,
           "b": 244,
           "exact": 0,
           "near": 0,
-          "onlyA": 246,
+          "onlyA": 244,
           "onlyB": 244,
           "shift": -10,
           "aligned": 244,
           "runs": {
-            "ours": 245,
+            "ours": 244,
             "theirs": 244,
             "alignedTimes": 244,
             "alignedValues": 244,
-            "maxShift": 12345782
+            "maxShift": 10
           }
         },
         {
           "voice": "ch2",
-          "identical": 21387199,
-          "a": 218,
+          "identical": 21388790,
+          "a": 216,
           "b": 216,
           "exact": 0,
           "near": 0,
-          "onlyA": 218,
+          "onlyA": 216,
           "onlyB": 216,
           "shift": -10,
           "aligned": 216,
           "runs": {
-            "ours": 217,
+            "ours": 216,
             "theirs": 216,
             "alignedTimes": 216,
             "alignedValues": 216,
-            "maxShift": 13922350
+            "maxShift": 10
           }
         },
         {
@@ -294,10 +294,10 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 152,
       "cycles": 21390950,
-      "identical": 21349399,
+      "identical": 21353406,
       "first": {
-        "cycle": 419430,
-        "voice": 1,
+        "cycle": 433457,
+        "voice": 0,
         "a": 15,
         "b": 0
       },
@@ -323,21 +323,21 @@
         },
         {
           "voice": "ch2",
-          "identical": 21374953,
-          "a": 1964,
+          "identical": 21378960,
+          "a": 1962,
           "b": 1962,
           "exact": 7,
           "near": 0,
-          "onlyA": 1957,
+          "onlyA": 1955,
           "onlyB": 1955,
           "shift": -6,
           "aligned": 1890,
           "runs": {
-            "ours": 1417,
+            "ours": 1416,
             "theirs": 1416,
             "alignedTimes": 1416,
-            "alignedValues": 1414,
-            "maxShift": 27818
+            "alignedValues": 1416,
+            "maxShift": 10
           }
         },
         {
@@ -385,9 +385,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 33,
       "cycles": 21390950,
-      "identical": 21377133,
+      "identical": 21384082,
       "first": {
-        "cycle": 419430,
+        "cycle": 443269,
         "voice": 0,
         "a": 15,
         "b": 0
@@ -395,21 +395,21 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 21377133,
-          "a": 735,
+          "identical": 21384082,
+          "a": 731,
           "b": 731,
-          "exact": 0,
+          "exact": 1,
           "near": 0,
-          "onlyA": 735,
-          "onlyB": 731,
+          "onlyA": 730,
+          "onlyB": 730,
           "shift": -10,
           "aligned": 438,
           "runs": {
-            "ours": 633,
+            "ours": 631,
             "theirs": 631,
-            "alignedTimes": 625,
-            "alignedValues": 625,
-            "maxShift": 3385211
+            "alignedTimes": 631,
+            "alignedValues": 631,
+            "maxShift": 10
           }
         },
         {

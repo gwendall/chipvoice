@@ -86,16 +86,16 @@ Written by `conform` on 2026-09-27, against SameBoy (DMG-B), on ch1, ch2, ch3, c
 | --- | --- |
 | Oracle | SameBoy (DMG-B) |
 | Corpus | 7 logs, 145122916 cycles |
-| Identical cycles | 127912812 / 145122916 (88.1410 %) |
+| Identical cycles | 127928953 / 145122916 (88.1521 %) |
 | Logs with a divergence | 6 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
-| script-envelopes | 97.4381 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 97.4558 %, 49/0/6315 (2903 at -6); runs 3130: 3119 on times, 3085 on values, shift <= 1140361; ch2 99.9807 %, 22/0/1252 (292 at -6); runs 631: 631 on times, 631 on values, shift <= 10; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-lengths | 98.9641 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 99.9792 %, 0/0/490 (244 at -10); runs 245: 244 on times, 244 on values, shift <= 12345782; ch2 99.9825 %, 0/0/434 (216 at -10); runs 217: 216 on times, 216 on values, shift <= 13922350; ch3 100.0000 %, 1946/0/0; runs 1: 1 on times, 1 on values, shift <= 0; ch4 99.0024 %, 0/0/626; runs 1: 0 on times, 0 on values, shift <= 0 |
+| script-envelopes | 97.4455 % | cycle 427389, ch1: ours 15, oracle 0 | ch1 97.4633 %, 49/0/6313 (2903 at -6); runs 3129: 3128 on times, 3124 on values, shift <= 10694; ch2 99.9807 %, 22/0/1252 (292 at -6); runs 631: 631 on times, 631 on values, shift <= 10; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-lengths | 98.9809 % | cycle 429449, ch1: ours 15, oracle 0 | ch1 99.9886 %, 0/0/488 (244 at -10); runs 244: 244 on times, 244 on values, shift <= 10; ch2 99.9899 %, 0/0/432 (216 at -10); runs 216: 216 on times, 216 on values, shift <= 10; ch3 100.0000 %, 1946/0/0; runs 1: 1 on times, 1 on values, shift <= 0; ch4 99.0024 %, 0/0/626; runs 1: 0 on times, 0 on values, shift <= 0 |
 | script-noise | 52.1127 % | cycle 419909, ch4: ours 15, oracle 0 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 52.1127 %, 7/0/338741 (132099 at -8); runs 472: 293 on times, 254 on values, shift <= 1351482 |
-| script-pulses | 99.8058 % | cycle 419430, ch2: ours 15, oracle 0 | ch1 99.8789 %, 8/0/7668 (3108 at -6); runs 1957: 1956 on times, 1956 on values, shift <= 10; ch2 99.9252 %, 7/0/3912 (1890 at -6); runs 1417: 1416 on times, 1414 on values, shift <= 27818; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-sweep | 99.9354 % | cycle 419430, ch1: ours 15, oracle 0 | ch1 99.9354 %, 0/0/1466 (438 at -10); runs 633: 625 on times, 625 on values, shift <= 3385211; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-pulses | 99.8245 % | cycle 433457, ch1: ours 15, oracle 0 | ch1 99.8789 %, 8/0/7668 (3108 at -6); runs 1957: 1956 on times, 1956 on values, shift <= 10; ch2 99.9439 %, 7/0/3910 (1890 at -6); runs 1416: 1416 on times, 1416 on values, shift <= 10; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-sweep | 99.9679 % | cycle 443269, ch1: ours 15, oracle 0 | ch1 99.9679 %, 1/0/1460 (438 at -10); runs 631: 631 on times, 631 on values, shift <= 10; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
 | script-wave | 100.0000 % | none | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 7312/0/0; runs 912: 912 on times, 912 on values, shift <= 0; ch4 100.0000 %, 0/0/0 |
 | song-golden | 63.3933 % | cycle 424229, ch4: ours 13, oracle 0 | ch1 99.9157 %, 22/0/6304 (817 at -4); runs 1579: 1566 on times, 1566 on values, shift <= 6; ch2 99.9433 %, 0/0/4144 (836 at -6); runs 1036: 1036 on times, 1036 on values, shift <= 6; ch3 99.9822 %, 2969/2988/0 (2988 at +1); runs 410: 400 on times, 400 on values, shift <= 1; ch4 63.4914 %, 564/535/160272 (1813 at -3); runs 328: 184 on times, 134 on values, shift <= 6634087 |
 <!-- parity-sameboy:end -->
@@ -127,25 +127,36 @@ chipvoice deviation from Pan Docs or blargg's ROMs, which continue to pass;
 every cycle, voice and value pair is in
 [`corpus/dmg/parity-sameboy.json`](../../packages/conform/corpus/dmg/parity-sameboy.json).
 
-- **A freshly-triggered pulse voice's very first duty edge lands a few
-  thousand cycles late; every edge after that matches exactly.** At
-  `script-envelopes`'s first note (cycle 419430), `ours` reads 15 the
-  instant NR14's trigger bit lands; SameBoy's matching edge is at cycle
-  427399, 7969 cycles later, after which both traces tick down through the
-  same envelope steps on the same cycles (458751, for instance, in both).
-  `vendor/apu.c`'s NR14/NR24 trigger case sets a `delay` field (`6 + lf_div *
-  ...` cold, `4 - lf_div + extra_delay` if the channel was already active)
-  into the timer reload and marks the channel `sample_surpressed` until its
-  own first natural tick clears it, with the comment: "The volume changes
-  caused by NRx4 sound start take effect instantly ... The playback itself
-  is not instant which is why we don't update the sample for other cases."
-  `dsp.ts`'s wave channel already models exactly this (the "first fetch
-  after a trigger is 6 cycles late" row below); `Pulse` does not, and reads
-  the current duty position the moment the trigger lands. Small
-  (`script-envelopes` 97.44 %, `script-pulses` 99.81 %, `script-sweep`
-  99.94 %) now that the write-order bug above is fixed, but real: worth its
-  own ticket (P2-1), scoped to this one edge per trigger, not "every
-  triggered note" as an earlier version of this sheet said.
+- **Since #86 (P2-1), `Pulse` also starts silent, closing most of this gap;
+  what is left is a constant ten-cycle offset, not thousands.** Before #86,
+  `script-envelopes`'s first note (cycle 419430) read `ours` 15 the instant
+  NR14's trigger bit landed; SameBoy's matching edge was at cycle 427399,
+  7969 cycles later. `vendor/apu.c`'s NR14/NR24 trigger case sets a `delay`
+  field (`6 + lf_div * ...` cold, `4 - lf_div + extra_delay` if the channel
+  was already active) into the timer reload and marks the channel
+  `sample_surpressed` until its own first natural tick clears it, with the
+  comment: "The volume changes caused by NRx4 sound start take effect
+  instantly ... The playback itself is not instant which is why we don't
+  update the sample for other cases." `dsp.ts`'s wave channel already
+  modeled exactly this (the "first fetch after a trigger is 6 cycles late"
+  row below); `Pulse` did not, and read the current duty position the
+  moment the trigger landed - the bulk of that 7969 cycles was one whole
+  duty step's worth of silence `Pulse` skipped. #86 gave `Pulse` the same
+  "digital zero until its first duty step" Pan Docs describes ("When first
+  starting up a pulse channel, it will _always_ output a (digital) zero",
+  see "A pulse started from silence" below), so the same note's first edge
+  now lands at cycle 427389: ten cycles *before* SameBoy's 427399, not
+  thousands after, and every edge after that still matches exactly on the
+  same cycles (458751, for instance, in both). That remaining ten cycles is
+  the `delay` field itself: SameBoy's actual timer reload lands a few
+  cycles after the trigger write, on top of the one-duty-step suppression
+  `Pulse` now also has; chipvoice's reload still lands on the write's own
+  cycle. Small (`script-envelopes` 97.45 %, `script-pulses` 99.82 %,
+  `script-sweep` 99.97 %, up from 97.44 %, 99.81 % and 99.94 % before #86)
+  and now a constant ten cycles rather than a per-note gap of thousands, but
+  still real: left for P2-1's next pass, scoped to this one small, constant
+  offset per trigger, not "every triggered note" as an earlier version of
+  this sheet said.
 - **Length counters agree**: `script-lengths` is the corpus's best log
   (98.96 %); channel 3's 1946 edges are all exact and channel 4's are
   99.00 %, so the 256 Hz clock and the "extra clock on an NRx4 write" glitch
