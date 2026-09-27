@@ -19,6 +19,24 @@ after it, now lands up to 3 cycles later than before. See
 [docs/chips/dmg.md](docs/chips/dmg.md#known-deviations) for what of the
 remaining gap against the SameBoy oracle stays open.
 
+`validateSong` now diagnoses what a chip cannot do with a well-formed song,
+instead of the driver clamping or cutting it in silence. A vibrato that
+swings a voice out of its register range or below one register step at that
+pitch (`vibrato_range`, `vibrato_resolution`), a vibrato rate the driver's
+60Hz frame clock cannot resolve (`vibrato_rate`), a slide that carries a held
+note out of range or across a coarse run of a period table - the low end of
+the 2A03 and Game Boy tables in particular (`slide_range`,
+`slide_resolution`) - and a fractional volume step a chip rounds before it
+reaches a register (`volume_step`) are all now reported. So are voice-budget
+conflicts: a role sharing a physical voice with another, such as the SID's
+chord and percussion both on v3 (`voice_share`), and a drum arriving before
+the previous one's own decay has finished on a chip with one shared voice per
+kit part, such as the 2A03's single noise channel (`perc_voice`). Every issue
+carries `measured` and `limit` alongside its message, including the existing
+`pitch_range` and `chord_capacity`. `Issue` gains `voice`, `measured` and
+`limit` as optional fields; nothing existing changes shape. No render
+changes: these are diagnostics, not fixes.
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the
