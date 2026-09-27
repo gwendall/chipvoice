@@ -470,11 +470,53 @@ real game music, and a real unit.
   `docs/chips/2a03.md#nsf-export`,
   `pnpm nsf-export:sheet`. Reachable from the package (`exportNsf`,
   `NsfExportError`) and the studio (a Download NSF button next to VGM's,
-  for `2a03` songs). NEXT-10's GBS half
-  stays todo - NEXT-06's GBS importer (PR #103) has since merged, so it is
-  unblocked, but is not part of this PR. A flash-cart recording on real
-  hardware (from the step 1 bench) stays out of scope for both halves for
-  lack of hardware.
+  for `2a03` songs).
+- done - NEXT-10's GBS half (a later PR): `exportGbs` turns a DMG capture
+  into a standard GBS v1 file carrying its own tiny hand-assembled SM83
+  player (`AsmSm83`, `packages/chipvoice/src/gbs.ts`), reproducible from
+  committed source, never an opaque blob. PLAY replays one VBlank frame's
+  writes (70224 T-cycles, ~59.73 Hz) from a bank-switched, run-length-encoded
+  write log (`$2000-$3FFF`, MBC1/MBC5-style), quantizing write timing to the
+  frame (~16.7 ms). Unlike the 2A03's DMC channel, the DMG has no autonomous
+  sample DMA - the wave channel (CH3) is entirely register-driven through
+  `$FF30-$FF3F` like every other register - so there is no separate
+  sample-memory case to handle and `GbsOptions` carries no `memory` field.
+  Proven four ways against the same pinned GME oracle `gbs-corpus` uses, the
+  first two gating CI on an exact match, not a count or percentage: the
+  command stream matches this project's own offline SM83 (`importGbs`)
+  replay of the same export on value and order (`valueMatched === total`) on
+  every file in a corpus of this project's own DMG renditions of the three
+  published arrangements and the five independently authored,
+  redistribution-licensed GBS files `gbs-corpus` already carries - not
+  cycle-exact, since `gbs-corpus`'s own `compare.mjs` already found GME's
+  SM83 core charges a flat 4 T-cycles per instruction regardless of its real
+  length, a known timing-model divergence, not an export defect; the source
+  capture's own writes and GME's trace of the export match exactly, frame
+  for frame, after one constant frame offset (`compareFrameWrites`, not an
+  audio proof - 100% on every comparable frame, on all eight files, once a
+  source frame stops counting past the point where the exported player wraps
+  back to its own loop frame, excluding a handful of frames on
+  `zelda-rendition` (1), `pulse-sweep` (2), `sample-song` (2),
+  `effects-test` (2) and `nightmode` (2), each landing within a frame or two
+  of its own loop point, the same principled exclusion NSF export documents;
+  a cheap negative check in `packages/chipvoice/test/gbs.mjs`, no GME
+  needed, corrupts one write and asserts the gate reports it). A same-DSP
+  export-loss gate - GME's replay of the export vs. this project's own
+  untouched render, both through this project's own renderer - isolates the
+  residual cost of a write landing at its frame's start rather than its own
+  real cycle, measuring 3.0-26.2% across all eight files, under the same 30%
+  threshold NSF export uses, kept as a coarse secondary gate now that the
+  two exact proofs above cover content fidelity; a GME-vs-ours mixer
+  comparison (5.2-47.1%, two independent DMG APU emulators' DAC/mixer
+  curves) is reported for visibility but does not gate. No native GB
+  hardware recordings exist in this repo (`scores/arrangements/
+  native-sources.mjs` only carries 2A03 and Mega Drive entries), stated
+  rather than silently omitted. `docs/chips/dmg.md#gbs-export`,
+  `pnpm gbs-export:sheet`. Reachable from the package (`exportGbs`,
+  `GbsExportError`) and the studio (a Download GBS button next to VGM's,
+  for `dmg` songs). A flash-cart recording on real hardware (from the step 1
+  bench) stays out of scope for both NSF and GBS halves for lack of
+  hardware.
 - No commercial rip is distributed; the measurement corpus stays private or
   freely redistributable.
 
@@ -756,7 +798,7 @@ it.
 | P8-10 | Quantized live recording and overdubbing from the note palette and drums, with undo | implemented | D. Audio-clock tap capture, stable backing loop, one Undo per take and draft recovery; [qualification](evals/RECORDING-2026-09-06.md). Physical-phone checks remain P8-9 |
 | P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | implemented | Seeded local melody/drum/timbre transforms, locked roles and Undo; silent patterns preserved; decision 26 |
 | P8-11 | Web MIDI input using the same tested transport and ownership model | implemented | Opt-in MIDI taps share audition/recording; channel-10 drums and cleanup tested with simulated ports. Physical MIDI latency remains unmeasured |
-| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM, plus NES NSF (NEXT-10, this PR); independent ZIP reader and byte parity; decision 26 |
+| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM, plus NES NSF (NEXT-10, PR #106) and Game Boy GBS (NEXT-10, this PR); independent ZIP reader and byte parity; decision 26 |
 | P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | done | D. P7-9 done: the SID's filter is reachable from the arranger. P5-10 done: FM drums and the LFO in the MD arranger. P6-10 done: SNES triads and hardware-noise hats; no simulated generic substitute |
 
 ## Audit follow-ups

@@ -24,6 +24,8 @@ export { toVgm } from "./vgm.js";
 export type { VgmOptions } from "./vgm.js";
 export { exportNsf, NsfExportError } from "./nsf.js";
 export type { NsfOptions } from "./nsf.js";
+export { exportGbs, GbsExportError } from "./gbs.js";
+export type { GbsOptions } from "./gbs.js";
 export { validateSong } from "./validate.js";
 export type { Issue, IssueLevel, Measured, ValidationResult } from "./validate.js";
 export type { RenderOptions, RenderResult } from "./render.js";

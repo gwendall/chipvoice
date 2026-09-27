@@ -191,6 +191,10 @@ jobs:
           path: .artifacts/gbs-corpus/gme-oracle/gme
           key: gme-oracle-gbs-fe8da4b6d3876d7542c2fb69d94487e19836d678
       - run: pnpm gbs-corpus:check
+      # Same oracle, the other direction (NEXT-10): does exportGbs's own
+      # output play correctly in it. Shares the cache step above by using
+      # the same .artifacts/gbs-corpus/gme-oracle path.
+      - run: pnpm gbs-export:check
       # The PSID/RSID corpus (NEXT-09) builds a pinned libsidplayfp (plus a
       # second pinned dependency, xa65, to assemble its own driver) from
       # source; caching both clones and the incremental build directory by

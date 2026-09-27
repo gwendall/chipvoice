@@ -333,9 +333,148 @@ Written by `gbs-corpus:sheet` on 2026-09-27, against Game_Music_Emu revision `fe
 | [Pulse Sweep](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs) | self-produced (hand-assembled SM83) | 724 | 1/724 | 724/724 | cycle 36 vs 15, $ff24: 119 vs 119 |
 | [Sample Song](https://github.com/SuperDisk/hUGEDriver) | hUGEDriver | 48299 | 1/48299 | 48299/48299 | cycle 44 vs 15, $ff25: 255 vs 255 |
 | [Effects Test](https://github.com/AntonioND/gbt-player) | GBT Player | 2220 | 1/2220 | 2220/2220 | cycle 44 vs 15, $ff25: 255 vs 255 |
-| [Volume Test](https://github.com/AntonioND/gbt-player) | GBT Player | 509 | 1/509 | 509/509 | cycle 44 vs 15, $ff25: 255 vs 255 |
+| [Volume Test](https://github.com/AntonioND/gbt-player) | GBT Player | 506 | 1/506 | 506/506 | cycle 44 vs 15, $ff25: 255 vs 255 |
 | [Nightmode](https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs) | Laxity's own driver (bundled with gbsplay) | 59673 | 0/59673 | 59673/59673 | cycle 3928 vs 1895, $ff26: 128 vs 128 |
 <!-- gbs-corpus:end -->
+
+## GBS export
+
+The other direction: `exportGbs` (`packages/chipvoice/src/gbs.ts`) turns a
+DMG capture - `recordSong`'s or `planPerformance`'s own `events`/`cycles` -
+into a standard GBS v1 file that plays in any GBS player, on real hardware or
+in an emulator. It mirrors [`nsf.ts`'s](2a03.md#nsf-export) shape exactly,
+for the SM83 instead of the 6502.
+
+The file carries its own tiny SM83 player, hand-assembled in `gbs.ts` from a
+small in-file mnemonic assembler (`AsmSm83`, the same idea as `nsf.ts`'s
+`Asm6502`) rather than a build tool - the bytes it emits are exactly what
+that source says, reproducible by anyone who reads it, never an opaque blob
+(decision 41: nothing in `packages/chipvoice` may be derived from a GPL
+oracle, and this package carries no assembler dependency). INIT powers the
+APU on and sets up its own bank-pointer state once; PLAY runs every VBlank
+(70224 T-cycles, ~59.73 Hz, Pan Docs' 154 scanlines of 456 cycles each - the
+same period `gbs-import.ts` already schedules PLAY against) and replays that
+frame's writes from a compact per-frame encoding (a write-list, or a
+run-length token for a stretch of silent frames) stored in bank-switched ROM
+(`$2000-$3FFF` selects the data bank, MBC1/MBC5-style, unmasked - a raw byte
+in, the same "no MBC on a GBS cartridge" choice `gbs-import.ts` already
+makes), looping at the capture's own loop point forever. This player uses
+the VBlank period rather than the header's own programmable timer, so it
+plays correctly in any GBS player regardless of whether that player even
+implements the timer path; the header's timer bits are left disabled
+accordingly, stated honestly rather than set to a rate nothing then reads.
+
+Write timing is quantized to the frame the same way NSF's export is: a
+capture stamps every write in T-cycles, but PLAY can only place writes at its
+own call, once per frame, so a write lands at the start of the frame it
+falls in rather than at its real cycle - at most one frame (~16.7 ms) early.
+So is a capture with more writes in one frame than the encoding's one-byte
+pair count can address (254), a loop point outside the capture, and
+non-ASCII or over-length title/author/copyright text - rejected loudly, by
+name (`GbsExportError`, with a `code`, and `measured`/`limit` where those
+apply), never silently dropped or truncated.
+
+Unlike the 2A03's DMC/DPCM channel, the DMG has no autonomous DMA sample
+channel: the wave channel (CH3) is entirely register-driven through
+`$FF30-$FF3F`, exactly like every other register, so there is no separate
+fixed-bank/sample-memory case to handle the way `nsf.ts` handles DMC, and
+`GbsOptions` carries no `memory` field. The real-hardware rule that wave RAM
+only lands cleanly while CH3's DAC is off (`chips/gb/dsp.ts`'s
+`writeWaveRam`) needs no special exporter logic either: chip state is a pure
+function of the replayed writes in the order they happened, not of real
+elapsed cycles, so a capture that already turns the DAC off before rewriting
+wave RAM replays correctly by construction, with nothing GBS-specific for
+the exporter to model.
+
+Proven four ways, all against the same pinned Game_Music_Emu oracle
+`gbs-corpus` uses (its build is reused; one CI cache step covers both
+`gbs-corpus:check` and `gbs-export:check`):
+
+1. Command stream (gates CI, on value+order): the export, replayed by GME,
+   must reproduce the exact write stream this project's own offline SM83
+   (`importGbs`, the one #103/NEXT-06 validated) gets from replaying the
+   very same export. Unlike NSF's proof #1, this does not additionally
+   require the two sides to land on the exact same cycle: `gbs-corpus`'s own
+   `compare.mjs` already found, while proving NEXT-06, that GME's SM83 core
+   charges a flat 4 T-cycles per instruction regardless of its real Pan-Docs
+   length, an already-accepted difference in timing *model*, not an export
+   defect - see [GBS playback](#gbs-playback) above for the full account.
+   This proof gates on `valueMatched === total` (address, value, order) and
+   reports the cycle-exact count informationally, applying that finding from
+   the start rather than gating on a timing claim GME's own CPU model cannot
+   meet.
+2. Frame writes (gates CI, exact, deterministic, not audio): the source
+   capture's own register writes and GME's trace of the export, each
+   bucketed into VBlank frames (`Math.floor(cycle / 70224)`), must list the
+   exact same writes - address, value, order - frame for frame, after one
+   constant frame offset (found by a small search, the same shape
+   `nsf-export` uses). Two independently INIT'd GBS players never agree on
+   which frame index is "PLAY call zero" (GME's own reset ceremony alone
+   consumes time before it ever calls the exported player's PLAY routine, and
+   this player's own INIT-to-first-PLAY gap is one full VBlank, confirmed
+   directly against the oracle trace), so a constant offset (+1, on every
+   file in this corpus) is expected and searched for, not assumed to be
+   zero. A source frame is only required to match while its own real-time
+   position still falls inside the export's one-shot pass through the
+   content, strictly before the frame count `quantizeToFrames` (`gbs.ts`)
+   uses to decide when to wrap PLAY back to its own loop frame; past that
+   point the exported player has already looped, so GME's trace there holds
+   the loop frame's content, not the tail source frame's - the same
+   principled exclusion `nsf-export` documents, reported as "excluding N
+   frame(s) past the loop wrap" when it applies. A cheap negative check
+   (`packages/chipvoice/test/gbs.mjs`, no GME needed - it drives the same
+   `compareFrameWrites` this proof uses against this project's own offline
+   replay of a real export) corrupts one write and asserts the gate reports
+   it as exactly one mismatched frame, so the gate's bite is itself tested,
+   not just its pass case.
+3. Export loss (the coarse secondary gate, on top of proofs #1 and #2's
+   exact ones): GME's own trace of playing the export, parsed back into
+   register writes and rendered through this project's own
+   `renderPerformance`, against a render of the *source* capture's untouched
+   events through that same `renderPerformance`. Both sides go through the
+   identical DMG DSP, so the only thing left to differ is what the export
+   itself changed - the same once-per-frame timing-within-a-frame cost
+   `nsf-export` measures (its own module comment has the full account of the
+   mechanism), not a dropped or wrong command (proofs #1 and #2 already rule
+   that out). Measured on this corpus: 3.0-26.2%. The threshold below sits a
+   real margin above that band.
+4. GME mixer comparison (informational, not a gate): GME's rendered PCM of
+   the export against this project's own render of the *source* (same
+   envelope metric as above). This crosses two independently written DMG APU
+   emulators, so a sizeable residual is expected even for a perfect export;
+   measures 5.2-47.1% on this corpus, reported on the sheet for visibility,
+   never gating CI.
+
+The corpus draws on the same three kinds of content NEXT-10's ticket names,
+adapted to what this project actually has for the DMG: this project's own
+driver's DMG rendition of all three published arrangements (Mario, Zelda,
+Sonic); native GB hardware recordings, of which **none exist in this repo**
+(`scores/arrangements/native-sources.mjs` only carries 2A03 and Mega Drive
+entries), stated here rather than silently omitted; and the five
+independently authored, redistribution-licensed GBS files `gbs-corpus`
+already carries, captured once through this project's own `importGbs` to get
+a source capture and re-exported. `pnpm gbs-export:sheet` writes the table
+below; do not edit it by hand. `pnpm gbs-export:check` (CI, the
+`conformance` job) reruns it without touching the sheet.
+
+Physical flash-cart recording (playing the export on real Game Boy hardware)
+is out of scope here for lack of hardware, the same limitation NSF export's
+own section states; NEXT-10's BACKLOG row stays open for it.
+
+<!-- gbs-export:begin -->
+Written by `gbs-export:sheet` on 2026-09-27, against Game_Music_Emu revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`. Frame writes gates CI exactly (matched must equal total, not just be nonzero or "close"); commands gates on value+order (address and value, in order - see the module comment for why not cycle-exact, citing gbs-corpus/compare.mjs's own finding about GME's SM83 timing model). Commands: the export, replayed by GME, against this project's own SM83 (`importGbs`) replaying the same export - identical bytes on both sides. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into VBlank frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency); a source frame stops counting once its own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "excluding N frame(s) past the loop wrap" when that applies. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - the coarse secondary gate, threshold 30%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated.
+
+| Song | Commands (value+order, cycle-exact) | Frame writes | Export loss | GME mixer | First divergence |
+| --- | --- | --- | --- | --- | --- |
+| Mario (this project's DMG rendition) | 12687/12687 (1/12687 cycle-exact) | 2559/2559 (offset +1) | 26.2% | GME's mixer differs from ours by 34.6% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| Zelda (this project's DMG rendition) | 6746/6746 (1/6746 cycle-exact) | 1088/1088 (offset +1), excluding 1 frame past the loop wrap | 14.9% | GME's mixer differs from ours by 47.1% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| Sonic (this project's DMG rendition) | 8224/8224 (1/8224 cycle-exact) | 2044/2044 (offset +1) | 20.1% | GME's mixer differs from ours by 19.2% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| [Pulse Sweep](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs) | 873/873 (1/873 cycle-exact) | 357/357 (offset +1), excluding 2 frames past the loop wrap | 3.4% | GME's mixer differs from ours by 7.5% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| [Sample Song](https://github.com/SuperDisk/hUGEDriver) | 48873/48873 (1/48873 cycle-exact) | 3583/3583 (offset +1), excluding 2 frames past the loop wrap | 13.1% | GME's mixer differs from ours by 17.8% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| [Effects Test](https://github.com/AntonioND/gbt-player) | 2453/2453 (1/2453 cycle-exact) | 495/495 (offset +1), excluding 2 frames past the loop wrap | 3.0% | GME's mixer differs from ours by 5.2% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| [Volume Test](https://github.com/AntonioND/gbt-player) | 652/652 (1/652 cycle-exact) | 129/129 (offset +1) | 5.0% | GME's mixer differs from ours by 10.6% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| [Nightmode](https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs) | 60936/60936 (1/60936 cycle-exact) | 3583/3583 (offset +1), excluding 2 frames past the loop wrap | 13.1% | GME's mixer differs from ours by 20.6% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+<!-- gbs-export:end -->
 
 ## VGM import
 

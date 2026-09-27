@@ -38,7 +38,8 @@
     "url": "https://github.com/AntonioND/gbt-player",
     "licence": "MIT",
     "licenceUrl": "https://github.com/AntonioND/gbt-player/blob/master/LICENSE",
-    "sha256": "ce64873f3351d67e063d8f742d0c4ea9b488eb9b17d90e6663fe306240bb5547"
+    "sha256": "ce64873f3351d67e063d8f742d0c4ea9b488eb9b17d90e6663fe306240bb5547",
+    "seconds": 19.3
   },
   "nightmode": {
     "file": "nightmode.gbs",
