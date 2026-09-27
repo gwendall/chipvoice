@@ -41,6 +41,10 @@ const config: NextConfig = {
           source: "/arrangement-data/:file([a-z0-9-]+-[0-9a-f]{12}).flac",
           destination: `${audioStore.base}/arrangement-data/:file.flac`,
         },
+        {
+          source: "/instrument-data/:file([a-z0-9-]+-[0-9a-f]{12}).flac",
+          destination: `${audioStore.base}/instrument-data/:file.flac`,
+        },
       ],
       fallback: [],
     };

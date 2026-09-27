@@ -1,9 +1,10 @@
 // Published recordings live in a Vercel Blob store, not in git (decision 40).
-// The lab and arrangement reports are the manifest: every FLAC they name is
-// stored under its site path, and every path names its content - the lab's
-// by engine version and PCM hash, the arrangements' by a prefix of the FLAC's
-// own hash. A key is written once and never changes, so the site rewrites
-// those paths to the store and browsers may keep a file for a year.
+// The lab, arrangement and instrument-catalogue reports are the manifest:
+// every FLAC they name is stored under its site path, and every path names
+// its content - the lab's by engine version and PCM hash, the arrangements'
+// and the catalogue's by a prefix of the FLAC's own hash. A key is written
+// once and never changes, so the site rewrites those paths to the store and
+// browsers may keep a file for a year.
 //
 //   pnpm audio:pull    a verified local copy under apps/web/public
 //   pnpm audio:check   every published recording is in the store
@@ -16,6 +17,7 @@ const web=resolve(import.meta.dirname,'..'),root=resolve(web,'../..');
 export const {base}=JSON.parse(await readFile(resolve(web,'audio-store.json'),'utf8'));
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const labName=/^\/lab-data\/[0-9a-f]{12}\/([0-9a-f]{64})\.flac$/,arrangementName=/^\/arrangement-data\/[a-z0-9-]+-([0-9a-f]{12})\.flac$/;
+const instrumentName=/^\/instrument-data\/[a-z0-9-]+-([0-9a-f]{12})\.flac$/;
 const local=file=>resolve(web,'public'+file);
 async function each(items,task,width=8){const queue=[...items];await Promise.all(Array.from({length:width},async()=>{while(queue.length)await task(queue.shift());}));}
 // A dropped connection or a busy edge is retried with backoff; a 404 is an
@@ -28,14 +30,14 @@ async function request(url,init,attempts=5){
  }
 }
 
-// Every recording the two reports publish, by site path, with the SHA-256 of
-// its bytes. A path that does not name its content is refused before it can
-// become a store key that would one day need to change.
+// Every recording the three reports publish, by site path, with the SHA-256
+// of its bytes. A path that does not name its content is refused before it
+// can become a store key that would one day need to change.
 export async function publishedRecordings(){
  const recordings=new Map();
  const add=({file,sha256,sourceWavSha256})=>{
-  const [,pcm]=labName.exec(file)??[],[,prefix]=arrangementName.exec(file)??[];
-  if(!(pcm&&pcm===sourceWavSha256)&&!(prefix&&sha256.startsWith(prefix)))throw new Error(`${file} does not name its content`);
+  const [,pcm]=labName.exec(file)??[],[,prefix]=arrangementName.exec(file)??[],[,catalogue]=instrumentName.exec(file)??[];
+  if(!(pcm&&pcm===sourceWavSha256)&&!(prefix&&sha256.startsWith(prefix))&&!(catalogue&&sha256.startsWith(catalogue)))throw new Error(`${file} does not name its content`);
   if(recordings.has(file)&&recordings.get(file)!==sha256)throw new Error(`${file} is published with two different contents`);
   recordings.set(file,sha256);
  };
@@ -43,6 +45,8 @@ export async function publishedRecordings(){
  for(const row of lab.cases)for(const collection of [row.assets,row.baseline??{}])for(const entry of Object.values(collection))add(entry);
  const arrangements=JSON.parse(await readFile(local('/arrangement-data/report.json'),'utf8'));
  for(const piece of arrangements.pieces){for(const row of piece.cases)add(row.asset);if(piece.reference)add(piece.reference.asset);}
+ const instruments=JSON.parse(await readFile(resolve(web,'src/data/instrument-catalogue.json'),'utf8'));
+ for(const preset of instruments.presets)add(preset.audio);
  return recordings;
 }
 

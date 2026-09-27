@@ -52,6 +52,12 @@ export const pages = {
     description:
       "Digital parity, test ROMs, the analog stage and driver coverage for every emulated sound chip, generated from the conformance harness.",
   },
+  instruments: {
+    path: "/instruments",
+    title: "Instrument catalogue · chipvoice",
+    description:
+      "Every preset a chip can play, with its measured envelope, spectrum and a short preview, built only from what the chip really does.",
+  },
   lab: {
     path: "/lab",
     title: "Listening lab · chipvoice",

@@ -276,9 +276,42 @@ real game music, and a real unit.
   clocked at rate 0 - an audible click rather than hiss; fixed by moving it
   into the first write.
 - P4-9 (the SNES palette).
-- todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
-  with its measured envelope and spectrum, shown on the site, built only from
-  what the chip really does.
+- done - NEXT-05: a measured instrument catalogue. `scores/instruments/generate.mjs`
+  plays all 89 presets a user can pick (2a03 15, dmg 18, md 18, snes 20, c64
+  18: every lead/chord/bass program group and the four-voice percussion kit)
+  through the real engine at one fixed probe (pitch C4, velocity 100, 700 ms
+  held of a 1200 ms render), measuring attack, decay, release, sustain and a
+  spectrum (centroid, a 64-band profile, tonal-vs-noise flatness) from the
+  render itself, never the instrument's declared envelope. Written to
+  `apps/web/src/data/instrument-catalogue.json` with the engine hash
+  `engineModules()` reaches (47 modules, the same provenance pattern as
+  NEXT-13/NEXT-23) and one short FLAC preview per preset (3.1 MB total for
+  89, so no lighter format was needed); `check-catalogue.mjs` proves the
+  hash in CI and `test-presets.mjs` proves the preset list is deterministic.
+  The previews live in the same Blob store as every other published recording
+  (decision 40), not in git: `apps/web/public/instrument-data/*.flac` is
+  gitignored, `next.config.ts` rewrites the public path to the store next to
+  arrangement-data and lab-data, and `pnpm audio:check`/the production e2e's
+  published-recordings section both cover them. Shown at `/instruments` and
+  `/ja/instruments`, linked from the footer next to Accuracy and matching its
+  layout. The 650 KB catalogue is read only on the server: `Instruments` is
+  a server component (`createTranslator(await getMessages(locale))`, the
+  same pattern `generateMetadata` already used, now applied to a page body
+  for the first time) that renders every number, label and SVG plot as
+  static HTML, and only the play button is a client island
+  (`InstrumentPreviewButton`, one file and a name per preset, not the
+  catalogue). Measured on the built page: before, the client JS unique to
+  `/instruments` was 247 KB (48 KB gzipped); after, 784 bytes. Total bytes
+  over the wire (HTML and JS together, gzipped) went from about 145 KB to
+  about 110 KB, even with 89 cards worth of SVG now server-rendered, in part
+  because the spectrum plot draws its 64 bars as one `<path>` instead of 64
+  `<rect>` elements. `test-instruments-layout.mjs` checks 390px and 1280px,
+  English and Japanese, for a full card grid, both plots and no horizontal
+  overflow, against the server-rendered markup; `test-page-weight.mjs` still
+  confirms the page ships no chip engine. `packages/chipvoice/src` was not
+  touched: `verify-publication.mjs` and `check-calibration.mjs` both pass
+  unchanged, and the generator and its determinism/staleness checks are
+  unaffected by the page's own rendering.
 - P4-7 and MIX-12: human listening, kept separate from correctness.
 
 **Step 3. The machines' own music.**

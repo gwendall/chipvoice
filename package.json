@@ -20,6 +20,9 @@
     "nsf-corpus:sheet": "node scores/nsf-corpus/corpus.mjs --json .artifacts/nsf-corpus/report.json --sheet docs/chips/2a03.md",
     "gbs-corpus:check": "node scores/gbs-corpus/corpus.mjs --json .artifacts/gbs-corpus/report.json",
     "gbs-corpus:sheet": "node scores/gbs-corpus/corpus.mjs --json .artifacts/gbs-corpus/report.json --sheet docs/chips/dmg.md",
+    "instruments:build": "node scores/instruments/generate.mjs",
+    "instruments:check": "node scores/instruments/check-catalogue.mjs",
+    "instruments:test": "node scores/instruments/test-presets.mjs",
     "audio:pull": "node apps/web/scripts/audio-store.mjs pull",
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
     "audio:push": "node apps/web/scripts/audio-store.mjs push"
