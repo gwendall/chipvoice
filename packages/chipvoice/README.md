@@ -59,7 +59,10 @@ and every DSP register exactly, and returns the same `PerformancePlan` shape
 length would either cut the song short or silently make every import pay for
 a guessed-long simulation. The ID666 tag's title, game, artist and length are
 returned on the plan's `id666` field when present. A truncated or
-misidentified file throws explicitly.
+misidentified file throws explicitly. The CPU's boot ROM (`IPL_ROM`, 64
+bytes at $FFC0-$FFFF, published byte for byte in Anomie's SPC700 doc and
+fullsnes) is embedded in `ssmp.ts`, since every known `.spc` snapshot assumes
+it is there; see [decision 45](../../docs/DECISIONS.md#45-the-spc700-and-s-smp-stay-mit-the-ipl-roms-64-bytes-are-the-one-embedded-exception-2026-09-27).
 
 ```bash
 npm i chipvoice

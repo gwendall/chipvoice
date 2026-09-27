@@ -1181,3 +1181,53 @@ deployed site itself produce an old release's bytes on demand; that remains
 an operation a caller runs locally, against a named, exact, reproducible
 target. MIX-14 (render hashes across browsers, Node and phones) and further
 AUD-2 measurement remain separate.
+
+## 45. The SPC700 and S-SMP stay MIT; the IPL ROM's 64 bytes are the one embedded exception (2026-09-27)
+
+NEXT-08 adds `chips/snes/spc700.ts` (the CPU) and `chips/snes/ssmp.ts` (its
+timers, I/O ports and the DSP address/data latch), both written from Anomie's
+SPC700 doc and fullsnes, with their own structure, not `SPC_CPU.h`'s. Neither
+crosses the same line decision 17 drew for `ym2612.ts` and `sdsp.ts`: nothing
+of snes_spc's own CPU is read into either file, snes_spc's `SPC_CPU.h` runs
+only as an oracle, natively built inside `packages/conform` (`play-spc.cpp`),
+the way decision 41 already allows. `chips/snes/*` therefore stays exactly as
+much MIT as before; this is not a third LGPL exception.
+
+**The one embedded exception.** `ssmp.ts` exports `IPL_ROM`, the 64 bytes at
+$FFC0-$FFFF a real SPC700 boots from, mapped in over RAM whenever CONTROL's
+bit 7 is set. A `.spc` snapshot is a frozen mid-song state, not a boot state,
+but nothing stops a snapshot's own code from re-entering the boot vector, or
+from reading $FFC0-$FFFF as data with the ROM bit set - Anomie's doc and
+fullsnes both publish these bytes byte for byte as part of documenting the
+hardware, so they are sourced the same way every other opcode timing and
+register bit in this ticket is, not lifted from snes_spc or any other
+emulator's source. They are the only bytes in `spc700.ts`/`ssmp.ts` that are
+not chipvoice's own original code: everything around them (the CPU, the
+timers, the register dispatch, the snapshot loader) is written, not copied.
+
+**Why embed rather than require one.** The alternative - a caller-supplied
+ROM, defaulting to none - was considered and rejected for this ticket only
+because every known `.spc` file assumes the same 64 bytes are there; a
+snapshot that reads or executes them without one would fail for every real
+file, not just a contrived one, so the ROM is not optional in the way a
+sample set or a font is. Embedding the well-published bytes directly, the
+way `IPL_ROM`'s own name and doc comment already say where they are from, is
+the smallest correct implementation, not a shortcut around sourcing it.
+
+**How to remove them, if that ever becomes necessary.** `loadSnapshot()` and
+`read()` are the only two places `IPL_ROM` is referenced. Removing the
+constant would mean: (1) `Ssmp`'s constructor or `loadSnapshot()` accepts an
+optional `iplRom?: Uint8Array` (64 bytes), stored on the instance instead of
+imported as a module constant; (2) `read()` throws a named error - for
+example `SpcIplRomRequiredError` - instead of indexing into `IPL_ROM` when
+$FFC0-$FFFF is read with the ROM bit set and no ROM was supplied, rather than
+silently returning zeros or RAM; (3) `importSpc` keeps today's behaviour by
+passing the same 64 bytes as a default argument at the call site, so no
+existing caller's behaviour changes. This is written down, not implemented:
+nothing today requires removing them, and no caller has asked for a
+non-Sony-ROM SPC700.
+
+**What does not change.** `packages/chipvoice`'s licence field stays `(MIT
+AND LGPL-2.1-or-later)`, unchanged by this file: the LGPL half still names
+only `ym2612.ts` and `sdsp.ts`. The package README documents `IPL_ROM`'s
+source next to `importSpc`.

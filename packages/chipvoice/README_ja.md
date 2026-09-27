@@ -48,7 +48,10 @@ SNESのネイティブ再生は `importSpc(spcBytes)` を使います。`.spc`�
 シミュレーション秒数の分だけ静かに負担することになるからです。ID666
 タグのタイトル、ゲーム名、アーティスト、長さは、存在すればプランの
 `id666`フィールドで返されます。壊れたファイルや誤認識したファイルは
-明示的に例外を投げます。
+明示的に例外を投げます。CPUの起動用ROM(`IPL_ROM`、$FFC0-$FFFFの64バイトで、
+AnomieのSPC700資料とfullsnesが一バイトずつ公開しているもの)は`ssmp.ts`に
+同梱されています。知られているどの`.spc`スナップショットもそれがあることを
+前提にしているためです。[決定45](../../docs/DECISIONS_ja.md#45-the-spc700-and-s-smp-stay-mit-the-ipl-roms-64-bytes-are-the-one-embedded-exception-2026-09-27)を参照してください。
 
 ```bash
 npm i chipvoice

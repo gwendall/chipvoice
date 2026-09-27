@@ -5,10 +5,15 @@ import { Spc700, PSW_N, PSW_V, PSW_H, PSW_Z, PSW_C } from '../dist/chips/snes/sp
 
 /**
  * Every one of the SPC700's 256 opcodes, checked against Anomie's SPC700
- * doc: its own byte length and cycle count (transcribed independently into
- * fixtures/spc700-opcodes.json, not derived from this file), plus targeted
- * checks of the flag-setting families (ALU, shifts, DAA/DAS, DIV, MUL,
- * branches) and the documented "dummy read before write" quirk.
+ * doc: its own byte length and cycle count, plus targeted checks of the
+ * flag-setting families (ALU, shifts, DAA/DAS, DIV, MUL, branches) and the
+ * documented "dummy read before write" quirk.
+ *
+ * fixtures/spc700-opcodes.json's rows (mnemonic, operands, opcode, byte
+ * length, cycle count) were hand-transcribed from Anomie's doc's own opcode
+ * table, one row per line of that table - not derived from spc700.ts, and
+ * not captured by running any oracle. Nothing in this package writes or
+ * regenerates that file.
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
