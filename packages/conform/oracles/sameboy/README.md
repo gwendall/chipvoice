@@ -115,21 +115,20 @@ chipvoice, per voice, with cycles and both values, is on the sheet
 ([`docs/chips/dmg.md`](../../../../docs/chips/dmg.md), "Against SameBoy").
 In short:
 
-- A freshly triggered pulse voice's very first duty edge is not instant on
-  real hardware (SameBoy's own `sample_surpressed` flag and trigger-time
-  `delay` field); chipvoice's `Pulse` reads the current duty bit the moment
-  the trigger lands, unlike its wave channel, which already models this
-  delay. Every edge after that first one matches exactly, so this is now a
-  small, one-edge-per-trigger gap, not the majority of the log it looked
-  like before the `qsort` fix above; still a chipvoice finding for a later
-  ticket (P2-1), not a fix here.
-- The noise channel's cold start is a separate, much larger gap: chipvoice's
-  first noise note plays immediately, SameBoy's matching note does not
-  start until a full note-length later, after which the two stay in
-  lockstep. Unlike the pulses' one-edge lag, this one was unaffected by the
-  `qsort` fix (this log's simultaneous writes already landed in file order
-  on both compilers either way), so it is real and independent of it; also
-  P2-1, not a fix here.
+- A triggered pulse voice's first step comes 4 or 8 cycles after
+  chipvoice's: SameBoy's trigger adds a short delay (its `delay` field) to
+  the timer reload, and chipvoice reloads on the trigger's own cycle. The
+  whole-step gap this oracle first found, a pulse playing its pattern the
+  instant it was triggered, was chipvoice's and is fixed (P2-1, #86).
+- The noise channel's DMG start depends on `alignment`, the APU's 2 MHz
+  phase: a trigger at an odd alignment waits 6 cycles and triggers again,
+  for ever. Only a write between M-cycles can produce one, which a real CPU
+  never makes, so the corpus writes on whole M-cycles (`generate-dmg.mjs`,
+  P2-1) and a log fed to this oracle should too. What still differs on the
+  noise is where its clock stands when a note is triggered: SameBoy's
+  counter keeps running across triggers, chipvoice reloads its timer. The
+  documents disagree on which is right; the sheet has both readings and
+  leaves it to a unit.
 - SameBoy's zombie-mode glitch (`nrx2_glitch`) runs a DMG-B-specific
   two-step model through an intermediate `0xFF`, which its own comment
   acknowledges is partly non-deterministic on real pre-CGB hardware; it

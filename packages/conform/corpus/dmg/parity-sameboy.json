@@ -13,7 +13,7 @@
   "date": "2026-09-27",
   "files": 7,
   "cycles": 145122916,
-  "identical": 127928953,
+  "identical": 137604380,
   "diverging": 6,
   "results": [
     {
@@ -21,9 +21,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 49,
       "cycles": 21390950,
-      "identical": 20844528,
+      "identical": 20851450,
       "first": {
-        "cycle": 427389,
+        "cycle": 427391,
         "voice": 0,
         "a": 15,
         "b": 0
@@ -31,40 +31,40 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 20848320,
+          "identical": 20854426,
           "a": 3206,
           "b": 3205,
           "exact": 49,
           "near": 0,
           "onlyA": 3157,
           "onlyB": 3156,
-          "shift": -6,
+          "shift": -4,
           "aligned": 2903,
           "runs": {
             "ours": 3129,
             "theirs": 3130,
             "alignedTimes": 3128,
             "alignedValues": 3124,
-            "maxShift": 10694
+            "maxShift": 10692
           }
         },
         {
           "voice": "ch2",
-          "identical": 21386830,
+          "identical": 21387758,
           "a": 648,
           "b": 648,
           "exact": 22,
           "near": 0,
           "onlyA": 626,
           "onlyB": 626,
-          "shift": -6,
-          "aligned": 292,
+          "shift": -4,
+          "aligned": 454,
           "runs": {
             "ours": 631,
             "theirs": 631,
             "alignedTimes": 631,
             "alignedValues": 631,
-            "maxShift": 10
+            "maxShift": 8
           }
         },
         {
@@ -112,9 +112,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 45,
       "cycles": 21390950,
-      "identical": 21172948,
+      "identical": 21309770,
       "first": {
-        "cycle": 429449,
+        "cycle": 429451,
         "voice": 0,
         "a": 15,
         "b": 0
@@ -122,40 +122,40 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 21388510,
+          "identical": 21388998,
           "a": 244,
           "b": 244,
           "exact": 0,
           "near": 0,
           "onlyA": 244,
           "onlyB": 244,
-          "shift": -10,
+          "shift": -8,
           "aligned": 244,
           "runs": {
             "ours": 244,
             "theirs": 244,
             "alignedTimes": 244,
             "alignedValues": 244,
-            "maxShift": 10
+            "maxShift": 8
           }
         },
         {
           "voice": "ch2",
-          "identical": 21388790,
+          "identical": 21389222,
           "a": 216,
           "b": 216,
           "exact": 0,
           "near": 0,
           "onlyA": 216,
           "onlyB": 216,
-          "shift": -10,
+          "shift": -8,
           "aligned": 216,
           "runs": {
             "ours": 216,
             "theirs": 216,
             "alignedTimes": 216,
             "alignedValues": 216,
-            "maxShift": 10
+            "maxShift": 8
           }
         },
         {
@@ -179,21 +179,21 @@
         },
         {
           "voice": "ch4",
-          "identical": 21177548,
+          "identical": 21313450,
           "a": 626,
-          "b": 0,
-          "exact": 0,
+          "b": 626,
+          "exact": 1,
           "near": 0,
-          "onlyA": 626,
-          "onlyB": 0,
+          "onlyA": 625,
+          "onlyB": 625,
           "shift": 0,
-          "aligned": 0,
+          "aligned": 1,
           "runs": {
             "ours": 1,
-            "theirs": 0,
-            "alignedTimes": 0,
-            "alignedValues": 0,
-            "maxShift": 0
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 124
           }
         }
       ]
@@ -203,12 +203,12 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 56,
       "cycles": 21390950,
-      "identical": 11147403,
+      "identical": 16631097,
       "first": {
-        "cycle": 419909,
+        "cycle": 419903,
         "voice": 3,
-        "a": 15,
-        "b": 0
+        "a": 0,
+        "b": 15
       },
       "edges": [
         {
@@ -270,21 +270,21 @@
         },
         {
           "voice": "ch4",
-          "identical": 11147403,
+          "identical": 16631097,
           "a": 184042,
-          "b": 154713,
-          "exact": 7,
+          "b": 184042,
+          "exact": 24,
           "near": 0,
-          "onlyA": 184035,
-          "onlyB": 154706,
-          "shift": -8,
+          "onlyA": 184018,
+          "onlyB": 184018,
+          "shift": -4,
           "aligned": 132099,
           "runs": {
             "ours": 472,
-            "theirs": 467,
-            "alignedTimes": 293,
-            "alignedValues": 254,
-            "maxShift": 1351482
+            "theirs": 473,
+            "alignedTimes": 452,
+            "alignedValues": 440,
+            "maxShift": 57048
           }
         }
       ]
@@ -294,9 +294,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 152,
       "cycles": 21390950,
-      "identical": 21353406,
+      "identical": 21364866,
       "first": {
-        "cycle": 433457,
+        "cycle": 433459,
         "voice": 0,
         "a": 15,
         "b": 0
@@ -304,40 +304,40 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 21365042,
+          "identical": 21372710,
           "a": 3842,
           "b": 3842,
           "exact": 8,
           "near": 0,
           "onlyA": 3834,
           "onlyB": 3834,
-          "shift": -6,
+          "shift": -4,
           "aligned": 3108,
           "runs": {
             "ours": 1957,
             "theirs": 1957,
             "alignedTimes": 1956,
             "alignedValues": 1956,
-            "maxShift": 10
+            "maxShift": 8
           }
         },
         {
           "voice": "ch2",
-          "identical": 21378960,
+          "identical": 21382870,
           "a": 1962,
           "b": 1962,
           "exact": 7,
           "near": 0,
           "onlyA": 1955,
           "onlyB": 1955,
-          "shift": -6,
+          "shift": -4,
           "aligned": 1890,
           "runs": {
             "ours": 1416,
             "theirs": 1416,
             "alignedTimes": 1416,
             "alignedValues": 1416,
-            "maxShift": 10
+            "maxShift": 8
           }
         },
         {
@@ -385,9 +385,9 @@
       "source": "src/corpus/generate-dmg.mjs",
       "writes": 33,
       "cycles": 21390950,
-      "identical": 21384082,
+      "identical": 21385112,
       "first": {
-        "cycle": 443269,
+        "cycle": 443271,
         "voice": 0,
         "a": 15,
         "b": 0
@@ -395,21 +395,21 @@
       "edges": [
         {
           "voice": "ch1",
-          "identical": 21384082,
+          "identical": 21385112,
           "a": 731,
           "b": 731,
           "exact": 1,
           "near": 0,
           "onlyA": 730,
           "onlyB": 730,
-          "shift": -10,
-          "aligned": 438,
+          "shift": -8,
+          "aligned": 729,
           "runs": {
             "ours": 631,
             "theirs": 631,
             "alignedTimes": 631,
             "alignedValues": 631,
-            "maxShift": 10
+            "maxShift": 8
           }
         },
         {
@@ -560,90 +560,90 @@
     {
       "name": "song-golden",
       "source": "packages/chipvoice/test/golden-dmg.mjs",
-      "writes": 1036,
+      "writes": 1060,
       "cycles": 16777216,
-      "identical": 10635636,
+      "identical": 14671135,
       "first": {
-        "cycle": 424229,
+        "cycle": 4643,
         "voice": 3,
-        "a": 13,
-        "b": 0
+        "a": 0,
+        "b": 13
       },
       "edges": [
         {
           "voice": "ch1",
-          "identical": 16763077,
-          "a": 3174,
-          "b": 3174,
-          "exact": 22,
+          "identical": 16764256,
+          "a": 3260,
+          "b": 3260,
+          "exact": 20,
           "near": 0,
-          "onlyA": 3152,
-          "onlyB": 3152,
+          "onlyA": 3240,
+          "onlyB": 3240,
           "shift": -4,
-          "aligned": 817,
+          "aligned": 3240,
           "runs": {
-            "ours": 1579,
-            "theirs": 1579,
-            "alignedTimes": 1566,
-            "alignedValues": 1566,
-            "maxShift": 6
+            "ours": 1623,
+            "theirs": 1623,
+            "alignedTimes": 1623,
+            "alignedValues": 1623,
+            "maxShift": 4
           }
         },
         {
           "voice": "ch2",
-          "identical": 16767700,
-          "a": 2072,
-          "b": 2072,
-          "exact": 0,
+          "identical": 16768716,
+          "a": 2127,
+          "b": 2127,
+          "exact": 2,
           "near": 0,
-          "onlyA": 2072,
-          "onlyB": 2072,
-          "shift": -6,
-          "aligned": 836,
+          "onlyA": 2125,
+          "onlyB": 2125,
+          "shift": -4,
+          "aligned": 2125,
           "runs": {
-            "ours": 1036,
-            "theirs": 1036,
-            "alignedTimes": 1036,
-            "alignedValues": 1036,
-            "maxShift": 6
+            "ours": 1063,
+            "theirs": 1063,
+            "alignedTimes": 1062,
+            "alignedValues": 1062,
+            "maxShift": 4
           }
         },
         {
           "voice": "ch3",
-          "identical": 16774228,
-          "a": 5957,
-          "b": 5957,
-          "exact": 2969,
-          "near": 2988,
+          "identical": 16777216,
+          "a": 6101,
+          "b": 6101,
+          "exact": 6101,
+          "near": 0,
           "onlyA": 0,
           "onlyB": 0,
-          "shift": 1,
-          "aligned": 2988,
+          "shift": 0,
+          "aligned": 6101,
           "runs": {
-            "ours": 410,
-            "theirs": 410,
-            "alignedTimes": 400,
-            "alignedValues": 400,
-            "maxShift": 1
+            "ours": 420,
+            "theirs": 420,
+            "alignedTimes": 420,
+            "alignedValues": 420,
+            "maxShift": 0
           }
         },
         {
           "voice": "ch4",
-          "identical": 10652087,
-          "a": 52337,
-          "b": 110133,
-          "exact": 564,
-          "near": 535,
-          "onlyA": 51238,
-          "onlyB": 109034,
-          "shift": -3,
-          "aligned": 1813,
+          "identical": 14689923,
+          "a": 53329,
+          "b": 53326,
+          "exact": 6200,
+          "near": 0,
+          "onlyA": 47129,
+          "onlyB": 47126,
+          "shift": -8,
+          "aligned": 7116,
           "runs": {
-            "ours": 328,
-            "theirs": 533,
-            "alignedTimes": 184,
-            "alignedValues": 134,
-            "maxShift": 6634087
+            "ours": 331,
+            "theirs": 337,
+            "alignedTimes": 202,
+            "alignedValues": 167,
+            "maxShift": 1499072
           }
         }
       ]

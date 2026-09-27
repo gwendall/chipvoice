@@ -151,17 +151,26 @@ real game music, and a real unit.
   diagnosed three real divergences from `sn76489.ts` (a tone period of 0 or 1,
   the polarity a channel starts at before its first reload, tone 3's noise
   rate), recorded on the sheet.
-- doing - P2-1, first pass: every 2A03 divergence against Mesen is traced.
-  One was the shim's (its cycle count's parity picked the other `$4017`
-  delay), fixed, lifting `song-e2e`'s pulse 2 to 100 %; the rest are Mesen's
-  sweep power-on state, its output refreshed only on a write or a timer tick,
-  and a write on a reload's own cycle, each confirmed with a scratch build of
-  the core and documented on the sheet. The SID now leaves an OSC3 or ENV3
-  read on its data bus (`busvalue` passes, 14 of 14). A Game Boy pulse started
-  from silence outputs a digital zero until its first duty step (Pan Docs,
-  SameBoy agrees); Gb_Snd_Emu's baseline was rewritten for it. Left for the
-  second pass: the PSG divergences MAME found (P5-8) and the Game Boy against
-  SameBoy (P3-4).
+- done - P2-1: every divergence the step's oracles found is fixed from the
+  documents or traced and written down. First pass (#86): every 2A03
+  divergence against Mesen is traced. One was the shim's (its cycle count's
+  parity picked the other `$4017` delay), fixed, lifting `song-e2e`'s pulse 2
+  to 100 %; the rest are Mesen's sweep power-on state, its output refreshed
+  only on a write or a timer tick, and a write on a reload's own cycle, each
+  confirmed with a scratch build of the core and documented on the sheet. The
+  SID now leaves an OSC3 or ENV3 read on its data bus (`busvalue` passes, 14
+  of 14). A Game Boy pulse started from silence outputs a digital zero until
+  its first duty step (Pan Docs, SameBoy agrees). Second pass: the Game Boy
+  against SameBoy (P3-4). Its noise missed whole notes because the corpus
+  wrote between M-cycles, which no CPU does; the corpus is now written on
+  whole M-cycles, and SameBoy parity goes from 88.15 % to 94.82 %. Two
+  readings stay open on the sheet's deviations: where the noise clock stands
+  at a trigger (the gbdev wiki and Pan Docs disagree; a unit decides, P3-5) and a
+  pulse's trigger delay of 4 or 8 cycles, of which Pan Docs' low two timer
+  bits are a later fix (P3-7). The zombie compound case is nondeterministic
+  on the hardware. The PSG's three divergences from MAME (P5-8) were already
+  traced on the sheet with deviation rows; none is contradicted by a
+  document, so nothing changes.
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md) catalogues
   what published recordings and measurements of real hardware already exist
   for all five chips, each source opened and verified before being listed
@@ -330,7 +339,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 
 | # | Ticket | Status | Where |
 | --- | --- | --- | --- |
-| P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | doing | first pass: 2A03 against Mesen traced and documented (a shim fix), SID bus latch, Game Boy pulse start; PSG and SameBoy next |
+| P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | done | #86: 2A03 against Mesen traced and documented (a shim fix), SID bus latch, Game Boy pulse start. Second pass: the DMG corpus on whole M-cycles; SameBoy's noise clock and pulse trigger delay recorded as deviations; the PSG's MAME divergences reviewed |
 | P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
 | P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output. NEXT-04 traced the filter corners' provenance to blargg's own capture and lidnariq's analysis of it, but the files are gone and no revision was named: see [HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03) |
 | P2-4 | Release with the sheet linked from the package README and the skill | done | The README links every sheet; the skill links each target's |
@@ -342,9 +351,10 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P3-1 | DMG APU from Pan Docs and blargg's notes, verified by his dmg_sound ROMs on an SM83 fixture | done | `packages/chipvoice/src/chips/gb`, `packages/conform/src/roms/{sm83,gb}.mjs` |
 | P3-2 | `ChipSpec`, `RegisterEvent` and the instrument model rewritten against two chips | done | `ChipDriver`, `FrameState`, `ChipSpec.roles`; `chips/{nes,gb}/driver.ts`. The 2A03's golden hash did not move |
 | P3-3 | The Game Boy sheet, generated | done | `docs/chips/dmg.md` |
-| P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | done | PR #83. SameBoy's DMG-B `apu.c` vendored as a second oracle (`packages/conform/oracles/sameboy`); found and fixed a driver bug where `main.c`'s redundant `qsort` broke ties between same-cycle writes differently on gcc and clang, making the identical source cross-compiler non-deterministic. Once fixed, two narrower real gaps remained, now P2-1 (a pulse trigger's first duty edge lands late; noise's cold start is a full note late), plus an open zombie-mode compound-case divergence |
+| P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | done | PR #83. SameBoy's DMG-B `apu.c` vendored as a second oracle (`packages/conform/oracles/sameboy`); found and fixed a driver bug where `main.c`'s redundant `qsort` broke ties between same-cycle writes differently on gcc and clang, making the identical source cross-compiler non-deterministic. Once fixed, two narrower real gaps remained, since settled by P2-1 (a pulse trigger's first duty edge lands late; noise's cold start is a full note late), plus an open zombie-mode compound-case divergence |
 | P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found a citable public-domain formula (gbdev Pan Docs) matching the sheet's placeholder and a die-level teardown, but no measured recording of any unit: see [HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg) |
 | P3-6 | The Game Boy in the API, the studio and the skill: `chip: "dmg"` accepted, rendered and played; a chip selector in the editor; the skill says what changes | done | `apps/web`, skill 0.4.0 |
+| P3-7 | A pulse trigger keeps the low two bits of its frequency timer, as Pan Docs says | todo | P2-1's second pass. At most 3 cycles on a note's first step; moves the golden, so it goes through the calibration and the eval |
 
 ## Phase 4. The portable score
 
