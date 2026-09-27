@@ -276,6 +276,16 @@ const migrations = [
       await addColumns(tx, "project_jobs", { engine_version: "text" });
     },
   },
+  {
+    // GEN-03: whole-song acoustic checks, run once the full render is ready.
+    // Findings are recorded here and returned to the caller; none of them
+    // change `status` (see the "Whole-song checks" section of
+    // GENERATIVE-COMPOSITION.md for why this stays record-only for now).
+    name: "whole-song-checks",
+    async up(tx: Transaction) {
+      await addColumns(tx, "generations", { song_report: "text" });
+    },
+  },
 ];
 
 /** Version markers and schema/data changes commit together. No broad ALTER

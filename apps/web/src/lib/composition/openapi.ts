@@ -18,6 +18,7 @@ export function generationPaths(publication: unknown) {
       project: { anyOf: [publication, { type: "null" }] },
       render: { type: ["object", "null"], description: "Existing full render job: status, progress, WAV/MP3 and page URLs" },
       evaluation: { type: ["object", "null"], description: "Full allocation plan; audio measurements cover the first two seconds only" },
+      songReport: { type: ["array", "null"], description: "Whole-song acoustic findings (clipping, level jumps, silence gaps, an unresolved ending, a loop seam, a duration mismatch) measured once the full render is ready. Never blocks or fails the generation; see GENERATIVE-COMPOSITION.md.", items: { type: "object", properties: { code: text, level: { enum: ["warning", "error"] }, startSeconds: { type: "number" }, endSeconds: { type: "number" }, voice: { type: ["string", "null"] }, measured: { type: "number" }, limit: { type: "number" }, message: text } } },
       usage: { type: ["object", "null"] },
     },
   };
