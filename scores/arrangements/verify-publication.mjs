@@ -28,7 +28,7 @@ export function validatePublication(report){
 }
 export async function verifyPublication(){
  const report=JSON.parse(await bytes('apps/web/public/arrangement-data/report.json'));validatePublication(report);
- const modules=await engineModules();
+ const modules=await engineModules('scores/arrangements/evaluate.mjs');
  assert.ok(modules.includes('performance.js')&&modules.includes('chips/nes/dsp.js')&&!modules.some(m=>m.startsWith('playback/')),'the engine hash covers what renders the recordings and not playback');
  assert.equal(report.engineSha256,await engineSha256(),'recordings match the modules of the built SDK that render them');
  assert.equal(report.evaluationSha256,hash(await bytes('scores/arrangements/evaluate.mjs')),'evaluation method identity');

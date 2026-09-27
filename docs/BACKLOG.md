@@ -324,6 +324,27 @@ real game music, and a real unit.
 - done - NEXT-13: the arrangement `report.json` hashes only the engine modules
   `evaluate.mjs` can reach (43 of 109), so a playback-only change no longer
   forces a full `pnpm arrangements:eval`.
+- done - NEXT-23: this PR. The mixing calibration hash narrowed the same way:
+  `scores/mixing/provenance.mjs`'s `calibrationEngineHash()` used to hash
+  every `.js` under `chips/**` plus three named modules (37 files, none of
+  them the probe instruments or the measurement code itself), so a chip's
+  file-format player the calibration never runs, such as an SPC700 core for
+  `.spc` playback (#101), moved the hash and forced a full recalibration on
+  every open engine PR each time another one merged. It now hashes only the
+  modules `scores/mixing/calibrate.mjs` reaches (39 of 77), found the same way
+  NEXT-13 finds `evaluate.mjs`'s, sharing the walk as
+  `engineModules(entry)` in `scores/arrangements/engine.mjs`, plus
+  `MIX_PROFILE_VERSION` for the measurement method. `mix-profiles.js` is
+  excluded by name (it is `calibrate.mjs`'s own generated output; nothing
+  reachable imports it today, so the exclusion is a guard, not a correction).
+  The now-redundant `calibrateMixInstrument.toString()`/
+  `mixInstrumentSignature.toString()` terms are dropped: `mix-calibration.js`
+  itself is in the hashed set, so its full bytes already cover both
+  functions. `check-calibration.mjs` proves the module list reaches every
+  chip's core and driver plus `performance-palette.js` and
+  `mix-calibration.js`, and that a file under `chips/**` nothing imports does
+  not move the hash. The measured profiles are unchanged (`profileSha256` and
+  `src/mix-profiles.ts` identical to before; only `engineSha256` moves).
 
 **Step 5. New systems, one at a time, under decision 38's guards.**
 

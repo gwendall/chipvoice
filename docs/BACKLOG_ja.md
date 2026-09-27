@@ -149,6 +149,7 @@
 - MIX-14: ブラウザ、Node、実機のスマートフォンの間でレンダーのハッシュを比べます。
 - done - NEXT-12: `/accuracy`と`/ja/accuracy`は5つのチップすべてについて、デジタル一致度（オラクルごと、加えてc64の実機6581との複合波形比較）、テストROM、アナログ段、ドライバの網羅率を示します。`packages/conform/src/accuracy-data.mjs`が`status.mjs`が仕様書に書き込むのと同じ集計から`apps/web/src/data/accuracy-data.json`を生成するため、数値を手で入力することはありません。このファイルが仕様書とずれるとCIが失敗します。
 - done - NEXT-13: 編曲の`report.json`は`evaluate.mjs`から到達できるエンジンのモジュール（109個中43個）だけをハッシュするため、再生だけの変更で`pnpm arrangements:eval`全体をやり直す必要はなくなりました。
+- done - NEXT-23: 本PR。ミキシング校正のハッシュも同じ考え方で絞り込みました。`scores/mixing/provenance.mjs`の`calibrationEngineHash()`は、以前は`chips/**`配下の全`.js`と名前を指定した3個のモジュール(合計37ファイル、プローブ用の音色や測定コード自体は含まない)をハッシュしていたため、校正が実行しないチップのファイル形式プレイヤー、たとえば`.spc`再生用のSPC700コア(#101)のようなものが、ハッシュを動かし、他のPRがマージされるたびにあらゆる進行中のエンジンPRへ全校正のやり直しを強いていました。いまは`scores/mixing/calibrate.mjs`が実際に到達するモジュール(77個中39個)だけをハッシュします。到達判定はNEXT-13が`evaluate.mjs`のために使うのと同じ方法で、`scores/arrangements/engine.mjs`の`engineModules(entry)`として共有されています。これに測定方法を表す`MIX_PROFILE_VERSION`を加えます。`mix-profiles.js`は名前で明示的に除外します(`calibrate.mjs`自身が生成する出力であり、現時点では到達可能なものの中にこれを読み込むものはないため、この除外は今のところ何も取り除いていない安全策です)。`mix-calibration.js`自体がハッシュ対象のモジュール集合に入ったことで、`calibrateMixInstrument.toString()`/`mixInstrumentSignature.toString()`の項は不要になったため削除しました(ファイル全体のバイト列が両関数をすでに覆っています)。`check-calibration.mjs`は、モジュール一覧が各チップのコアとドライバ、`performance-palette.js`、`mix-calibration.js`に到達すること、そして`chips/**`配下にあって何からも読み込まれないファイルがハッシュを動かさないことを検証します。測定済みのプロファイルは変わりません(`profileSha256`と`src/mix-profiles.ts`は以前と同一で、`engineSha256`だけが変わります)。
 
 **ステップ5. 決定38の条件のもとで、新しいシステムを1つずつ。**
 
