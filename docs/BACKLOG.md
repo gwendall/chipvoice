@@ -211,8 +211,7 @@ real game music, and a real unit.
 
 - P5-10 and P5-12 (FM drums, the LFO, channel 3's special mode), P6-10
   (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the SID's
-  filter and sweeps), P7-10 (the 8580), AUD-4 (playable ranges and
-  diagnostics).
+  filter and sweeps), P7-10 (the 8580).
 - todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
   with its measured envelope and spectrum, shown on the site, built only from
   what the chip really does.
@@ -490,7 +489,7 @@ rewrite.
 | AUD-1 | Separate stable user identity, API keys and browser sessions; recover publications across logins, consume magic tokens atomically, and do not rotate an agent key on browser login | implemented | Stable account ownership, independent keys/sessions, atomic login consumption, revocation and account UI; decision 28 |
 | AUD-2 | Profile render CPU, bound/cache request variants and deduplicate concurrent renders; add worker/storage only as measurements justify | partial | Worker, duration/concurrency/rate/cache bounds, versioned keys, deduplication and conditional GET implemented; representative CPU profiling and distributed capacity remain open; decision 27 |
 | AUD-3 | Make low-sample-rate offline scheduling correct, bound the timeline without a position reader and fix beatDelay's contract | partial | Scheduling fixes, host-driven offline expiry and direct shared bus queues included (decision 23); low-rate performance qualification remains separate |
-| AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | partial | Target identity preserved; base-pitch/arpeggio range warnings and malformed-pattern checks implemented. Full modulation/voice-budget diagnostics remain open |
+| AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | implemented | Target identity preserved; base-pitch/arpeggio range and chord-capacity warnings, plus modulation (vibrato range/resolution/rate, slide range/resolution, volume step) and voice-budget (voice share, percussion voice) diagnostics, all with measured/limit fields, backward-compatible in `validateSong` and both API routes |
 | AUD-5 | Use versioned database migrations with precise error handling | implemented | Versioned atomic migrations; legacy/fresh/idempotence/failure rollback covered; decision 28 |
 | AUD-6 | Align root/npm README, package metadata, capabilities and licence statements; distinguish corpus parity from physical verification, remove misleading global completeness claims | implemented | Root/npm README, score spec, OpenAPI, agent skill and status generator aligned on five machines, actual arrangements, licensing, versioned audio and corpus versus hardware evidence |
 | AUD-7 | Audit hot-path allocation/copy sites in five cores, drivers, encoding and demo animation; reuse scratch with explicit ownership | implemented | [Audit and qualification](evals/HOT-PATHS-2026-09-06.md); representative-device CPU/GC measurements remain alongside AUD-3 |

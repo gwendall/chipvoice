@@ -128,7 +128,7 @@
 
 **ステップ2. 各チップが持つすべての楽器。**
 
-- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P7-9とP8-13（SIDのフィルターとスイープ）、P7-10（8580）、AUD-4（演奏可能な音域と診断）。
+- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P7-9とP8-13（SIDのフィルターとスイープ）、P7-10（8580）。
 - todo - NEXT-05: 計測済みの楽器カタログ。プリセットごとにゴールデンのレンダーと、計測したエンベロープとスペクトルを持ち、サイトで見られ、チップが実際にできることだけで作ります。
 - P4-7とMIX-12: 人による試聴。正確さとは分けて扱います。
 
@@ -362,7 +362,7 @@
 | AUD-1 | stable user、API key、browser session分離。再login復元、atomic token、agent key不変 | implemented | account所有、独立key／session、atomic login、失効、UI。決定28 |
 | AUD-2 | render CPU測定、variant上限／cache、同時dedup。worker／storageは測定に応じる | partial | workerと時間／同時／頻度／cache上限、version key、dedup、条件GET実装。代表CPU／分散は未完、決定27 |
 | AUD-3 | 低sample rate予約、readerなしtimeline上限、beatDelay契約修復 | partial | 予約、host時計expiry、直接shared bus queue実装（決定23）。低rate性能は別 |
-| AUD-4 | 機種／voice音域とarrange診断、明示target保持 | partial | target、基音／arpeggio範囲、不正pattern実装。全変調／voice budgetは残件 |
+| AUD-4 | 機種／voice音域とarrange診断、明示target保持 | implemented | target保持、基音／arpeggio範囲とchord容量の警告に加え、変調（ビブラート範囲／解像度／レート、スライド範囲／解像度、ボリュームステップ）とvoice budget（voice共有、打楽器voice）診断、いずれもmeasured／limit付きで`validateSong`と両APIルートに後方互換で実装 |
 | AUD-5 | 正確なerror処理のversioned DB migration | implemented | atomic version移行、新旧／冪等／失敗rollback、決定28 |
 | AUD-6 | root／npm README、metadata、能力、licenseを整合しcorpusと実機証拠を分離 | implemented | 5機種、実編曲、license、version音声、証拠をREADME／SCORE／OpenAPI／skill／generatorで整合 |
 | AUD-7 | 5core、driver、encode、animationのhot-path allocation／copy監査と所有scratch | implemented | [監査と検証](evals/HOT-PATHS-2026-09-06_ja.md)。代表CPU／GCはAUD-3と残件 |
