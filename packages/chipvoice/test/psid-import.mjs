@@ -190,5 +190,76 @@ throws('seconds out of range is rejected', () => importPsid(buildPsid({loadAddre
   check('renderPsid returns the decoded performance alongside the audio', performance.chip === 'c64' && performance.format === 'PSID');
 }
 
+// --- CIA 1 timer A: exact period and start phase. DEN is turned off first
+// so VIC-II badline DMA (the next test below) cannot land in this probe's
+// own dispatch windows and confuse the numbers - this test is about the
+// CIA counter alone.
+{
+  const loadAddress = 0x1000, initAddress = 0x1000, playAddress = 0x1020;
+  // LDA #$00; STA $D011 (DEN off); LDA #$0F; STA $D418; RTS
+  const init = Uint8Array.from([0xa9, 0x00, 0x8d, 0x11, 0xd0, 0xa9, 0x0f, 0x8d, 0x18, 0xd4, 0x60]);
+  const play = Uint8Array.from([0xa9, 0x01, 0x8d, 0x00, 0xd4, 0x60]); // LDA #$01; STA $D400; RTS
+  const prg = new Uint8Array(playAddress - loadAddress + play.length).fill(NOP);
+  prg.set(init, 0);
+  prg.set(play, playAddress - loadAddress);
+  const p = importPsid(buildPsid({loadAddress, initAddress, playAddress, flags: 0x00, speed: 1, prg}), {seconds: 0.3});
+  const at = p.events.filter((e) => e.addr === 0xd400).map((e) => e.at);
+  // CIA_DEFAULT_PAL ($4025 = 16421) means the counter underflows once
+  // 16421 + 1 = 16422 cycles have elapsed - a 6526 counts N, N-1, ..., 0,
+  // then underflows on the next cycle after that ("period = latch + 1",
+  // not latch, the same "start phase" quirk `writeCia1`'s own high-byte
+  // reload comment documents). The first PLAY call's own write then lands
+  // 16422 (the CIA period) + 7 (the IRQ dispatch sequence itself,
+  // `Cpu6510.irq`'s own return value) + 23 (the environment's own
+  // trampoline, up to its own JSR PLAY: PHA, LDA $DC0D, LDA #1, STA $D019,
+  // TXA, PHA, TYA, PHA = 3+4+2+4+2+3+2+3) + 6 (the JSR itself) + 2 (PLAY's
+  // own LDA #$01, before the STA $D400 this test watches) cycles later:
+  // 16422+7+23+6+2 = 16460.
+  check('CIA 1: the first PLAY dispatch lands at the exact expected start phase', at[0] === 16460, `at[0]=${at[0]}`);
+  // From there the CIA reloads and keeps counting at the same real rate:
+  // every dispatch is 16422 cycles after the last, on average, with only
+  // the same few cycles of instruction-boundary jitter any interrupt-driven
+  // idle loop has (the idle loop's own JMP-to-self costs 3 cycles a step,
+  // not a divisor of every dispatch-to-RTI span, so where in that 3-cycle
+  // stride a dispatch lands wobbles a little without ever drifting) - the
+  // sum of any 3 consecutive gaps is exactly 3 * 16422, always.
+  let driftFree = true;
+  for (let i = 3; i < at.length; i++) if (at[i] - at[i - 3] !== 3 * 16422) driftFree = false;
+  check('CIA 1: the period never drifts, averaged over any 3 dispatches', driftFree && at.length > 3, JSON.stringify(at));
+  const maxJitter = Math.max(...at.slice(1).map((v, i) => Math.abs(v - at[i] - 16422)));
+  check('CIA 1: no single dispatch gap strays far from the period', maxJitter <= 4, `maxJitter=${maxJitter}`);
+}
+
+// --- VIC-II badline DMA stealing: a real 43-cycle bus steal, once per
+// qualifying raster line ($30-$F7, whose low 3 bits match $D011's own
+// YSCROLL, with DEN set) - see `BADLINE_STEAL_CYCLES` in psid-import.ts.
+// Isolated from CIA/IRQ timing entirely: INIT alone runs a fixed-cost delay
+// (1700 NOPs, 3400 cycles) long enough to cross the first qualifying
+// line's own real trigger point - line 51, the first line in $30-$F7 whose
+// low 3 bits are 3 (this environment's own default YSCROLL) - at its own
+// `VICII_FETCH_CYCLE` offset: 51*63+11 = 3224 - then writes once, with DEN
+// left at the environment's own default ($D011=$1B, DEN on) in one run and
+// turned off first in the other, otherwise byte-for-byte identical code.
+{
+  const loadAddress = 0x1000, initAddress = 0x1000;
+  const nops = new Array(1700).fill(NOP);
+  const write = [0xa9, 0x2a, 0x8d, 0x00, 0xd4, 0x60]; // LDA #$2A; STA $D400; RTS
+  const denOnPrg = Uint8Array.from([...nops, ...write]);
+  const denOffPrg = Uint8Array.from([0xa9, 0x00, 0x8d, 0x11, 0xd0, ...nops, ...write]); // LDA #$00; STA $D011 first
+  const on = importPsid(buildPsid({loadAddress, initAddress, prg: denOnPrg}), {seconds: 0.01});
+  const off = importPsid(buildPsid({loadAddress, initAddress, prg: denOffPrg}), {seconds: 0.01});
+  const onAt = on.events.find((e) => e.addr === 0xd400)?.at;
+  const offAt = off.events.find((e) => e.addr === 0xd400)?.at;
+  // DEN-off: the 5-byte disabling prefix (6 cycles) plus the same 3400
+  // cycles of NOPs plus LDA #$2A (2 cycles) before the write - no steal is
+  // ever possible, so this is exactly 6 + 3400 + 2 = 3408.
+  check('badline: DEN off never steals a cycle', offAt === 3408, `offAt=${offAt}`);
+  // DEN-on: no disabling prefix, so only 3400 (NOPs) + 2 (LDA #$2A) = 3402
+  // cycles of real instruction work happen before the write - but line 51's
+  // own fetch point (3224) falls within that span, so one BADLINE_STEAL_CYCLES
+  // (43) steal happens along the way, landing the write at 3402 + 43 = 3445.
+  check('badline: DEN on loses exactly one steal (43 cycles) crossing line 51', onAt === 3445, `onAt=${onAt}`);
+}
+
 if (failures) { console.log(`${failures} FAILURES`); process.exit(1); }
-console.log('PASS PSID/RSID import: header parsing, named rejections, PAL/NTSC + 6581/8580 selection, and end-to-end render');
+console.log('PASS PSID/RSID import: header parsing, named rejections, PAL/NTSC + 6581/8580 selection, end-to-end render, and CIA 1/VIC-II badline timing');

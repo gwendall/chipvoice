@@ -52,15 +52,33 @@ distribution's own md5.
 
 Both VBI-timed files match libsidplayfp in full. Both CIA-timed files
 diverge within the first few PLAY-phase writes (`sources.json`'s own
-`purpose` names the exact command; the sheet below has the numbers) even
-though the register values written are identical on both sides and the
-cycle gap at that point is small (about 40 cycles) - a real, narrow
-divergence in how this project's own CIA 1 emulation (`psid-import.ts`)
-reconciles a non-default timer-A reload value against libsidplayfp's own,
-surfaced by a real player's own multispeed output rather than invented for
-the purpose. Left on the sheet as a finding, not silently patched over;
-see `packages/chipvoice/src/psid-import.ts`'s own CIA 1 model
-(`clockFor`/`cia1`) for where to start.
+`purpose` names the exact command; the sheet below has the numbers), though
+never on a register or a value - every one of the 8218 and 7766 events in
+`gt2-sanction-cia.sid` and `gt2-consultant-alt-cia.sid` carries the exact
+address and value libsidplayfp's own trace does, and every cycle gap is an
+integer multiple of one VIC-II badline's own 43-cycle DMA steal
+(`BADLINE_STEAL_CYCLES` in `psid-import.ts`), plus the same few cycles of
+instruction-boundary jitter a raster-synced dispatch already has. This is
+not a CIA-emulation bug: a VBI-driven tune's own badline count is the same
+every call (one PAL frame is exactly 39 badline periods), so it cancels out
+of this comparator's own single per-file calibration - confirmed exactly by
+`gt2-dojo.sid` and `gt2-hyperspace-alt.sid`. A CIA-driven tune's own
+dispatch period is not a multiple of that 504-cycle recurrence, so which
+calls land near a badline varies call to call in a way that depends on the
+exact raster phase libsidplayfp's own `cold:` driver ceremony happens to be
+at when it first calls INIT - a quantity the PSID/RSID format does not
+define (real disk-load and KERNAL-boot timing genuinely varies) and that
+libsidplayfp's own `SidConfig::powerOnDelay` exists specifically to
+*randomize* in normal use, pinned to one fixed value only for this corpus's
+own deterministic testing. Forcing this project's own raster phase to that
+one pinned value was tried; it closed this gap but broke the three files
+above (a boundary case tied to libsidplayfp's own randomized-by-default
+boot delay, not something a real C64 or a real-hardware-verified
+implementation is expected to reproduce), so it was reverted. Left on the
+sheet as a precisely-characterized, structurally-explained residual, not
+silently patched over or left vague; see "Known limits" on
+`docs/chips/c64.md` and `packages/chipvoice/src/psid-import.ts`'s own
+`badlineSteal` for the full account.
 
 HVSC and commercial rips are never eligible, here or anywhere in this
 project (decision 41).

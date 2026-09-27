@@ -20,10 +20,12 @@ import {c64Chip} from './chips/c64/index.js';
  * at `$D400` (a v3/v4 file naming a second or third SID is rejected, named,
  * rather than silently dropping voices); CIA 1 timer A as a 60 Hz IRQ source
  * with the documented "writing the high byte loads the counter" quirk, and
- * nothing else of the CIA (no timer B, no TOD, no serial); the VIC reduced
- * to a single once-a-frame raster IRQ pulse at the file's own PAL/NTSC
- * period, not a real per-line raster comparator; no bank switching and no
- * KERNAL/BASIC ROM (this package ships no C64 ROM image, and never will -
+ * nothing else of the CIA (no timer B, no TOD, no serial); the VIC as a
+ * once-a-frame raster IRQ pulse at the file's own PAL/NTSC period, plus its
+ * own real badline DMA steal (see `BADLINE_STEAL_CYCLES`) - not a full
+ * per-line raster comparator (no sprites, no mid-frame `$D011`/`$D012`
+ * writes changing the raster IRQ's own target line); no bank switching and
+ * no KERNAL/BASIC ROM (this package ships no C64 ROM image, and never will -
  * see decision 41), so `$01` is written with the value the spec's formula
  * gives before every INIT/PLAY call but nothing reads it back to change
  * what memory decodes to; and no BASIC interpreter, so an RSID file with the
@@ -65,6 +67,22 @@ export interface PsidPerformance extends PerformancePlan {
 
 const PAL_FRAME_CYCLES = 19656; // 63 cycles/line * 312 lines/frame; also the file format's own stated PAL VBI period.
 const NTSC_FRAME_CYCLES = 17045; // The file format document's own stated true NTSC VBI period (distinct from the CIA-default fallback below).
+const PAL_CYCLES_PER_LINE = 63;
+const PAL_RASTER_LINES = 312;
+const NTSC_CYCLES_PER_LINE = 65;
+const NTSC_RASTER_LINES = 263; // Real 6567R8 hardware timing - independent of NTSC_FRAME_CYCLES above (the spec's own rounded VBI period), used only to place badlines.
+// A VIC-II "bad line": once per raster line in $30-$F7 whose low 3 bits
+// match $D011's own YSCROLL, with DEN (bit 4) set, the VIC steals the bus
+// for its own character-pointer DMA and the CPU simply stops for 43 cycles
+// - not the "40 cycles" often cited in passing; measured directly against
+// libsidplayfp's own cycle-exact VIC-II core (`c64/VIC_II/mos656x.h`/`.cpp`
+// in the pinned oracle revision) by instrumenting its own BA pin, which is
+// what actually gates the 6510's bus - see docs/chips/c64.md and the
+// psid-corpus README. The steal begins when the beam reaches cycle 11 of
+// the qualifying line (`VICII_FETCH_CYCLE` in that same oracle source), not
+// at the line's own start, likewise confirmed by direct instrumentation.
+const BADLINE_STEAL_CYCLES = 43;
+const VICII_FETCH_CYCLE = 11;
 const CIA_DEFAULT_PAL = 0x4025; // 60 Hz CIA 1 timer A latch, PAL: the SID file format's own default environment.
 const CIA_DEFAULT_NTSC = 0x4295; // Same, NTSC.
 const RESERVED_LOW = 0x0400; // "$0000-$03FF" - the file format spec's own reserved area; where this environment's PLAY trampoline and idle loop live.
@@ -209,7 +227,13 @@ class PsidEnvironment implements Cpu6510Bus {
   cycle = 0;
   private sidBus = 0;
   private cia1 = {latch: 0xffff, counter: 0xffff, running: false, oneShot: false, irqEnabled: false, icrMask: 0, icrLatch: 0};
-  private vic = {framePeriod: PAL_FRAME_CYCLES, cycleInFrame: 0, irqEnabled: false, irqLatch: 0};
+  private vic = {
+    framePeriod: PAL_FRAME_CYCLES, cycleInFrame: 0, irqEnabled: false, irqLatch: 0,
+    // Independent of `framePeriod`/`cycleInFrame` above (which only drive the
+    // once-a-frame IRQ pulse and must keep the file format's own stated VBI
+    // period) - real raster-line timing, used only to place badlines.
+    cyclesPerLine: PAL_CYCLES_PER_LINE, rasterLines: PAL_RASTER_LINES, rasterCycle: 0,
+  };
 
   read(addr: number): number {
     if ((addr & 0xfc00) === 0xd400) return this.sidBus;
@@ -272,7 +296,8 @@ class PsidEnvironment implements Cpu6510Bus {
   }
 
   /** Advances every modeled peripheral by `cycles`, the cost of one 6510 instruction. */
-  advance(cycles: number): boolean {
+  advance(cyclesIn: number): boolean {
+    const cycles = cyclesIn + this.badlineSteal(cyclesIn);
     this.cycle += cycles;
     if (this.cia1.running && this.cia1.latch < 0xffff) {
       let remaining = this.cia1.counter - cycles;
@@ -294,13 +319,52 @@ class PsidEnvironment implements Cpu6510Bus {
     return this.irqAsserted();
   }
 
+  /**
+   * How many extra cycles real hardware would lose to VIC-II badline DMA
+   * while the CPU executes an instruction costing `cycles`, given the
+   * raster line(s) that instruction's own real time spans - see
+   * `BADLINE_STEAL_CYCLES`. The steal is checked at each qualifying line's
+   * own real trigger point (`VICII_FETCH_CYCLE` cycles into the line, not
+   * the line's start), the same point libsidplayfp's own VIC-II core
+   * raises it at (see `BADLINE_STEAL_CYCLES`'s doc comment). Every 6510
+   * opcode costs well under one raster line's own length, so a single call
+   * here can cross at most one line boundary; both the line already in
+   * progress and the one this step might cross into are checked. Always
+   * advances the independent raster-line tracker by the same real time
+   * everything else in `advance()` sees (`cycles` plus whatever this
+   * returns), the same way a real raster counter keeps moving through a
+   * CPU stall it itself caused.
+   */
+  private badlineSteal(cycles: number): number {
+    const perLine = this.vic.cyclesPerLine;
+    const total = perLine * this.vic.rasterLines;
+    const d011 = this.ram[0xd011];
+    const denOn = (d011 & 0x10) !== 0;
+    const yscroll = d011 & 0x07;
+    const start = this.vic.rasterCycle;
+    const end = start + cycles;
+    const currentLineStart = start - (start % perLine);
+    let stolen = 0;
+    for (const lineStart of [currentLineStart, currentLineStart + perLine]) {
+      const fetchPoint = lineStart + VICII_FETCH_CYCLE;
+      if (fetchPoint < start || fetchPoint >= end) continue;
+      const line = Math.floor(lineStart / perLine) % this.vic.rasterLines;
+      if (denOn && line >= 0x30 && line <= 0xf7 && (line & 7) === yscroll) stolen += BADLINE_STEAL_CYCLES;
+    }
+    this.vic.rasterCycle = (end + stolen) % total;
+    return stolen;
+  }
+
   setupCia1(latch: number, running: boolean, irqEnabled: boolean) {
     this.cia1.latch = latch; this.cia1.counter = latch; this.cia1.running = running;
     this.cia1.icrMask = irqEnabled ? 0x01 : 0; this.cia1.icrLatch = 0; this.cia1.oneShot = false;
   }
 
-  setupVic(framePeriod: number, irqEnabled: boolean) {
+  setupVic(framePeriod: number, irqEnabled: boolean, pal: boolean) {
     this.vic.framePeriod = framePeriod; this.vic.cycleInFrame = 0; this.vic.irqEnabled = irqEnabled; this.vic.irqLatch = 0;
+    this.vic.cyclesPerLine = pal ? PAL_CYCLES_PER_LINE : NTSC_CYCLES_PER_LINE;
+    this.vic.rasterLines = pal ? PAL_RASTER_LINES : NTSC_RASTER_LINES;
+    this.vic.rasterCycle = 0;
   }
 }
 
@@ -314,7 +378,15 @@ function runUntilReturn(cpu: Cpu6510, env: PsidEnvironment, pc: number, sentinel
   while (cpu.pc !== sentinel) {
     const cycles = cpu.step();
     spent += cycles;
-    if (env.advance(cycles)) cpu.irq();
+    if (env.advance(cycles)) {
+      const dispatchCycles = cpu.irq();
+      // The 7-cycle dispatch sequence is real elapsed time too - the CIA and
+      // VIC keep counting through it on real hardware, so it has to reach
+      // `env.advance` the same way `cycles` above does, or every peripheral
+      // silently stalls for 7 cycles on every single IRQ (see `Cpu6510.irq`'s
+      // own doc comment).
+      if (dispatchCycles) { spent += dispatchCycles; env.advance(dispatchCycles); }
+    }
     if (spent > budget) throw new PsidFormatError('INIT/PLAY did not return within the cycle budget (an infinite loop, or a routine this environment cannot model)');
   }
 }
@@ -347,19 +419,25 @@ export function importPsid(bytes: Uint8Array, options: ImportPsidOptions = {}): 
   const speedBit = ((header.speed >>> Math.min(song - 1, 31)) & 1) as 0 | 1;
 
   env.ram[0x02a6] = pal ? 1 : 0;
+  // The KERNAL this environment never ships (decision 41) always leaves
+  // $D011 = $1B (DEN set, RSEL set, YSCROLL 3) by the time INIT ever runs -
+  // libsidplayfp's own driver (`psiddrv.a65`'s `vicinit`) pokes exactly this
+  // before its own `jsr init`, PSID or RSID alike. This environment does the
+  // same, since it's the only source `badlineSteal` above has for DEN/YSCROLL.
+  env.ram[0xd011] = 0x1b;
   if (header.format === 'PSID') {
     // "For PSID files, default environment": VIC IRQ enabled only when the
     // speed flag is 0 (VBI-driven tunes), CIA 1 timer A always running at
     // 60 Hz but only IRQ-active when the speed flag is 1 (CIA-driven).
     env.setupCia1(ciaDefault, true, speedBit === 1);
-    env.setupVic(frameCycles, speedBit === 0);
+    env.setupVic(frameCycles, speedBit === 0, pal);
     env.ram[0x01] = bankFor(initAddress);
   } else {
     // "For RSID files, default environment": CIA 1 timer A running and
     // already IRQ-active; the VIC raster IRQ is set up but left disabled.
     // RSID tunes install and manage their own handlers from here.
     env.setupCia1(ciaDefault, true, true);
-    env.setupVic(frameCycles, false);
+    env.setupVic(frameCycles, false, pal);
     env.ram[0x01] = 0x37;
   }
 
@@ -395,7 +473,10 @@ export function importPsid(bytes: Uint8Array, options: ImportPsidOptions = {}): 
   const endCycle = Math.round(seconds * clockHz);
   while (env.cycle < endCycle) {
     const cycles = cpu.step();
-    if (env.advance(cycles)) cpu.irq();
+    if (env.advance(cycles)) {
+      const dispatchCycles = cpu.irq();
+      if (dispatchCycles) env.advance(dispatchCycles); // See runUntilReturn's own comment: the 7-cycle dispatch is real elapsed time the CIA/VIC must count through too.
+    }
   }
 
   return {

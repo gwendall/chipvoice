@@ -96,14 +96,24 @@ export class Cpu6510 {
     this.cycle += 7;
   }
 
-  /** A level IRQ, honoured only when I is clear. Callers re-assert every cycle it should still fire. */
-  irq() {
-    if (this.p & I) return;
+  /**
+   * A level IRQ, honoured only when I is clear. Callers re-assert every
+   * cycle it should still fire. Returns the 7-cycle dispatch's own cost when
+   * it actually fires, 0 when it's a no-op (I set) - a caller driving a
+   * peripheral's own clock from `step()`'s return value (as `psid-import.ts`
+   * does for the CIA and VIC) must feed this back in too, the same way real
+   * hardware's other chips keep counting through the CPU's own 7-cycle
+   * interrupt sequence; skipping it would silently stall every peripheral
+   * for 7 cycles on every dispatch, an error that compounds once per IRQ.
+   */
+  irq(): number {
+    if (this.p & I) return 0;
     this.dispatch(0xfffe, false);
+    return 7;
   }
 
-  /** Edge-triggered, unlike IRQ: always taken. PSID/RSID tunes essentially never use it. */
-  nmi() { this.dispatch(0xfffa, false); }
+  /** Edge-triggered, unlike IRQ: always taken. PSID/RSID tunes essentially never use it. Returns the dispatch's 7-cycle cost, for the same reason `irq()` does. */
+  nmi(): number { this.dispatch(0xfffa, false); return 7; }
 
   private dispatch(vector: number, breakFlag: boolean) {
     this.push(this.pc >> 8);
