@@ -8,10 +8,10 @@
     "left",
     "right"
   ],
-  "date": "2026-09-04",
-  "files": 5,
-  "cycles": 23859200,
-  "identical": 23859200,
+  "date": "2026-09-27",
+  "files": 6,
+  "cycles": 29081600,
+  "identical": 29081600,
   "diverging": 0,
   "results": [
     {
@@ -111,6 +111,54 @@
       ]
     },
     {
+      "name": "script-noise-clock",
+      "source": "src/corpus/generate-snes.mjs",
+      "writes": 188,
+      "cycles": 5222400,
+      "identical": 5222400,
+      "first": null,
+      "edges": [
+        {
+          "voice": "left",
+          "identical": 5222400,
+          "a": 58698,
+          "b": 58698,
+          "exact": 58698,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 58698,
+          "runs": {
+            "ours": 53,
+            "theirs": 53,
+            "alignedTimes": 53,
+            "alignedValues": 53,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "right",
+          "identical": 5222400,
+          "a": 58698,
+          "b": 58698,
+          "exact": 58698,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 58698,
+          "runs": {
+            "ours": 53,
+            "theirs": 53,
+            "alignedTimes": 53,
+            "alignedValues": 53,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
       "name": "script-pitch-noise-pmod",
       "source": "src/corpus/generate-snes.mjs",
       "writes": 412,
@@ -161,7 +209,7 @@
     {
       "name": "song-bright",
       "source": "the same lines with a bright lead, a hollow bass, a held chord",
-      "writes": 3228,
+      "writes": 2070,
       "cycles": 4096000,
       "identical": 4096000,
       "first": null,
@@ -169,14 +217,14 @@
         {
           "voice": "left",
           "identical": 4096000,
-          "a": 124507,
-          "b": 124507,
-          "exact": 124507,
+          "a": 127730,
+          "b": 127730,
+          "exact": 127730,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 124507,
+          "aligned": 127730,
           "runs": {
             "ours": 1,
             "theirs": 1,
@@ -188,14 +236,14 @@
         {
           "voice": "right",
           "identical": 4096000,
-          "a": 124506,
-          "b": 124506,
-          "exact": 124506,
+          "a": 127756,
+          "b": 127756,
+          "exact": 127756,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 124506,
+          "aligned": 127756,
           "runs": {
             "ours": 1,
             "theirs": 1,
@@ -209,7 +257,7 @@
     {
       "name": "song-golden",
       "source": "packages/chipvoice/test/golden-snes.mjs",
-      "writes": 3240,
+      "writes": 2070,
       "cycles": 4096000,
       "identical": 4096000,
       "first": null,
@@ -217,14 +265,14 @@
         {
           "voice": "left",
           "identical": 4096000,
-          "a": 124266,
-          "b": 124266,
-          "exact": 124266,
+          "a": 127636,
+          "b": 127636,
+          "exact": 127636,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 124266,
+          "aligned": 127636,
           "runs": {
             "ours": 1,
             "theirs": 1,
@@ -236,14 +284,14 @@
         {
           "voice": "right",
           "identical": 4096000,
-          "a": 124266,
-          "b": 124266,
-          "exact": 124266,
+          "a": 127656,
+          "b": 127656,
+          "exact": 127656,
           "near": 0,
           "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 124266,
+          "aligned": 127656,
           "runs": {
             "ours": 1,
             "theirs": 1,

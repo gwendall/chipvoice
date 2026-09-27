@@ -245,8 +245,22 @@ real game music, and a real unit.
   100 % including them, `check:sn76496` unregressed. A driver bug found while
   writing the new tests, `MdDriver.noteOff()` treating any FM drum hit as a
   PSG one, is fixed alongside.
-- P6-10 (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the
-  SID's filter and sweeps).
+- done - P6-10: this PR. The kit's closed and open hats default to the
+  S-DSP's own hardware noise generator (`NON` at `$3D`, `FLG`'s noise clock
+  at `$6C` set from the power-on sequence's very first write, never
+  rewritten to a different value since only the percussion voice ever
+  carries `noiseMode`), the kick and snare staying BRR samples;
+  `Instrument.noiseMode` opts a hat back to its BRR burst, the same word the
+  NES, Game Boy, Mega Drive and C64 kits already use for their own noise.
+  Real triads across voices, the ticket's other half, were already done. A
+  new corpus script (`script-noise-clock`) exercises two voices on the noise
+  at once, the clock changed under a held note rather than only at key-on,
+  and `FLG`'s reset and mute bits over an active noise voice; still identical
+  to snes_spc. A review pass before merge found the clock was live only from
+  the later, quarter-second write, leaving any hat in a song's first 250 ms
+  clocked at rate 0 - an audible click rather than hiss; fixed by moving it
+  into the first write.
+- P4-9 (the SNES palette), P7-9 and P8-13 (the SID's filter and sweeps).
 - todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
   with its measured envelope and spectrum, shown on the site, built only from
   what the chip really does.
@@ -479,7 +493,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
 | P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit. NEXT-04 found the one real logic-analyser capture of a console's S-DSP lines anyone made is dead-linked, and the one filter-frequency estimate is a schematic simulation, not a capture: see [HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp) |
 | P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | |
-| P6-10 | Real triads across voices and hardware-noise hats | doing | Simultaneous triads are implemented and tested, including internal mixer checks. Hardware-noise hats remain separate; the current kit uses BRR samples |
+| P6-10 | Real triads across voices and hardware-noise hats | done | this PR. Triads are implemented and tested, including internal mixer checks. The kit's hats default to the DSP's own hardware noise (`NON`, `FLG`'s clock set from the very first write at power-on, never rewritten to a different value), the kick and snare staying BRR samples; `Instrument.noiseMode` opts a hat back to its BRR burst. A corpus script exercises two noise voices at once, a held note's clock changed, and `FLG`'s reset and mute bits over an active noise voice. A review pass before merge found the clock was live only from the later, quarter-second write, leaving any hat in a song's first 250 ms clocked at rate 0; fixed by moving it into the first write |
 
 ## Phase 7. C64
 

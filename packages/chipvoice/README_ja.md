@@ -193,7 +193,7 @@ writeFileSync("theme.wav", toWav(audio));
 
 第3はMega Driveの`mdChip`。`src/chips/md/ym2612.ts`はNuked-OPN2の行単位の移植で、全声の全サイクルがハーネスで一致します。SN76489は文献から実装しました。`Chip.create({ chip: "md" })`は旋律／ベースをFM、和音をPSG、キットをノイズへ割り当てます。独自音色には4オペレーターの`Instrument.fm`を使えます。シートは[`docs/chips/md.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/md_ja.md)。**ライセンス：** YM2612のファイルはNuked-OPN2の派生でLGPL 2.1です。パッケージの表記は`(MIT AND LGPL-2.1-or-later)`。この節で扱う他の独自コードはMITです。
 
-第4はSNESの`snesChip`。`src/chips/snes/sdsp.ts`はsnes_spcから行単位で移植した第2のLGPLファイルで、DSP出力がサンプルごとに一致します。すべてがサンプル音源です。`Chip.create({ chip: "snes" })`はビルド時に作成・符号化した独自BRRバンクを、実機のエコー付きで鳴らします。旋律の意図はフルート／ブラス／マレット、和音はハープ／ストリングス、ベースはピック／リード／シンセベースを選びます。各音に固有のアタック、持続ループ、実機エンベロープがあります。旧波形とドラムも使え、`encodeBrr`も公開します。`Instrument.sample`はドライバーバンク内のサンプル名です。シートは[`docs/chips/snes.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes_ja.md)。
+第4はSNESの`snesChip`。`src/chips/snes/sdsp.ts`はsnes_spcから行単位で移植した第2のLGPLファイルで、DSP出力がサンプルごとに一致します。すべてがサンプル音源です。`Chip.create({ chip: "snes" })`はビルド時に作成・符号化した独自BRRバンクを、実機のエコー付きで鳴らします。旋律の意図はフルート／ブラス／マレット、和音はハープ／ストリングス、ベースはピック／リード／シンセベースを選びます。各音に固有のアタック、持続ループ、実機エンベロープがあります。旧波形とドラムも使え、`encodeBrr`も公開します。キットのキックとスネアはBRRドラムのままですが、クローズ／オープンハイハットは他機種のキットと同様に既定でDSP自身のハードウェアノイズ（`NON`と、電源投入時に一度だけ設定する`FLG`のノイズ時計）を使い、`Instrument.noiseMode`で切り替えます。ハイハットの楽器で`false`を指定するとBRRバーストに戻ります。`Instrument.sample`はドライバーバンク内のサンプル名です。シートは[`docs/chips/snes.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/snes_ja.md)。
 
 第5はC64の`c64Chip`。`src/chips/c64/sid.ts`の6581 SIDを文献から書き、ハーネス参照のreSID-fpと全声の2デジタル値で一致します。4行に3声を使い、`Chip.create({ chip: "c64" })`は旋律とベースへ各1声、第3へ和音とキットを割り当て、ドラムが和音を切り、後で和音が戻ります。`Instrument.waveform`は音符全体またはフレームごとに波形を選びます。アナログの`SID_6581_PROFILE`は非線形DACラダー、測定曲線上のフィルター、出力段のプロファイルです。シートは[`docs/chips/c64.md`](https://github.com/gwendall/chipvoice/blob/main/docs/chips/c64_ja.md)。
 
@@ -237,7 +237,7 @@ const { ok, issues, measured } = validateSong(song);
 
 NES、Game Boy、Mega Drive、SNES、C64の5機種を出荷しています。`ChipSpec`が声と役割割当を定義し、`ChipCore`が時刻付きのレジスター書き込みを受け、バッファーを埋めます。楽器はフレームテーブル、FMパッチ、サンプルに対応します。
 
-移植可能な楽譜は4役割を保ちます。Mega DriveはFMの旋律／ベースとPSGの和音／ドラム(または`perc: "punchy"`でチャンネル6のFMドラム。チップ自前のLFOも、それを求めるどのパッチからでも使えます)、SNESはサンプル音声、C64は第3声の和音／打楽器共有へ割り当てます。原文のこの節ではSNES三和音とSIDフィルター制御をバックログとして記載しています(現在のSNES同時和音は上の節を参照)。VGM出力はNES、Game Boy、Mega Drive。SNESとC64のログをファイルへ出す機能はまだ出荷していません。
+移植可能な楽譜は4役割を保ちます。Mega DriveはFMの旋律／ベースとPSGの和音／ドラム(または`perc: "punchy"`でチャンネル6のFMドラム。チップ自前のLFOも、それを求めるどのパッチからでも使えます)、SNESはサンプル音声、C64は第3声の和音／打楽器共有へ割り当てます。原文のこの節ではSIDフィルター制御をバックログ項目として記載しています。VGM出力はNES、Game Boy、Mega Drive。SNESとC64のログをファイルへ出す機能はまだ出荷していません。
 
 `validateSong`は機種別の基音とアルペジオの音域警告を出します。楽譜を保存しますが、すべての変調が表現範囲内に収まる保証はしません。[移植可能な楽譜](../../docs/SCORE_ja.md)と各シートで、能力、およびコーパス一致と実機測定の違いを確認してください。
 
