@@ -20,6 +20,7 @@ import fs from 'node:fs';
  */
 const WORKLETS = [
   { entry: 'src/chips/nes/worklet.ts', out: 'src/chips/nes/worklet-inline.ts' },
+  { entry: 'src/chips/nes/vrc6-worklet.ts', out: 'src/chips/nes/vrc6-worklet-inline.ts' },
   { entry: 'src/chips/gb/worklet.ts', out: 'src/chips/gb/worklet-inline.ts' },
   { entry: 'src/chips/md/worklet.ts', out: 'src/chips/md/worklet-inline.ts' },
   { entry: 'src/chips/snes/worklet.ts', out: 'src/chips/snes/worklet-inline.ts' },

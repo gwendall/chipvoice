@@ -1,0 +1,37 @@
+# chipvoice register log v1
+# name: script-pulse-both
+# chip: vrc6
+# clock: 1789773
+# cycles: 2249319
+# source: src/corpus/generate-vrc6.mjs
+# notes: Both pulses at once, different duties and periods, each combination its own run on both channels - two independent oscillators sharing nothing but the clock.
+17898 9000 2A
+17898 9001 50
+17898 9002 80
+17898 A000 66
+17898 A001 85
+17898 A002 80
+751705 9001 50
+751705 9002 00
+751705 A001 85
+751705 A002 00
+757705 9000 5F
+757705 9001 50
+757705 9002 80
+757705 A000 62
+757705 A001 85
+757705 A002 80
+1491512 9001 50
+1491512 9002 00
+1491512 A001 85
+1491512 A002 00
+1497512 9000 6B
+1497512 9001 2D
+1497512 9002 80
+1497512 A000 2E
+1497512 A001 D2
+1497512 A002 80
+2231319 9001 2D
+2231319 9002 00
+2231319 A001 D2
+2231319 A002 00

@@ -1,0 +1,32 @@
+# chipvoice register log v1
+# name: script-pulse-enable
+# chip: vrc6
+# clock: 1789773
+# cycles: 72946
+# source: src/corpus/generate-vrc6.mjs
+# notes: Pulse 1 disabled and re-enabled six times at a settled period, each a clean run past the gap: proves re-enabling always resets to the start of the sweep (nesdev's "resume from the beginning"), where the oracle instead resumes wherever its own phase happened to freeze - a drifting, not constant, per-run shift, which is exactly what the per-run search is for.
+17898 9000 3F
+17898 9001 3C
+17898 9002 80
+18911 9001 3C
+18911 9002 00
+24911 9001 3C
+24911 9002 80
+25924 9001 3C
+25924 9002 00
+32021 9001 3C
+32021 9002 80
+33034 9001 3C
+33034 9002 00
+39228 9001 3C
+39228 9002 80
+40241 9001 3C
+40241 9002 00
+46532 9001 3C
+46532 9002 80
+47545 9001 3C
+47545 9002 00
+53933 9001 3C
+53933 9002 80
+54946 9001 3C
+54946 9002 00

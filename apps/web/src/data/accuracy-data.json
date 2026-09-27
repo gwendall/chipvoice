@@ -528,6 +528,44 @@
         "reached": 3,
         "voices": 3
       }
+    },
+    {
+      "id": "vrc6",
+      "machine": "NES, Famicom (Konami VRC6 cartridges)",
+      "chip": "Konami VRC6",
+      "sheetPath": "docs/chips/vrc6.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/vrc6.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "Game_Music_Emu (Nes_Vrc6_Apu)",
+            "files": 8,
+            "cycles": 6339623,
+            "identical": 2265932,
+            "diverging": 8,
+            "firstDivergence": {
+              "file": "script-all-three",
+              "cycle": 17898,
+              "voice": "vp2",
+              "ours": 0,
+              "theirs": 9
+            }
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": null,
+      "analogStage": {
+        "label": "none",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 0,
+        "voices": 3
+      }
     }
   ]
 }

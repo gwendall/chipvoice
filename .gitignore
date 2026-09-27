@@ -6,6 +6,7 @@ dist/
 
 # Generated from each chip's worklet.ts by build-worklet.mjs.
 packages/chipvoice/src/chips/*/worklet-inline.ts
+packages/chipvoice/src/chips/*/vrc6-worklet-inline.ts
 .next/
 next-env.d.ts
 .chipvoice-dev.db*

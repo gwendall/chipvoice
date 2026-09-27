@@ -1,0 +1,28 @@
+# chipvoice register log v1
+# name: script-saw-enable
+# chip: vrc6
+# clock: 1789773
+# cycles: 61391
+# source: src/corpus/generate-vrc6.mjs
+# notes: The sawtooth disabled and re-enabled five times, a running accumulator each time - known to diverge from the oracle right at each disable (see the README: Game_Music_Emu freezes the accumulator there, nesdev says it zeroes), measured here rather than hidden from the corpus. Each cycle is its own run past the gap.
+17898 B000 08
+17898 B001 0F
+17898 B002 80
+18133 B001 0F
+18133 B002 00
+24133 B001 0F
+24133 B002 80
+24368 B001 0F
+24368 B002 00
+30421 B001 0F
+30421 B002 80
+30656 B001 0F
+30656 B002 00
+36762 B001 0F
+36762 B002 80
+36997 B001 0F
+36997 B002 00
+43156 B001 0F
+43156 B002 80
+43391 B001 0F
+43391 B002 00

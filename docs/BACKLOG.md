@@ -621,10 +621,16 @@ real game music, and a real unit.
 
 **Step 5. New systems, one at a time, under decision 38's guards.**
 
-- todo - NEXT-14 NES expansion audio (VRC6, VRC7, FDS, N163, Sunsoft 5B,
-  MMC5), NEXT-15 AY-3-8910 and YM2149, NEXT-16 YM2151 and YM2610, NEXT-17
-  OPL2 and OPL3; then PC Engine, Game Boy Advance, Amiga Paula, POKEY, TIA,
-  SCC and YM2608.
+- doing - NEXT-14 NES expansion audio: VRC6 done (core from the nesdev wiki
+  and Konami's own documents, harness against Game_Music_Emu's `Nes_Vrc6_Apu`,
+  NSF export/playback, sheet at [docs/chips/vrc6.md](chips/vrc6.md) - 35.7 %
+  raw digital parity, 79.0 % of 105 runs aligned once each gets its own
+  shift, floored by the oracle's own freeze-on-disable behaviour, not this
+  core's; a second oracle, Mesen 2, considered and not attempted this round,
+  see the oracle's own README; no driver or arranger role yet, decision 38).
+  VRC7, FDS, N163, Sunsoft 5B, MMC5 still todo. NEXT-15 AY-3-8910 and
+  YM2149, NEXT-16 YM2151 and YM2610, NEXT-17 OPL2 and OPL3; then PC Engine,
+  Game Boy Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.
 - A chip enters the public picker when its sheet is filled, or when the sheet
   states which levels are still missing.
 

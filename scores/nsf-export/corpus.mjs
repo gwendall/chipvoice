@@ -386,10 +386,17 @@ function frameCountFor(cycles) {
  * by frame number in `mismatchedFrames`, still failing the gate: this
  * corpus has no such source, but a future one would be caught, not
  * averaged away. */
+// VRC6's ten registers (NEXT-14): included the same way as any 2A03
+// register, so a VRC6-touching capture is held to the exact same
+// frame-for-frame gate as this file's own 2A03 corpus, not a separate,
+// looser one.
+const isVrc6Reg = (addr) => (addr >= 0x9000 && addr <= 0x9003) || (addr >= 0xa000 && addr <= 0xa002) || (addr >= 0xb000 && addr <= 0xb002);
+
 function bucketWritesByFrame(events) {
   const buckets = new Map();
   for (const e of events) {
-    if (e.addr < 0x4000 || e.addr > 0x4017 || e.addr === 0x4014 || e.addr === 0x4016) continue;
+    const is2a03 = e.addr >= 0x4000 && e.addr <= 0x4017 && e.addr !== 0x4014 && e.addr !== 0x4016;
+    if (!is2a03 && !isVrc6Reg(e.addr)) continue;
     const f = Math.floor(e.at / PERIOD);
     if (!buckets.has(f)) buckets.set(f, []);
     buckets.get(f).push({addr: e.addr, value: e.value});

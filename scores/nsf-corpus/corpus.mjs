@@ -30,9 +30,17 @@ import {compareNsfTrace} from './compare.mjs';
  * written to the sheet or the committed JSON; CI never populates that
  * directory, so it contributes nothing there.
  *
- * Every corpus file here is 2A03-only NTSC. Expansion-audio NSFs (VRC6,
- * VRC7, FDS, N163, Sunsoft 5B, MMC5) are out of scope for this ticket
- * (NEXT-14 covers those chips) and are rejected by `capture-nsf.mjs` itself.
+ * Every corpus file here is 2A03-only NTSC. `capture-nsf.mjs` itself now
+ * accepts a file that also declares Konami VRC6 (NEXT-14: the expansion-
+ * audio header bit `exportNsf` sets, routed the same as any 2A03 register),
+ * but no VRC6 file is in this specific corpus yet - not because it would be
+ * rejected, but because no VRC6 NSF this project found carries a licence
+ * this corpus's own convention requires (CC0, CC-BY, public domain, or
+ * similarly permissive, each with a source URL next to it); `nsf-export`'s
+ * own suite instead proves VRC6 round-trips through a self-authored capture
+ * (`packages/chipvoice/test/nsf.mjs`), not a third-party file here. Other
+ * expansion-audio formats (VRC7, FDS, N163, Sunsoft 5B, MMC5) remain out of
+ * scope and are rejected by `capture-nsf.mjs` itself.
  */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');

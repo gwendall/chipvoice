@@ -189,6 +189,11 @@ jobs:
       - run: pnpm --filter chipvoice-conform check
       - run: pnpm --filter chipvoice-conform check:mesen
       - run: pnpm --filter chipvoice-conform roms
+      # NEXT-14's first expansion-audio chip: VRC6 against Game_Music_Emu's
+      # Nes_Vrc6_Apu, its own native build under
+      # packages/conform/oracles/game-music-emu (not the nsf-corpus/gbs-corpus
+      # oracle cached below, a different build directory at the same pin).
+      - run: pnpm --filter chipvoice-conform check:vrc6
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform check:sameboy
       - run: pnpm --filter chipvoice-conform roms:dmg

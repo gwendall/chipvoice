@@ -173,5 +173,45 @@ let overflowError = null;
 try { exportNsf(overflowEvents, PERIOD * 2, {}); } catch (error) { overflowError = error; }
 check('a frame with more than 254 writes is rejected, not truncated', overflowError instanceof NsfExportError && overflowError.code === 'frame_overflow' && overflowError.limit === 254, overflowError?.message);
 
+// -- Konami VRC6 (NEXT-14): its ten registers ($9000-$9003, $A000-$A002,
+// $B000-$B002) sit three pages away from $4000-$4017, so PLAY dispatches
+// every write - 2A03 or VRC6 - through an index into an in-ROM table of
+// whichever registers this capture actually uses, rather than a fixed
+// offset from $4000 (see nsf.ts's own doc comment on `assemblePlayer`).
+// No driver writes these yet (decision 38 keeps VRC6 out of the studio and
+// the arranger), so this is a hand-built event list, not `recordSong`'s
+// output, mixing both chips' registers the way a real VRC6 cartridge's
+// event log would.
+const vrc6Cycles = Math.round(3.5 * PERIOD);
+const vrc6Events = [
+  { at: 0, addr: 0x4000, value: 0x8f }, // an ordinary 2A03 write, same frame as the VRC6 writes below
+  { at: 0, addr: 0x9000, value: 0x8f }, // VRC6 pulse 1: mode bit set, duty 0, volume 15
+  { at: 0, addr: 0x9001, value: 0x40 },
+  { at: 0, addr: 0x9002, value: 0x80 },
+  { at: Math.round(1.2 * PERIOD), addr: 0xb000, value: 0x08 }, // VRC6 sawtooth, nesdev's own worked example
+  { at: Math.round(1.2 * PERIOD), addr: 0xb001, value: 0x00 },
+  { at: Math.round(1.2 * PERIOD), addr: 0xb002, value: 0x80 },
+  { at: Math.round(2.4 * PERIOD), addr: 0xa000, value: 0x6a }, // VRC6 pulse 2
+  { at: Math.round(2.4 * PERIOD), addr: 0xa001, value: 0x10 },
+  { at: Math.round(2.4 * PERIOD), addr: 0xa002, value: 0x81 },
+  { at: Math.round(2.4 * PERIOD), addr: 0x4000, value: 0x00 }, // and back to silencing the 2A03 pulse
+];
+const vrc6File = exportNsf(vrc6Events, vrc6Cycles, { title: 'vrc6 test' });
+check('the expansion-audio byte sets the VRC6 bit when the capture writes any of its ten registers', vrc6File[123] === 1);
+
+const vrc6Frames = Math.ceil(vrc6Cycles / PERIOD);
+const vrc6Played = captureNsf(vrc6File, { frames: vrc6Frames + 2, track: 0 });
+const vrc6Commands = vrc6Played.events.filter((e) => e.at !== 0);
+const isVrc6Reg = (addr) => (addr >= 0x9000 && addr <= 0x9003) || (addr >= 0xa000 && addr <= 0xa002) || (addr >= 0xb000 && addr <= 0xb002);
+check('every replayed write is a real 2A03 or VRC6 register', vrc6Commands.length > 0 && vrc6Commands.every((e) => (e.addr >= 0x4000 && e.addr <= 0x4017) || isVrc6Reg(e.addr)), `${vrc6Commands.length} commands`);
+
+const vrc6Gate = compareFrameWrites(vrc6Events, vrc6Played.events, vrc6Cycles);
+check('VRC6 writes replay frame-for-frame exactly, the same gate 2A03 writes are held to', vrc6Gate.matched === vrc6Gate.total, `${vrc6Gate.matched}/${vrc6Gate.total}`);
+
+// A pure 2A03 capture (this file's own SONG, no VRC6 writes anywhere) must
+// keep the expansion-audio byte clear - already checked above
+// ('NTSC only, no expansion sound chip') - so the VRC6 bit is set only
+// when the capture actually needs it, never by default.
+
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

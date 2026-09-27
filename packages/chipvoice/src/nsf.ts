@@ -46,9 +46,24 @@
  * to reconstruct a waveform without ever touching the DMA channel - since
  * that needs each write timed to a fraction of a frame; it is rejected as
  * `dmc_unsupported`.
+ *
+ * Konami's VRC6 (`isVrc6Addr`, `chips/nes/vrc6-core.ts`) rides the same
+ * cartridge bus as the 2A03 but its ten registers sit at $9000-$9003,
+ * $A000-$A002 and $B000-$B002 - three pages away from $4000-$4017, too far
+ * for one `base+Y` store to reach both ranges. A capture that writes any of
+ * them is carried the same way as any 2A03 write (one byte per frame's
+ * write, quantized the same way), through a small in-ROM table of whichever
+ * registers this particular capture actually touches (`assemblePlayer`'s
+ * `regLoTable`/`regHiTable`) rather than a fixed offset from $4000; see
+ * that function's own doc comment for the dispatch this replaced. The
+ * file's own header records this: NSF's expansion-audio byte at offset 123
+ * sets bit 0 (VRC6) whenever the capture used any of the ten registers, so
+ * a player that supports VRC6 knows to route them, and one that does not
+ * knows to refuse the file rather than misplay it silently.
  */
 
 import type { RegisterEvent } from "./chip.js";
+import { isVrc6Addr } from "./chips/nes/vrc6-core.js";
 
 /** Standard $411a NTSC frame period, in CPU cycles: 357366 PPU clocks over
  * four frames (the NTSC APU frame counter's own rate), matching the
@@ -89,7 +104,7 @@ const PAGE_SIZE = 4096;
 const MAX_PAGES = 256; // one byte per bank register value
 
 export class NsfExportError extends Error {
-  readonly code: "dmc_unsupported" | "dmc_sample_missing" | "frame_overflow" | "rom_too_large" | "invalid_loop_point" | "metadata_too_long" | "metadata_not_ascii";
+  readonly code: "dmc_unsupported" | "dmc_sample_missing" | "frame_overflow" | "rom_too_large" | "invalid_loop_point" | "metadata_too_long" | "metadata_not_ascii" | "too_many_registers";
   readonly measured?: number;
   readonly limit?: number;
   constructor(code: NsfExportError["code"], message: string, detail: { measured?: number; limit?: number } = {}) {
@@ -182,8 +197,10 @@ function quantizeToFrames(events: RegisterEvent[], cycles: number, loopAtCycle: 
  * Encodes frames into the byte stream PLAY's `readByte`/`decode` loop
  * understands:
  *
- *   - `N (1-254)` then `N` `(offset, value)` pairs: that many register
- *     writes this frame, `offset` added to $4000.
+ *   - `N (1-254)` then `N` `(index, value)` pairs: that many register
+ *     writes this frame, `index` naming one of `registerIndex`'s entries -
+ *     see `assemblePlayer`'s doc comment for why an index into an in-ROM
+ *     table replaced the older "offset from $4000" encoding.
  *   - `0`: no writes this frame (cheaper than a one-frame run below).
  *   - `0xFF R (R>=1)`: `R` consecutive silent frames (most NSF content is
  *     mostly held notes, so a run of silence is the common case; this pays
@@ -196,7 +213,7 @@ function quantizeToFrames(events: RegisterEvent[], cycles: number, loopAtCycle: 
  * position, and a frame folded into the middle of a preceding run has no
  * stream position of its own to land on.
  */
-function encodeFrames(frames: Frame[], loopFrame: number): { data: number[]; loopOffset: number } {
+function encodeFrames(frames: Frame[], loopFrame: number, registerIndex: Map<number, number>): { data: number[]; loopOffset: number } {
   const data: number[] = [];
   let loopOffset = -1;
   let i = 0;
@@ -212,7 +229,7 @@ function encodeFrames(frames: Frame[], loopFrame: number): { data: number[]; loo
       i = j;
     } else {
       data.push(bucket.length);
-      for (const w of bucket) data.push((w.addr - REG_BASE) & 0xff, w.value);
+      for (const w of bucket) data.push(registerIndex.get(w.addr)!, w.value);
       i++;
     }
   }
@@ -234,7 +251,8 @@ function toPagePointer(offset: number, firstDataPage: number): { page: number; p
 // classic opcode table (e.g. the 6502 datasheet, nesdev's "6502 instructions").
 
 const SEI = 0x78, CLD = 0xd8, LDA_IMM = 0xa9, LDY_IMM = 0xa0;
-const STA_ABS = 0x8d, STA_ABS_Y = 0x99, STA_ZP = 0x85, LDA_ZP = 0xa5, LDY_ZP = 0xa4, LDA_IND_Y = 0xb1;
+const STA_ABS = 0x8d, STA_ZP = 0x85, LDA_ZP = 0xa5, LDY_ZP = 0xa4, LDA_IND_Y = 0xb1;
+const LDA_ABS_Y = 0xb9, STA_IND_Y = 0x91;
 const CMP_IMM = 0xc9, BEQ = 0xf0, BNE = 0xd0, JMP_ABS = 0x4c, JSR_ABS = 0x20, RTS = 0x60;
 const INC_ZP = 0xe6, DEC_ZP = 0xc6, TAX = 0xaa, DEX = 0xca, PHA = 0x48, PLA = 0x68;
 const SEC = 0x38, SBC_IMM = 0xe9;
@@ -282,6 +300,18 @@ class Asm6502 {
     this.bytes.push(0, 0);
     return this;
   }
+  /** Any absolute-addressing opcode whose operand is a label's address rather than a literal one (`jsrTo`/`jmpTo` generalized to `LDA addr,Y` and the like). */
+  absToLabel(code: number, label: string): this {
+    this.bytes.push(code);
+    this.fixups.push({ pos: this.bytes.length, label, kind: "abs" });
+    this.bytes.push(0, 0);
+    return this;
+  }
+  /** Raw bytes, not an instruction - for the in-ROM tables the code itself indexes into. */
+  raw(bytes: number[]): this {
+    for (const b of bytes) this.bytes.push(b & 0xff);
+    return this;
+  }
   address(label: string): number {
     const at = this.labels.get(label);
     if (at === undefined) throw new Error(`nsf player: unresolved label ${label}`);
@@ -306,17 +336,38 @@ class Asm6502 {
  * The player: INIT sets up the APU and this frame reader's state; PLAY
  * replays one frame's writes (or, mid-run-length-count, none) each call.
  *
+ * Each write's register is looked up by index in `regLoTable`/`regHiTable`,
+ * two in-ROM bytes per distinct register this capture actually uses
+ * (`registerTable`, built by `exportNsf`), rather than stored as a fixed
+ * offset from $4000 the way an earlier version of this player did. A
+ * single `STA base,Y` can only reach 256 bytes from `base`, which covers
+ * every 2A03 register ($4000-$4017) in one page, but not VRC6's ten
+ * ($9000-$9003, $A000-$A002, $B000-$B002) - three pages away and not
+ * contiguous with $4000 or with each other. Indexing a table of whichever
+ * addresses this specific capture touches and storing through the
+ * resolved pointer (`STA (zp),Y` with Y always 0) reaches any of the
+ * 65536 CPU addresses uniformly, at the cost of a few more cycles per
+ * write than the old fixed-base store - well inside a 60 Hz frame's
+ * budget even at the 254-write ceiling `quantizeToFrames` enforces.
+ *
  * Zero page: $00/$01 the read pointer (low/high), $02 the current data
  * page (mirrored into bank register 6 whenever it changes), $03 how many
  * more frames to skip before decoding the next token (the run-length
- * counter), $04 a write's register offset, held here rather than in Y
- * across the second of a pair's two `readByte` calls - `readByte` needs Y
- * as its own scratch register (`LDA (zp),Y` with Y always 0), and would
- * clobber the offset if it stayed there.
+ * counter), $04 a write's register-table index, $05/$06 the resolved
+ * write-target pointer (low/high - `STA (zp),Y`'s zero-page operand names
+ * the low byte, and the 6502 always reads the high byte from the next
+ * one, so these two must stay adjacent). $04 is held in zero page rather
+ * than in Y or X across the pair's two `readByte` calls: `readByte` needs
+ * Y as its own scratch register (`LDA (zp),Y` with Y always 0) and would
+ * clobber it there, and X keeps counting the pair loop down the entire
+ * time (`DEX`/`BNE` below), so it is never free to hold anything else
+ * either.
  */
-function assemblePlayer(firstDataPage: number, loopPage: number, loopPtrHi: number, loopPtrLo: number): { bytes: number[]; initAddr: number; playAddr: number } {
-  const ZP_PTR_LO = 0x00, ZP_PTR_HI = 0x01, ZP_PAGE = 0x02, ZP_REPEAT = 0x03, ZP_OFFSET = 0x04;
+function assemblePlayer(firstDataPage: number, loopPage: number, loopPtrHi: number, loopPtrLo: number, registerTable: number[]): { bytes: number[]; initAddr: number; playAddr: number } {
+  const ZP_PTR_LO = 0x00, ZP_PTR_HI = 0x01, ZP_PAGE = 0x02, ZP_REPEAT = 0x03, ZP_INDEX = 0x04, ZP_WPTR_LO = 0x05, ZP_WPTR_HI = 0x06;
   const DATA_REG_ADDR = 0x5ff8 + DATA_WINDOW_REG; // the register mapping the data window
+  const regLoTable = registerTable.map((addr) => addr & 0xff);
+  const regHiTable = registerTable.map((addr) => (addr >> 8) & 0xff);
 
   const asm = new Asm6502(0x8000);
 
@@ -355,11 +406,18 @@ function assemblePlayer(firstDataPage: number, loopPage: number, loopPtrHi: numb
   asm.op(TAX); // X = pair count (sets Z from the count itself)
   asm.branchTo(BEQ, "playRts");
   asm.label("pairLoop");
-  asm.jsrTo("readByte"); // A = register offset from $4000
-  asm.zp(STA_ZP, ZP_OFFSET); // readByte's own LDY #0 would clobber Y, so this rides in zero page instead
+  asm.jsrTo("readByte"); // A = register-table index
+  asm.zp(STA_ZP, ZP_INDEX); // readByte's own LDY #0 would clobber Y, so this rides in zero page instead
   asm.jsrTo("readByte"); // A = value
-  asm.zp(LDY_ZP, ZP_OFFSET);
-  asm.abs(STA_ABS_Y, REG_BASE);
+  asm.op(PHA); // stash the value while Y resolves the target address through the tables
+  asm.zp(LDY_ZP, ZP_INDEX);
+  asm.absToLabel(LDA_ABS_Y, "regLoTable");
+  asm.zp(STA_ZP, ZP_WPTR_LO);
+  asm.absToLabel(LDA_ABS_Y, "regHiTable");
+  asm.zp(STA_ZP, ZP_WPTR_HI);
+  asm.op(PLA);
+  asm.imm(LDY_IMM, 0x00);
+  asm.zp(STA_IND_Y, ZP_WPTR_LO);
   asm.op(DEX);
   asm.branchTo(BNE, "pairLoop");
   asm.label("playRts");
@@ -404,6 +462,15 @@ function assemblePlayer(firstDataPage: number, loopPage: number, loopPtrHi: numb
   asm.label("readDone");
   asm.op(PLA);
   asm.op(RTS);
+
+  // The register-table bytes `pairLoop` above indexes by Y: not code, but
+  // they live in the same ROM page and are addressed the same way (a plain
+  // label), so they are appended here rather than carried as a separate
+  // pool the exporter has to place itself.
+  asm.label("regLoTable");
+  asm.raw(regLoTable);
+  asm.label("regHiTable");
+  asm.raw(regHiTable);
 
   asm.resolve();
   if (asm.bytes.length > PAGE_SIZE) throw new Error(`nsf player: ${asm.bytes.length} bytes, more than one 4 KiB page`);
@@ -468,9 +535,28 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
     throw new NsfExportError("invalid_loop_point", `loopAtCycle must fall within [0, cycles); got ${loopAtCycle} for a ${cycles}-cycle capture.`, { measured: loopAtCycle, limit: cycles });
   }
 
-  const kept = events.filter((e) => e.addr >= REG_BASE && e.addr <= REG_LAST).sort((a, b) => a.at - b.at);
+  // 2A03 registers and Konami VRC6's ten (`isVrc6Addr`, three pages away at
+  // $9000-$9003/$A000-$A002/$B000-$B002) are carried the same way: every
+  // distinct register this capture actually writes gets one entry in
+  // `registerTable`, in first-seen order, and each write is encoded as an
+  // index into it (`encodeFrames`) rather than an offset from a single
+  // fixed base - see `assemblePlayer`'s doc comment for why.
+  const kept = events.filter((e) => (e.addr >= REG_BASE && e.addr <= REG_LAST) || isVrc6Addr(e.addr)).sort((a, b) => a.at - b.at);
+  const registerTable: number[] = [];
+  const registerIndex = new Map<number, number>();
+  for (const w of kept) {
+    if (!registerIndex.has(w.addr)) {
+      registerIndex.set(w.addr, registerTable.length);
+      registerTable.push(w.addr);
+    }
+  }
+  if (registerTable.length > 256) {
+    throw new NsfExportError("too_many_registers", `This capture writes ${registerTable.length} distinct registers; the player's write table can only address up to 256 of them (one index byte per write).`, { measured: registerTable.length, limit: 256 });
+  }
+  const usesVrc6 = registerTable.some((addr) => isVrc6Addr(addr));
+
   const { frames, loopFrame } = quantizeToFrames(kept, cycles, loopAtCycle);
-  const { data, loopOffset } = encodeFrames(frames, loopFrame);
+  const { data, loopOffset } = encodeFrames(frames, loopFrame, registerIndex);
 
   const FIRST_DATA_PAGE = 1;
   const { page: loopPage, ptrHi: loopPtrHi, ptrLo: loopPtrLo } = toPagePointer(loopOffset, FIRST_DATA_PAGE);
@@ -481,7 +567,7 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
     throw new NsfExportError("rom_too_large", `The encoded write stream${hasDmcMemory ? " plus its DMC sample memory" : ""} needs ${totalPages - 1} 4 KiB banks plus the code bank, more than NSF's ${MAX_PAGES}-bank limit (one byte per bank register).`, { measured: totalPages * PAGE_SIZE, limit: MAX_PAGES * PAGE_SIZE });
   }
 
-  const player = assemblePlayer(FIRST_DATA_PAGE, loopPage, loopPtrHi, loopPtrLo);
+  const player = assemblePlayer(FIRST_DATA_PAGE, loopPage, loopPtrHi, loopPtrLo, registerTable);
 
   const dmcFirstPage = FIRST_DATA_PAGE + dataPages;
   const pool = new Uint8Array(totalPages * PAGE_SIZE);
@@ -514,7 +600,7 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
   }
   view.setUint16(120, 19997, true); // PAL speed, unused (NTSC-only below) but set to the standard value
   file[122] = 0; // NTSC only
-  file[123] = 0; // no expansion sound chip
+  file[123] = usesVrc6 ? 0x01 : 0; // expansion sound chip bitfield, bit 0 = VRC6
   file.set(pool, HEADER);
   return file;
 }

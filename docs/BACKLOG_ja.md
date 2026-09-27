@@ -314,7 +314,7 @@
 
 **ステップ5. 決定38の条件のもとで、新しいシステムを1つずつ。**
 
-- todo - NEXT-14 NESの拡張音源（VRC6、VRC7、FDS、N163、Sunsoft 5B、MMC5）、NEXT-15 AY-3-8910とYM2149、NEXT-16 YM2151とYM2610、NEXT-17 OPL2とOPL3。その後にPC Engine、Game Boy Advance、Amiga Paula、POKEY、TIA、SCC、YM2608。
+- doing - NEXT-14 NESの拡張音源：VRC6は完了（nesdev wikiとKonami自身の資料によるコア、Game_Music_Emuの`Nes_Vrc6_Apu`に対するハーネス、NSFエクスポート／再生、シートは[docs/chips/vrc6.md](chips/vrc6_ja.md) - 生のデジタル一致率35.7 %、各区間が自分だけのシフトを得れば105区間中79.0 %が整合し、これはオラクル自身の無効化時の状態凍結によって下限が決まったもので、本コアの問題ではありません；2つ目の参照実装Mesen 2は検討しましたが今回は着手していません、詳細はオラクル自身のREADME参照；ドライバーもアレンジャーの役割もまだなし、decision 38）。VRC7、FDS、N163、Sunsoft 5B、MMC5はまだ未着手です。NEXT-15 AY-3-8910とYM2149、NEXT-16 YM2151とYM2610、NEXT-17 OPL2とOPL3。その後にPC Engine、Game Boy Advance、Amiga Paula、POKEY、TIA、SCC、YM2608。
 - チップが公開の機種選択に加わるのは、仕様書が埋まったとき、またはまだ欠けている段階を仕様書が明記したときです。
 
 **ステップ6. 誰もが使える生成、並行して（決定39）。**
