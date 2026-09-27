@@ -121,6 +121,7 @@
 
 - オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P7-11。
 - done - P5-8: PR #85。MAMEの`sn76496.cpp`を`segapsg_device`として構成し、メガドライブのPSG向け第2の参照実装にしました（`packages/conform/oracles/sn76496`）。白色ノイズLFSRの57337シフト周期をMAME側でも直接確認し、`sn76489.ts`との3件の実際の相違（周期0または1のトーン、リロード前のチャンネルの極性、tone 3のノイズレート）を診断し、シートに記録しました。
+- doing - P2-1、第1段階：Mesenに対する2A03の相違を全て特定しました。1つはシム側（サイクルカウントの偶奇が逆の`$4017`遅延を選んでいた）で、修正して`song-e2e`のpulse 2が100%に。残りはMesenのsweepの電源投入状態、書込かタイマーのtickでしか出力を更新しないこと、reloadと同じサイクルの書込で、それぞれコアの試作ビルドで確かめてシートに記載しました。SIDはOSC3／ENV3の読み出しをデータバスに残すように（`busvalue`成功、14本中14本）。Game Boyの矩形波は無音から始めると最初のデューティの1段までデジタルのゼロを出します（Pan Docs、SameBoyも同じ）。Gb_Snd_Emuのベースラインはそれに合わせて書き直しました。第2段階：MAMEが見つけたPSGの相違（P5-8）と、取り込み後のSameBoyに対するGame Boy（P3-4）。
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE_ja.md](HARDWARE-EVIDENCE_ja.md)が、5チップすべてについて既に存在する実機の公開録音・測定値をカタログ化しました。掲載前に各出典を開いて検証済みです（decision 38の無償証拠優先の順序）。「測定一つ」スクリプトの条件を満たした候補は1つだけで、C64の組み合わせ波形を実機6581 R4AR（`libsidplayfp/combined-waveforms`）と比較するものです。`pnpm --filter chipvoice-conform evidence:c64:sheet`で採点し、4つの組み合わせにわたり82.0〜94.1%のバイト一致率となり、[docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581)へ書き込みました。アナログ段については何も確定しません（DAC手前の波形ジェネレーターです）が、デジタルモデルが以前は持っていなかった独立したハードウェアによる確認が1つ得られました。他のどのチップにも、正確に既知で再現可能な入力を持つ候補はありませんでした。NESは既にblarggの`apu_mixer`を持っています。取得スクリプト`packages/conform/src/evidence/fetch.mjs`（`evidence:fetch`）は、ライセンスの許す範囲でgitignore対象の`.artifacts/hardware-evidence/`へダウンロードし、`packages/conform/src/evidence/manifest.json`のコミット済みSHA-256で検証します。
 - 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をP7-8／P7-10のレジスタログ不要なアナログ測定への道として見つけましたが未実装です。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。
 
@@ -228,7 +229,7 @@
 
 | # | チケット | 状態 | 場所 |
 | --- | --- | --- | --- |
-| P2-1 | 全相違を修正するか参照側の誤りを説明 | todo | |
+| P2-1 | 全相違を修正するか参照側の誤りを説明 | doing | 第1段階：Mesenに対する2A03を特定・記載（シム修正1件）、SIDのバスラッチ、Game Boyの矩形波開始。次はPSGとSameBoy |
 | P2-2 | DMC | done | PR #5、0.6.0。1bit周期差で同じstep。末尾参照 |
 | P2-3 | analog参照実機をcapture／測定 | doing | PR #8、blargg NES録音と同等にmix相殺。filterはline-out待ち。NEXT-04がフィルター境界の出自をblargg自身のキャプチャとlidnariqの解析まで追跡しましたが、ファイルは失われ、リビジョンも未特定です。[HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03)参照 |
 | P2-4 | package README／skillにsheetをリンクしてrelease | done | READMEはすべてのsheetに、skillは各ターゲットのsheetにリンク |
@@ -372,7 +373,7 @@
 <a id="discoveries"></a>
 ## 発見
 
-**2026-09-27、P1-13。** 第二の、現行のoracle（`packages/conform/oracles/mesen`に同梱したMesen 2のAPU）で、envelope、sweep、noiseのbit patternを最新参照と照合し、コーパス全13ログ（合計65.4744%一致）で確認しました。envelopeとtriangleの位相は行が動き出せば一致し、noiseのbit patternは矩形波自身が持つクラス1の1サイクルシフトを差し引けば全体で一致します。これは2005年oracleには決着できない点です。sweepの目標周期の算術は完全に一致しますが、dividerのtimingは一致しません。nesdevのページはdividerをゼロと比較してからreloadか減算すると示しており、本コアの`clockSweep()`はそれに従いますが、Mesenの同梱コードはまず減算してから結果を比較するため、新しく設定されたsweepの最初の周期変化が半フレーム時計1回分遅れます。これは修正せずP2-1向けの所見として記録しました。数値と診断の全体は`docs/chips/2a03.md`の第二参照の節と参照自身のREADMEを参照してください。コア変更なし、golden hashも変わっていません。
+**2026-09-27、P1-13。** 第二の、現行のoracle（`packages/conform/oracles/mesen`に同梱したMesen 2のAPU）で、envelope、sweep、noiseのbit patternを最新参照と照合し、コーパス全13ログ（合計65.4744%一致）で確認しました。envelopeとtriangleの位相は行が動き出せば一致し、noiseのbit patternは矩形波自身が持つクラス1の1サイクルシフトを差し引けば全体で一致します。これは2005年oracleには決着できない点です。sweepの目標周期の算術は完全に一致しますが、dividerのtimingは一致しません。nesdevのページはdividerをゼロと比較してからreloadか減算すると示しており、本コアの`clockSweep()`はそれに従いますが、Mesenの同梱コードはまず減算してから結果を比較するため、新しく設定されたsweepの最初の周期変化が半フレーム時計1回分遅れます。これは修正せずP2-1向けの所見として記録しました。（のちにP2-1で、アルゴリズムは1つずらしただけの同じユニットであり、差はMesenの電源投入時のdividerと周期がどちらも0で自身の範囲外にあることだと判明しました。）数値と診断の全体は`docs/chips/2a03.md`の第二参照の節と参照自身のREADMEを参照してください。コア変更なし、golden hashも変わっていません。
 
 **2026-09-07、文書の日本語版。** `docs/japanese`でroot／SDK READMEと全first-party文書をRTK式`_ja.md`へ翻訳します。言語link、原文anchor、生成数値整合を検査します。第三者資料、license本文、agent命令は原文のままです。PR #37で完了：43文書、実行内容を保持した32例、GitHub Markdown描画、2軸レビューを確認。生成表の未知見出しは拒否し、レビューしたSNES説明は現在の同時和音機能を保持します。
 

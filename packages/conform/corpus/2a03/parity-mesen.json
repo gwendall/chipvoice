@@ -14,7 +14,7 @@
   "date": "2026-09-27",
   "files": 13,
   "cycles": 92173307,
-  "identical": 60349925,
+  "identical": 60662173,
   "diverging": 13,
   "results": [
     {
@@ -1122,7 +1122,7 @@
       "source": "test-e2e.mjs, as chipvoice.dev renders it",
       "writes": 2868,
       "cycles": 17897730,
-      "identical": 17227240,
+      "identical": 17539488,
       "first": {
         "cycle": 0,
         "voice": 2,
@@ -1151,21 +1151,21 @@
         },
         {
           "voice": "p2",
-          "identical": 17582584,
+          "identical": 17897730,
           "a": 4876,
           "b": 4876,
-          "exact": 1541,
+          "exact": 4876,
           "near": 0,
-          "onlyA": 3335,
-          "onlyB": 3335,
+          "onlyA": 0,
+          "onlyB": 0,
           "shift": 0,
-          "aligned": 1541,
+          "aligned": 4876,
           "runs": {
             "ours": 2437,
             "theirs": 2437,
             "alignedTimes": 2437,
             "alignedValues": 2437,
-            "maxShift": 770
+            "maxShift": 0
           }
         },
         {

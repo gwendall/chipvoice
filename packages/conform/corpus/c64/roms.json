@@ -1,13 +1,13 @@
 {
   "date": "2026-09-27",
-  "passed": 13,
+  "passed": 14,
   "total": 14,
   "results": [
     {
       "name": "busvalue/busvalue",
-      "status": 1,
-      "passed": false,
-      "text": "$D7FF = $ff, border 2",
+      "status": 0,
+      "passed": true,
+      "text": "$D7FF = $00, border 5",
       "resets": 0
     },
     {

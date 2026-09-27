@@ -6,6 +6,7 @@
   "| Mega Drive, Genesis | YM{n0} + SN{n1} | **{n2} %** | ✅ {n3} % | ⬜ | ❌ none | 🟡 {n4}/{n5} | [md](docs/chips/md.md) |": "| Mega Drive、Genesis | YM{n0} + SN{n1} | **{n2} %** | ✅ {n3} % | ⬜ | ❌ なし | 🟡 {n4}/{n5} | [md](docs/chips/md_ja.md) |",
   "| Super Nintendo | S-DSP | **{n0} %** | ✅ {n1} % | ⬜ | ❌ none | 🟡 {n2}/{n3} | [snes](docs/chips/snes.md) |": "| Super Nintendo | S-DSP | **{n0} %** | ✅ {n1} % | ⬜ | ❌ なし | 🟡 {n2}/{n3} | [snes](docs/chips/snes_ja.md) |",
   "| Commodore {n0} | MOS {n1} SID | **{n2} %** | ✅ {n3} % | 🟡 {n4}/{n5} | ❌ profile | ✅ {n6}/{n7} | [c{n8}](docs/chips/c{n9}.md) |": "| Commodore {n0} | MOS {n1} SID | **{n2} %** | ✅ {n3} % | 🟡 {n4}/{n5} | ❌ プロファイル | ✅ {n6}/{n7} | [c{n8}](docs/chips/c{n9}_ja.md) |",
+  "| Commodore {n0} | MOS {n1} SID | **{n2} %** | ✅ {n3} % | ✅ {n4}/{n5} | ❌ profile | ✅ {n6}/{n7} | [c{n8}](docs/chips/c{n9}.md) |": "| Commodore {n0} | MOS {n1} SID | **{n2} %** | ✅ {n3} % | ✅ {n4}/{n5} | ❌ プロファイル | ✅ {n6}/{n7} | [c{n8}](docs/chips/c{n9}_ja.md) |",
   "| Later | PC Engine, GBA, Amiga, POKEY, YM{n0}, YM{n1} | {n2} % | ⬜ | ⬜ | ⬜ | ⬜ | later |": "| 今後 | PC Engine、GBA、Amiga、POKEY、YM{n0}、YM{n1} | {n2} % | ⬜ | ⬜ | ⬜ | ⬜ | 今後 |",
   "": "",
   "Written by `conform` on {n0}-{n1}-{n2}. The columns:": "`conform`が{n0}-{n1}-{n2}に出力した数値です。各列の意味：",
