@@ -26,6 +26,16 @@ const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 
 
 const PREROLL = 0.1;
 const second = (s) => Math.round((PREROLL + s) * CLOCK);
+
+/**
+ * A write moved to the nearest whole M-cycle, 4 T-cycles, counted from the
+ * power-on write at 0: the CPU reaches a register once per M-cycle and never
+ * between, so no program can write on the other three T-cycles. The core does
+ * not care, but SameBoy's DMG noise start does - a trigger it sees at an odd
+ * 2 MHz alignment, which only a between-M-cycle write can produce, re-arms its
+ * 6-cycle delayed start forever and the note never sounds (P2-1).
+ */
+const mcycle = (at) => Math.round(at / 4) * 4;
 const T0 = second(0);
 
 /** Power, master volume 7 both sides, every voice to both sides. */
@@ -109,7 +119,8 @@ const SONGS = [
 
 function songLog({ name, source, seconds, song }) {
   const { events, cycles } = recordSong(song, { seconds, chip: 'dmg' });
-  return { name, text: formatLog({ name, chip: 'dmg', clock: CLOCK, cycles, source, notes: `${song.bpm} bpm, ${seconds} s, through the driver` }, events) };
+  const writes = events.map((e) => ({ ...e, at: mcycle(e.at) }));
+  return { name, text: formatLog({ name, chip: 'dmg', clock: CLOCK, cycles, source, notes: `${song.bpm} bpm, ${seconds} s, through the driver` }, writes) };
 }
 
 // ---- scripts
@@ -228,7 +239,7 @@ const SCRIPTS = [
 ];
 
 function scriptLog({ name, notes, cycles, writes }) {
-  const all = [...POWER, ...writes].map(([at, addr, value]) => ({ at, addr, value }));
+  const all = [...POWER, ...writes].map(([at, addr, value]) => ({ at: mcycle(at), addr, value }));
   return { name, text: formatLog({ name, chip: 'dmg', clock: CLOCK, cycles, source: 'src/corpus/generate-dmg.mjs', notes }, all) };
 }
 

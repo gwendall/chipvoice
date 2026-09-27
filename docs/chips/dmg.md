@@ -36,18 +36,18 @@ Written by `conform` on 2026-09-27, against Gb_Snd_Emu 0.1.4 (blargg), on ch1, c
 | --- | --- |
 | Oracle | Gb_Snd_Emu 0.1.4 (blargg) |
 | Corpus | 7 logs, 145122916 cycles |
-| Identical cycles | 83287893 / 145122916 (57.3913 %) |
+| Identical cycles | 83100551 / 145122916 (57.2622 %) |
 | Logs with a divergence | 7 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
-| script-envelopes | 42.8880 % | cycle 419430, ch1: ours 0, oracle 15 | ch1 52.6199 %, 1/0/6385; runs 3129: 3123 on times, 3103 on values, shift <= 1146729; ch2 82.1732 %, 2/0/1298; runs 631: 631 on times, 631 on values, shift <= 180313; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-lengths | 79.8947 % | cycle 419430, ch1: ours 0, oracle 15 | ch1 94.3298 %, 0/0/492; runs 244: 244 on times, 244 on values, shift <= 12343767; ch2 95.4753 %, 0/0/438; runs 216: 216 on times, 216 on values, shift <= 13925083; ch3 90.8527 %, 0/0/3901; runs 1: 0 on times, 0 on values, shift <= 0; ch4 99.2370 %, 0/0/1270; runs 1: 0 on times, 0 on values, shift <= 0 |
-| script-noise | 63.8646 % | cycle 419878, ch4: ours 0, oracle 15 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 63.8646 %, 4/32991/301956 (32995 at -7); runs 472: 326 on times, 289 on values, shift <= 157119 |
-| script-pulses | 43.3493 % | cycle 419430, ch2: ours 0, oracle 15 | ch1 67.7054 %, 2/198/7284 (198 at -1); runs 1957: 1953 on times, 1952 on values, shift <= 9767; ch2 63.9991 %, 3/0/3924; runs 1416: 1414 on times, 1413 on values, shift <= 28055; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-sweep | 78.7511 % | cycle 419430, ch1: ours 0, oracle 15 | ch1 78.7511 %, 0/0/1459; runs 631: 625 on times, 625 on values, shift <= 2919121; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-wave | 74.0036 % | cycle 419430, ch3: ours 0, oracle 1 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 74.0036 %, 6/0/14612; runs 912: 909 on times, 908 on values, shift <= 1513; ch4 100.0000 %, 0/0/0 |
-| song-golden | 8.4267 % | cycle 419430, ch3: ours 0, oracle 1 | ch1 60.7225 %, 8/41/6257 (41 at -1); runs 1579: 1561 on times, 1555 on values, shift <= 94210; ch2 76.5812 %, 0/0/4146; runs 1036: 1036 on times, 1036 on values, shift <= 128888; ch3 14.7736 %, 17/0/11879; runs 410: 391 on times, 391 on values, shift <= 2679; ch4 77.6376 %, 5/0/104673 (22293 at +7); runs 328: 212 on times, 190 on values, shift <= 638199 |
+| script-envelopes | 42.8902 % | cycle 419432, ch1: ours 0, oracle 15 | ch1 52.6199 %, 1/0/6385; runs 3129: 3123 on times, 3103 on values, shift <= 1146729; ch2 82.1773 %, 2/0/1298; runs 631: 631 on times, 631 on values, shift <= 180315; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-lengths | 79.8947 % | cycle 419432, ch1: ours 0, oracle 15 | ch1 94.3298 %, 0/0/492; runs 244: 244 on times, 244 on values, shift <= 12343767; ch2 95.4753 %, 0/0/438; runs 216: 216 on times, 216 on values, shift <= 13925083; ch3 90.8527 %, 0/0/3901; runs 1: 0 on times, 0 on values, shift <= 0; ch4 99.2370 %, 0/0/1270; runs 1: 0 on times, 0 on values, shift <= 0 |
+| script-noise | 64.0117 % | cycle 419880, ch4: ours 0, oracle 15 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 64.0117 %, 5/32991/301954 (32995 at -9); runs 472: 326 on times, 289 on values, shift <= 157119 |
+| script-pulses | 43.3493 % | cycle 419432, ch2: ours 0, oracle 15 | ch1 67.7054 %, 2/198/7284 (198 at -1); runs 1957: 1953 on times, 1952 on values, shift <= 9767; ch2 63.9991 %, 3/0/3924; runs 1416: 1414 on times, 1413 on values, shift <= 28055; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-sweep | 78.7510 % | cycle 419432, ch1: ours 0, oracle 15 | ch1 78.7510 %, 0/0/1459; runs 631: 625 on times, 625 on values, shift <= 2919123; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-wave | 74.0036 % | cycle 419432, ch3: ours 0, oracle 1 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 74.0036 %, 6/0/14612; runs 912: 909 on times, 908 on values, shift <= 1513; ch4 100.0000 %, 0/0/0 |
+| song-golden | 7.1197 % | cycle 0, ch3: ours 0, oracle 1 | ch1 66.2346 %, 5/0/6519; runs 1623: 1615 on times, 1606 on values, shift <= 97787; ch2 80.0688 %, 0/0/4255; runs 1063: 1062 on times, 1062 on values, shift <= 136043; ch3 12.7521 %, 18/0/12165; runs 420: 400 on times, 400 on values, shift <= 2679; ch4 77.8509 %, 8/0/106661 (26672 at +7); runs 331: 199 on times, 153 on values, shift <= 1463649 |
 <!-- parity:end -->
 
 **What the numbers say.** Read the last column, not the first. On every voice
@@ -57,7 +57,8 @@ in both directions, the wave sequence at all three levels, the noise register's
 pattern in both widths. The identical-cycle count is low because the oracle and
 the chip disagree on *when a note starts*, systematically: Gb_Snd_Emu takes a
 voice's first step the moment it is triggered and does not reload the timer,
-where the hardware reloads it and steps a full period later; its frame clock
+where blargg's notes have the hardware reload it and step a full period later
+(for the noise, an open question: see SameBoy below); its frame clock
 ticks at time zero rather than on the divider's bit; its duty patterns for 50
 and 75 percent are rotated. Each of those shifts every note by a constant, and
 every shifted note counts as different on every cycle. The remaining unmatched
@@ -86,18 +87,18 @@ Written by `conform` on 2026-09-27, against SameBoy (DMG-B), on ch1, ch2, ch3, c
 | --- | --- |
 | Oracle | SameBoy (DMG-B) |
 | Corpus | 7 logs, 145122916 cycles |
-| Identical cycles | 127928953 / 145122916 (88.1521 %) |
+| Identical cycles | 137604380 / 145122916 (94.8192 %) |
 | Logs with a divergence | 6 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
-| script-envelopes | 97.4455 % | cycle 427389, ch1: ours 15, oracle 0 | ch1 97.4633 %, 49/0/6313 (2903 at -6); runs 3129: 3128 on times, 3124 on values, shift <= 10694; ch2 99.9807 %, 22/0/1252 (292 at -6); runs 631: 631 on times, 631 on values, shift <= 10; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-lengths | 98.9809 % | cycle 429449, ch1: ours 15, oracle 0 | ch1 99.9886 %, 0/0/488 (244 at -10); runs 244: 244 on times, 244 on values, shift <= 10; ch2 99.9899 %, 0/0/432 (216 at -10); runs 216: 216 on times, 216 on values, shift <= 10; ch3 100.0000 %, 1946/0/0; runs 1: 1 on times, 1 on values, shift <= 0; ch4 99.0024 %, 0/0/626; runs 1: 0 on times, 0 on values, shift <= 0 |
-| script-noise | 52.1127 % | cycle 419909, ch4: ours 15, oracle 0 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 52.1127 %, 7/0/338741 (132099 at -8); runs 472: 293 on times, 254 on values, shift <= 1351482 |
-| script-pulses | 99.8245 % | cycle 433457, ch1: ours 15, oracle 0 | ch1 99.8789 %, 8/0/7668 (3108 at -6); runs 1957: 1956 on times, 1956 on values, shift <= 10; ch2 99.9439 %, 7/0/3910 (1890 at -6); runs 1416: 1416 on times, 1416 on values, shift <= 10; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
-| script-sweep | 99.9679 % | cycle 443269, ch1: ours 15, oracle 0 | ch1 99.9679 %, 1/0/1460 (438 at -10); runs 631: 631 on times, 631 on values, shift <= 10; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-envelopes | 97.4779 % | cycle 427391, ch1: ours 15, oracle 0 | ch1 97.4918 %, 49/0/6313 (2903 at -4); runs 3129: 3128 on times, 3124 on values, shift <= 10692; ch2 99.9851 %, 22/0/1252 (454 at -4); runs 631: 631 on times, 631 on values, shift <= 8; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-lengths | 99.6205 % | cycle 429451, ch1: ours 15, oracle 0 | ch1 99.9909 %, 0/0/488 (244 at -8); runs 244: 244 on times, 244 on values, shift <= 8; ch2 99.9919 %, 0/0/432 (216 at -8); runs 216: 216 on times, 216 on values, shift <= 8; ch3 100.0000 %, 1946/0/0; runs 1: 1 on times, 1 on values, shift <= 0; ch4 99.6377 %, 1/0/1250; runs 1: 1 on times, 1 on values, shift <= 124 |
+| script-noise | 77.7483 % | cycle 419903, ch4: ours 0, oracle 15 | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 77.7483 %, 24/0/368036 (132099 at -4); runs 472: 452 on times, 440 on values, shift <= 57048 |
+| script-pulses | 99.8781 % | cycle 433459, ch1: ours 15, oracle 0 | ch1 99.9147 %, 8/0/7668 (3108 at -4); runs 1957: 1956 on times, 1956 on values, shift <= 8; ch2 99.9622 %, 7/0/3910 (1890 at -4); runs 1416: 1416 on times, 1416 on values, shift <= 8; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
+| script-sweep | 99.9727 % | cycle 443271, ch1: ours 15, oracle 0 | ch1 99.9727 %, 1/0/1460 (729 at -8); runs 631: 631 on times, 631 on values, shift <= 8; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 0/0/0; ch4 100.0000 %, 0/0/0 |
 | script-wave | 100.0000 % | none | ch1 100.0000 %, 0/0/0; ch2 100.0000 %, 0/0/0; ch3 100.0000 %, 7312/0/0; runs 912: 912 on times, 912 on values, shift <= 0; ch4 100.0000 %, 0/0/0 |
-| song-golden | 63.3933 % | cycle 424229, ch4: ours 13, oracle 0 | ch1 99.9157 %, 22/0/6304 (817 at -4); runs 1579: 1566 on times, 1566 on values, shift <= 6; ch2 99.9433 %, 0/0/4144 (836 at -6); runs 1036: 1036 on times, 1036 on values, shift <= 6; ch3 99.9822 %, 2969/2988/0 (2988 at +1); runs 410: 400 on times, 400 on values, shift <= 1; ch4 63.4914 %, 564/535/160272 (1813 at -3); runs 328: 184 on times, 134 on values, shift <= 6634087 |
+| song-golden | 87.4468 % | cycle 4643, ch4: ours 0, oracle 13 | ch1 99.9228 %, 20/0/6480 (3240 at -4); runs 1623: 1623 on times, 1623 on values, shift <= 4; ch2 99.9493 %, 2/0/4250 (2125 at -4); runs 1063: 1062 on times, 1062 on values, shift <= 4; ch3 100.0000 %, 6101/0/0; runs 420: 420 on times, 420 on values, shift <= 0; ch4 87.5588 %, 6200/0/94255 (7116 at -8); runs 331: 202 on times, 167 on values, shift <= 1499072 |
 <!-- parity-sameboy:end -->
 
 **What the numbers say.** SameBoy reloads a triggered voice's timer, ticks its
@@ -120,68 +121,69 @@ it (see `main.c`) fixed the cross-compiler mismatch and, as a side effect,
 raised every script log from the 35-90 % range to 97-100 % - including
 `script-sweep` and `script-wave`, whose apparent hardware disagreements in an
 earlier version of this table were entirely this bug and are not findings.
-What is left, identical on both compilers now, is below: one real, narrow
-startup lag that touches most logs a little, a separate and much larger open
-gap specific to noise, and a zombie-mode compound case. None of them is a
-chipvoice deviation from Pan Docs or blargg's ROMs, which continue to pass;
-every cycle, voice and value pair is in
+What is left, identical on both compilers now, is below: a pulse's first step
+a few cycles early, the noise clock's phase at a trigger, and a zombie-mode
+compound case. P2-1 read each against the documents: none is changed in the
+core, the first two are recorded in "Known deviations" below, and the third is
+nondeterministic on the hardware. Every cycle, voice and value pair is in
 [`corpus/dmg/parity-sameboy.json`](../../packages/conform/corpus/dmg/parity-sameboy.json).
 
-- **Since #86 (P2-1), `Pulse` also starts silent, closing most of this gap;
-  what is left is a constant ten-cycle offset, not thousands.** Before #86,
-  `script-envelopes`'s first note (cycle 419430) read `ours` 15 the instant
-  NR14's trigger bit landed; SameBoy's matching edge was at cycle 427399,
-  7969 cycles later. `vendor/apu.c`'s NR14/NR24 trigger case sets a `delay`
-  field (`6 + lf_div * ...` cold, `4 - lf_div + extra_delay` if the channel
-  was already active) into the timer reload and marks the channel
-  `sample_surpressed` until its own first natural tick clears it, with the
-  comment: "The volume changes caused by NRx4 sound start take effect
-  instantly ... The playback itself is not instant which is why we don't
-  update the sample for other cases." `dsp.ts`'s wave channel already
-  modeled exactly this (the "first fetch after a trigger is 6 cycles late"
-  row below); `Pulse` did not, and read the current duty position the
-  moment the trigger landed - the bulk of that 7969 cycles was one whole
-  duty step's worth of silence `Pulse` skipped. #86 gave `Pulse` the same
-  "digital zero until its first duty step" Pan Docs describes ("When first
-  starting up a pulse channel, it will _always_ output a (digital) zero",
-  see "A pulse started from silence" below), so the same note's first edge
-  now lands at cycle 427389: ten cycles *before* SameBoy's 427399, not
-  thousands after, and every edge after that still matches exactly on the
-  same cycles (458751, for instance, in both). That remaining ten cycles is
-  the `delay` field itself: SameBoy's actual timer reload lands a few
-  cycles after the trigger write, on top of the one-duty-step suppression
-  `Pulse` now also has; chipvoice's reload still lands on the write's own
-  cycle. Small (`script-envelopes` 97.45 %, `script-pulses` 99.82 %,
-  `script-sweep` 99.97 %, up from 97.44 %, 99.81 % and 99.94 % before #86)
-  and now a constant ten cycles rather than a per-note gap of thousands, but
-  still real: left for P2-1's next pass, scoped to this one small, constant
-  offset per trigger, not "every triggered note" as an earlier version of
-  this sheet said.
-- **Length counters agree**: `script-lengths` is the corpus's best log
-  (98.96 %); channel 3's 1946 edges are all exact and channel 4's are
-  99.00 %, so the 256 Hz clock and the "extra clock on an NRx4 write" glitch
+- **A pulse's first step comes 4 or 8 cycles before SameBoy's, and every edge
+  after it keeps that offset.** Before #86, `Pulse` played its pattern the
+  instant a trigger landed, and `script-envelopes`' first note differed from
+  SameBoy's by 7969 cycles, one whole duty step. #86 (P2-1) gave it Pan Docs'
+  digital zero until its first duty step (see "A pulse started from silence"
+  below), which closes that step. What remains is when the step starts:
+  `dsp.ts` reloads the timer on the trigger's own cycle, and SameBoy's trigger
+  adds a short delay to the reload, a different one cold and while playing.
+  On the corpus, `dsp.ts`'s first edge of a note comes 8 or 4 cycles, now
+  and then 0, before SameBoy's. Pan Docs gives part of it: "When triggering Ch1 and Ch2,
+  the low two bits of the frequency timer are NOT modified", which `dsp.ts`
+  does not keep. That is at most 3 cycles, and no document we follow gives
+  the rest. It costs every pulse line less than 0.1 point, the zombie case
+  below aside.
+- **Length counters agree**: `script-lengths` is at 99.62 %; channel 3's 1946
+  edges are all exact, so the 256 Hz clock and the "extra clock on an NRx4
+  write" glitch
   ([Pan Docs, "Length Timer"](https://gbdev.io/pandocs/Audio_Registers.html#length-timer),
   blargg's ROM 07) read the same on both. Channels 1 and 2's remaining gap
-  (99.98 % each) is the same startup lag above, not a length-specific one;
-  this log never writes NR52 to power off, so it does not exercise
-  power-cycle survival either way (a gap in the corpus, not a result).
-- **The noise LFSR's silent-at-trigger convention is the same, spelled with
-  opposite polarity; its long cold start is real, and is a different, larger
-  gap than the squares' one-edge lag above.** `dsp.ts` seeds the LFSR to
-  `0x7fff` and reads bit 0 as "silent"; SameBoy's `prepare_noise_start` seeds
-  it to 0 and reads bit 0 as "on" - complementary encodings of the same
-  fact, per Pan Docs' "Noise Channel" and the `NR43` width bit's two feedback
-  taps (bit 14 always, bit 6 added when the width bit is set), which both
-  implementations use. `script-noise` is unchanged by the write-order fix
-  above (52.11 % before and after: this log's simultaneous NR41-NR44 writes
-  happened to already land in file order on both compilers) and stays the
-  corpus's largest remaining gap: `ours` starts its first note at cycle
-  419909; SameBoy's matching note does not begin until cycle 1887875,
-  1467966 cycles - an entire note - later, after which the two stay in
-  lockstep (132099 of 154713 edges align under a shift of -8) for the rest
-  of the log. This is a real, open gap, worth its own look under P2-1
-  independently of the squares' lag above, not the same cause as an earlier
-  version of this sheet said.
+  (99.99 % each) is the pulse's first step above, and channel 4's (99.64 %)
+  the noise clock below, neither a length one. This log never writes NR52 to
+  power off, so it does not exercise power-cycle survival either way (a gap
+  in the corpus, not a result).
+- **The noise voice: a whole missing note was the corpus's doing; what is
+  left is when a note's first step comes.** Both LFSRs start silent, spelled
+  with opposite polarity: `dsp.ts` seeds `0x7fff` and reads bit 0 as silent,
+  SameBoy seeds 0 and reads bit 0 as on, the same fact per Pan Docs' "Noise
+  Channel".
+  - *Fixed in the corpus (P2-1).* On a DMG, SameBoy starts a triggered noise
+    voice at once only when its 2 MHz `alignment` is a multiple of 4;
+    otherwise it waits 6 cycles and triggers again, and an odd alignment stays
+    odd, so the note never starts. A real CPU writes on whole M-cycles, which
+    keeps that alignment even. The corpus stamped writes at any T-cycle, and
+    `script-noise`'s first trigger, at cycle 419430, was one no program can
+    make: SameBoy stayed silent for that whole note. `generate-dmg.mjs` now
+    moves every write to the nearest M-cycle, and channel 4 goes from 52.11 %
+    to 77.75 % on `script-noise`; on `song-golden`, regenerated in the same
+    change, it reads 87.56 %, from 63.49 %.
+  - *Open: the noise clock across a trigger.* SameBoy steps the LFSR on the
+    rise of one bit of a counter, the bit the clock shift picks, and that
+    counter keeps running from one note to the next, so the first step after
+    a trigger comes whenever that bit next rises. `dsp.ts` reloads the
+    voice's timer on the trigger, so its first step is one full period later.
+    The same sequence plays on both, started up to one step apart: on
+    `script-noise`, `dsp.ts`'s first step comes 8 cycles after SameBoy's on
+    the first note, which finds SameBoy's counter at zero, then anywhere from
+    4 cycles before it to 6872 cycles after it (1.6 ms, at `$6F`), and a note
+    whose steps are offset that far matches on few cycles.
+    The documents disagree. The gbdev wiki's "Trigger Event", from blargg's
+    notes, lists "Frequency timer is reloaded with period" for every channel,
+    which `dsp.ts` follows. Pan Docs' NR44 lists what a trigger does and a
+    timer reload is not among them, and its note that a clock shift of 14 or
+    15 stops the LFSR fits a 14-bit counter. No published capture settles it
+    ([HARDWARE-EVIDENCE.md](../HARDWARE-EVIDENCE.md)), so the core stays as
+    written until a unit does (P3-5), rather than being changed from a
+    reading of SameBoy's code.
 - **Zombie-mode envelope writes are exercised (`script-envelopes`' own notes
   say so: "a zombie write mid-note") and the two models agree on the
   simple case, diverge on the compound one.** At cycle 20132659, NR12 is
@@ -204,7 +206,8 @@ every cycle, voice and value pair is in
   with a non-zero period, on top of an already-shifted volume) is where the
   two part ways. Real DMG zombie mode is itself acknowledged, in SameBoy's
   own words, as partly non-deterministic hardware behaviour; this is a
-  genuine open question, not a bug to assign to either side.
+  genuine open question, not a bug to assign to either side, and P2-1 leaves
+  it open.
 
 **A pulse started from silence.** Since 2026-09-27 (P2-1), a pulse triggered
 while off outputs a digital zero until its first duty step, whatever its
@@ -304,6 +307,8 @@ its bass to the wave channel, its percussion to the noise.
 | Stereo routing and master volume are not in the digital trace | yes | The trace is what each DAC is given; NR50 and NR51 act after the DACs and are the output stage's | parity only; the output stage applies them |
 | The wave channel's first fetch after a trigger is 6 cycles late | no, but unverified either way | blargg's notes give the delay; his ROMs 09, 10 and 12 pass with it and are sensitive to it to within two cycles | the first sample of every wave note |
 | The wave RAM corruption on a retrigger is one model of a glitch that varies between units | yes | SameBoy's notes say most DMG-B units behave this way and some do not; blargg's ROM 10 checks this model | wave RAM after a retrigger while playing |
+| A pulse trigger reloads its whole timer | no, a later fix | Pan Docs: "When triggering Ch1 and Ch2, the low two bits of the frequency timer are NOT modified", at most 3 cycles on a note's first step. SameBoy starts that step 4 or 8 cycles after `dsp.ts` does, and no document we follow gives the rest of that delay | the first duty step of every pulse note |
+| The noise voice's timer is reloaded on a trigger | no, unverified either way | The gbdev wiki's "Trigger Event" reloads every channel's frequency timer; Pan Docs' NR44 does not list a reload, and SameBoy keeps its noise counter running across triggers. No published capture settles it (P3-5) | the first LFSR step of every noise note, by up to one step |
 | The CGB's differences are not here | yes | The chip is the DMG's; a `cgb` chip would share the code with the differences switched | Game Boy Color behaviour |
 
 ## Power-on state
@@ -316,18 +321,22 @@ harness's Game Boy writes those before a ROM runs.
 
 ## History
 
+- 2026-09-27: P2-1's second pass. The corpus is written on whole M-cycles, as a
+  CPU writes, which gives SameBoy back a noise note it never started;
+  `song-golden` is regenerated through today's driver. The pulse's trigger
+  delay and the noise clock across a trigger are recorded as deviations, the
+  zombie compound case as nondeterministic on the hardware.
+- 2026-09-27: a second, stronger oracle, SameBoy's DMG-B `apu.c` (ticket
+  P3-4). It found that a triggered pulse or noise voice does not start where
+  chipvoice starts it, and a zombie-mode divergence; its apparent sweep and
+  wave disagreements were its driver's own write-order bug, fixed before it
+  merged.
 - 2026-09-27: a pulse started from silence outputs a digital zero until its
   first duty step, as Pan Docs and SameBoy have it (P2-1); the Gb_Snd_Emu
   baseline was rewritten for it.
 - 2026-09-04: the chip, from Pan Docs and blargg's notes; twelve of twelve
   dmg_sound ROMs after one fix, the wave corruption window moved to the two
   cycles before the fetch (`f636b9f`).
-- 2026-09-27: a second, stronger oracle, SameBoy's DMG-B `apu.c` (ticket
-  P3-4); it found a real gap chipvoice's squares and noise share and Gb_Snd_Emu
-  never could have shown (a freshly-triggered voice is not instant on real
-  hardware), plus a sweep-overflow and a zombie-mode divergence, both open
-  questions rather than confirmed bugs. Ticket P2-1 tracks fixing the
-  cold-trigger gap.
 
 ## Sources
 
