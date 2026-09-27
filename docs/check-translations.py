@@ -308,7 +308,14 @@ def localized_block(kind, body, templates):
                 r"assumed\), between two same-DSP renders \(GME's trace of the export, replayed; the untouched "
                 r"source\) - the coarse secondary gate, threshold (\d+)%\. "
                 r"GME mixer: the same metric between GME's own PCM of the export and this project's render of the "
-                r"source - two independent emulators, reported for visibility, not gated\.", line)
+                r"source - two independent emulators, reported for visibility, not gated\. "
+                r"Source write timing: how far into its own VBlank frame the source capture's own writes land on "
+                r"average and at most, as a percent of a frame - what export loss spends, since a whole frame's "
+                r"writes can only ever be replayed at that frame's own start\. "
+                r"First cycle divergence: informational, not gated - the largest and mean T-cycle drift between "
+                r"the export replayed by GME and by this project's own SM83, once both sides' first post-INIT "
+                r"write is used as a fixed anchor \(GME's own flat-4-T-cycle-per-instruction SM83 model, module "
+                r"comment, not an export defect\)\.", line)
             if match:
                 line = (f'`gbs-export:sheet`による生成：{match[1]}。参照：Game_Music_Emu revision `{match[2]}`。'
                          f'フレーム書き込みはCIを完全一致でゲートします（一致数が総数と等しくなければならず、'
@@ -327,16 +334,23 @@ def localized_block(kind, body, templates):
                          f'レンダーしたものと、手つかずの元ソースをレンダーしたもの）間の相対RMS誤差 - 粗い二次ゲートで、'
                          f'しきい値{match[3]}%。GMEミキサー：GME自身によるエクスポートのPCMと本プロジェクトによる'
                          f'元ソースのレンダーとの間で同じ指標を取ったもの - 独立した2つのエミュレーターの比較であり、'
-                         f'可視化のために報告するだけでゲートにはなりません。')
+                         f'可視化のために報告するだけでゲートにはなりません。書き込みタイミング：ソースキャプチャ自身の'
+                         f'書き込みが、自身のVBlankフレームのどのあたりに位置するか、フレームに対する割合で示した'
+                         f'平均・最大値 - フレーム全体の書き込みはそのフレームの先頭でしか再生できないため、'
+                         f'これがエクスポート損失の正体です。最初のサイクルの相違：参考情報でゲートにはなりません - '
+                         f'GMEによる再生と本プロジェクト自身のSM83による再生の間で、両者の最初のINIT後（PLAY後）の'
+                         f'書き込みを固定アンカーとして揃えた上での、最大・平均のT-サイクルのずれです'
+                         f'（GME自身の命令ごとに一律4T-サイクルというSM83モデルによるもので、モジュールのコメントの'
+                         f'とおりエクスポートの欠陥ではありません）。')
                 lines.append(line)
                 continue
-            if line == '| Song | Commands (value+order, cycle-exact) | Frame writes | Export loss | GME mixer | First divergence |':
-                lines.append('| 曲 | コマンド（値・順序一致、サイクル一致） | フレーム書き込み | エクスポート損失 | GMEミキサー | 最初の相違 |')
+            if line == '| Song | Commands (value+order, cycle-exact) | Frame writes | Export loss | GME mixer | Source write timing (mean/max % of frame) | First cycle divergence (informational) |':
+                lines.append('| 曲 | コマンド（値・順序一致、サイクル一致） | フレーム書き込み | エクスポート損失 | GMEミキサー | 書き込みタイミング（フレームに対する平均/最大%） | 最初のサイクルの相違（参考情報） |')
                 continue
-            row = re.fullmatch(r'\| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \|', line)
+            row = re.fullmatch(r'\| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \| (.+) \|', line)
             if not row:
                 raise ValueError(f'Unknown gbs-export line: {line}')
-            title, commands, frame_writes, loss, mixer, note = row.groups()
+            title, commands, frame_writes, loss, mixer, timing, note = row.groups()
             if not re.fullmatch(r'\d+/\d+ \(\d+/\d+ cycle-exact\)|not exportable: \w+|not rendered|\d+ bytes', commands):
                 raise ValueError(f'Unknown gbs-export commands cell: {commands}')
             frame_writes_match = re.fullmatch(
@@ -351,6 +365,9 @@ def localized_block(kind, body, templates):
             mixer_match = re.fullmatch(r"-|not compared|GME's mixer differs from ours by (\d+(?:\.\d+)?)%", mixer)
             if not mixer_match:
                 raise ValueError(f'Unknown gbs-export mixer cell: {mixer}')
+            timing_match = re.fullmatch(r'-|mean (\d+(?:\.\d+)?)%, max (\d+(?:\.\d+)?)%', timing)
+            if not timing_match:
+                raise ValueError(f'Unknown gbs-export timing cell: {timing}')
             if frame_writes in ('-', 'not compared'):
                 translated_frame_writes = {'-': '-', 'not compared': '未比較'}[frame_writes]
             else:
@@ -370,24 +387,33 @@ def localized_block(kind, body, templates):
                 'not rendered': '未レンダリング',
                 'not compared': '未比較',
                 ' (over threshold)': '（しきい値超過）',
-                'none': 'なし', ' vs ': ' 対 ', 'cycle ': 'サイクル ',
-                ': one side has no more commands': '：一方にそれ以上のコマンドがありません',
+                'none': 'なし',
             }
             for before, after in note_replacements.items():
                 translated_commands = translated_commands.replace(before, after)
             translated_loss = loss
             for before, after in note_replacements.items():
                 translated_loss = translated_loss.replace(before, after)
-            translated_note = note
-            for before, after in note_replacements.items():
-                translated_note = translated_note.replace(before, after)
+            translated_timing = timing if timing == '-' else f'平均{timing_match[1]}%、最大{timing_match[2]}%'
+            # PR review, point 3: the note cell now carries a bounded post-INIT
+            # drift figure (`playPhaseCycleDrift`, corpus.mjs), not a raw
+            # first-mismatch pair - translated with a regex so its numbers
+            # pass through unchanged, the same shape nsf-export's own
+            # error-message regexes use for theirs.
+            drift_match = re.fullmatch(r'max (\d+)c, mean (\d+(?:\.\d+)?)c from the first PLAY write \(n=(\d+)\)', note)
+            if drift_match:
+                translated_note = f'最初のPLAY書き込みからの最大{drift_match[1]}c、平均{drift_match[2]}c（n={drift_match[3]}）'
+            else:
+                translated_note = note
+                for before, after in note_replacements.items():
+                    translated_note = translated_note.replace(before, after)
             if mixer_match[1] is not None:
                 translated_mixer = f'GMEのミキサーは本プロジェクトと{mixer_match[1]}%異なる'
             else:
                 translated_mixer = note_replacements.get(mixer, mixer)
-            if translated_note == note and note not in ('none',) and not re.fullmatch(r'サイクル \d+ 対 \d+, \$[0-9a-f]+: \d+ 対 \d+|サイクル \d+：一方にそれ以上のコマンドがありません', translated_note):
+            if translated_note == note and note not in ('none',):
                 raise ValueError(f'Unknown gbs-export note: {note}')
-            lines.append(f'| {title} | {translated_commands} | {translated_frame_writes} | {translated_loss} | {translated_mixer} | {translated_note} |')
+            lines.append(f'| {title} | {translated_commands} | {translated_frame_writes} | {translated_loss} | {translated_mixer} | {translated_timing} | {translated_note} |')
             continue
         elif kind == 'cpu6510':
             match = re.fullmatch(r"Run by `conform`'s `check:6510` on (.+): (\d+) of (\d+) pass\.", line)

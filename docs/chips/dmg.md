@@ -445,6 +445,29 @@ Proven four ways, all against the same pinned Game_Music_Emu oracle
    measures 5.2-47.1% on this corpus, reported on the sheet for visibility,
    never gating CI.
 
+The sheet's own Source write timing column substantiates proof #3's own
+number instead of leaving it a bare percentage: this project's own DMG
+rendition of Mario, Zelda and Sonic times its writes at their real,
+continuous cycle across the whole frame (mean 49.9-51.7%, max 99.9-100% of a
+frame), the same way `planPerformance` produces events for every chip, not
+the way a VBlank-driven GBS player writes; every independently authored file
+in this corpus writes within a few percent of its own frame's start instead
+(0.1-3.8% mean), because a real GBS driver's own code already runs from the
+VBlank interrupt. Quantizing a write to its frame's start throws away
+exactly its own intra-frame offset, so this project's own DMG renditions
+lose the most (14.9-26.2%) and the independently authored files lose the
+least (3.0-13.1%) - not a DMG-specific defect: the same project's own 2A03
+rendition of Mario writes at only 14.1% mean/50.1% max of its own frame
+(NSF export's driver output already sits closer to a VBlank grid than this
+project's DMG one does), which is most of why NSF export's Mario measures
+8.9% against this file's 26.2% for the same song. Sample Song and Nightmode
+share an identical frame count (3583) because both default to this corpus's
+own 60-second capture cap (`sources.json` sets no `seconds` for either) and
+both write an APU register on every single frame of it; their export-loss
+figures (13.1% each) are computed independently, from each file's own
+capture and its own oracle run, and land within 0.03 percentage points of
+each other by coincidence, not from any shared or cached data.
+
 The corpus draws on the same three kinds of content NEXT-10's ticket names,
 adapted to what this project actually has for the DMG: this project's own
 driver's DMG rendition of all three published arrangements (Mario, Zelda,
@@ -462,18 +485,18 @@ is out of scope here for lack of hardware, the same limitation NSF export's
 own section states; NEXT-10's BACKLOG row stays open for it.
 
 <!-- gbs-export:begin -->
-Written by `gbs-export:sheet` on 2026-09-27, against Game_Music_Emu revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`. Frame writes gates CI exactly (matched must equal total, not just be nonzero or "close"); commands gates on value+order (address and value, in order - see the module comment for why not cycle-exact, citing gbs-corpus/compare.mjs's own finding about GME's SM83 timing model). Commands: the export, replayed by GME, against this project's own SM83 (`importGbs`) replaying the same export - identical bytes on both sides. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into VBlank frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency); a source frame stops counting once its own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "excluding N frame(s) past the loop wrap" when that applies. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - the coarse secondary gate, threshold 30%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated.
+Written by `gbs-export:sheet` on 2026-09-27, against Game_Music_Emu revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`. Frame writes gates CI exactly (matched must equal total, not just be nonzero or "close"); commands gates on value+order (address and value, in order - see the module comment for why not cycle-exact, citing gbs-corpus/compare.mjs's own finding about GME's SM83 timing model). Commands: the export, replayed by GME, against this project's own SM83 (`importGbs`) replaying the same export - identical bytes on both sides. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into VBlank frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency); a source frame stops counting once its own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "excluding N frame(s) past the loop wrap" when that applies. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - the coarse secondary gate, threshold 30%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated. Source write timing: how far into its own VBlank frame the source capture's own writes land on average and at most, as a percent of a frame - what export loss spends, since a whole frame's writes can only ever be replayed at that frame's own start. First cycle divergence: informational, not gated - the largest and mean T-cycle drift between the export replayed by GME and by this project's own SM83, once both sides' first post-INIT write is used as a fixed anchor (GME's own flat-4-T-cycle-per-instruction SM83 model, module comment, not an export defect).
 
-| Song | Commands (value+order, cycle-exact) | Frame writes | Export loss | GME mixer | First divergence |
-| --- | --- | --- | --- | --- | --- |
-| Mario (this project's DMG rendition) | 12687/12687 (1/12687 cycle-exact) | 2559/2559 (offset +1) | 26.2% | GME's mixer differs from ours by 34.6% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
-| Zelda (this project's DMG rendition) | 6746/6746 (1/6746 cycle-exact) | 1088/1088 (offset +1), excluding 1 frame past the loop wrap | 14.9% | GME's mixer differs from ours by 47.1% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
-| Sonic (this project's DMG rendition) | 8224/8224 (1/8224 cycle-exact) | 2044/2044 (offset +1) | 20.1% | GME's mixer differs from ours by 19.2% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
-| [Pulse Sweep](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs) | 873/873 (1/873 cycle-exact) | 357/357 (offset +1), excluding 2 frames past the loop wrap | 3.4% | GME's mixer differs from ours by 7.5% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
-| [Sample Song](https://github.com/SuperDisk/hUGEDriver) | 48873/48873 (1/48873 cycle-exact) | 3583/3583 (offset +1), excluding 2 frames past the loop wrap | 13.1% | GME's mixer differs from ours by 17.8% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
-| [Effects Test](https://github.com/AntonioND/gbt-player) | 2453/2453 (1/2453 cycle-exact) | 495/495 (offset +1), excluding 2 frames past the loop wrap | 3.0% | GME's mixer differs from ours by 5.2% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
-| [Volume Test](https://github.com/AntonioND/gbt-player) | 652/652 (1/652 cycle-exact) | 129/129 (offset +1) | 5.0% | GME's mixer differs from ours by 10.6% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
-| [Nightmode](https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs) | 60936/60936 (1/60936 cycle-exact) | 3583/3583 (offset +1), excluding 2 frames past the loop wrap | 13.1% | GME's mixer differs from ours by 20.6% | cycle 70860 vs 70467, $ff26: 128 vs 128 |
+| Song | Commands (value+order, cycle-exact) | Frame writes | Export loss | GME mixer | Source write timing (mean/max % of frame) | First cycle divergence (informational) |
+| --- | --- | --- | --- | --- | --- | --- |
+| Mario (this project's DMG rendition) | 12687/12687 (1/12687 cycle-exact) | 2559/2559 (offset +1) | 26.2% | GME's mixer differs from ours by 34.6% | mean 49.9%, max 100.0% | max 10080c, mean 708.4c from the first PLAY write (n=12686) |
+| Zelda (this project's DMG rendition) | 6746/6746 (1/6746 cycle-exact) | 1088/1088 (offset +1), excluding 1 frame past the loop wrap | 14.9% | GME's mixer differs from ours by 47.1% | mean 50.1%, max 99.9% | max 10080c, mean 1328.4c from the first PLAY write (n=6745) |
+| Sonic (this project's DMG rendition) | 8224/8224 (1/8224 cycle-exact) | 2044/2044 (offset +1) | 20.1% | GME's mixer differs from ours by 19.2% | mean 51.7%, max 100.0% | max 9576c, mean 1023.6c from the first PLAY write (n=8223) |
+| [Pulse Sweep](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs) | 873/873 (1/873 cycle-exact) | 357/357 (offset +1), excluding 2 frames past the loop wrap | 3.4% | GME's mixer differs from ours by 7.5% | mean 0.1%, max 0.2% | max 5116c, mean 239.0c from the first PLAY write (n=872) |
+| [Sample Song](https://github.com/SuperDisk/hUGEDriver) | 48873/48873 (1/48873 cycle-exact) | 3583/3583 (offset +1), excluding 2 frames past the loop wrap | 13.1% | GME's mixer differs from ours by 17.8% | mean 3.8%, max 8.4% | max 11090c, mean 3746.3c from the first PLAY write (n=48872) |
+| [Effects Test](https://github.com/AntonioND/gbt-player) | 2453/2453 (1/2453 cycle-exact) | 495/495 (offset +1), excluding 2 frames past the loop wrap | 3.0% | GME's mixer differs from ours by 5.2% | mean 1.3%, max 4.8% | max 9400c, mean 645.2c from the first PLAY write (n=2452) |
+| [Volume Test](https://github.com/AntonioND/gbt-player) | 652/652 (1/652 cycle-exact) | 129/129 (offset +1) | 5.0% | GME's mixer differs from ours by 10.6% | mean 2.7%, max 5.3% | max 9402c, mean 1390.0c from the first PLAY write (n=651) |
+| [Nightmode](https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs) | 60936/60936 (1/60936 cycle-exact) | 3583/3583 (offset +1), excluding 2 frames past the loop wrap | 13.1% | GME's mixer differs from ours by 20.6% | mean 2.8%, max 7.0% | max 9074c, mean 2158.3c from the first PLAY write (n=60935) |
 <!-- gbs-export:end -->
 
 ## VGM import

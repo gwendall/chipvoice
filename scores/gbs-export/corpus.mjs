@@ -102,6 +102,7 @@ const WORK_DIR = path.join(ROOT, '.artifacts', 'gbs-export');
 const ORACLE_REVISION = 'fe8da4b6d3876d7542c2fb69d94487e19836d678';
 const CPU_HZ = gbChip.spec.clockHz;
 const VBLANK_PERIOD = 70224;
+const REG_BASE = 0xff10, REG_LAST = 0xff3f; // same range `gbs.ts`'s own encoder keeps, gbs.ts:55-56
 
 // The pass/fail gate (proof #3, module comment): both renders go through
 // this project's own DMG DSP, so a residual here is the export's own timing
@@ -275,7 +276,7 @@ function frameCountFor(cycles) {
 function bucketWritesByFrame(events) {
   const buckets = new Map();
   for (const e of events) {
-    if (e.addr < 0xff10 || e.addr > 0xff3f) continue;
+    if (e.addr < REG_BASE || e.addr > REG_LAST) continue;
     const f = Math.floor(e.at / VBLANK_PERIOD);
     if (!buckets.has(f)) buckets.set(f, []);
     buckets.get(f).push({addr: e.addr, value: e.value});
@@ -303,6 +304,66 @@ function compareFrameWrites(sourceEvents, gmeEvents, cycles) {
   }
   const mismatchedFrames = best.comparable.filter(f => !writeListsEqual(source.get(f), gme.get(f + best.offset)));
   return {total: best.comparable.length, matched: best.matched, offset: best.offset, mismatchedFrames, excludedFrames: frameNumbers.length - best.comparable.length};
+}
+
+/** Substantiates proof #3's export-loss number (PR review, point 1) instead
+ * of leaving it as a bare percentage: how far into its own VBlank frame the
+ * *source* capture's own writes actually land, in cycles and as a percent of
+ * a full frame. `quantizeToFrames` (`gbs.ts`) can only ever place a whole
+ * frame's writes at that frame's own start - so this offset *is* what export
+ * loss measures the cost of throwing away. A driver whose own writes already
+ * sit near their frame's start (every real GBS driver in this corpus, all
+ * VBlank/timer-interrupt driven) loses little; a source that times writes at
+ * their real, continuous cycle across the whole frame - this project's own
+ * `planPerformance` output for `mario`/`zelda`/`sonic`, which is not itself a
+ * VBlank-quantized GBS driver - loses more, because more of that timing is
+ * real content the quantization discards. Filtered to the same `REG_BASE
+ * ..REG_LAST` range `quantizeToFrames` itself keeps, so a write this function
+ * never even considers can't skew the average either. */
+function sourceWriteTiming(events) {
+  let count = 0, sumCycles = 0, maxCycles = 0;
+  for (const e of events) {
+    if (e.addr < REG_BASE || e.addr > REG_LAST) continue;
+    const offset = e.at - Math.floor(e.at / VBLANK_PERIOD) * VBLANK_PERIOD;
+    count++; sumCycles += offset; if (offset > maxCycles) maxCycles = offset;
+  }
+  if (!count) return null;
+  const meanCycles = sumCycles / count;
+  return {count, meanCycles, maxCycles, meanPct: (meanCycles / VBLANK_PERIOD) * 100, maxPct: (maxCycles / VBLANK_PERIOD) * 100};
+}
+
+/** Replaces proof #1's raw `firstDivergence` pair in the sheet (PR review,
+ * point 3): that pair is always the very first post-INIT (first PLAY-call)
+ * write, because `compareGbsTrace`'s own cycle-exact shift only ever applies
+ * to the INIT phase (`gbs-corpus/compare.mjs`'s module comment) - so it
+ * reads as a fresh failure on every row even though every proof passes, and
+ * says nothing about how far GME's own flat-4-T-cycle-per-instruction SM83
+ * model (the same module comment) actually drifts from an accurate SM83
+ * over a whole run.
+ *
+ * This reports a bounded number instead: `ours`/`theirs` already agree on
+ * every address and value, in order, for the whole run (proof #1 gates
+ * `valueMatched === total`), so once both sides' first PLAY-phase write is
+ * used as a fixed anchor (the same write `compareGbsTrace`'s own
+ * `initPhaseCount` names), every later pair's `at` can be compared directly.
+ * The `anchor` gap itself is the same, already-understood, fixed INIT/reset-
+ * ceremony offset `compareGbsTrace`'s own `shift` captures; `maxDrift`/
+ * `meanDrift` are what is left after that fixed offset is factored out - the
+ * part GME's own timing model actually contributes, in T-cycles. */
+function playPhaseCycleDrift(oursEvents, gmeTraceText) {
+  const ours = oursEvents.filter(e => e.at !== 0);
+  const theirs = parseTrace(gmeTraceText).filter(e => e.at !== 0);
+  const initPhaseCount = ours.filter(e => e.at < VBLANK_PERIOD).length;
+  if (initPhaseCount >= ours.length || initPhaseCount >= theirs.length) return null;
+  const anchor = theirs[initPhaseCount].at - ours[initPhaseCount].at;
+  const total = Math.min(ours.length, theirs.length);
+  let maxDrift = 0, sumDrift = 0, samples = 0;
+  for (let i = initPhaseCount; i < total; i++) {
+    const drift = Math.abs((theirs[i].at - ours[i].at) - anchor);
+    if (drift > maxDrift) maxDrift = drift;
+    sumDrift += drift; samples++;
+  }
+  return {anchor, maxDrift, meanDrift: samples ? sumDrift / samples : 0, samples};
 }
 
 function renderReference(events, seconds) {
@@ -360,7 +421,12 @@ async function scoreSource(source) {
   // `importGbs` already plays any GBS file this project reads.
   const ourReplay = importGbs(file, {seconds});
 
-  let comparison = null, exportLoss = null, mixerDiff = null, frameWrites = null;
+  // PR review, point 1: what export loss (proof #3) actually spends -
+  // computed from the source capture alone, so it does not depend on the
+  // oracle and is reported even under `--no-oracle`.
+  const sourceTiming = sourceWriteTiming(source.events);
+
+  let comparison = null, exportLoss = null, mixerDiff = null, frameWrites = null, cycleDrift = null;
   if (!noOracle) {
     await fs.promises.mkdir(WORK_DIR, {recursive: true});
     const gbsPath = path.join(WORK_DIR, `${source.id}.gbs`);
@@ -370,6 +436,9 @@ async function scoreSource(source) {
     // Proof #1 (module comment): value+order, not cycle-exact - see the
     // module comment for why, citing gbs-corpus/compare.mjs's own finding.
     comparison = compareGbsTrace(ourReplay, VBLANK_PERIOD, trace);
+    // PR review, point 3: the bounded, post-INIT drift number that replaces
+    // the raw `firstDivergence` pair in the sheet.
+    cycleDrift = playPhaseCycleDrift(ourReplay.events, trace);
     // Proof #2: the source capture's own writes against GME's trace of the
     // export, bucketed by frame - exact command content, not loudness.
     frameWrites = compareFrameWrites(source.events, gmeEvents, source.cycles);
@@ -382,26 +451,27 @@ async function scoreSource(source) {
     // render of the source.
     mixerDiff = compareMixer(pcm, original);
   }
-  return {id: source.id, title: source.title, url: source.url, bytes: file.length, comparison, exportLoss, mixerDiff, frameWrites};
+  return {id: source.id, title: source.title, url: source.url, bytes: file.length, comparison, exportLoss, mixerDiff, frameWrites, sourceTiming, cycleDrift};
 }
 
 /** Kept to a small, fixed set of shapes (translated verbatim in
  * docs/check-translations.py's `gbs-export` rule). */
 function formatResult(r) {
-  if (r.skipped) return {commands: 'not rendered', frameWrites: '-', loss: '-', mixer: '-', note: r.skipped};
-  if (r.exportError) return {commands: `not exportable: ${r.exportError.code}`, frameWrites: '-', loss: '-', mixer: '-', note: r.exportError.message};
-  if (!r.comparison) return {commands: `${r.bytes} bytes`, frameWrites: 'not compared', loss: 'not compared', mixer: 'not compared', note: 'none'};
-  const divergence = r.comparison.firstDivergence
-    ? (r.comparison.firstDivergence.ours && r.comparison.firstDivergence.gme
-        ? `cycle ${r.comparison.firstDivergence.ours.at} vs ${r.comparison.firstDivergence.gme.at}, $${r.comparison.firstDivergence.ours.addr.toString(16)}: ${r.comparison.firstDivergence.ours.value} vs ${r.comparison.firstDivergence.gme.value}`
-        : `cycle ${(r.comparison.firstDivergence.ours ?? r.comparison.firstDivergence.gme).at}: one side has no more commands`)
-    : 'none';
+  if (r.skipped) return {commands: 'not rendered', frameWrites: '-', loss: '-', mixer: '-', timing: '-', note: r.skipped};
+  if (r.exportError) return {commands: `not exportable: ${r.exportError.code}`, frameWrites: '-', loss: '-', mixer: '-', timing: '-', note: r.exportError.message};
+  const timingText = r.sourceTiming ? `mean ${r.sourceTiming.meanPct.toFixed(1)}%, max ${r.sourceTiming.maxPct.toFixed(1)}%` : '-';
+  if (!r.comparison) return {commands: `${r.bytes} bytes`, frameWrites: 'not compared', loss: 'not compared', mixer: 'not compared', timing: timingText, note: 'not compared'};
+  // PR review, point 3: a bounded post-INIT drift figure (module comment on
+  // `playPhaseCycleDrift`), not the raw first-mismatch pair every row used to
+  // show - that pair is always the first post-INIT write and reads as a
+  // fresh failure on every row even though every proof passes.
+  const driftText = r.cycleDrift ? `max ${Math.round(r.cycleDrift.maxDrift)}c, mean ${r.cycleDrift.meanDrift.toFixed(1)}c from the first PLAY write (n=${r.cycleDrift.samples})` : 'none';
   const lossText = `${(r.exportLoss.relativeRmsError * 100).toFixed(1)}%${r.exportLoss.relativeRmsError > EXPORT_LOSS_RMS_THRESHOLD ? ' (over threshold)' : ''}`;
   const mixerText = `GME's mixer differs from ours by ${(r.mixerDiff.relativeRmsError * 100).toFixed(1)}%`;
   const frameWritesText = `${r.frameWrites.matched}/${r.frameWrites.total} (offset ${r.frameWrites.offset >= 0 ? '+' : ''}${r.frameWrites.offset})` +
     (r.frameWrites.excludedFrames ? `, excluding ${r.frameWrites.excludedFrames} frame${r.frameWrites.excludedFrames === 1 ? '' : 's'} past the loop wrap` : '') +
     (r.frameWrites.mismatchedFrames.length ? `, frames ${r.frameWrites.mismatchedFrames.slice(0, 8).join(', ')}${r.frameWrites.mismatchedFrames.length > 8 ? ', ...' : ''} differ` : '');
-  return {commands: `${r.comparison.valueMatched}/${r.comparison.total} (${r.comparison.matched}/${r.comparison.total} cycle-exact)`, frameWrites: frameWritesText, loss: lossText, mixer: mixerText, note: divergence};
+  return {commands: `${r.comparison.valueMatched}/${r.comparison.total} (${r.comparison.matched}/${r.comparison.total} cycle-exact)`, frameWrites: frameWritesText, loss: lossText, mixer: mixerText, timing: timingText, note: driftText};
 }
 
 async function main() {
@@ -411,7 +481,7 @@ async function main() {
     const result = await scoreSource(source);
     results.push(result);
     const formatted = formatResult(result);
-    console.log(`${result.id}: ${formatted.commands}, frame writes ${formatted.frameWrites}, export loss ${formatted.loss}, ${formatted.mixer}, first divergence: ${formatted.note}`);
+    console.log(`${result.id}: ${formatted.commands}, frame writes ${formatted.frameWrites}, export loss ${formatted.loss}, ${formatted.mixer}, source write timing ${formatted.timing}, cycle drift (informational): ${formatted.note}`);
   }
 
   const jsonPath = option('json', null);
@@ -427,11 +497,11 @@ async function main() {
     if (begin < 0 || end < 0) throw new Error(`${sheetPath} has no gbs-export markers`);
     const lines = [
       '<!-- gbs-export:begin -->',
-      `Written by \`gbs-export:sheet\` on ${new Date().toISOString().slice(0, 10)}, against Game_Music_Emu revision \`${ORACLE_REVISION}\`. Frame writes gates CI exactly (matched must equal total, not just be nonzero or "close"); commands gates on value+order (address and value, in order - see the module comment for why not cycle-exact, citing gbs-corpus/compare.mjs's own finding about GME's SM83 timing model). Commands: the export, replayed by GME, against this project's own SM83 (\`importGbs\`) replaying the same export - identical bytes on both sides. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into VBlank frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency); a source frame stops counting once its own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "excluding N frame(s) past the loop wrap" when that applies. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - the coarse secondary gate, threshold ${(EXPORT_LOSS_RMS_THRESHOLD * 100).toFixed(0)}%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated.`,
+      `Written by \`gbs-export:sheet\` on ${new Date().toISOString().slice(0, 10)}, against Game_Music_Emu revision \`${ORACLE_REVISION}\`. Frame writes gates CI exactly (matched must equal total, not just be nonzero or "close"); commands gates on value+order (address and value, in order - see the module comment for why not cycle-exact, citing gbs-corpus/compare.mjs's own finding about GME's SM83 timing model). Commands: the export, replayed by GME, against this project's own SM83 (\`importGbs\`) replaying the same export - identical bytes on both sides. Frame writes: the source capture's own register writes against GME's trace of the export, bucketed into VBlank frames and compared for exact address/value/order equality after one constant frame offset (an expected, fixed PLAY-call latency); a source frame stops counting once its own real-time slot passes the point where the exported player wraps back to its loop frame, reported as "excluding N frame(s) past the loop wrap" when that applies. Export loss: relative RMS error, after peak-normalizing and offset-aligning (searched, not assumed), between two same-DSP renders (GME's trace of the export, replayed; the untouched source) - the coarse secondary gate, threshold ${(EXPORT_LOSS_RMS_THRESHOLD * 100).toFixed(0)}%. GME mixer: the same metric between GME's own PCM of the export and this project's render of the source - two independent emulators, reported for visibility, not gated. Source write timing: how far into its own VBlank frame the source capture's own writes land on average and at most, as a percent of a frame - what export loss spends, since a whole frame's writes can only ever be replayed at that frame's own start. First cycle divergence: informational, not gated - the largest and mean T-cycle drift between the export replayed by GME and by this project's own SM83, once both sides' first post-INIT write is used as a fixed anchor (GME's own flat-4-T-cycle-per-instruction SM83 model, module comment, not an export defect).`,
       '',
-      '| Song | Commands (value+order, cycle-exact) | Frame writes | Export loss | GME mixer | First divergence |',
-      '| --- | --- | --- | --- | --- | --- |',
-      ...results.map(r => { const f = formatResult(r); const name = r.url ? `[${r.title}](${r.url})` : r.title; return `| ${name} | ${f.commands} | ${f.frameWrites} | ${f.loss} | ${f.mixer} | ${f.note} |`; }),
+      '| Song | Commands (value+order, cycle-exact) | Frame writes | Export loss | GME mixer | Source write timing (mean/max % of frame) | First cycle divergence (informational) |',
+      '| --- | --- | --- | --- | --- | --- | --- |',
+      ...results.map(r => { const f = formatResult(r); const name = r.url ? `[${r.title}](${r.url})` : r.title; return `| ${name} | ${f.commands} | ${f.frameWrites} | ${f.loss} | ${f.mixer} | ${f.timing} | ${f.note} |`; }),
       '<!-- gbs-export:end -->',
     ];
     fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- gbs-export:end -->'.length));
