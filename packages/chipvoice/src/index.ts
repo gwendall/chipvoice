@@ -415,6 +415,8 @@ export {importPsid, renderPsid, PsidFormatError} from "./psid-import.js";
 export type {ImportPsidOptions, PsidPerformance} from "./psid-import.js";
 export {Cpu6510, IllegalOpcodeError} from "./chips/c64/cpu6510.js";
 export type {Cpu6510Bus} from "./chips/c64/cpu6510.js";
+export {exportSpc, SpcExportSizeError} from "./spc-export.js";
+export type {SpcExportOptions} from "./spc-export.js";
 export {isolateNativePerformance} from "./native-performance.js";
 export {calibrateMixInstrument, MixProfileBank, MIX_PROFILE_VERSION} from './mix-calibration.js';
 export type {MixProfile, MixCalibrationOptions} from './mix-calibration.js';

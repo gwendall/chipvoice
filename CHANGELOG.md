@@ -11,6 +11,30 @@ overview.
 
 ## Unreleased
 
+SNES songs export as `.spc` files: `exportSpc` freezes a song's
+register-write capture into a standard SPC700+S-DSP snapshot that plays in
+any SPC player, on real hardware too, with no chipvoice runtime involved -
+its own tiny SPC700 player is written straight into the file's own ARAM
+(`packages/chipvoice/src/chips/snes/spc-player.ts`, hand-assembled from
+Anomie's SPC700 doc and fullsnes, MIT, built from committed source, no
+opaque blob), alongside a compacted sample directory holding only the BRR
+samples a KON write in the song ever actually plays, and the S-DSP write
+stream as tick-delta/register/value, timed against Timer 0's own 1000 Hz
+tick, with the song's loop point so playback repeats forever the way a
+game's own track does. A song too big for the SNES's 64 KB of sound RAM
+throws `SpcExportSizeError`, carrying `measured` and `limit`, rather than
+writing a truncated file - both of the repo's published SNES arrangements
+currently hit this. Proven two ways per song (`check:spc-export`, numbers on
+`docs/chips/snes.md`): round-tripped through this package's own SPC700
+(`importSpc(exportSpc(...))`) against a direct render of the original plan,
+and played back through `play-spc`, the same real SPC700 oracle `check:spc`
+uses - both compare the DSP write sequence exactly and the audio by
+per-voice RMS-envelope correlation in short windows, gated at 0.95.
+Reachable from the studio as a Download SPC button next to Download VGM for
+SNES songs, and from the SDK as `exportSpc`, alongside `recordSong`/`toVgm`.
+The flash-cart recording of an exported file on real hardware is out of
+scope for now (no hardware yet).
+
 `importGbs(bytes, options)` plays a `.gbs` (Game Boy Sound) file on `dmg`,
 returning a `PerformancePlan` for `renderPerformance` the same way `importVgm`
 does for the Mega Drive. It runs the file's own INIT and PLAY routines on an

@@ -142,6 +142,8 @@ export function projectCapabilities() {
     exportFormats: ["wav"],
     registerExportFormats: ["2a03", "dmg", "md"].includes(spec.id)
       ? ["vgm"]
+      : spec.id === "snes"
+      ? ["spc"]
       : [],
     sourceFormats: ["score", "performance", "native"],
     automaticMixing: true,

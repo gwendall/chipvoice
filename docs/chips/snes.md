@@ -113,6 +113,91 @@ Written by `check:spc` on 2026-09-27, against play-spc (blargg's SPC700, vendore
 | corpus/snes/spc/selftest.spc | 3/3 | 100.0000 % | none |
 <!-- spc:end -->
 
+## SPC export
+
+`exportSpc` (`packages/chipvoice/src/spc-export.ts`) is `importSpc`'s mirror:
+a SNES song's register-write capture (`recordSong`'s or a `PerformancePlan`'s
+`events`/`cycles`/`memory`, the same shape `toVgm` takes) frozen into a
+standard `.spc` file that plays in any SPC player, on real hardware too, with
+no chipvoice runtime involved - because the ARAM it writes carries its own
+tiny SPC700 player program (`packages/chipvoice/src/chips/snes/spc-player.ts`,
+hand-assembled from Anomie's SPC700 doc and fullsnes, MIT, its bytes built
+from that committed TS source by the same package build every other chip's
+assets go through - no opaque blob).
+
+What goes into the snapshot's 64 KB of ARAM, alongside the fixed-offset
+header/DSP-dump/extra-RAM struct `spc-import.ts` also reads:
+
+- The player, at a fixed origin (`$0200`).
+- A compacted sample directory and the BRR data it points to: only the
+  samples a KON write in the song ever actually latches, each copied out of
+  the capture's own memory once, with its loop point carried over. Both the
+  directory's entries and the page (`DIR`) every SRCN write and the driver's
+  own DIR write now name are rewritten to this one compacted table - a
+  capture's driver can (and does) write a stray SRCN value a moment before
+  the real one, at the same tick, that no KON ever plays; naming that value
+  too would give it a bogus entry of its own, reading whatever the capture's
+  memory happens to hold at a slot nothing really uses.
+- The write stream: every `$F2`/`$F3` pair the capture made, as tick-delta,
+  register, value - a run of same-tick writes shares one delta byte. One
+  tick is Timer 0's own period, `TIMER_TARGET=8` against the SPC700's
+  1024000 Hz clock, 1000 Hz, 1024 cycles. A write's original cycle stamp is
+  rounded to the nearest tick, and that target is chased by *simulating* the
+  assembled player for real during export (a second, scratch SPC700) so the
+  wait loop's and the dispatch's own real cost is accounted for exactly, not
+  estimated - the write itself then lands within a stated, small, bounded
+  number of ticks of that rounding, not just the half-tick the rounding
+  alone would promise (see `spc-export.ts`'s own doc comment and
+  `packages/chipvoice/test/spc-export.mjs` for the figure and why).
+- The song's loop point, so playback repeats forever the way a game's own
+  track does, the same way `.spc` files are normally authored.
+
+The echo buffer (`ESA`/`EDL`) writes into this same ARAM on the DSP's own
+initiative, live wherever the capture's own register writes ever point it
+while echo writes are enabled; `exportSpc` tracks every value the capture
+gives `ESA`, `EDL` and `FLG` and refuses to produce a file where that window
+could ever land on the player, the directory, a sample, the write stream, or
+the IPL ROM's reserved region (`$FFC0`-`$FFFF`) - `SpcExportSizeError`, never
+a truncated or silently corrupt file. The same error, naming `measured` and
+`limit`, covers the plain case: a song whose player, directory, samples and
+write stream together do not fit under `$FFC0`. Both of the repo's published
+SNES arrangements measured big enough to hit exactly this (their SNES
+rendition, several minutes at this driver's note density, well over the
+~64 KB budget); there is no SNES-native song in `scores/` yet to measure
+against instead (`native-sources.mjs` only has NES and Mega Drive sources) -
+when one exists it joins this corpus.
+
+Measured by
+[`check:spc-export`](../../packages/conform/src/spc/check-export.mjs)
+against the repo's own published SNES arrangements, two ways per song: our
+own round trip (`importSpc(exportSpc(...))`, run through this package's own
+SPC700, against a direct render of the plan it was built from - the audio a
+listener would actually hear from the file), and the real oracle (the same
+file played by `play-spc`, blargg's SPC700, exactly like `check:spc` above).
+Both compare the DSP write sequence (register and value, in order - gating)
+and the output samples, scored by each side's per-voice RMS envelope
+correlation in short windows (gating, `ENVELOPE_MATCH_THRESHOLD` below) - not
+a raw cycle-exact sample match, reported alongside but not gated, since a
+write correctly rounded to its own tick still shifts the S-DSP's own
+audio-rate waveform out of phase with an unquantized render, and phase alone
+scores two copies of the identical tone as almost entirely different; see
+the doc comment on `envelopeMatch` in `check-export.mjs` for the window size
+chosen and the reasoning, including the shape a real content bug leaves in
+this same measurement (used, in this file's own history, to find and fix
+two of them).
+
+<!-- spc-export:begin -->
+Written by `check:spc-export` on 2026-09-27, against play-spc (blargg's SPC700, vendored snes_spc).
+
+Samples: envelope correlation: both streams' per-voice RMS loudness in 4096-cycle (four ticks, 4 ms) windows, pooled across voices, compared by Pearson correlation; gated at 0.95. relativeRmsError is the same envelopes' RMS difference relative to the oracle's own RMS, reported but not gated. cycleExact is compare()'s raw, unwindowed cycle-exact percentage, reported but not gated - see envelopeMatch's doc comment in this file for why a raw sample comparison, or even a too-fine windowed one, is the wrong tool for audio this close to correct.
+
+| Song | ARAM used | Round trip (own CPU): writes | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes | play-spc: samples (envelope corr, rel RMS error, cycle-exact) |
+| --- | --- | --- | --- | --- | --- |
+| mario | does not fit: 65473 / 65472 bytes | - | - | - | - |
+| zelda | 39813 / 65472 bytes | 12665/12665 | 0.9623 (11.5888 %, 14.4857 % cycle-exact) | 12665/12665 | 0.9962 (3.7169 %, 16.8968 % cycle-exact) |
+| sonic | does not fit: 65473 / 65472 bytes | - | - | - | - |
+<!-- spc-export:end -->
+
 ## Test ROMs
 
 None run. There is no community test ROM suite for the S-DSP the way there is
@@ -201,6 +286,21 @@ See [palette acceptance and measurements](../SNES-PALETTE.md).
 
 ## History
 
+- 2026-09-28: `exportSpc`, the write side of `.spc` playback: a song's
+  capture, frozen into a file any SPC player can run, with its own tiny
+  SPC700 player written into the snapshot's ARAM. Two bugs surfaced and were
+  fixed while proving it against the repo's own arrangements with
+  `check:spc-export`, both invisible to a register-value comparison alone
+  and only caught by the round trip's own audio-envelope check: a stray,
+  same-tick SRCN write no KON ever latches was compacted into the sample
+  directory as if it were a real, distinct sample; and - the larger one -
+  the directory's own page (`DIR`) was never rewritten to where the
+  compacted table actually landed, so every voice played back whatever
+  happened to already be at the *original* capture's own page instead (the
+  player's own code, for a capture using this driver's usual page). Fixing
+  the second alone took the round-trip envelope correlation on `zelda`, the
+  one published arrangement measured small enough to fit in 64 KB, from
+  0.51 to 0.96.
 - 2026-09-27: `importSpc`, a new SPC700 (S-SMP) written from documents, and
   `check:spc` against a real CPU oracle. Matched the oracle on both the DSP
   register write sequence and the output samples on the first file measured.

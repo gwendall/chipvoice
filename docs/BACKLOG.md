@@ -428,7 +428,34 @@ real game music, and a real unit.
   only the phase surfaces rather than removes that compensation. Reverted,
   not shipped (`rasterCycle = 0` stays default); left here rather than
   silently dropped, for whoever picks this up next.
-- P6-9 (SPC export, now unblocked by NEXT-08's CPU).
+- done - P6-9: `exportSpc` (unblocked by NEXT-08's CPU) turns a SNES capture
+  into a standard `.spc` file carrying its own tiny SPC700 player
+  (`packages/chipvoice/src/chips/snes/spc-player.ts`), hand-assembled from
+  Anomie's SPC700 doc and fullsnes, built from committed TS source by the
+  same package build every other chip's assets go through, never an opaque
+  blob. The write stream is tick-delta encoded (one tick = Timer 0's own
+  period, 1024 SPC700 cycles) with a greedy LZ77-style back-reference pass
+  over same-tick write groups, so a dense song's own repetition (chords,
+  instrument retriggers) compacts instead of being stored verbatim; the
+  sample directory is compacted to only the samples a KON write in the song
+  ever actually latches. A song whose player, directory, samples and write
+  stream do not fit `.spc`'s 64 KB of ARAM, or whose echo window
+  (`ESA`/`EDL`) could ever land on any of them, fails loudly with
+  `SpcExportSizeError{measured, limit}` naming the real size, never a
+  truncated or silently corrupt file. Proven against this package's own
+  SPC700 (round trip) and against `play-spc`'s real one
+  (`packages/conform/src/spc/check-export.mjs`), on both the DSP write
+  sequence (gating, exact match) and the output samples (per-voice RMS
+  envelope correlation, gated at a 4-tick window - see that file's own doc
+  comment for the 1/2/4-tick comparison behind that choice). A write lands
+  within a measured, structurally bounded few ticks of its own rounded
+  target, not the half-tick rounding alone would promise - real single-CPU
+  dispatch of a dense same-tick write burst costs real cycles no assembled
+  loop can avoid, measured and documented in
+  `packages/chipvoice/test/spc-export.mjs`. Reachable from the package
+  (`exportSpc`, `SpcExportSizeError`) and the studio (a Download SPC button
+  next to VGM's, for `snes` songs). See `docs/chips/snes.md#spc-export` and
+  decision 46.
 - done - NEXT-10's NSF half (this PR): `exportNsf` turns a 2A03 capture into
   a standard NSF v1 file carrying its own tiny hand-assembled 6502 player
   (`Asm6502`, `packages/chipvoice/src/nsf.ts`), reproducible from committed
@@ -517,6 +544,9 @@ real game music, and a real unit.
   for `dmg` songs). A flash-cart recording on real hardware (from the step 1
   bench) stays out of scope for both NSF and GBS halves for lack of
   hardware.
+- todo follow-up - P6-9's own flash-cart recording on real hardware (the
+  step 1 bench) stays out of scope for lack of hardware, the same cut NSF
+  and GBS export state above.
 - No commercial rip is distributed; the measurement corpus stays private or
   freely redistributable.
 
@@ -745,7 +775,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P6-6 | The chip in the API, the studio and the skill. VGM has no S-DSP; SPC export is a driver in the file and comes later | done | skill 0.7.0; SPC export is P6-9 |
 | P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
 | P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit. NEXT-04 found the one real logic-analyser capture of a console's S-DSP lines anyone made is dead-linked, and the one filter-frequency estimate is a schematic simulation, not a capture: see [HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp) |
-| P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | unblocked by NEXT-08: an export needs to be checked against a real SPC700, which `check:spc`'s `play-spc` oracle now gives it |
+| P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | doing | `exportSpc` (`packages/chipvoice/src/spc-export.ts`): its own SPC700 player written into the file's ARAM, proven round-tripped through this package's own SPC700 and against `play-spc`'s real one (`check:spc-export`, numbers on `docs/chips/snes.md`). The flash-cart recording on the step 1 bench is out of scope (no hardware yet); this row stays open for that one item |
 | P6-10 | Real triads across voices and hardware-noise hats | done | this PR. Triads are implemented and tested, including internal mixer checks. The kit's hats default to the DSP's own hardware noise (`NON`, `FLG`'s clock set from the very first write at power-on, never rewritten to a different value), the kick and snare staying BRR samples; `Instrument.noiseMode` opts a hat back to its BRR burst. A corpus script exercises two noise voices at once, a held note's clock changed, and `FLG`'s reset and mute bits over an active noise voice. A review pass before merge found the clock was live only from the later, quarter-second write, leaving any hat in a song's first 250 ms clocked at rate 0; fixed by moving it into the first write |
 
 ## Phase 7. C64

@@ -1,11 +1,12 @@
-import { arrange, exportGbs, exportNsf, loopSeconds, recordSong, renderSong, toVgm, toWav } from 'chipvoice';
+import { arrange, exportGbs, exportNsf, exportSpc, loopSeconds, recordSong, renderSong, SNES, SpcExportSizeError, toVgm, toWav } from 'chipvoice';
 import { ROLES, tokens, type SongDocument } from './document';
 import { zip } from './zip';
 
-export type ExportKind = 'wav' | 'stems' | 'machines' | 'vgm' | 'nsf' | 'gbs';
+export type ExportKind = 'wav' | 'stems' | 'machines' | 'vgm' | 'nsf' | 'gbs' | 'spc';
 export const VGM_CHIPS = ['2a03', 'dmg', 'md'];
 export const NSF_CHIPS = ['2a03'];
 export const GBS_CHIPS = ['dmg'];
+export const SPC_CHIPS = ['snes'];
 export function exportSong(song: SongDocument, kind: ExportKind, progress: (done: number, total: number) => void = () => {}) {
   const arranged = arrange(song);
   const seconds = Math.min(300, loopSeconds(arranged) * 2);
@@ -24,6 +25,22 @@ export function exportSong(song: SongDocument, kind: ExportKind, progress: (done
     if (!GBS_CHIPS.includes(song.chip)) throw new Error('GBS is available for Game Boy only.');
     const capture = recordSong(arranged);
     return { bytes: exportGbs(capture.events, capture.cycles, { title: song.title, author: song.author }), extension: 'gbs', type: 'audio/x-gbs' };
+  }
+  if (kind === 'spc') {
+    if (!SPC_CHIPS.includes(song.chip)) throw new Error('SPC export is available for SNES.');
+    const capture = recordSong(arranged);
+    // The whole capture (intro included, since a song's own loop content can
+    // start partway in) plays once, then repeats forever from the loop
+    // point on - the same "twice the loop, so a genuine loop exists to find"
+    // duration recordSong's own default already captures, per its own doc
+    // comment.
+    const loopAtCycle = Math.round(loopSeconds(arranged) * SNES.clockHz);
+    try {
+      return { bytes: exportSpc(capture.events, capture.cycles, capture.memory, { title: song.title, artist: song.author, loopAtCycle }), extension: 'spc', type: 'audio/x-spc' };
+    } catch (error) {
+      if (error instanceof SpcExportSizeError) throw new Error('This song is too big for a single .spc file (64 KB of SNES sound RAM). Shorten it or use fewer distinct instrument samples.');
+      throw error;
+    }
   }
   if (kind === 'wav') return { bytes: toWav(renderSong(arranged, { stereo: true })), extension: 'wav', type: 'audio/wav' };
   const files: { name: string; bytes: Uint8Array }[] = [];
