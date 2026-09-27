@@ -23,6 +23,7 @@
 | [サイトの国際化](INTERNATIONALIZATION_ja.md) | Web辞書、ルーティング、メタデータ |
 | [楽譜モデル](SCORE_ja.md) | 移植可能な楽譜と編曲モデル |
 | [適合性検証](CONFORMANCE_ja.md) | 検証方法、コーパス、参照実装 |
+| [ハードウェア証拠](HARDWARE-EVIDENCE_ja.md) | 実機を1台も買う前に集めた、実機の公開録音と測定値 |
 | [試聴評価](AUDIO-EVALUATION_ja.md) | 試聴方法と音声測定 |
 | [SNESパレット](SNES-PALETTE_ja.md) | SNESの楽器、エンベロープ、和音 |
 | [ゲーム専用メガドライブdriver](MD-NATIVE-DRIVER_ja.md) | FM 6チャンネル、DAC、tracker、ゲームが出荷するまでのrender手順 |

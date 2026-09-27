@@ -22,6 +22,7 @@ Project purpose, methods and decisions live beside the code and change with it.
 | [Website languages](INTERNATIONALIZATION.md) | Website dictionaries, routing and metadata |
 | [Score model](SCORE.md) | Portable score and arrangement model |
 | [Conformance](CONFORMANCE.md) | Verification method, corpus and oracles |
+| [Hardware evidence](HARDWARE-EVIDENCE.md) | Published recordings and measurements of real hardware, gathered before any unit is bought |
 | [Audio evaluation](AUDIO-EVALUATION.md) | Listening protocol and audio measurements |
 | [SNES palette](SNES-PALETTE.md) | SNES instruments, envelopes and chords |
 | [A game's own Mega Drive driver](MD-NATIVE-DRIVER.md) | Six FM channels, the DAC, a tracker and the render steps a game ships through |

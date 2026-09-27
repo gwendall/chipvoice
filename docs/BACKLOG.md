@@ -145,10 +145,30 @@ at four levels: an independent oracle, test ROMs written for the hardware,
 real game music, and a real unit.
 
 - Oracle and ROM level: P1-13, P1-14, P2-1, P3-4, P5-8, P7-11.
-- todo - NEXT-04: for each chip, gather published recordings of real units
-  before buying any (decision 38).
+- done - NEXT-04: [docs/HARDWARE-EVIDENCE.md](HARDWARE-EVIDENCE.md) catalogues
+  what published recordings and measurements of real hardware already exist
+  for all five chips, each source opened and verified before being listed
+  (decision 38's free-evidence-first order). One candidate qualified for a
+  "measure one" script: the C64's combined waveforms against a real 6581 R4AR
+  (`libsidplayfp/combined-waveforms`), scored by
+  `pnpm --filter chipvoice-conform evidence:c64:sheet` at 82.0-94.1% byte
+  match across the four combinations, written onto
+  [docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581).
+  It settles nothing about the analog stage (it is the pre-DAC waveform
+  generator), but is one independent hardware check the digital model did not
+  have before. No other chip had a candidate with a precisely known,
+  reproducible input; NES already has blargg's `apu_mixer`. The fetch script,
+  `packages/conform/src/evidence/fetch.mjs` (`evidence:fetch`), downloads
+  what a licence allows into a gitignored `.artifacts/hardware-evidence/`,
+  verified against `packages/conform/src/evidence/manifest.json`'s committed
+  SHA-256s.
 - Hardware level: P2-3 first, with one purchased NES validating the capture
-  bench; then P3-5, P5-9, P6-8 and P7-8 as recordings or units allow.
+  bench; then P3-5, P5-9, P6-8 and P7-8 as recordings or units allow. NEXT-04
+  found `filter.cc`'s op-amp transfer-curve tables (a named 6581 and a named
+  8580) as a register-log-free path to a P7-8/P7-10 analog measurement,
+  not yet implemented; and MDFourier as P5-9's strongest lead, blocked on
+  finding its test ROM's exact register sequence rather than on hardware
+  access.
 
 **Step 2. Every instrument each chip has.**
 
@@ -295,7 +315,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | --- | --- | --- | --- |
 | P2-1 | Fix every divergence the harness finds, or document why the oracle is wrong | todo | |
 | P2-2 | The DMC | done | PR #5, 0.6.0. Identical steps to the oracle one bit period apart; see the log |
-| P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output |
+| P2-3 | A reference unit for the analog stage, captured and measured | doing | PR #8: the mixer is measured against blargg's own recordings of his NES and cancels as well as it; the filters still want a unit's line output. NEXT-04 traced the filter corners' provenance to blargg's own capture and lidnariq's analysis of it, but the files are gone and no revision was named: see [HARDWARE-EVIDENCE.md#nes-2a03](HARDWARE-EVIDENCE.md#nes-2a03) |
 | P2-4 | Release with the sheet linked from the package README and the skill | done | The README links every sheet; the skill links each target's |
 
 ## Phase 3. Game Boy
@@ -306,7 +326,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P3-2 | `ChipSpec`, `RegisterEvent` and the instrument model rewritten against two chips | done | `ChipDriver`, `FrameState`, `ChipSpec.roles`; `chips/{nes,gb}/driver.ts`. The 2A03's golden hash did not move |
 | P3-3 | The Game Boy sheet, generated | done | `docs/chips/dmg.md` |
 | P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | todo | Gb_Snd_Emu is 2005 and takes its first step at the trigger |
-| P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3 |
+| P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found a citable public-domain formula (gbdev Pan Docs) matching the sheet's placeholder and a die-level teardown, but no measured recording of any unit: see [HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg) |
 | P3-6 | The Game Boy in the API, the studio and the skill: `chip: "dmg"` accepted, rendered and played; a chip selector in the editor; the skill says what changes | done | `apps/web`, skill 0.4.0 |
 
 ## Phase 4. The portable score
@@ -341,7 +361,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P5-6 | VGM for the YM2612 and the PSG, the chip in the API, the studio and the skill | done | `toVgm({ chip: "md" })`; skill 0.6.0 |
 | P5-7 | The Mega Drive sheet: parity with Nuked on every voice, a corpus of scripts and songs | done | `docs/chips/md.md` |
 | P5-8 | A PSG oracle: MAME's `sn76496` behind a shim, or a Master System test ROM | todo | the noise register's sequence and the period-0 behaviour are from the documents |
-| P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3 |
+| P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found MDFourier: named real units across both models, captured through a documented open-source test ROM, but its exact register sequence was not located; see [HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489) |
 | P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the portable arranger's kit is on the PSG noise for now; the native driver (P5-11) streams a PCM kit on the DAC |
 | P5-11 | A game's own driver beside the portable one: all six FM channels, the three tones, the noise and the DAC by name, a text tracker, a bank with a PCM kit, and the render steps a game ships through, extracted from Punk Force | done | `chips/md/native-driver.ts`, `bank.ts`, `tracker.ts`, `src/game-audio.ts`; [MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER.md), decision 32; the game's score compiles and renders to the same bytes |
 | P5-12 | The native driver's LFO and channel 3's special mode | todo | power-on writes `$22` = 0, so `ams`, `pms` and `am` are written but inert |
@@ -357,7 +377,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P6-5 | The SNES's driver and arranger: samples synthesised per intent, ADSR, the echo as the signature, the kit as samples | done | `chips/snes/driver.ts`, `arranger.ts` |
 | P6-6 | The chip in the API, the studio and the skill. VGM has no S-DSP; SPC export is a driver in the file and comes later | done | skill 0.7.0; SPC export is P6-9 |
 | P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
-| P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit |
+| P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit. NEXT-04 found the one real logic-analyser capture of a console's S-DSP lines anyone made is dead-linked, and the one filter-frequency estimate is a schematic simulation, not a capture: see [HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp) |
 | P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | todo | |
 | P6-10 | Real triads across voices and hardware-noise hats | doing | Simultaneous triads are implemented and tested, including internal mixer checks. Hardware-noise hats remain separate; the current kit uses BRR samples |
 
@@ -372,9 +392,9 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P7-5 | The chip in the API, the studio and the skill | done | schema, openapi, skill 0.8.0, llms.txt, studio |
 | P7-6 | The C64 sheet: parity with reSID-fp on the digital voices, a corpus of scripts and songs | done | `docs/chips/c64.md`, `corpus/c64`, `check:c64` in CI |
 | P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | done | `packages/conform/roms/vice-sid`, `src/roms/c64.mjs`, `roms:c64` in CI; 13 of 14 pass, `busvalue` a P2-1 finding |
-| P7-8 | A 6581's line-out captured under a known script, and the analog profile fitted to it: the DAC's zero, the filter's curve, the output stage | todo | needs a unit |
+| P7-8 | A 6581's line-out captured under a known script, and the analog profile fitted to it: the DAC's zero, the filter's curve, the output stage | todo | needs a unit. NEXT-04 found reSID's `filter.cc` already has a named 6581 R4AR's own op-amp transfer-curve tables, diffable against our filter model with no register log needed, not yet implemented: see [HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580). It also implemented a combined-waveform check against a second named 6581 (`libsidplayfp/combined-waveforms`); see [c64.md#combined-waveforms-against-a-real-6581](chips/c64.md#combined-waveforms-against-a-real-6581) |
 | P7-9 | The filter in the arranger: a word that opens it, a sweep for a lead | todo | |
-| P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | todo | |
+| P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | todo | NEXT-04 found a named 8580 R5 in reSID's `filter.cc` (its own op-amp transfer curve) and its DAC mismatch ratio (about 2.0) in reSID-fp's `Dac` docs, neither implemented yet: see [HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580) |
 | P7-11 | The harness holds every change of every stream in memory, and a SID sawtooth changes every cycle: the corpus keeps dense waveforms short. A streaming compare, or a change stream as typed arrays, would lift that | done | PR #79. A `ChangeStream` (typed-array columns, not one object per change) and a streaming oracle read (`spawn`, not `spawnSync` with a giant buffer) replace both; `bestShift`'s string-keyed map is gone too. Four dense c64 scripts added, all three voices held on a sawtooth, a triangle, a noise rate or a combined waveform at once; the eight-second three-sawtooth case that used to run the harness out of memory now runs on demand (`check:c64:dense`) and passes |
 
 ## Phase 8. The site as an instrument
