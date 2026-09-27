@@ -9,5 +9,45 @@
     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
     "sha256": "16a0306099c735e52b8e7e3fe6b7a47d793a0db239020c01b3692fb91711cb8d",
     "seconds": 6
+  },
+  "sample-song": {
+    "file": "sample-song.gbs",
+    "title": "Sample Song",
+    "author": "SuperDisk",
+    "driver": "hUGEDriver",
+    "url": "https://github.com/SuperDisk/hUGEDriver",
+    "licence": "Public domain",
+    "licenceUrl": "https://github.com/SuperDisk/hUGEDriver/blob/master/README.md#license",
+    "sha256": "24f2ca5d1fc41cd6a222f6e38f52c8d0cae2b5e7476353ca70b00ad74aef1ef9"
+  },
+  "effects-test": {
+    "file": "effects-test.gbs",
+    "title": "Effects Test",
+    "author": "Antonio Nino Diaz",
+    "driver": "GBT Player",
+    "url": "https://github.com/AntonioND/gbt-player",
+    "licence": "MIT",
+    "licenceUrl": "https://github.com/AntonioND/gbt-player/blob/master/LICENSE",
+    "sha256": "2cb7adbdf8b6ea8982f878ceb694601d04ef8306e3ab29f7b0a3eba3d34da09e"
+  },
+  "volume-test": {
+    "file": "volume-test.gbs",
+    "title": "Volume Test",
+    "author": "Antonio Nino Diaz",
+    "driver": "GBT Player",
+    "url": "https://github.com/AntonioND/gbt-player",
+    "licence": "MIT",
+    "licenceUrl": "https://github.com/AntonioND/gbt-player/blob/master/LICENSE",
+    "sha256": "ce64873f3351d67e063d8f742d0c4ea9b488eb9b17d90e6663fe306240bb5547"
+  },
+  "nightmode": {
+    "file": "nightmode.gbs",
+    "title": "Nightmode",
+    "author": "Laxity",
+    "driver": "Laxity's own driver (bundled with gbsplay)",
+    "url": "https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs",
+    "licence": "Public domain",
+    "licenceUrl": "https://github.com/mmitch/gbsplay/blob/master/COPYRIGHT",
+    "sha256": "9d2ea8e437dae7adcfd02af2534d4cb5a194af3e14ee1e818e33df7efe7256d4"
   }
 }

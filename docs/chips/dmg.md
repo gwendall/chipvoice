@@ -295,24 +295,35 @@ pacing, RST relocation, and bank switching.
 Measured against [Game_Music_Emu](https://github.com/libgme/game-music-emu)'s
 `Gbs_Emu`, pinned the same way `scores/arrangements/native-oracle.py` pins it
 for NSF, by [`scores/gbs-corpus`](../../scores/gbs-corpus) - a comparison, not
-an assertion: run `pnpm gbs-corpus:check`. The corpus carries one file so far,
-self-produced and public domain (real, redistribution-licensed GBS files with
-a clear source and licence are still being sought; none had been found and
-verified in time for this ticket). On it, every register write matches
-GME's own, address and value, in the same order, for the file's whole run
-(`compare.mjs`'s `valueMatched`) - the CPU decodes and runs the program
-correctly. The exact cycle timestamps do not agree nearly as often: our SM83
-times a `LD r,n`/`LDH` pair a fixed, larger number of T-cycles than GME's own
-`Gb_Cpu` does (self-checked against Pan Docs' own M-cycle table via
-`test/cpu-gb.mjs`, and confirmed by hand against this file's own instruction
-sequence), and unlike NSF's finding for the 2A03, that gap does not close
-once PLAY reaches its steady state - it stays small and bounded, never
-drifting across a six-second, twenty-five-million-cycle capture, but it does
-not reach zero either. This is reported plainly below rather than adjusted
-away: GME's own CPU core evidently does not carry Pan Docs' per-opcode timing
-for the opcodes this file exercises, and matching it exactly would mean
-copying that model rather than building from documents, which decision 41
-does not allow.
+an assertion: run `pnpm gbs-corpus:check`. The corpus below holds one
+self-produced file plus four real files from three independent drivers
+(hUGEDriver, GBT Player and Laxity's own driver, bundled with gbsplay - see
+[the corpus README](../../scores/gbs-corpus/README.md) for how each was
+sourced or built). On every one of them, every register write matches GME's
+own, address and value, in the same order, for the file's whole run
+(`compare.mjs`'s `valueMatched`) - the CPU decodes and runs each of these
+five different programs, from four different authors, correctly. The exact
+cycle timestamps do not agree nearly as often, and it is worth being precise
+about why, since a constant gap could mean either side has a wrong
+instruction length: it does not. On `pulse-sweep.gbs`, every write is an
+`LDH (n),A` (`$E0`); at one fixed PC, the measured delta (ours minus GME)
+takes four different values across the capture (21, 22, 23, 24 T-cycles),
+which rules out a fixed per-opcode stamping-point offset - that would
+produce one constant, not four. Reading
+GME's own `Gb_Cpu.cpp` (revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`,
+cited by revision and not vendored, per decision 41) confirms the actual
+cause: its dispatch loop charges a flat `clocks_per_instr = 4` T-cycles per
+instruction, once, before that instruction's own body runs - the same 4T for
+an 8T `LD r,n` as for a 16T `JP`, for every opcode including CB-prefixed
+ones. That is a real divergence in timing *model*, not in stamping
+convention, and because the error it introduces depends on which
+instructions ran rather than on which opcode is writing, no single
+per-opcode or per-address offset closes the gap; `compare.mjs`'s docstring
+has the full account. The cycle-exact score is reported raw for this reason,
+never adjusted; matching GME's timing exactly would mean copying its model
+rather than building from documents, which decision 41 does not allow.
+[`instr_timing`](#test-roms) below is what actually settles the timing
+question against real hardware, independently of GME.
 
 <!-- gbs-corpus:begin -->
 Written by `gbs-corpus:sheet` on 2026-09-27, against Game_Music_Emu revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`.
@@ -320,6 +331,10 @@ Written by `gbs-corpus:sheet` on 2026-09-27, against Game_Music_Emu revision `fe
 | Song | Driver | Commands | Cycle-exact | Same value+order | First divergence |
 | --- | --- | --- | --- | --- | --- |
 | [Pulse Sweep](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs) | self-produced (hand-assembled SM83) | 724 | 1/724 | 724/724 | cycle 36 vs 15, $ff24: 119 vs 119 |
+| [Sample Song](https://github.com/SuperDisk/hUGEDriver) | hUGEDriver | 48299 | 1/48299 | 48299/48299 | cycle 44 vs 15, $ff25: 255 vs 255 |
+| [Effects Test](https://github.com/AntonioND/gbt-player) | GBT Player | 2220 | 1/2220 | 2220/2220 | cycle 44 vs 15, $ff25: 255 vs 255 |
+| [Volume Test](https://github.com/AntonioND/gbt-player) | GBT Player | 509 | 1/509 | 509/509 | cycle 44 vs 15, $ff25: 255 vs 255 |
+| [Nightmode](https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs) | Laxity's own driver (bundled with gbsplay) | 59673 | 0/59673 | 59673/59673 | cycle 3928 vs 1895, $ff26: 128 vs 128 |
 <!-- gbs-corpus:end -->
 
 ## Test ROMs
@@ -353,6 +368,47 @@ trigger's effects on every voice; the sweep, its overflow check on the trigger
 and its negate trap; the sync of length and sweep clocks to the divider; and the
 wave channel's RAM while it plays: what a read returns, what a write lands on,
 and the corruption a retrigger causes on the DMG.
+
+blargg's `cpu_instrs` (behaviour: every opcode except `STOP` and the eleven
+illegal ones, boundary data, other registers left alone) and `instr_timing`
+(every opcode's T-cycle count, cross-checked here against real hardware
+rather than against GME) run the same way, but on the PACKAGE's own
+[`chips/gb/cpu.ts`](../../packages/chipvoice/src/chips/gb/cpu.ts) rather than
+this harness's separate `sm83.mjs` fixture
+(`pnpm --filter chipvoice-conform roms:cpu-instrs`). Both suites speak an
+older, plainer protocol than `dmg_sound`'s: the ROM prints to a screen this
+harness does not render, and sends the same text out the serial port
+(`$FF01`/`$FF02`), which is what is captured and read here. `instr_timing`
+passing is the hardware-grounded answer to the timing question
+[GBS playback](#gbs-playback) raises against GME above: every opcode's
+length, checked against blargg's own verified cycle tables running on real
+Game Boy behaviour, not against another emulator's.
+
+<!-- cpu-instrs:begin -->
+Run by `conform`'s SM83 fixture on 2026-09-27, against the package's own `chips/gb/cpu.ts`: 12 of 12 pass.
+
+| ROM | Result | What it said |
+| --- | --- | --- |
+| `cpu_instrs/01-special` | pass | 01-special Passed |
+| `cpu_instrs/02-interrupts` | pass | 02-interrupts Passed |
+| `cpu_instrs/03-op sp,hl` | pass | 03-op sp,hl Passed |
+| `cpu_instrs/04-op r,imm` | pass | 04-op r,imm Passed |
+| `cpu_instrs/05-op rp` | pass | 05-op rp Passed |
+| `cpu_instrs/06-ld r,r` | pass | 06-ld r,r Passed |
+| `cpu_instrs/07-jr,jp,call,ret,rst` | pass | 07-jr,jp,call,ret,rst Passed |
+| `cpu_instrs/08-misc instrs` | pass | 08-misc instrs Passed |
+| `cpu_instrs/09-op r,r` | pass | 09-op r,r Passed |
+| `cpu_instrs/10-bit ops` | pass | 10-bit ops Passed |
+| `cpu_instrs/11-op a,(hl)` | pass | 11-op a,(hl) Passed |
+| `instr_timing/instr_timing` | pass | instr_timing Passed |
+<!-- cpu-instrs:end -->
+
+Both suites are Shay Green's (blargg's), from
+[retrio/gb-test-roms](https://github.com/retrio/gb-test-roms) - the same
+informal, no-formal-licence, "free for any use" status `dmg_sound` already
+carries here; see [`roms/README.md`](../../packages/conform/roms/README.md)
+for that repository's own provenance and this one's disclosed difference
+from the `dmg_sound` build already vendored.
 
 ## Formula tests
 

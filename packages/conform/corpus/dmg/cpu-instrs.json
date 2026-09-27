@@ -1,0 +1,79 @@
+{
+  "date": "2026-09-27",
+  "passed": 12,
+  "total": 12,
+  "results": [
+    {
+      "name": "cpu_instrs/01-special",
+      "passed": true,
+      "hung": false,
+      "text": "01-special\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/02-interrupts",
+      "passed": true,
+      "hung": false,
+      "text": "02-interrupts\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/03-op sp,hl",
+      "passed": true,
+      "hung": false,
+      "text": "03-op sp,hl\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/04-op r,imm",
+      "passed": true,
+      "hung": false,
+      "text": "04-op r,imm\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/05-op rp",
+      "passed": true,
+      "hung": false,
+      "text": "05-op rp\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/06-ld r,r",
+      "passed": true,
+      "hung": false,
+      "text": "06-ld r,r\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/07-jr,jp,call,ret,rst",
+      "passed": true,
+      "hung": false,
+      "text": "07-jr,jp,call,ret,rst\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/08-misc instrs",
+      "passed": true,
+      "hung": false,
+      "text": "08-misc instrs\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/09-op r,r",
+      "passed": true,
+      "hung": false,
+      "text": "09-op r,r\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/10-bit ops",
+      "passed": true,
+      "hung": false,
+      "text": "10-bit ops\n\n\nPassed"
+    },
+    {
+      "name": "cpu_instrs/11-op a,(hl)",
+      "passed": true,
+      "hung": false,
+      "text": "11-op a,(hl)\n\n\nPassed"
+    },
+    {
+      "name": "instr_timing/instr_timing",
+      "passed": true,
+      "hung": false,
+      "text": "instr_timing\n\n\nPassed"
+    }
+  ]
+}

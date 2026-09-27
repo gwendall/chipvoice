@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|mixer|hwcombined|nsf-corpus|gbs-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|parity(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -111,6 +111,17 @@ def localized_block(kind, body, templates):
                 line = line.replace('| pass |', '| 成功 |').replace('| fail |', '| 失敗 |')
             else:
                 raise ValueError(f'Unknown ROM line: {line}')
+        elif kind == 'cpu-instrs':
+            match = re.fullmatch(r"Run by `conform`'s SM83 fixture on (.+), against the package's own `chips/gb/cpu\.ts`: (\d+) of (\d+) pass\.", line)
+            if match:
+                line = f'`conform`のSM83 fixtureで{match[1]}に実行（対象：本パッケージ自身の`chips/gb/cpu.ts`）：{match[2]} / {match[3]}成功。'
+            elif line == '| ROM | Result | What it said |':
+                line = '| ROM | 結果 | 実際の出力（原文） |'
+            elif re.fullmatch(r'\| `[^`]+` \| (?:pass|fail|hung) \| .* \|', line):
+                # The third cell is exact ROM stdout; never translate or rewrite it.
+                line = line.replace('| pass |', '| 成功 |').replace('| fail |', '| 失敗 |').replace('| hung |', '| 停止 |')
+            else:
+                raise ValueError(f'Unknown cpu-instrs line: {line}')
         elif kind == 'mixer':
             match = re.fullmatch(r"Written by `conform` on (.+)\. The middle's level relative to the tone's; lower is a better cancellation\.", line)
             if match:

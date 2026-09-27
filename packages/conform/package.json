@@ -20,6 +20,8 @@
     "corpus:dmg": "node src/corpus/generate-dmg.mjs",
     "roms:dmg": "node src/roms/run.mjs --chip dmg",
     "roms:dmg:sheet": "node src/roms/run.mjs --chip dmg --sheet ../../docs/chips/dmg.md --json corpus/dmg/roms.json && node src/status.mjs",
+    "roms:cpu-instrs": "node src/roms/cpu-instrs.mjs",
+    "roms:cpu-instrs:sheet": "node src/roms/cpu-instrs.mjs --sheet ../../docs/chips/dmg.md --json corpus/dmg/cpu-instrs.json && node src/status.mjs",
     "check:sameboy": "node src/cli.mjs dmg --corpus corpus/dmg --oracle sameboy --baseline corpus/dmg/parity-sameboy.json",
     "baseline:sameboy": "node src/cli.mjs dmg --corpus corpus/dmg --oracle sameboy --baseline corpus/dmg/parity-sameboy.json --write-baseline --sheet ../../docs/chips/dmg.md --marker parity-sameboy && node src/status.mjs",
     "status": "node src/status.mjs",

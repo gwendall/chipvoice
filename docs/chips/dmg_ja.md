@@ -96,7 +96,7 @@ DMGのCPUに内蔵された音源です。矩形波2音（第1は周波数スイ
 
 CB接頭辞のブロックを含むSM83の全オペコードは[`test/cpu-gb.mjs`](../../packages/chipvoice/test/cpu-gb.mjs)で単体テストしています: 8ビット・16ビット加算のフラグ、DAA、Pan Docs自身のマシンサイクル表通りのサイクル数、HALT／割り込みのポーリング、EIの1命令遅延です。[`test/gbs-import.mjs`](../../packages/chipvoice/test/gbs-import.mjs)はヘッダー解析、上記の拒否条件をすべて名前付きで、INIT/PLAYのスケジューリングとペース、RSTの再配置、バンク切り替えをカバーしています。
 
-[Game_Music_Emu](https://github.com/libgme/game-music-emu)の`Gbs_Emu`を対象に、`scores/arrangements/native-oracle.py`がNSF向けに固定するのと同じ方法でリビジョンを固定し、[`scores/gbs-corpus`](../../scores/gbs-corpus)が測定します - 判定ではなく比較です。実行するには`pnpm gbs-corpus:check`。コーパスには今のところ1ファイルのみ、自作のパブリックドメイン作品を収録しています（出典と再配布可能なライセンスが明確な実在のGBSファイルは、現在も探索中で、本チケットの期限内には見つけて検証できませんでした）。このファイルでは、アドレスと値、そして順序のすべてでGME側の書き込みと一致します（`compare.mjs`の`valueMatched`）。ファイル全体を通してCPUがプログラムを正しく解読し、正しく実行していることになります。一方、正確なサイクルのタイムスタンプはそれほど一致しません: 本実装のSM83は`LD r,n`/`LDH`の組み合わせにGME自身の`Gb_Cpu`より一定して多いT-サイクルを要します（Pan Docs自身のマシンサイクル表に対して`test/cpu-gb.mjs`で自己検証済みで、このファイル自身の命令列に対しても手計算で確認済みです）。NSFで見つかった知見とは異なり、PLAYが定常状態に達してもこの差は縮まりません - 6秒・2500万サイクルの捕捉全体を通じて広がることはなく小さく留まりますが、ゼロにもなりません。これは調整して隠すのではなく、そのまま以下に報告します: GME自身のCPUコアは、このファイルが使うオペコードについてPan Docsのオペコード別サイクル数を保持していないようで、それに正確に合わせることはドキュメントからの構築ではなくそのモデルの複製になってしまい、decision 41では許されません。
+[Game_Music_Emu](https://github.com/libgme/game-music-emu)の`Gbs_Emu`を対象に、`scores/arrangements/native-oracle.py`がNSF向けに固定するのと同じ方法でリビジョンを固定し、[`scores/gbs-corpus`](../../scores/gbs-corpus)が測定します - 判定ではなく比較です。実行するには`pnpm gbs-corpus:check`。下記のコーパスには、自主制作の1ファイルに加えて、3つの独立したドライバ（hUGEDriver、GBT Player、gbsplayに同梱されたLaxity自身のドライバ）による実ファイルが4つ収められています - それぞれの出所やビルド方法は[コーパスのREADME](../../scores/gbs-corpus/README.md)を参照してください。そのすべてにおいて、アドレスと値、そして順序のすべてでGME側の書き込みと一致します（`compare.mjs`の`valueMatched`）。4人の異なる作者による、これら5つの異なるプログラムそれぞれについて、CPUが正しく解読し、正しく実行していることになります。一方、正確なサイクルのタイムスタンプはそれほど一致しません。なぜそうなるのかは正確に述べておく価値があります - 一定のずれであれば、どちらかの命令長が誤っている可能性を意味してしまうからです。実際にはそうではありません。`pulse-sweep.gbs`では、書き込みはすべて`LDH (n),A`（`$E0`）で、同じ一つのPCでも測定した差分（本実装からGMEを引いた値）は捕捉全体を通じて4通りの値（21、22、23、24 T-サイクル）を取り、これはオペコードごとに固定されたスタンプ位置のずれという説明を否定します - それなら一定値が1つ出るはずで、4つは出ません。GME自身の`Gb_Cpu.cpp`（リビジョン`fe8da4b6d3876d7542c2fb69d94487e19836d678`、decision 41に基づきリビジョンを指定して参照するのみでベンダリングはせず）を読むと、実際の原因が確認できます: そのディスパッチループは命令ごとに一律`clocks_per_instr = 4`T-サイクルを、その命令自体の本体が実行される前に一度だけ課しており、8Tの`LD r,n`にも16Tの`JP`にも同じ4Tを課します。これはCB接頭辞のオペコードを含むすべてのオペコードについて同様です。これはタイミング「モデル」自体の実在する相違であり、スタンプの慣習の違いではありません。そして、そこで生じる誤差はどのオペコードが書き込みを行ったかではなく、それまでにどの命令が実行されたかに依存するため、オペコード単位あるいはアドレス単位の単一のオフセットではこのずれを解消できません。詳細は`compare.mjs`のdocstringにあります。この理由により、サイクル一致のスコアは調整せずそのまま報告しています。GMEのタイミングに正確に一致させることは、そのモデルを複製することを意味してしまい、ドキュメントからの構築ではなくなるため、decision 41では許されません。下記の`instr_timing`こそが、GMEとは無関係に実機に対してタイミングの疑問に答えるものです。
 
 <!-- gbs-corpus:begin -->
 `gbs-corpus:sheet`による生成：2026-09-27。参照：Game_Music_Emu revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`。
@@ -104,6 +104,10 @@ CB接頭辞のブロックを含むSM83の全オペコードは[`test/cpu-gb.mjs
 | 曲 | ドライバー | コマンド数 | サイクル一致 | 値・順序一致 | 最初の相違 |
 | --- | --- | --- | --- | --- | --- |
 | [Pulse Sweep](https://github.com/gwendall/chipvoice/blob/main/scores/gbs-corpus/files/pulse-sweep.gbs) | self-produced (hand-assembled SM83) | 724 | 1/724 | 724/724 | サイクル 36 対 15, $ff24: 119 対 119 |
+| [Sample Song](https://github.com/SuperDisk/hUGEDriver) | hUGEDriver | 48299 | 1/48299 | 48299/48299 | サイクル 44 対 15, $ff25: 255 対 255 |
+| [Effects Test](https://github.com/AntonioND/gbt-player) | GBT Player | 2220 | 1/2220 | 2220/2220 | サイクル 44 対 15, $ff25: 255 対 255 |
+| [Volume Test](https://github.com/AntonioND/gbt-player) | GBT Player | 509 | 1/509 | 509/509 | サイクル 44 対 15, $ff25: 255 対 255 |
+| [Nightmode](https://github.com/mmitch/gbsplay/blob/master/examples/nightmode.gbs) | Laxity's own driver (bundled with gbsplay) | 59673 | 0/59673 | 59673/59673 | サイクル 3928 対 1895, $ff26: 128 対 128 |
 <!-- gbs-corpus:end -->
 
 ## テストROM
@@ -130,6 +134,29 @@ CB接頭辞のブロックを含むSM83の全オペコードは[`test/cpu-gb.mjs
 <!-- roms:end -->
 
 12本は、レジスタ読み出しマスクと電源、NRx4書き込み時の追加時計や電源断をまたぐ長さカウンター、各ボイスのトリガー、スイープとトリガー時オーバーフロー／negateトラップ、分周器への長さとスイープ時計の同期、再生中波形RAMの読み出し／書き込み先／DMG再トリガー時破損を検査します。
+
+blarggの`cpu_instrs`（挙動テスト: `STOP`と11個の非公式オペコードを除く全オペコードを対象に、境界値と他レジスタが変化しないことを検査）と`instr_timing`（全オペコードのTサイクル数を検査。ここではGMEではなく実機に対して照合します）は同じ方法で実行しますが、対象はこのハーネス独自の`sm83.mjs`フィクスチャではなく、パッケージ自身の[`chips/gb/cpu.ts`](../../packages/chipvoice/src/chips/gb/cpu.ts)です（`pnpm --filter chipvoice-conform roms:cpu-instrs`）。両スイートとも`dmg_sound`よりも古く単純なプロトコルを使います: ROMはこのハーネスが描画しない画面に文字を出力しつつ、同じ文字列をシリアルポート（`$FF01`/`$FF02`）にも送り、ここで捕捉して読み取っているのはその出力です。`instr_timing`の成功は、[GBSの再生](#gbsの再生)がGMEに対して提起するタイミングの疑問に実機の裏付けをもって答えるものです: 各オペコードの長さを、別のエミュレータではなくblargg自身が検証済みのサイクル表と実機のGame Boyの挙動に対して確認しています。
+
+<!-- cpu-instrs:begin -->
+`conform`のSM83 fixtureで2026-09-27に実行（対象：本パッケージ自身の`chips/gb/cpu.ts`）：12 / 12成功。
+
+| ROM | 結果 | 実際の出力（原文） |
+| --- | --- | --- |
+| `cpu_instrs/01-special` | 成功 | 01-special Passed |
+| `cpu_instrs/02-interrupts` | 成功 | 02-interrupts Passed |
+| `cpu_instrs/03-op sp,hl` | 成功 | 03-op sp,hl Passed |
+| `cpu_instrs/04-op r,imm` | 成功 | 04-op r,imm Passed |
+| `cpu_instrs/05-op rp` | 成功 | 05-op rp Passed |
+| `cpu_instrs/06-ld r,r` | 成功 | 06-ld r,r Passed |
+| `cpu_instrs/07-jr,jp,call,ret,rst` | 成功 | 07-jr,jp,call,ret,rst Passed |
+| `cpu_instrs/08-misc instrs` | 成功 | 08-misc instrs Passed |
+| `cpu_instrs/09-op r,r` | 成功 | 09-op r,r Passed |
+| `cpu_instrs/10-bit ops` | 成功 | 10-bit ops Passed |
+| `cpu_instrs/11-op a,(hl)` | 成功 | 11-op a,(hl) Passed |
+| `instr_timing/instr_timing` | 成功 | instr_timing Passed |
+<!-- cpu-instrs:end -->
+
+両スイートともShay Green（blargg）によるもので、出典は[retrio/gb-test-roms](https://github.com/retrio/gb-test-roms)です - ここに既にある`dmg_sound`と同じ、正式なライセンス表記のない「自由に利用可能」という位置づけです。このリポジトリ自体の出典と、既にベンダリングされている`dmg_sound`のビルドとの相違点（開示済み）については[`roms/README.md`](../../packages/conform/roms/README.md)を参照してください。
 
 <a id="formula-tests"></a>
 ## 数式テスト

@@ -24,7 +24,13 @@ bank-select write past the file's own bank count, a serial transfer-start
 write, and an INIT/PLAY call that overruns its frame budget. See
 [docs/chips/dmg.md](docs/chips/dmg.md#gbs-playback) for the environment, the
 reject list, and how it is measured (not asserted) against Game_Music_Emu's
-`Gbs_Emu`. Package-only for now; there is no chipvoice.dev counterpart.
+`Gbs_Emu` on a corpus of real GBS files built from three independent drivers
+(hUGEDriver, GBT Player, and Laxity's own driver bundled with gbsplay -
+[`scores/gbs-corpus`](scores/gbs-corpus/README.md)). The same SM83 also
+passes blargg's `cpu_instrs` and `instr_timing` test ROMs (`packages/conform`,
+`roms:cpu-instrs`), which check its behaviour and its timing against real
+Game Boy hardware, independently of any reference emulator. Package-only for
+now; there is no chipvoice.dev counterpart.
 
 The SID has a second model: `model: "8580"` on `Chip.create`, on
 `renderPerformance`/`renderProject`'s options, and on a project's

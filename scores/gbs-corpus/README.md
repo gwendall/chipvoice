@@ -24,20 +24,37 @@ file is either:
 - a **homebrew GBS whose licence explicitly permits redistribution** (CC0,
   CC-BY, public domain or similarly permissive) - not a commercial game rip,
   ever; or
-- **self-produced**, written for this corpus and owned by the project (the
-  one file it carries today, `pulse-sweep.gbs`, is this: a hand-assembled
-  SM83 program, public domain).
+- **self-produced**, written for this corpus and owned by the project
+  (`pulse-sweep.gbs`: a hand-assembled SM83 program, public domain); or
+- **self-assembled from a real, redistribution-licensed driver**: the
+  driver's own published source, plus one of its own example songs, built
+  into a GBS with RGBDS and a small hand-written header/INIT wrapper (the
+  driver never had a GBS export path of its own) - nothing in the resulting
+  program is ours except the wrapper.
+
+Three independent drivers are represented, from three unrelated authors:
+
+- **hUGEDriver** (`sample-song.gbs`) - Nathan Tolbert ("SuperDisk")'s driver
+  for hUGETracker, public domain by the repository's own README, built from
+  its `rgbds_example/sample_song.asm` example song. hUGEDriver relies on the
+  MBC's power-on default (bank 1 mapped with no explicit bank-select write)
+  rather than switching banks itself.
+- **GBT Player** (`effects-test.gbs`, `volume-test.gbs`) - Antonio Niño
+  Díaz's driver, MIT licensed, built from two of `mod2gbt`'s own example
+  `.mod` files (named for what they exercise, not commercial songs: an
+  effects test and a volume test) converted with the driver's own `mod2gbt`
+  tool. Unlike hUGEDriver, GBT Player performs real `$2000`-`$3FFF`
+  bank-select writes at runtime (its own doc comments call this out:
+  "THIS WILL CHANGE ROM BANK!!!"), so these two files exercise
+  `gbs-import.ts`'s bank-switch handling that `sample-song.gbs` does not.
+- **gbsplay's bundled example** (`nightmode.gbs`) - Laxity (Dual Crew
+  Shining)'s own driver and song, shipped as-is (no build step) inside the
+  gbsplay project, public domain by gbsplay's own `COPYRIGHT` file.
 
 A gitignored `.artifacts/gbs-private/` directory is scored the same way, for
 an owner's own local files that cannot be committed. CI never populates that
 directory, so it never affects a CI run; its results print to the console,
 tagged private, and are excluded from the committed JSON and the sheet.
-
-Real, independently authored homebrew GBS files (hUGETracker or GBT Player
-demos, for instance) are not yet in the corpus - none had been sourced and
-its licence verified in time for this ticket. Growing the corpus with real
-driver output, alongside the self-produced file already here, is future
-work.
 
 ## Running it
 
