@@ -103,7 +103,12 @@ export function importVgm(bytes: Uint8Array, options: VgmImportOptions = {}): Pe
 function importNes(bytes: Uint8Array, view: DataView, u32: (at: number) => number, start: number, total: number, loop: number, rawClock: number, options: VgmImportOptions): PerformancePlan {
   if (rawClock & 0x80000000) throw new Error('Famicom Disk System expansion audio is not supported');
   if (rawClock & 0x40000000) throw new Error('A second NES APU chip (dual-chip VGM) is not supported');
-  if (rawClock !== NES_HZ) throw new Error(`Expected the NTSC NES APU clock (${NES_HZ} Hz); PAL and other clocks are not supported`);
+  // 21.477272 MHz / 12 rounds to 1789772 or 1789773 depending on where a
+  // logger truncates; VGMPlay and most NES rips write 1789772, ours writes
+  // our own NES_HZ (1789773). Accept either within 0.01% of NES_HZ (about
+  // 179 Hz) and still schedule on our own clock below; PAL (1662607) and
+  // Dendy (1773448) both land far outside that band and still fail.
+  if (Math.abs(rawClock - NES_HZ) > NES_HZ * 0.0001) throw new Error(`Expected the NTSC NES APU clock (~${NES_HZ} Hz); PAL and other clocks are not supported`);
   const events: RegisterEvent[] = [];
   const memory: PerformancePlan['memory'] = [];
   let at = start, sample = 0, loopSample = -1, ended = false;
@@ -153,6 +158,9 @@ function importNes(bytes: Uint8Array, view: DataView, u32: (at: number) => numbe
 function importGb(bytes: Uint8Array, view: DataView, u32: (at: number) => number, start: number, total: number, loop: number, rawClock: number, options: VgmImportOptions): PerformancePlan {
   if (rawClock & 0x80000000) throw new Error('Unsupported Game Boy DMG clock flag');
   if (rawClock & 0x40000000) throw new Error('A second Game Boy DMG chip (dual-chip VGM) is not supported');
+  // Unlike the NES's derived 21.477272 MHz / 12, the DMG's own crystal is
+  // exactly 4194304 Hz and every logger agrees on it, so an exact match is
+  // correct here and needs no tolerance.
   if (rawClock !== GB_HZ) throw new Error(`Expected the Game Boy DMG clock (${GB_HZ} Hz)`);
   const events: RegisterEvent[] = [];
   let at = start, sample = 0, loopSample = -1, ended = false;

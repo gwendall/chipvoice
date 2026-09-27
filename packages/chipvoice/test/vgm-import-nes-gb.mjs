@@ -29,10 +29,23 @@ const fixture = (chip, body, {rawClock, total, otherClock = 0} = {}) => {
 }
 
 {
+  // VGMPlay and most real NES rips write 1789772 (21.477272 MHz / 12,
+  // truncated), not our own NES_HZ (1789773, rounded); both must import,
+  // scheduled on our own clock either way, so this is not just the fixture's
+  // own round-trip passing.
+  const bytes = fixture('2a03', [0xb4, 0x00, 0x0f, 0x70, 0x66], {rawClock: 1789772, total: 1});
+  const p = importVgm(bytes);
+  assert.equal(p.chip, '2a03');
+  assert.deepEqual(p.events, [{at: 0, addr: 0x4000, value: 0x0f}]);
+  console.log('PASS NES VGM accepts the 1789772 Hz clock real rips write, not only our own 1789773');
+}
+
+{
   const cases = [
     [{rawClock: NES_HZ | 0x80000000, total: 1}, [0x66], /Disk System/],
     [{rawClock: NES_HZ | 0x40000000, total: 1}, [0x66], /second NES APU chip \(dual-chip/],
     [{rawClock: 1662607, total: 1}, [0x66], /NTSC NES APU clock/],
+    [{rawClock: 1773448, total: 1}, [0x66], /NTSC NES APU clock/],
     [{rawClock: NES_HZ, total: 1}, [0xb4, 0x80, 0x0f, 0x66], /second NES APU chip register/],
     [{rawClock: NES_HZ, total: 1}, [0xb4, 0x20, 0x00, 0x66], /Disk System expansion audio registers/],
     [{rawClock: NES_HZ, total: 1}, [0x67, 0x66, 0x07, 2, 0, 0, 0, 0xaa, 0xbb, 0x66], /data block type/],

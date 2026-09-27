@@ -43,7 +43,16 @@ export interface VgmOptions {
   chip?: string;
 }
 
-/** What each chip's writes look like in the file, and where its clock goes. */
+/**
+ * What each chip's writes look like in the file, and where its clock goes.
+ * The 2A03 entry writes our own CPU_HZ (1789773, the NTSC clock rounded up)
+ * rather than 1789772 (the value most real rips and VGMPlay itself write,
+ * the same clock truncated down); that keeps our own emitted files matching
+ * the internal scheduling grid `importVgm` already uses, and round-trips
+ * byte-identically through our own reader. `importVgm` accepts either value
+ * (and everything within 0.01% of CPU_HZ) on the way in, so a file from a
+ * real logger still imports; only our own output's exact byte stays as is.
+ */
 const CHIPS: Record<string, { clock: number; command: number; base: number; last: number; clockOffset: number; system: string }> = {
   "2a03": { clock: CPU_HZ, command: 0xb4, base: 0x4000, last: 0x401f, clockOffset: 0x84, system: "Nintendo Entertainment System" },
   dmg: { clock: GB_HZ, command: 0xb3, base: 0xff10, last: 0xff3f, clockOffset: 0x80, system: "Nintendo Game Boy" },
