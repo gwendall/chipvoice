@@ -2,7 +2,7 @@
   "chip": "md",
   "oracle": {
     "id": "sn76496",
-    "name": "MAME sn76496 (Sega VDP PSG), pinned at 76c7d197"
+    "name": "MAME sn76496 (Sega VDP PSG, 76c7d197)"
   },
   "voices": [
     "psg1",

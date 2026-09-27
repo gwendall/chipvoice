@@ -23,7 +23,7 @@ const HEADERS = ['emu.h', 'sn76496.h'];
 
 export const sn76496 = {
   id: 'sn76496',
-  name: 'MAME sn76496 (Sega VDP PSG), pinned at 76c7d197',
+  name: 'MAME sn76496 (Sega VDP PSG, 76c7d197)',
   voices: ['psg1', 'psg2', 'psg3', 'noise'],
   /** All four PSG voices: this oracle does not see the YM2612 at all. */
   trusted: ['psg1', 'psg2', 'psg3', 'noise'],

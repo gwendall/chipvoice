@@ -52,11 +52,11 @@
 MAMEの`sn76496.cpp`／`sn76496.h`、コミット`76c7d197ed46e844ffb1fbad5cc21c9ab3cdc9c0`固定版を`segapsg_device`（メガドライブのドライバーが実際に使うSega VDP PSG、`315_5313.cpp:248`）としてマスター時計の1/15（`megadriv.cpp:763`、`315_5124.h:66`）で構成し、[`packages/conform/oracles/sn76496`](../../packages/conform/oracles/sn76496)にネイティブビルドして比較します。PSG4ボイスを対象に、同じコーパスとこの参照実装の限界事例向けに書いたスクリプトを追加して測定します。マーカー内をハーネスが生成し（`pnpm --filter chipvoice-conform baseline:sn76496`）、解釈は手書きです。
 
 <!-- parity-sn76496:begin -->
-`conform`による生成：2026-09-27。参照：MAME sn76496 (Sega VDP PSG), pinned at 76c7d197。比較対象：psg1, psg2, psg3, noise。
+`conform`による生成：2026-09-27。参照：MAME sn76496 (Sega VDP PSG, 76c7d197)。比較対象：psg1, psg2, psg3, noise。
 
 | | |
 | --- | --- |
-| 参照 | MAME sn76496 (Sega VDP PSG), pinned at 76c7d197 |
+| 参照 | MAME sn76496 (Sega VDP PSG, 76c7d197) |
 | コーパス | 8ログ、2233636083サイクル |
 | 一致サイクル | 1990757028 / 2233636083 (89.1263 %) |
 | 相違のあるログ | 4 |

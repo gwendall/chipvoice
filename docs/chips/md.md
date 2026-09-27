@@ -75,11 +75,11 @@ harness (`pnpm --filter chipvoice-conform baseline:sn76496`); the reading of
 them below is a person's.
 
 <!-- parity-sn76496:begin -->
-Written by `conform` on 2026-09-27, against MAME sn76496 (Sega VDP PSG), pinned at 76c7d197, on psg1, psg2, psg3, noise.
+Written by `conform` on 2026-09-27, against MAME sn76496 (Sega VDP PSG, 76c7d197), on psg1, psg2, psg3, noise.
 
 | | |
 | --- | --- |
-| Oracle | MAME sn76496 (Sega VDP PSG), pinned at 76c7d197 |
+| Oracle | MAME sn76496 (Sega VDP PSG, 76c7d197) |
 | Corpus | 8 logs, 2233636083 cycles |
 | Identical cycles | 1990757028 / 2233636083 (89.1263 %) |
 | Logs with a divergence | 4 |
