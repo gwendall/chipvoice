@@ -1068,3 +1068,105 @@ remains a useful second fence.
 
 **What changes.** Decision 39's cap moves from the provider to the server.
 NEXT-20's quotas are in place for the beta; billing remains.
+
+## 43. Every song and publication records the chipvoice engine that made it (2026-09-27)
+
+Decision 21 stated a limit directly: stable audio URLs revalidate with
+whatever engine is currently deployed, "does not promise archival
+reproduction across engine versions", and named the fix as "pin the npm
+package and keep the full score", left for AUD-2 "with measurements before
+adding infrastructure". Nothing recorded which version to pin. NEXT-11 closes
+that: `songs`, `projects` and `project_jobs` each gain a nullable
+`engine_version` column, stamped with `PROJECT_ENGINE_VERSION` (the chipvoice
+package version, already equal to what npm serves per NEXT-01) at the moment
+each row is written - a song saved, a revision published, a render job
+created. `project_jobs` already carried a content hash of the actual bundled
+renderer (`engine`, decision 27's cache key); the version now sits next to it,
+answering "which npm release" where the hash only ever answered "byte for
+byte the same build".
+
+**Which objects, and what "again" means for each.**
+
+- **Drafts** stay local to a browser (CREATE.md); there is no server row to
+  stamp. `prepareProject`/`renderProject` already return `engineVersion` in
+  their result, so a draft's exported JSON and its downloader already know
+  it; nothing new was needed here.
+- **Saved songs** (`/api/songs`, the compact `songs` table) now record the
+  version that saved them, shown on the song and through the API. This does
+  not change decision 21's own choice for `/s/{id}`: that URL still revalidates
+  with whatever engine is live, on purpose, so a listener always hears the
+  current sound. The recorded version is a fact about authorship ("made with
+  chipvoice x.y.z"), not a pin on what `/s/{id}` renders next.
+- **Complete projects** (`/api/v1/projects`, the `projects` table) record the
+  version live at publish time. The document and, once rendered, the audio in
+  `project_jobs`/`project_audio` are already immutable (decisions 27 and 40);
+  recording the version turns "immutable" into "identifiable and
+  reproducible": installing that exact `chipvoice` release and calling
+  `renderProject` on the stored document is now a known, exact operation, not
+  a guess at which release to try.
+- **Immutable publications' renditions** (`project_jobs`) record the version
+  that actually rendered them, alongside the existing bundle hash.
+
+**How an older engine is obtained: not installed on the server.** Considered
+aliasing exact past npm releases (`"chipvoice-0.19.1": "npm:chipvoice@0.19.1"`)
+and loading whichever a render needs. Rejected: the package already bundles
+five chip cores and their inlined AudioWorklet sources (about 760 KB minified
+per release); every past release added as a dependency grows the deployed
+Vercel function by that much again, forever, with no bound, since a
+publication can in principle need any release ever shipped. That cost is paid
+on every cold start whether or not that release is ever actually requested,
+and it means never dropping a version even after a security fix in one of its
+dependencies, because some old publication might name it. Against that,
+nothing here actually needs the server to re-render an old publication: its
+bytes are already pinned forever once rendered (decisions 27, 40), and the one
+real gap - a project published moments before a deploy, rendered moments after
+it - is rare and is exactly what should refuse rather than silently render
+under the wrong name.
+
+So the policy is the one decision 21 already named: the server always renders
+with its current engine, and never keeps an old one installed to pick from.
+`createProjectJob` now checks a publication's recorded `engineVersion` against
+the server's current one before starting a publication's first render of a
+kind; a mismatch refuses with `409 engine_upgraded` naming both versions,
+instead of quietly rendering an old document with a new engine and calling the
+result the old version's recording. The caller's remedy is the same one
+decision 21 gave: publish a new revision (which records the current engine),
+or install the named `chipvoice` version and render the document locally,
+which reproduces the original bytes exactly because the document and that
+release are both fixed. Reproduction is therefore always possible in
+principle and sometimes requires the caller's own `npm install`, never the
+site's.
+
+**Rows written before this shipped get `engine_version = null`, read as
+"unknown", not guessed.** Backfilling from a publication's own recording was
+considered - decision 21's other suggestion - but `project_jobs.engine` is a
+content hash of a specific build, and no table anywhere paired that hash with
+the version that produced it before now; there is no reliable hash-to-version
+history to backfill from, and guessing from a row's timestamp against release
+dates would assume a Vercel deploy landed exactly when a tag was cut, which it
+does not. `null` costs nothing and claims nothing false.
+
+**What is shown.** The song, project and job API responses, and their OpenAPI
+schemas, all carry `engineVersion` (nullable). `/api/v1/capabilities` keeps
+its own `engineVersion` field, which is the server's current engine, not any
+one song's; its description now says so, since the two can differ after a
+deploy. The skill explains both: a recorded version is what to install to
+reproduce that object exactly, and a `null` one predates this decision. The
+published-song page shows a "made with chipvoice x.y.z" note, or "engine
+version not recorded" for `null`, in English and Japanese.
+
+**Why.** The stated limit was never about capability, only about record-
+keeping: decision 21 already knew installing the exact npm version reproduces
+a rendering, and decision 27/40 already made a publication's bytes immutable.
+What was missing was the version number itself, and a refusal instead of a
+silent substitution at the one point a mismatch could occur. Both are small,
+bounded, and testable; multi-version hosting is none of those on a serverless
+deployment with no ceiling on how many releases ship over the project's life.
+
+**What it does not do.** It does not make `/s/{id}` archival; that URL still
+tracks the current engine by decision 21's own design, and this only adds a
+record of what made it, not a pin on what serves it. It does not let the
+deployed site itself produce an old release's bytes on demand; that remains
+an operation a caller runs locally, against a named, exact, reproducible
+target. MIX-14 (render hashes across browsers, Node and phones) and further
+AUD-2 measurement remain separate.

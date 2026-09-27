@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "../../packages/chipvoice/node_modules/esbuild/lib/main.js";
+import { PROJECT_ENGINE_VERSION } from "chipvoice";
 const directory = await mkdtemp(join(tmpdir(), "chipvoice-projects-"));
 process.env.VERCEL_ENV = "preview";
 process.env.TURSO_DEV_DATABASE_URL = `file:${join(directory, "data.db")}`;
@@ -156,7 +157,10 @@ try {
     visibility: "private",
     requestKey: "project-test-render",
   });
+  // Decision 43: a publication records the engine that rendered it.
+  assert.equal(short.engineVersion, PROJECT_ENGINE_VERSION);
   const job = await api.createProjectJob(short.id, bob.userId, "full");
+  assert.equal(job.engineVersion, PROJECT_ENGINE_VERSION);
   assert.equal(
     (await api.createProjectJob(short.id, bob.userId, "full")).id,
     job.id,
@@ -186,6 +190,31 @@ try {
   const head=await audio({},'HEAD');assert.equal(head.status,200);assert.equal(head.headers.get('content-length'),String(wav.length));assert.equal((await head.arrayBuffer()).byteLength,0);
   assert.equal((await audio({range:`bytes=${wav.length}-`})).status,416);
   const anonymous=await api.audioGet(new Request(`https://chipvoice.test/api/v1/jobs/${job.id}/audio`,{headers:{range:'bytes=0-43'}}),{params:Promise.resolve({id:job.id})});assert.equal(anonymous.status,404,'range never bypasses private ownership');
+
+  // Decision 43: a publication recorded against an engine this server no
+  // longer runs refuses its first render clearly, rather than rendering
+  // silently under a different engine than the one the id claims.
+  const stale = await api.publishProject(bob.userId, {
+    project: tiny,
+    visibility: "private",
+    requestKey: "project-test-stale-engine",
+  });
+  await client.execute({
+    sql: "update projects set engine_version='0.0.1-stale' where id=?",
+    args: [stale.id],
+  });
+  await assert.rejects(
+    () => api.createProjectJob(stale.id, bob.userId, "full"),
+    (error) => error.status === 409 && error.code === "engine_upgraded",
+  );
+  // A publication saved before decision 43 (null engine_version) has
+  // nothing to compare against, so it renders with the current engine.
+  await client.execute({
+    sql: "update projects set engine_version=null where id=?",
+    args: [stale.id],
+  });
+  const unknown = await api.createProjectJob(stale.id, bob.userId, "full");
+  assert.equal(unknown.engineVersion, PROJECT_ENGINE_VERSION);
 
   await client.execute({
     sql: "update project_jobs set engine='older-engine' where id=?",

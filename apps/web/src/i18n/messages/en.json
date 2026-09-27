@@ -862,6 +862,8 @@
   "Source credit": "Source credit",
   "Reuse licence": "Reuse licence",
   "No reuse licence granted": "No reuse licence granted",
+  "Made with chipvoice {version}": "Made with chipvoice {version}",
+  "Engine version not recorded": "Engine version not recorded",
   "Open full workspace": "Open full workspace",
   "Could not open this score. Download its JSON to keep it.": "Could not open this score. Download its JSON to keep it.",
   "Original starters": "Original starters",

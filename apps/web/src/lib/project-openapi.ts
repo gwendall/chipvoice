@@ -21,6 +21,7 @@ const response = {
     "visibility",
     "createdAt",
     "contentHash",
+    "engineVersion",
     "profile",
     "favourites",
     "favourited",
@@ -46,12 +47,16 @@ const response = {
       type: "array",
       items: {
         type: "object",
-        required: ["id", "kind", "status", "engine"],
+        required: ["id", "kind", "status", "engine", "engineVersion"],
         properties: {
           id: { type: "string" },
           kind: { enum: ["preview", "full"] },
           status: { type: "string" },
           engine: { type: "string" },
+          engineVersion: {
+            type: ["string", "null"],
+            description: "The chipvoice package version that rendered this immutable audio; null for renditions from before decision 43.",
+          },
         },
       },
     },
@@ -60,6 +65,10 @@ const response = {
     project: PROJECT_SCHEMA,
     visibility: { enum: ["public", "unlisted", "private"] },
     contentHash: { type: "string" },
+    engineVersion: {
+      type: ["string", "null"],
+      description: "The chipvoice package version live when this revision was published; null for revisions from before decision 43. Install this exact npm version to reproduce this revision's rendering yourself.",
+    },
     profile: artistSchema,
     url: { type: "string" },
     coverUrl: { type: "string" },
@@ -86,6 +95,7 @@ const jobResponse = {
     "kind",
     "status",
     "engine",
+    "engineVersion",
     "progress",
     "bytes",
     "error",
@@ -106,6 +116,10 @@ const jobResponse = {
       ],
     },
     engine: { type: "string", description: "SHA-256 of the bundled renderer" },
+    engineVersion: {
+      type: ["string", "null"],
+      description: "The chipvoice package version that rendered this job; null for jobs from before decision 43.",
+    },
     progress: { type: "number", minimum: 0, maximum: 1 },
     bytes: { type: "integer" },
     error: { type: ["string", "null"] },
@@ -156,7 +170,10 @@ const successSchemas: Record<string, unknown> = {
 };
 const errors = {
   "400": { description: "Malformed request or cursor" },
-  "409": { description: "Conflicting request key, handle or audio state" },
+  "409": {
+    description:
+      "Conflicting request key, handle or audio state, or (render only) the publication's recorded engine version differs from this server's current one",
+  },
   "401": { description: "Sign in required" },
   "403": { description: "Agent scope does not permit this action" },
   "404": { description: "Not found or inaccessible" },
@@ -214,7 +231,10 @@ export const projectPaths = {
               ],
               properties: {
                 version: { const: 1 },
-                engineVersion: { type: "string" },
+                engineVersion: {
+                  type: "string",
+                  description: "The chipvoice package version this server currently renders with. A publication's own engineVersion (decision 43) is the version it was recorded under, which can differ from this one after a deploy.",
+                },
                 contentHash: { type: "string" },
                 semantics: { type: "object" },
                 projectSchemaVersion: { const: 1 },
@@ -383,7 +403,7 @@ export const projectPaths = {
       parameters: [id],
       security: auth,
       description:
-        "Preview: up to 30 seconds. Full: complete source, max 40 MB and 240 seconds processing. Poll the returned job; exceeding limits fails explicitly.",
+        "Preview: up to 30 seconds. Full: complete source, max 40 MB and 240 seconds processing. Poll the returned job; exceeding limits fails explicitly. A first render refuses with 409 if the server's current chipvoice version differs from the one recorded on the publication at publish time (decision 43): publish a new revision to render and record the current engine.",
       requestBody: {
         required: true,
         content: json({

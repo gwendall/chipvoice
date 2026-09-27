@@ -172,6 +172,13 @@ export default function PublishedProject({ id }: { id: string }) {
                   ? publication.project.licence
                   : t("No reuse licence granted")}
               </p>
+              <p>
+                {publication.engineVersion
+                  ? t("Made with chipvoice {version}", {
+                      version: publication.engineVersion,
+                    })
+                  : t("Engine version not recorded")}
+              </p>
               {publication.renditions?.some((r) => r.status === "ready") ? (
                 <>
                   <p>

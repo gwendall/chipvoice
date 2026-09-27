@@ -573,6 +573,12 @@ export function openApiSpec() {
               description:
                 "Whether the publication belongs to an authenticated account. This does not verify the free-text author name. The field is free text, so without this it is a claim rather than a credit.",
             },
+            engineVersion: {
+              type: "string",
+              nullable: true,
+              description:
+                "The chipvoice package version live when this song was saved; null for songs saved before decision 43. This URL always renders with the current engine (decision 21); install the recorded version yourself to reproduce the original sound exactly.",
+            },
             measured: { $ref: "#/components/schemas/Measured" },
             issues: { type: "array", items: ISSUE },
           },
