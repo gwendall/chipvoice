@@ -70,6 +70,13 @@ assert.notDeepEqual(planPerformance(nativeOrigin,mdChip).events,planPerformance(
 console.log('PASS authored target envelope and realized phrase duration review regressions');
 const noise={voice:'noise',part:'perc',role:'perc',at:0,note:7,duration:.1,instrument:instrumentsFor('md').perc.H.instrument};
 assert.deepEqual(prepareMixPhrase(mdChip,[{...noise,detune:2}]).notes[0].instrument.volume,prepareMixPhrase(mdChip,[{...noise,note:9}]).notes[0].instrument.volume,'noise response uses the same detuned period as the APU');
+// The noise voice only shares channel 6 with fm6 while it is actually playing
+// an FM drum kit (`perc: "punchy"`); plain PSG noise, as above, does not.
+const fmKick=instrumentsFor('md',{perc:'punchy'}).perc.K.instrument;
+const fmNoise={...noise,instrument:fmKick};
+const fm6Lead={voice:'fm6',part:'lead',role:'lead',at:0,note:'C4',duration:.1,instrument:instrumentsFor('md').lead};
+assert.throws(()=>prepareMixPhrase(mdChip,[fmNoise,fm6Lead]),/overlapping/,'an FM drum kit on the noise voice collides with a concurrent melodic fm6 note');
+assert.equal(prepareMixPhrase(mdChip,[noise,fm6Lead]).notes.length,2,'plain PSG noise never conflicts with fm6');
 const sourceProfile={...clean,chip:'2a03',voice:'p1',rms:[0,.003,.023,.05,0,.003,.023,.05,0,.01,.07,.15,0,.01,.07,.15]};
 const sourceBank=new MixProfileBank([clean,sourceProfile]);
 const transposed=planMix(mdChip,[{...n,pitch:72,sourcePitch:48,origin:{chip:'2a03',voice:'p1'},referenceInstrument:instrument}],{profiles:sourceBank});

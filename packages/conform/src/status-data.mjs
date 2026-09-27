@@ -62,8 +62,8 @@ export const CHIPS = [
     notes: [
       'The YM2612 is Nuked-OPN2 ported line for line and compared with it: parity with the reference on this corpus, not a direct silicon capture. The PSG is also compared against MAME\'s sn76496, with three diagnosed divergences: a tone period of 0 or 1, the polarity a channel starts at before its first reload, and tone 3\'s noise rate.',
       'Analog: unmeasured; Nuked\'s own DAC model is marked unverified, the mix and the Model 1 filter are placeholders.',
-      'Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise; four voices of ten.',
-      'Remains: the LFO, SSG-EG and the DAC in the arranger; a unit\'s line-out.',
+      'Driver: the lead and the bass on FM, the chord on the PSG, the kit on the noise (or channel 6\'s own FM drums, perc: "punchy"); four voices of ten. The LFO sounds in both drivers now; channel 3\'s special mode in the native one.',
+      'Remains: SSG-EG and the DAC in the arranger; a unit\'s line-out.',
     ],
   },
   {

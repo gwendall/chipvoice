@@ -1,20 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { arrange, recordSong } from 'chipvoice';
+import { arrange, recordSong, compileMdVoices, MD_PATCHES } from 'chipvoice';
 import { formatLog } from '../log.mjs';
 
 /**
  * The Mega Drive corpus, generated.
  *
  * Songs through the real driver, in the machine's idiom - FM lead and bass,
- * the chord on the PSG, the kit on the noise - and scripts of hand-written
- * writes that reach what the driver does not: every algorithm, feedback,
- * detune, the envelope's every stage and key scaling, SSG-EG, the LFO with
- * both sensitivities, channel 3's special mode, the DAC, and the PSG's tones
- * and both noises. A log is in master cycles; a YM2612 register is an
- * address byte then a data byte one internal cycle later, registers spaced
- * by the busy flag's thirty-two cycles, as a program that waits on it.
+ * the chord on the PSG, the kit on the noise, and song-punchy's own hardware
+ * LFO vibrato on the lead and FM drums on channel six - and scripts of
+ * hand-written writes that reach what the driver does not: every algorithm,
+ * feedback, detune, the envelope's every stage and key scaling, SSG-EG, the
+ * LFO with both sensitivities, channel 3's special mode, the DAC, and the
+ * PSG's tones and both noises. One more script comes from the native driver
+ * itself, `compileMdVoices`, rather than hand-written registers: its own LFO
+ * rate arbitration between two loaded patches, and channel 3's special mode
+ * reached through its public `ch3` field. A log is in master cycles; a
+ * YM2612 register is an address byte then a data byte one internal cycle
+ * later, registers spaced by the busy flag's thirty-two cycles, as a program
+ * that waits on it.
  */
 const MASTER = 53693175;
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'corpus', 'md');
@@ -386,7 +391,66 @@ const SONGS = [
       }],
     },
   },
+  {
+    name: 'song-punchy',
+    source: 'the same lines with a bright lead (its own pitch LFO) and the FM drum kit on channel six (perc: "punchy")',
+    seconds: 4,
+    score: {
+      id: 'punchy', bpm: 152, order: [0], gain: 1,
+      intent: { lead: 'bright', perc: 'punchy' },
+      patterns: [{
+        bass: 'A1 . A1 . A1 . A1 . A1 . A1 . A1 . G1 .',
+        lead: 'E4 . . . G4 . A4 . . . B4 . C5 . . .',
+        chord: 'A3 . . . . . . . . . . . . . . .',
+        chordShape: [[0, 3, 7]],
+        perc: 'K . H . S . H . K . H K S . H .',
+      }],
+    },
+  },
 ];
+
+/**
+ * The native driver's own LFO and channel 3's special mode, through
+ * `compileMdVoices` rather than hand-written registers: fm1's patch does not
+ * ask for the LFO, fm2's does, so the whole compiled output plays at fm2's
+ * rate, per the driver's own "first patch that asks, in voice and note
+ * order" rule. Channel 3 plays a normal note, then a chord in its special
+ * mode (each of the first three operators its own fixed pitch, the fourth
+ * still following the note), then a normal note again.
+ */
+function nativeLfoCh3Log() {
+  const totalSeconds = 2.2;
+  const voices = [
+    { voice: 'fm1', pan: 'C', notes: [{ at: 0, until: 1.6, pitch: 69, patch: MD_PATCHES.lead }] },
+    { voice: 'fm2', pan: 'L', notes: [{ at: 0, until: 1.6, pitch: 64, patch: MD_PATCHES.shimmer }] },
+    {
+      voice: 'fm3',
+      pan: 'R',
+      notes: [
+        { at: 0, until: 0.5, pitch: 48, patch: MD_PATCHES.bass },
+        { at: 0.5, until: 1.1, pitch: 48, patch: MD_PATCHES.bass, ch3: [48, 52, 55] },
+        { at: 1.1, until: 1.6, pitch: 48, patch: MD_PATCHES.bass },
+      ],
+    },
+  ];
+  const { events } = compileMdVoices(voices);
+  const writes = events.map((e) => ({ at: e.at, addr: e.addr, value: e.value }));
+  const name = 'script-native-lfo-ch3';
+  return {
+    name,
+    text: formatLog(
+      {
+        name,
+        chip: 'md',
+        clock: MASTER,
+        cycles: Math.round(totalSeconds * MASTER),
+        source: 'src/chips/md/native-driver.ts (compileMdVoices)',
+        notes: "fm2's patch is the only one asking for the LFO, so its rate is what $22 gets for the whole compile; fm3 plays a normal note, a chord in channel 3's special mode, then normal again.",
+      },
+      writes,
+    ),
+  };
+}
 
 function songLog({ name, source, seconds, score }) {
   const { events, cycles } = recordSong(arrange(score, 'md'), { seconds, chip: 'md' });
@@ -399,7 +463,7 @@ function scriptLog({ name, notes, cycles, writes }) {
 }
 
 fs.mkdirSync(OUT, { recursive: true });
-for (const log of [...SONGS.map(songLog), ...SCRIPTS.map(scriptLog)]) {
+for (const log of [...SONGS.map(songLog), ...SCRIPTS.map(scriptLog), nativeLfoCh3Log()]) {
   fs.writeFileSync(path.join(OUT, `${log.name}.log`), log.text);
   console.log(`${log.name}.log`);
 }

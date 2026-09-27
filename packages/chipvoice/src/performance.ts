@@ -163,7 +163,6 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
     while(lo<hi){const mid=(lo+hi)>>>1;if(spans[mid].start<start)lo=mid+1;else hi=mid;}
     return (lo>0&&spans[lo-1].end>start)||(lo<spans.length&&spans[lo].start<end) ? -1 : lo;
   };
-  const placement = (voice:string,start:number,end:number) => chip.spec.voices.some(v=>voicesConflict(chip.spec,voice,v.id)&&voicePlacement(v.id,start,end)<0)?-1:voicePlacement(voice,start,end);
   const warned = new Set<string>();
   const loss = (part: PerformancePart, kind: string, detail: string) => {const key = `${part.id}:${kind}`; if (!warned.has(key)) {warned.add(key); losses.push({part: part.id, kind, detail});}};
   // Resolve once per part/program/drum, then carry the selected instrument
@@ -190,6 +189,13 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
     if(!explicit&&part.origin?.chip==='md'&&sourceKey&&part.instruments?.[sourceKey]?.fm&&!percussion&&!portable)loss(part,'timbre-unmeasured','Native FM register pitch and timbre are unmeasured; prepare portableTimbres for faithful pitch conversion');
     cache.set(key,resolved);return resolved;
   };
+  // Whether this performance's percussion plays the FM drum kit (`perc:
+  // "punchy"`): if so, the noise voice's redirect keys channel 6, which then
+  // shares hardware with a melodic fm6 note (driver.ts). Reserve fm6 away
+  // from melodic allocation while a drum note is sounding, rather than let
+  // two owners key the same channel silently.
+  const percussionUsesFm = chip.spec.id === 'md' && queue.some(({part, note}) => isPercussion(part, note) && resolveInstrument(part, note).inst.fm);
+  const placement = (voice:string,start:number,end:number) => chip.spec.voices.some(v=>voicesConflict(chip.spec,voice,v.id,percussionUsesFm)&&voicePlacement(v.id,start,end)<0)?-1:voicePlacement(voice,start,end);
   const allocated: {part: PerformancePart; note: PerformanceNote; voice: string; sound:ReturnType<typeof resolveInstrument>}[] = [];
   for (const {part, note} of queue) {
     const percussion = isPercussion(part,note);
@@ -200,6 +206,7 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
     choices.sort((a,b) => Number(compatible(b))-Number(compatible(a))||Number(b.id === preferred) - Number(a.id === preferred));
     const voice = choices.find(v => placement(v.id,note.tick,note.endTick)>=0);
     if (!voice) {losses.push({part: part.id, note: note.id, kind: 'voice-omitted', detail: `No free ${percussion ? 'percussion' : 'pitched'} voice at tick ${note.tick}`}); continue;}
+    if (percussion && sound.inst.fm) loss(part, 'fm6-shared', 'The FM drum kit plays channel 6 through the noise voice; channel 6 is unavailable to melodic parts while a drum note is sounding');
     const spans=sounding.get(voice.id)??[];
     spans.splice(placement(voice.id,note.tick,note.endTick),0,{start:note.tick,end:note.endTick});
     sounding.set(voice.id,spans);

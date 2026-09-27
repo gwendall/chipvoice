@@ -213,9 +213,6 @@ real game music, and a real unit.
 
 **Step 2. Every instrument each chip has.**
 
-- P5-10 and P5-12 (FM drums, the LFO, channel 3's special mode), P6-10
-  (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the SID's
-  filter and sweeps).
 - done - P7-10: a second SID model, `model: "8580"` on `Chip.create`,
   `renderPerformance`, `renderProject` and a project's `settings.model`,
   documented on [c64.md#the-8580](chips/c64.md#the-8580). Its combined
@@ -231,6 +228,25 @@ real game music, and a real unit.
   divergences are the combined-waveform fit's own shortfall, confirmed against
   the oracle's source, not a new bug. The 6581 default path is unchanged,
   100 % identical as before.
+- done - P5-10 and P5-12: this PR. FM drums on channel 6
+  (`perc: "punchy"`): a kick, a snare, a closed and an open hat, written as FM
+  patches from the manual's own techniques, not sampled or a generic
+  substitute; the PSG noise kit stays the default (it already does what a
+  kit needs here at no cost to the other roles, and reads the same as every
+  other chip's kit). The LFO (`$22`, per-channel `ams`/`pms` in `$B4`, an
+  operator's own `am` in `$60`) now sounds in both drivers, wherever a patch
+  asks for it: `LEAD_BRIGHT`'s vibrato and the FM kit's hats in the portable
+  arranger, `MD_PATCHES.shimmer` and any `FmPatch` setting `lfoFrequency` in
+  the native one. Channel 3's special mode (`$27`, `$A8`-`$AE`) reaches the
+  native driver through a note's `ch3` field, `fm3` only; the sheet says why
+  it stays out of the portable arranger (no shape the four-role score asks
+  for pays off against losing that FM voice's single pitch). Corpus scripts
+  `song-punchy` and `script-native-lfo-ch3` added; Nuked-OPN2 parity stays
+  100 % including them, `check:sn76496` unregressed. A driver bug found while
+  writing the new tests, `MdDriver.noteOff()` treating any FM drum hit as a
+  PSG one, is fixed alongside.
+- P6-10 (hardware-noise hats), P4-9 (the SNES palette), P7-9 and P8-13 (the
+  SID's filter and sweeps).
 - todo - NEXT-05: a measured instrument catalogue: per preset, a golden render
   with its measured envelope and spectrum, shown on the site, built only from
   what the chip really does.
@@ -446,9 +462,9 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P5-7 | The Mega Drive sheet: parity with Nuked on every voice, a corpus of scripts and songs | done | `docs/chips/md.md` |
 | P5-8 | A PSG oracle: MAME's `sn76496` behind a shim, or a Master System test ROM | done | PR #85. `packages/conform/oracles/sn76496`, configured as `segapsg_device`; three diagnosed divergences on the sheet |
 | P5-9 | The Mega Drive's output stage measured: a Model 1's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found MDFourier: named real units across both models, captured through a documented open-source test ROM, but its exact register sequence was not located; see [HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489) |
-| P5-10 | FM drums on channel 6 and the LFO in the arranger | todo | the portable arranger's kit is on the PSG noise for now; the native driver (P5-11) streams a PCM kit on the DAC |
+| P5-10 | FM drums on channel 6 and the LFO in the arranger | done | `perc: "punchy"` plays a kick, a snare and hats as FM patches on channel 6 instead of the PSG noise kit, which stays the default; the LFO sounds when a patch's `pms`, `ams` or an operator's `am` asks for it. `chips/md/arranger.ts`, `driver.ts`; the sheet says why the noise kit stays the default |
 | P5-11 | A game's own driver beside the portable one: all six FM channels, the three tones, the noise and the DAC by name, a text tracker, a bank with a PCM kit, and the render steps a game ships through, extracted from Punk Force | done | `chips/md/native-driver.ts`, `bank.ts`, `tracker.ts`, `src/game-audio.ts`; [MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER.md), decision 32; the game's score compiles and renders to the same bytes |
-| P5-12 | The native driver's LFO and channel 3's special mode | todo | power-on writes `$22` = 0, so `ams`, `pms` and `am` are written but inert |
+| P5-12 | The native driver's LFO and channel 3's special mode | done | the LFO turns on for whichever loaded patch's `ams`, `pms` or an operator's `am` asks for it first; a note's `ch3` field (fm3 only) sets channel 3's special mode. `native-driver.ts`; `script-native-lfo-ch3` added to the corpus |
 
 ## Phase 6. SNES
 

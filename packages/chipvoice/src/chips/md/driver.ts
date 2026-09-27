@@ -44,6 +44,21 @@ const CARRIERS = [[3], [3], [3], [3], [1, 3], [1, 2, 3], [1, 2, 3], [0, 1, 2, 3]
 
 const NES_NOISE_PERIODS = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068];
 
+/**
+ * The FM drum kit's own pitch map (`perc: "punchy"`, arranger.ts's `FM_KIT`):
+ * the noise voice's period, 0 to 15, as a note instead of a noise rate, so a
+ * kick's `slide` still walks a real pitch down on channel 6. Three semitones
+ * a step spans four octaves over the sixteen steps, wide enough to tell a
+ * kick's low end from a hat's high one.
+ */
+const FM_DRUM_BASE_MIDI = 24;
+const FM_DRUM_STEP = 3;
+const midiToHz = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
+/** A noise frame's `period` reread as the FM kit's pitch, everything else kept. */
+function fmDrumFrame(frame: NoteFrame): NoteFrame {
+  return { ...frame, freq: midiToHz(FM_DRUM_BASE_MIDI + frame.period * FM_DRUM_STEP) };
+}
+
 /** The default patch, for an FM voice with no patch of its own: a plain two-operator tone. */
 const DEFAULT_PATCH: FmPatch = {
   algorithm: 4,
@@ -87,10 +102,18 @@ export class MdDriver implements ChipDriver {
   private readonly loaded: (FmPatch | null)[] = [null, null, null, null, null, null];
   /** The carriers' attenuation last written per channel, so a held note costs nothing. */
   private readonly lastVolume = [-1, -1, -1, -1, -1, -1];
+  /** Whether `$22`'s enable bit is set, and at which of its eight rates, so it is rewritten only when that changes. */
+  private lfoOn = false;
+  private lfoFreq = 0;
+  /** Whether the noise voice's last note was the FM drum kit (channel 6), so its `noteOff` keys that channel off instead of silencing the PSG it never touched. */
+  private noiseIsFm = false;
 
   powerOn(): RegisterEvent[] {
     this.loaded.fill(null);
     this.lastVolume.fill(-1);
+    this.lfoOn = false;
+    this.lfoFreq = 0;
+    this.noiseIsFm = false;
     const out: RegisterEvent[] = [];
     let t = 0;
     const reg = (port: number, address: number, value: number) => {
@@ -114,8 +137,44 @@ export class MdDriver implements ChipDriver {
     const offset = (index + 1) * STAGGER;
     if (index < 6) this.fmNote(index, frames, offset, out);
     else if (index < 9) this.psgNote(index - 6, frames, offset, out);
-    else this.noiseNote(frames, offset, out);
+    // An FM drum kit (perc: "punchy") shares the noise role's voice id but
+    // plays channel 6, not the PSG: its frames carry a `fm` patch the noise
+    // kit never sets, which is how this tells the two apart. `noteOff` has
+    // no frame to look at, so it is told here which one to release.
+    else if (frames[0].fm) {
+      this.noiseIsFm = true;
+      this.fmNote(5, frames.map(fmDrumFrame), offset, out);
+    } else {
+      this.noiseIsFm = false;
+      this.noiseNote(frames, offset, out);
+    }
     return out;
+  }
+
+  /** Whether a patch asks the LFO for anything: amplitude or pitch sensitivity, or an operator's own `am`. */
+  private wantsLfo(patch: FmPatch): boolean {
+    return (patch.ams ?? 0) > 0 || (patch.pms ?? 0) > 0 || patch.ops.some((op) => op.am);
+  }
+
+  /**
+   * `$22` chip-wide, from every channel's loaded patch: on at the rate of
+   * the first channel (in order) that asks for one, off when none do. Called
+   * only when a patch load can have changed that set.
+   */
+  private syncLfo(global: (address: number, value: number) => void) {
+    let freq = -1;
+    for (const patch of this.loaded) {
+      if (patch && this.wantsLfo(patch)) {
+        freq = patch.lfoFrequency ?? 3;
+        break;
+      }
+    }
+    const on = freq >= 0;
+    if (on !== this.lfoOn || (on && freq !== this.lfoFreq)) {
+      global(0x22, on ? 0x08 | freq : 0x00);
+      this.lfoOn = on;
+      this.lfoFreq = on ? freq : 0;
+    }
   }
 
   private fmNote(channel: number, frames: NoteFrame[], offset: number, out: RegisterEvent[]) {
@@ -165,6 +224,7 @@ export class MdDriver implements ChipDriver {
           reg(0xb0 + sub, ((patch.feedback & 7) << 3) | (patch.algorithm & 7));
           reg(0xb4 + sub, 0xc0 | ((patch.ams ?? 0) << 4) | (patch.pms ?? 0));
           this.loaded[channel] = patch;
+          this.syncLfo(global);
         }
         writeVolume(patch, level);
         this.lastVolume[channel] = level;
@@ -239,8 +299,10 @@ export class MdDriver implements ChipDriver {
     const index = VOICES.indexOf(voice);
     if (index < 0) return [];
     const t = at + (index + 1) * STAGGER;
-    if (index < 6) {
-      const keyIndex = index < 3 ? index : index + 1;
+    // The noise voice's last note may have been the FM drum kit instead:
+    // channel 6's own key-off, in the noise voice's stagger slot, not a PSG write.
+    if (index < 6 || (index === 9 && this.noiseIsFm)) {
+      const keyIndex = index < 6 ? (index < 3 ? index : index + 1) : 6;
       return [
         { at: t, addr: YM_PORT, value: 0x28 },
         { at: t + PAIR, addr: YM_PORT + 1, value: keyIndex },

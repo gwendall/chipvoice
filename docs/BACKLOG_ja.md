@@ -128,8 +128,9 @@
 
 **ステップ2. 各チップが持つすべての楽器。**
 
-- P5-10とP5-12（FMドラム、LFO、チャンネル3の特殊モード）、P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P7-9とP8-13（SIDのフィルターとスイープ）。
 - done - P7-10: 第2のSIDモデル。`Chip.create`、`renderPerformance`、`renderProject`、プロジェクトの`settings.model`に`model: "8580"`を指定できます。詳細は[c64_ja.md#8580](chips/c64_ja.md#8580)。合成波形はreSID-fp自身の8580テーブルに対して独立にフィットしたもので（決定41: その`config[1]`を移植せず、測定として読む)、reSID-fp自身のより詳細なトランジスタモデルに対しては6581の完全一致には届きません（各組み合わせで92.60〜99.05%）。フローティング出力とノイズレジスタのテストビットリセットの長い放電、OSC3の1サイクル分のパイプライン遅延、ほぼ線形なDAC（`ladderRatio: 2.0`）、フィルター（`filter.cc`の8580 R5のカットオフ直線とQテーブルそのもの）はいずれも文書由来です。第2のオラクルブロック、8580として設定したreSID-fp（`corpus/c64/parity-residfp-8580.json`、`check:residfp-8580`、CIで2分未満）は99.28%一致し、2件の相違はいずれも合成波形フィットの限界であって新しいバグではないと確認済みです。6581側の既定パスは変更なく100%一致を保っています。
+- done - P5-10とP5-12：本PR。チャンネル6のFMドラム（`perc: "punchy"`）：キック、スネア、クローズ・オープンハイハットを、マニュアル自身の手法によるFMパッチとして書きました。サンプルでも汎用代替でもありません。PSGノイズキットは既定のままです（ここで求められることを他の役割に何のコストもかけず満たし、他のすべてのチップのキットと同じ音になるためです）。LFO（`$22`、チャンネルごとの`ams`／`pms`は`$B4`、オペレーター自身の`am`は`$60`）は両ドライバーで、それを求めるパッチがあるときに鳴るようになりました。移植可能な編曲器では`LEAD_BRIGHT`のビブラートとFMキットのハイハット、ネイティブドライバーでは`MD_PATCHES.shimmer`や`lfoFrequency`を設定する任意の`FmPatch`です。チャンネル3の特殊モード（`$27`、`$A8`〜`$AE`）は音符の`ch3`フィールド（fm3限定）でネイティブドライバーに届きます。移植可能な編曲器に出てこない理由はシートに記載しました（4役割の楽譜が求める形では、そのFMボイスの単一音高を失う見返りが割に合わないため）。コーパススクリプト`song-punchy`と`script-native-lfo-ch3`を追加。Nuked-OPN2との一致率はそれらを含めて100%を保ち、`check:sn76496`も後退なし。新しいテストを書く過程で見つかったドライバーの不具合、`MdDriver.noteOff()`がFMドラムのヒットをPSGのものとして扱っていた件も同時に修正しました。
+- P6-10（ハードウェアノイズのハイハット）、P4-9（SNESのパレット）、P7-9とP8-13（SIDのフィルターとスイープ）。
 - todo - NEXT-05: 計測済みの楽器カタログ。プリセットごとにゴールデンのレンダーと、計測したエンベロープとスペクトルを持ち、サイトで見られ、チップが実際にできることだけで作ります。
 - P4-7とMIX-12: 人による試聴。正確さとは分けて扱います。
 
@@ -288,9 +289,9 @@
 | P5-7 | Nuked全voice比較、script／song corpusのsheet | done | `docs/chips/md.md` |
 | P5-8 | PSG参照：MAME `sn76496` shimまたはMaster System ROM | done | PR #85。`packages/conform/oracles/sn76496`、`segapsg_device`として構成。3件の相違をシートに記録 |
 | P5-9 | 既知scriptでModel 1 line-out測定 | todo | P2-3同様、実機必要。NEXT-04はMDFourierを見つけました。両モデルにわたる名前付き実機、文書化されたオープンソーステストROMによるキャプチャですが、正確なレジスタ列は見つかっていません。[HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489](HARDWARE-EVIDENCE.md#mega-drive-ym2612-ym3438-sn76489)参照 |
-| P5-10 | channel 6のFM drumとarranger LFO | todo | 移植用arrangerのkitは現状PSG noise。ネイティブdriver（P5-11）はDACでPCM kitを流す |
+| P5-10 | channel 6のFM drumとarranger LFO | done | `perc: "punchy"`でキック、スネア、ハイハットをchannel 6上のFM patchとして再生。PSG noise kitは既定のまま。パッチの`pms`、`ams`、オペレーターの`am`が求めるときLFOが鳴る。`chips/md/arranger.ts`、`driver.ts`。noise kitを既定とする理由はシートに記載 |
 | P5-11 | 移植用と並ぶゲーム専用driver：FM 6ch、矩形波3音、noise、DACを名前で指定、テキストtracker、PCM kit付きbank、ゲームが出荷するまでのrender手順。Punk Forceから抽出 | done | `chips/md/native-driver.ts`、`bank.ts`、`tracker.ts`、`src/game-audio.ts`。[MD-NATIVE-DRIVER.md](MD-NATIVE-DRIVER_ja.md)、決定32。ゲームの楽譜は同じバイトにcompile・renderされる |
-| P5-12 | ネイティブdriverのLFOとchannel 3特殊モード | todo | 起動時に`$22` = 0を書くため、`ams`、`pms`、`am`は書かれるが効かない |
+| P5-12 | ネイティブdriverのLFOとchannel 3特殊モード | done | ロードされたパッチのうち`ams`、`pms`、オペレーターの`am`を最初に求めたものでLFOが起動。音符の`ch3`フィールド（fm3限定）でchannel 3特殊モードを設定。`native-driver.ts`。コーパスへ`script-native-lfo-ch3`を追加 |
 
 <a id="phase-6-snes"></a>
 ## フェーズ6. SNES
