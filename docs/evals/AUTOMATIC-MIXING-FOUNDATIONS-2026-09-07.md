@@ -1,4 +1,4 @@
-# Automatic mixing foundations — 2026-09-07
+# Automatic mixing foundations - 2026-09-07
 
 <p align="center"><a href="AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07.md">English</a> &bull; <a href="AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07_ja.md">日本語</a></p>
 
@@ -29,11 +29,11 @@ the folded component from a 53.1 kHz input drops from 0.05098 to 0.00847;
 440 Hz gain remains about 0.988. The test uses analytical RC and box-window
 bounds, also at 48 kHz, and failed before the correction.
 
-For Sonic's first 12 seconds, 8–10 kHz spectral power as a fraction of total
+For Sonic's first 12 seconds, 8-10 kHz spectral power as a fraction of total
 power falls from 0.004038 to 0.000342. Independent GME is 0.000875. This removes
 an identified alias mechanism; it does not prove identical PCM or physical sound.
 
-Independent GME stems use its public mute interface (FM1–5, PCM, PSG), built
+Independent GME stems use its public mute interface (FM1-5, PCM, PSG), built
 against the existing pinned oracle revision. The corrected PSG-to-FM RMS ratio
 is -5.42 dB versus -5.33 dB in GME. That excerpt provides no reason to retune the
 FM/PSG ratio to address Zelda's bass problem. DAC-to-FM differs by about 2.32 dB;

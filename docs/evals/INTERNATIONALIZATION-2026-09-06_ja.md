@@ -1,5 +1,5 @@
-<a id="english--japanese-website--2026-09-06"></a>
-# 英語／日本語Webサイト — 2026-09-06
+<a id="english--japanese-website---2026-09-06"></a>
+# 英語／日本語Webサイト - 2026-09-06
 
 <p align="center">
   <a href="INTERNATIONALIZATION-2026-09-06.md">English</a> &bull;

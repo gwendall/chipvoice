@@ -11,7 +11,7 @@ Project purpose, methods and decisions live beside the code and change with it.
 | Document | Purpose |
 | --- | --- |
 | [Projects, creation and publication](CREATION.md) | Versioned SDK, workspace, profiles, discovery, pinned audio and operating limits |
-| [Creation and API review](CREATION-API-REVIEW-2026-09-07.md) | Current gaps, unified creation/sharing contracts and proposed CREATE-01–11 tickets |
+| [Creation and API review](CREATION-API-REVIEW-2026-09-07.md) | Current gaps, unified creation/sharing contracts and proposed CREATE-01 to CREATE-11 tickets |
 | [Mixing API](MIXING-API.md) | Instrument calibration, automatic balance, game phrases, uncertainty and evaluation |
 | [Automatic mixing](AUTOMATIC-MIXING.md) | General adaptation/mixing contract, ordered tickets and acceptance |
 | [Roadmap](ROADMAP.md) | Roadmap and phase acceptance |
@@ -50,20 +50,20 @@ Project purpose, methods and decisions live beside the code and change with it.
 
 ## Evaluations
 
-- [Creation and publication — 2026-09-08](evals/CREATION-2026-09-08.md)
-- [Native song fidelity — 2026-09-07](evals/NATIVE-SONGS-2026-09-07.md)
+- [Creation and publication - 2026-09-08](evals/CREATION-2026-09-08.md)
+- [Native song fidelity - 2026-09-07](evals/NATIVE-SONGS-2026-09-07.md)
 - [Zelda Overworld selection regression](evals/ZELDA-SELECTION-2026-09-07.md)
-- [Complete arrangements — 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md)
-- [Creative tools and API foundations — 2026-09-06](evals/CREATIVE-2026-09-06.md)
-- [Playable demo V1 evaluation — 2026-09-05](evals/DEMO-2026-09-05.md)
-- [Hot-path allocation audit — 2026-09-06](evals/HOT-PATHS-2026-09-06.md)
-- [English / Japanese website — 2026-09-06](evals/INTERNATIONALIZATION-2026-09-06.md)
+- [Complete arrangements - 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md)
+- [Creative tools and API foundations - 2026-09-06](evals/CREATIVE-2026-09-06.md)
+- [Playable demo V1 evaluation - 2026-09-05](evals/DEMO-2026-09-05.md)
+- [Hot-path allocation audit - 2026-09-06](evals/HOT-PATHS-2026-09-06.md)
+- [English / Japanese website - 2026-09-06](evals/INTERNATIONALIZATION-2026-09-06.md)
 - [Japanese console playground evaluation](evals/JAPANESE-PLAYGROUND-2026-09-06.md)
-- [MIDI import feedback — 2026-09-06](evals/MIDI-IMPORT-PROGRESS-2026-09-06.md)
-- [Readable frontend type — 2026-09-06](evals/READABLE-TYPE-2026-09-06.md)
-- [Loop recording evaluation — 2026-09-06](evals/RECORDING-2026-09-06.md)
-- [Scheduling design and qualification — 2026-09-06](evals/SCHEDULING-2026-09-06.md)
-- [Unified playground evaluation — 2026-09-06](evals/UNIFIED-PLAYGROUND-2026-09-06.md)
+- [MIDI import feedback - 2026-09-06](evals/MIDI-IMPORT-PROGRESS-2026-09-06.md)
+- [Readable frontend type - 2026-09-06](evals/READABLE-TYPE-2026-09-06.md)
+- [Loop recording evaluation - 2026-09-06](evals/RECORDING-2026-09-06.md)
+- [Scheduling design and qualification - 2026-09-06](evals/SCHEDULING-2026-09-06.md)
+- [Unified playground evaluation - 2026-09-06](evals/UNIFIED-PLAYGROUND-2026-09-06.md)
 
 ## Translations
 

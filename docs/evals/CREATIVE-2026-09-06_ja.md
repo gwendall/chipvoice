@@ -1,5 +1,5 @@
-<a id="creative-tools-and-api-foundations--2026-09-06"></a>
-# 作曲ツールとAPI基盤 — 2026-09-06
+<a id="creative-tools-and-api-foundations---2026-09-06"></a>
+# 作曲ツールとAPI基盤 - 2026-09-06
 
 <p align="center">
   <a href="CREATIVE-2026-09-06.md">English</a> &bull;

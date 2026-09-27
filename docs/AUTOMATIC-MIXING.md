@@ -52,11 +52,11 @@ The [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.
 
 | Tickets | Delivery status |
 | --- | --- |
-| MIX-01–11 | Implemented, with the hardware, calibration and bounded-phrase limits documented in the API. |
+| MIX-01 to MIX-11 | Implemented, with the hardware, calibration and bounded-phrase limits documented in the API. |
 | MIX-12 | Automated evaluator and blinded listening materials delivered; human preference observations remain open. |
 | MIX-13 | Frozen-candidate holdouts, robustness and development ablations pass within the published corpus/window scope. |
-| MIX-14 | [Render parity](RENDER-PARITY.md): the Node/Chromium/Firefox/WebKit render-hash matrix passes (22 of 22 inputs, zero mismatches); physical-phone/real-Safari measurement remains a one-minute human job at [`/lab/render-parity`](https://chipvoice.dev/lab/render-parity). |
-| MIX-15–16 | Shared SDK/web/game-phrase integration and English/Japanese documentation delivered. |
+| MIX-14 | [Render parity](RENDER-PARITY.md): the Node/Chromium/Firefox/WebKit render-hash matrix passes (22 of 22 inputs, zero mismatches); the human leg at [`/lab/render-parity`](https://chipvoice.dev/lab/render-parity) passed on 2026-09-28 (Chrome on a desktop, Safari on a Mac, Safari on an iPhone 16 Pro: 22 of 22 each). |
+| MIX-15 to MIX-16 | Shared SDK/web/game-phrase integration and English/Japanese documentation delivered. |
 | MIX-17 | Complete publication regenerated; actual production reports and all published audio files verified. |
 | MIX-18 | Version 0.16.1 published and installed from npm in an empty consumer; public API and AudioWorklet tests pass. |
 
@@ -79,7 +79,7 @@ being invented after the algorithm is tuned.
 | MIX-09 | Implement the general mix policy | 01,05,07,08 | One module combines authored dynamics, calibrated instrument response, actual allocated voices, role importance and concurrent density. Return gain decisions and diagnostics; support explicit author overrides and conservative uncertain-role behavior. Preserve silence, intended foreground and dynamics; avoid pumping and global equalization of every stem. |
 | MIX-10 | Realize the mix through hardware controls | 09 | Encode trims using supported chip controls, with volume quantization, FM carrier versus modulator behavior, shared resources and internal mixer headroom respected. Recheck the joint full mix: isolated stems need not sum linearly. Report unachievable targets instead of modifying chip physics. |
 | MIX-11 | Runtime preparation and continuous changes | 10 | Share the policy across complete-score preparation and bounded phrase/lookahead generation. A live prefix must not require an unknown future song. Apply smooth changes, retain transport/Stop authority, cancel stale work and preserve native-mode semantics. No remote judge or full-song rerender required for each live decision. |
-| MIX-12 | Build a multi-criterion evaluator | 02,03; validate 09–11 | Separate identity/notes, dynamics, role balance, masking indicators, transients, internal/final clipping, and runtime stability. Label heuristics and confidence; add level-controlled blind listening for preference. Define hard correctness gates and separate musical acceptance; avoid a universal fidelity score. |
+| MIX-12 | Build a multi-criterion evaluator | 02,03; validate 09-11 | Separate identity/notes, dynamics, role balance, masking indicators, transients, internal/final clipping, and runtime stability. Label heuristics and confidence; add level-controlled blind listening for preference. Define hard correctness gates and separate musical acceptance; avoid a universal fidelity score. |
 | MIX-13 | Validate generalization and robustness | 11,12 | Freeze a candidate before unseen evaluation. Test held-out songs, source-family separation, varied note density/register/velocity, silent parts, reordered unrelated parts, custom instruments and generated seeds. Compare calibrated-only and complete-policy baselines. A failed holdout used for tuning becomes development data and needs a fresh holdout. |
 | MIX-14 | Qualify performance and real devices | 03 baseline; 11,13 acceptance | Set numeric budgets from representative baseline measurements before tuning performance. Measure first sound, parameter-to-audible delay, planning cost, CPU, memory, allocations and cache bounds; exercise real mobile/Safari and interruptions. Separate emulation correctness from slow-host timing and emulated viewport checks from real-device evidence. |
 | MIX-15 | Integrate SDK, playground, lab and game fixture | 11,13 | Use the same policy module everywhere, including offline rendering and a minimal game integration. Keep a small interface with automatic defaults and optional part overrides. Expose native/adapted mode and useful diagnostics; qualify continuous changes, solo and original A/B without misleading labels. |
@@ -89,11 +89,11 @@ being invented after the algorithm is tuned.
 
 ## Execution and review batches
 
-1. Establish MIX-01–03, the initial MIX-12 evaluator and MIX-14 baseline/budgets.
+1. Establish MIX-01 to MIX-03, the initial MIX-12 evaluator and MIX-14 baseline/budgets.
    Investigate/fix MIX-04 and audit MIX-05. Do not tune around an unresolved output defect.
-2. Implement MIX-06–10, then MIX-11; extend MIX-12 during implementation.
+2. Implement MIX-06 to MIX-10, then MIX-11; extend MIX-12 during implementation.
    Validate MIX-13 and MIX-14 against frozen acceptance criteria, not the tuning set alone.
-3. Complete MIX-15–18, final bilingual documentation, publication and consumer verification.
+3. Complete MIX-15 to MIX-18, final bilingual documentation, publication and consumer verification.
 
 Implementation and qualification were consolidated in PR #40, followed by the
 SDK release-workflow correction in PR #41. Independent reviews and evidence are
@@ -110,7 +110,7 @@ No recurring remote model service is required for sound generation or mixing.
 
 ## Cold-review follow-up (0.16.2)
 
-The cold review exposed gaps in MIX-09–13 despite the earlier corpus passing.
+The cold review exposed gaps in MIX-09 to MIX-13 despite the earlier corpus passing.
 The fixes add shared SNES dry/echo protection, source-silent allocation tracking,
 role-based audible density, shared phrase/score hardware constraints and FM drum
 handling. MIDI roles now use all source notes, expose confidence and can be

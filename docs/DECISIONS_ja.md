@@ -47,7 +47,7 @@ Game Boyを実装し、実例2つで`ChipSpec`、`RegisterEvent`、楽器モデ�
 **変化：** `Math.round(seconds * clockHz)`で記録しドライバーからsample rate overrideを除去。サブサンプル差だけでgoldenが変わりました。44100／48000でも同じサイクルへ届くことを`test/clock.mjs`で検査。VGMはイベントの直列化です。
 
 <a id="5-the-triangle-starts-at-a-zero-output-phase-2026-09-04---superseded-by-13"></a>
-### 5. 三角波を出力ゼロの位相から開始（2026-09-04）— 13で置換
+### 5. 三角波を出力ゼロの位相から開始（2026-09-04） - 13で置換
 
 高域通過フィルターへのDC段差を避けるため、実機のstep 0／出力15でなくstep 15／出力0で起動していました。同日撤回し13へ置換しました。
 

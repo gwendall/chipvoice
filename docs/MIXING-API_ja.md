@@ -35,7 +35,7 @@ console.log(plan.mix, plan.losses);
 const audio = renderPerformance(plan, mdChip);
 ```
 
-`importance` は 0–1、`gainDb` は −96〜+12 dB を指定できます。重要度 0 は元の音符や
+`importance` は 0〜1、`gainDb` は −96〜+12 dB を指定できます。重要度 0 は元の音符や
 割り当てを変えずに無音にします。ボイス不足による音符の省略には引き続き `allowLoss` が必要です。
 自動減衰の上限は役割と同時発音数のトリムを指します。校正はその音量に到達するためにレジスタ制御を
 変換するもので、作者のゲインを追加する処理ではありません。明示した無音は保持します。

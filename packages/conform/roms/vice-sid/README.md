@@ -29,7 +29,8 @@ for the one failure, the diagnosis.
 - `oscinit/`, plus its `noiseinit.prg` and `allinit.prg` - the accumulator's
   and the noise register's power-on values.
 - `busvalue/` - the internal data bus latch that a read of a write-only or
-  non-existent register returns; **fails** here (P2-1, see the sheet).
+  non-existent register returns. It failed on the first run and passes
+  since P2-1 (#86) made an OSC3 or ENV3 read refresh the latch (see the sheet).
 - `osc_topbit/` - the `_old` (6581) variants of a combined waveform's top bit
   read back from OSC3. The chip here is 6581 only, so the `_new` (8580)
   variants are not applicable and are not vendored, not run and not counted;

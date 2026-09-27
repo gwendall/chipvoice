@@ -54,20 +54,20 @@
 <a id="evaluations"></a>
 ## 評価報告
 
-- [制作・公開機能 — 2026-09-08](evals/CREATION-2026-09-08_ja.md)
-- [ネイティブ楽曲の再現性 — 2026-09-07](evals/NATIVE-SONGS-2026-09-07_ja.md)
+- [制作・公開機能 - 2026-09-08](evals/CREATION-2026-09-08_ja.md)
+- [ネイティブ楽曲の再現性 - 2026-09-07](evals/NATIVE-SONGS-2026-09-07_ja.md)
 - [Zelda Overworld の選曲回帰](evals/ZELDA-SELECTION-2026-09-07_ja.md)
-- [完全アレンジ — 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06_ja.md)
-- [作曲ツールとAPI基盤 — 2026-09-06](evals/CREATIVE-2026-09-06_ja.md)
-- [遊べるデモV1評価 — 2026-09-05](evals/DEMO-2026-09-05_ja.md)
-- [ホットパスの割り当て監査 — 2026-09-06](evals/HOT-PATHS-2026-09-06_ja.md)
-- [英語／日本語Webサイト — 2026-09-06](evals/INTERNATIONALIZATION-2026-09-06_ja.md)
+- [完全アレンジ - 2026-09-06](evals/COMPLETE-ARRANGEMENTS-2026-09-06_ja.md)
+- [作曲ツールとAPI基盤 - 2026-09-06](evals/CREATIVE-2026-09-06_ja.md)
+- [遊べるデモV1評価 - 2026-09-05](evals/DEMO-2026-09-05_ja.md)
+- [ホットパスの割り当て監査 - 2026-09-06](evals/HOT-PATHS-2026-09-06_ja.md)
+- [英語／日本語Webサイト - 2026-09-06](evals/INTERNATIONALIZATION-2026-09-06_ja.md)
 - [日本版コンソールのプレイグラウンド評価](evals/JAPANESE-PLAYGROUND-2026-09-06_ja.md)
-- [MIDIインポートの進捗表示 — 2026-09-06](evals/MIDI-IMPORT-PROGRESS-2026-09-06_ja.md)
-- [フロントエンドの読みやすい文字 — 2026-09-06](evals/READABLE-TYPE-2026-09-06_ja.md)
-- [ループ録音の評価 — 2026-09-06](evals/RECORDING-2026-09-06_ja.md)
-- [予約処理の設計と検証 — 2026-09-06](evals/SCHEDULING-2026-09-06_ja.md)
-- [統合プレイグラウンド評価 — 2026-09-06](evals/UNIFIED-PLAYGROUND-2026-09-06_ja.md)
+- [MIDIインポートの進捗表示 - 2026-09-06](evals/MIDI-IMPORT-PROGRESS-2026-09-06_ja.md)
+- [フロントエンドの読みやすい文字 - 2026-09-06](evals/READABLE-TYPE-2026-09-06_ja.md)
+- [ループ録音の評価 - 2026-09-06](evals/RECORDING-2026-09-06_ja.md)
+- [予約処理の設計と検証 - 2026-09-06](evals/SCHEDULING-2026-09-06_ja.md)
+- [統合プレイグラウンド評価 - 2026-09-06](evals/UNIFIED-PLAYGROUND-2026-09-06_ja.md)
 
 <a id="translations"></a>
 ## 翻訳

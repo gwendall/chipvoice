@@ -1,4 +1,4 @@
-# MIDI import feedback — 2026-09-06
+# MIDI import feedback - 2026-09-06
 
 <p align="center">
   <a href="MIDI-IMPORT-PROGRESS-2026-09-06.md">English</a> &bull;

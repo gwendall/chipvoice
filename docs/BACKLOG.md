@@ -138,6 +138,7 @@ Work without a ticket takes a NEXT id.
   verdict without the KERNAL; thirteen pass, in CI (`roms:c64`). `busvalue`
   fails: reading OSC3 or ENV3 does not refresh the internal bus latch the way
   real hardware's read-only registers do, a P2-1 finding, not fixed here.
+  Fixed since by P2-1 (#86): all fourteen pass.
   `envrate` matches Dag Lem's real-hardware-verified rate table exactly.
 
 **Step 1. Prove the five chips.** A sheet is complete when it gives a number
@@ -171,7 +172,7 @@ real game music, and a real unit.
   nondeterministic on the hardware. The PSG's three divergences from MAME
   (P5-8) were already traced on the sheet with deviation rows; none is
   contradicted by a document, so nothing changes.
-- done - P3-7: this PR. A trigger on ch1 or ch2 keeps the low two bits of the
+- done - P3-7: PR #89. A trigger on ch1 or ch2 keeps the low two bits of the
   frequency timer instead of zeroing them, Pan Docs' "Obscure Behavior".
   Looked further, in the documents alone, for what explains the rest of the
   gap SameBoy showed (GBEDG has no APU page to check); none of them give a
@@ -428,7 +429,7 @@ real game music, and a real unit.
   only the phase surfaces rather than removes that compensation. Reverted,
   not shipped (`rasterCycle = 0` stays default); left here rather than
   silently dropped, for whoever picks this up next.
-- done - P6-9: `exportSpc` (unblocked by NEXT-08's CPU) turns a SNES capture
+- done - P6-9: PR #107. `exportSpc` (unblocked by NEXT-08's CPU) turns a SNES capture
   into a standard `.spc` file carrying its own tiny SPC700 player
   (`packages/chipvoice/src/chips/snes/spc-player.ts`), hand-assembled from
   Anomie's SPC700 doc and fullsnes, built from committed TS source by the
@@ -456,7 +457,7 @@ real game music, and a real unit.
   (`exportSpc`, `SpcExportSizeError`) and the studio (a Download SPC button
   next to VGM's, for `snes` songs). See `docs/chips/snes.md#spc-export` and
   decision 46.
-- done - NEXT-10's NSF half (this PR): `exportNsf` turns a 2A03 capture into
+- done - NEXT-10's NSF half (PR #106): `exportNsf` turns a 2A03 capture into
   a standard NSF v1 file carrying its own tiny hand-assembled 6502 player
   (`Asm6502`, `packages/chipvoice/src/nsf.ts`), reproducible from committed
   source, never an opaque blob. PLAY replays one frame's writes per 60 Hz
@@ -498,7 +499,7 @@ real game music, and a real unit.
   `pnpm nsf-export:sheet`. Reachable from the package (`exportNsf`,
   `NsfExportError`) and the studio (a Download NSF button next to VGM's,
   for `2a03` songs).
-- done - NEXT-10's GBS half (a later PR): `exportGbs` turns a DMG capture
+- done - NEXT-10's GBS half (PR #108): `exportGbs` turns a DMG capture
   into a standard GBS v1 file carrying its own tiny hand-assembled SM83
   player (`AsmSm83`, `packages/chipvoice/src/gbs.ts`), reproducible from
   committed source, never an opaque blob. PLAY replays one VBlank frame's
@@ -552,16 +553,16 @@ real game music, and a real unit.
 
 **Step 4. The same bytes, later and elsewhere.**
 
-- done - NEXT-11: this PR. Decision 43. `songs`, `projects` and
+- done - NEXT-11: PR #97. Decision 43. `songs`, `projects` and
   `project_jobs` each record the `PROJECT_ENGINE_VERSION` active when the row
   was written; a render always uses the server's current engine and records
   its own version on the job, so a rendition's `engineVersion` can differ
   from its publication's (both are shown, on the API and the published page:
   "published with chipvoice x.y.z, rendered with chipvoice a.b.c" when they
-  differ). Rows written before this PR stay `null` rather than guessed.
+  differ). Rows written before PR #97 stay `null` rather than guessed.
   `/s/{id}` is unchanged: it still revalidates with whatever engine is
   currently deployed (a stated limit of decision 21, an AUD-2 follow-up).
-- done - MIX-14: this PR. `pnpm render-parity:sheet` renders a fixed 22-input
+- done - MIX-14: PR #110. `pnpm render-parity:sheet` renders a fixed 22-input
   set (12 six-second excerpts of mario/zelda/sonic across the four
   VGM-native chips - 2A03, DMG, MD, SNES - plus a held lead and a kick
   preset per chip, C64 included) through the package the same way in Node,
@@ -583,6 +584,10 @@ real game music, and a real unit.
   real-Safari leg stays a one-minute human job: `/lab/render-parity` renders
   the same fixed set in whatever browser opens it and shows match/mismatch
   next to the Node reference. `packages/chipvoice/src` is unchanged.
+  Human leg done on 2026-09-28 against deployment `6da5ac1`: Chrome on a
+  desktop, Safari on a Mac and Safari on an iPhone 16 Pro each showed all 22
+  inputs matching, recorded in `scores/render-parity/manual-checks.json` and
+  rendered on the sheet. MIX-14 is fully done.
 - done - NEXT-12: `/accuracy` and `/ja/accuracy` show all five chips' digital
   parity (per oracle, plus c64's real-6581 combined-waveform check), test ROMs,
   analog stage and driver coverage, generated into
@@ -592,7 +597,7 @@ real game music, and a real unit.
 - done - NEXT-13: the arrangement `report.json` hashes only the engine modules
   `evaluate.mjs` can reach (43 of 109), so a playback-only change no longer
   forces a full `pnpm arrangements:eval`.
-- done - NEXT-23: this PR. The mixing calibration hash narrowed the same way:
+- done - NEXT-23: PR #104. The mixing calibration hash narrowed the same way:
   `scores/mixing/provenance.mjs`'s `calibrationEngineHash()` used to hash
   every `.js` under `chips/**` plus three named modules (37 files, none of
   them the probe instruments or the measurement code itself), so a chip's
@@ -662,20 +667,20 @@ real game music, and a real unit.
   now enforces the beta's invitation and budget (decision 42); inviting
   people and measuring remain.
 
-## Generative composition — specification (2026-09-08)
+## Generative composition - specification (2026-09-08)
 
-The [generation plan](GENERATIVE-COMPOSITION.md) reuses ordinary song hosting. The OpenAI adapter, private/public song creation, owner attribution, origin-preserving remixes, visibility changes without rerendering, prompt UI and downloadable agent client are implemented (GEN-02, GEN-06–10). A real local Astra trial produced complete audio. The [creator journey evaluation](evals/CREATOR-JOURNEY-2026-09-08.md) covers agent discovery through MP3 retrieval and the corresponding UI. Wider musical benchmarks, full-song diagnostics and repair remain separate follow-ups.
+The [generation plan](GENERATIVE-COMPOSITION.md) reuses ordinary song hosting. The OpenAI adapter, private/public song creation, owner attribution, origin-preserving remixes, visibility changes without rerendering, prompt UI and downloadable agent client are implemented (GEN-02, GEN-06 to GEN-10). A real local Astra trial produced complete audio. The [creator journey evaluation](evals/CREATOR-JOURNEY-2026-09-08.md) covers agent discovery through MP3 retrieval and the corresponding UI. Wider musical benchmarks, full-song diagnostics and repair remain separate follow-ups.
 
-## Creation and API review — implementation
+## Creation and API review - implementation
 
-[The original review](CREATION-API-REVIEW-2026-09-07.md) is the historical CREATE-01–11 specification. [The implementation guide](CREATION.md) documents the versioned SDK, complete workspace, isolated code generator, immutable publications/audio, profiles, local draft library, discovery and favourites. CREATE-01–11 are implemented and locally qualified, including the production-build browser suite. Release CI runs on the associated pull request and version tag. Retro pixel avatars are generated locally from public profile IDs. Source docs/comments are English, with Japanese documentation and UI maintained alongside them.
+[The original review](CREATION-API-REVIEW-2026-09-07.md) is the historical CREATE-01 to CREATE-11 specification. [The implementation guide](CREATION.md) documents the versioned SDK, complete workspace, isolated code generator, immutable publications/audio, profiles, local draft library, discovery and favourites. CREATE-01 to CREATE-11 are implemented and locally qualified, including the production-build browser suite. Release CI runs on the associated pull request and version tag. Retro pixel avatars are generated locally from public profile IDs. Source docs/comments are English, with Japanese documentation and UI maintained alongside them.
 
 The existing sonic/hardware acceptance remains separate. Deployment-scale durable scheduling, moderation operations, real-device listening and multiple-account abuse resistance are stated limits, not claims of completed production-scale validation.
 
-## General automatic mixing — priority plan (2026-09-07)
+## General automatic mixing - priority plan (2026-09-07)
 
 Sound correctness and general adaptation remain the priority for subsequent releases and features.
-**MIX-01–MIX-18** have delivered their automated implementation and qualification within the documented API/corpus limits in **0.16.1** ([PR #40](https://github.com/gwendall/chipvoice/pull/40), [release workflow fix #41](https://github.com/gwendall/chipvoice/pull/41)). Human listening in MIX-12 remains open. MIX-14 now automates the Node/Chromium/Firefox/WebKit render-hash matrix (22 of 22 inputs byte-identical, zero mismatches; [Render parity](RENDER-PARITY.md)) and narrows what is left to a one-minute human check on a physical phone and real Safari, at [`/lab/render-parity`](https://chipvoice.dev/lab/render-parity). Production assets and the actual npm consumer are verified; [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1) records the final checks. Dependencies and acceptance criteria are
+**MIX-01 to MIX-18** have delivered their automated implementation and qualification within the documented API/corpus limits in **0.16.1** ([PR #40](https://github.com/gwendall/chipvoice/pull/40), [release workflow fix #41](https://github.com/gwendall/chipvoice/pull/41)). Human listening in MIX-12 remains open. MIX-14 now automates the Node/Chromium/Firefox/WebKit render-hash matrix (22 of 22 inputs byte-identical, zero mismatches; [Render parity](RENDER-PARITY.md)) and narrows what is left to a one-minute human check on a physical phone and real Safari, at [`/lab/render-parity`](https://chipvoice.dev/lab/render-parity). Production assets and the actual npm consumer are verified; [release evidence](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1) records the final checks. Dependencies and acceptance criteria are
 in [Automatic mixing](AUTOMATIC-MIXING.md). Song fixtures calibrate and evaluate
 the shared policy; production behavior must never special-case their identity.
 The [API](MIXING-API.md) and [evaluation](evals/AUTOMATIC-MIXING-POLICY-2026-09-07.md) record evidence and limits. Human listening and real-device acceptance remain explicitly open.
@@ -691,14 +696,14 @@ Statuses: `todo`, `doing`, `done`, `dropped` (with why).
 
 Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](evals/AUTOMATIC-MIXING-COLD-REVIEW-2026-09-07.md): joint SNES headroom, silent allocation, shared resources, MIDI role review and stronger acoustic acceptance. The original 0.16.1 evaluation is historical evidence, not qualification of the new engine.
 
-## MIDI import feedback — 2026-09-06
+## MIDI import feedback - 2026-09-06
 
-- done — `fix/midi-import-feedback` (0.15.1): visible preparation stages,
+- done - `fix/midi-import-feedback` (0.15.1): visible preparation stages,
   sample-based progress and elapsed time, legacy MIDI text decoding with explicit
   fallback, channel labels, and long-MIDI E2E through actual audio output.
   Reproduced with the user's local Musha Aleste MIDI; source bytes stay local.
 
-## Unified playground and transport — 2026-09-06
+## Unified playground and transport - 2026-09-06
 
 - Implemented and qualified: [spec](UNIFIED-PLAYGROUND.md). Complete arrangements are the
   default on `/`; the old arrangement URL redirects. Full-song pause/seek/restart,
@@ -706,19 +711,19 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
   source truth, imports, drafts and sharing. Browser/audio evaluation and two-axis
   review passed; [evidence and screenshots](evals/UNIFIED-PLAYGROUND-2026-09-06.md).
 
-## Complete arrangements — 2026-09-06
+## Complete arrangements - 2026-09-06
 
-- done — `feat/complete-arrangements` (0.15.0): exact-tick polyphonic MIDI import,
+- done - `feat/complete-arrangements` (0.15.0): exact-tick polyphonic MIDI import,
   deterministic interval allocation with per-note loss reports, native Mario
   source extraction and independent GME command comparison; full Zelda/Sonic
   MIDI arrangements; public arrangement deck and local worker rendering.
   [Evaluation and review](evals/COMPLETE-ARRANGEMENTS-2026-09-06.md) records
   atomic bus transactions, eight SNES pitched voices, bounded MIDI expression,
   exact reference binding and publication checks.
-- done for native replay — Zelda and Sonic now retain original chip commands
+- done for native replay - Zelda and Sonic now retain original chip commands
   and have independent emulator references. Portable timbres/expression remain
   approximations; native command parity does not certify those adaptations.
-- todo — additional MIDI expression adapters (pan, modulation/aftertouch, SysEx
+- todo - additional MIDI expression adapters (pan, modulation/aftertouch, SysEx
   patch banks), with independently reviewed references. Events are retained and
   unsupported behavior is disclosed.
 
@@ -760,7 +765,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P3-4 | A stronger Game Boy oracle: SameBoy driven by a register log, or a GBS player on the SM83 for real-game logs | done | PR #83. SameBoy's DMG-B `apu.c` vendored as a second oracle (`packages/conform/oracles/sameboy`); found and fixed a driver bug where `main.c`'s redundant `qsort` broke ties between same-cycle writes differently on gcc and clang, making the identical source cross-compiler non-deterministic. Once fixed, two narrower real gaps remained, since settled by P2-1 (a pulse trigger's first duty edge lands late; noise's cold start is a full note late), plus an open zombie-mode compound-case divergence |
 | P3-5 | The Game Boy's output stage measured: a DMG's line-out under a known script | todo | needs a unit, like P2-3. NEXT-04 found a citable public-domain formula (gbdev Pan Docs) matching the sheet's placeholder and a die-level teardown, but no measured recording of any unit: see [HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg) |
 | P3-6 | The Game Boy in the API, the studio and the skill: `chip: "dmg"` accepted, rendered and played; a chip selector in the editor; the skill says what changes | done | `apps/web`, skill 0.4.0 |
-| P3-7 | A pulse trigger keeps the low two bits of its frequency timer, as Pan Docs says | done | this PR. P2-1's second pass. Closed up to 3 of a note's first-step gap against SameBoy; the rest, up to 5 cycles, is undocumented in the sources checked and stays a deviation |
+| P3-7 | A pulse trigger keeps the low two bits of its frequency timer, as Pan Docs says | done | PR #89. P2-1's second pass. Closed up to 3 of a note's first-step gap against SameBoy; the rest, up to 5 cycles, is undocumented in the sources checked and stays a deviation |
 
 ## Phase 4. The portable score
 
@@ -812,7 +817,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P6-7 | The SNES sheet: parity with snes_spc on the output stream, a corpus of scripts and songs | done | `docs/chips/snes.md` |
 | P6-8 | The SNES's output measured: a capture of the DSP's stream or a unit's line-out under a known script | todo | needs a unit. NEXT-04 found the one real logic-analyser capture of a console's S-DSP lines anyone made is dead-linked, and the one filter-frequency estimate is a schematic simulation, not a capture: see [HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp) |
 | P6-9 | SPC export: a driver embedded in the file, so a song plays in any SPC player | doing | `exportSpc` (`packages/chipvoice/src/spc-export.ts`): its own SPC700 player written into the file's ARAM, proven round-tripped through this package's own SPC700 and against `play-spc`'s real one (`check:spc-export`, numbers on `docs/chips/snes.md`). The flash-cart recording on the step 1 bench is out of scope (no hardware yet); this row stays open for that one item |
-| P6-10 | Real triads across voices and hardware-noise hats | done | this PR. Triads are implemented and tested, including internal mixer checks. The kit's hats default to the DSP's own hardware noise (`NON`, `FLG`'s clock set from the very first write at power-on, never rewritten to a different value), the kick and snare staying BRR samples; `Instrument.noiseMode` opts a hat back to its BRR burst. A corpus script exercises two noise voices at once, a held note's clock changed, and `FLG`'s reset and mute bits over an active noise voice. A review pass before merge found the clock was live only from the later, quarter-second write, leaving any hat in a song's first 250 ms clocked at rate 0; fixed by moving it into the first write |
+| P6-10 | Real triads across voices and hardware-noise hats | done | PR #92. Triads are implemented and tested, including internal mixer checks. The kit's hats default to the DSP's own hardware noise (`NON`, `FLG`'s clock set from the very first write at power-on, never rewritten to a different value), the kick and snare staying BRR samples; `Instrument.noiseMode` opts a hat back to its BRR burst. A corpus script exercises two noise voices at once, a held note's clock changed, and `FLG`'s reset and mute bits over an active noise voice. A review pass before merge found the clock was live only from the later, quarter-second write, leaving any hat in a song's first 250 ms clocked at rate 0; fixed by moving it into the first write |
 
 ## Phase 7. C64
 
@@ -824,7 +829,7 @@ Cold-review corrections for 0.16.2 are recorded in [the follow-up evaluation](ev
 | P7-4 | The C64's driver and arranger: waveforms and the envelope for the intents, three voices for four roles with the classic sharing | done | `chips/c64/driver.ts`, `arranger.ts`; the sharing rule in `Sequencer.scheduleStep` |
 | P7-5 | The chip in the API, the studio and the skill | done | schema, openapi, skill 0.8.0, llms.txt, studio |
 | P7-6 | The C64 sheet: parity with reSID-fp on the digital voices, a corpus of scripts and songs | done | `docs/chips/c64.md`, `corpus/c64`, `check:c64` in CI |
-| P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | done | `packages/conform/roms/vice-sid`, `src/roms/c64.mjs`, `roms:c64` in CI; 13 of 14 pass, `busvalue` a P2-1 finding |
+| P7-7 | VICE's SID test programs (`testprogs/SID`) on a 6510 in the harness, reading OSC3 and ENV3: a second verification of the digital part against programs written for the hardware | done | `packages/conform/roms/vice-sid`, `src/roms/c64.mjs`, `roms:c64` in CI; 14 of 14 pass (`busvalue`, the one first-run failure, fixed by P2-1 in #86) |
 | P7-8 | A 6581's line-out captured under a known script, and the analog profile fitted to it: the DAC's zero, the filter's curve, the output stage | todo | needs a unit. NEXT-04 found reSID's `filter.cc` already has a named 6581 R4AR's own op-amp transfer-curve tables, diffable against our filter model with no register log needed, not yet implemented: see [HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580). It also implemented a combined-waveform check against a second named 6581 (`libsidplayfp/combined-waveforms`); see [c64.md#combined-waveforms-against-a-real-6581](chips/c64.md#combined-waveforms-against-a-real-6581) |
 | P7-9 | The filter in the arranger: a word that opens it, a sweep for a lead | done | `chips/c64/arranger.ts`, `chips/c64/driver.ts`; a lead's `sweep` opens the cutoff across the note, a bass's `resonant` holds a high resonance, both low-pass; a voice sets only its own routing bit in `$D417`, the shared registers compare each voice's own last write rather than another voice's, so a note dispatched out of true time order can never bury a later note's own write; two voices wanting different filter settings at once are a `filter_conflict` in `validateSong`; `Instrument.pulseWidth` gives a per-frame pulse-width sweep, unused by any preset yet |
 | P7-10 | The 8580: its combined waveforms, the triangle and sawtooth delay, its linear DACs and its own filter, as a second profile and a second table | done | `model: "8580"` on `Chip.create`/`renderPerformance`/`renderProject`; `SID_8580_PROFILE` and `COMBINED_8580` in `chips/c64/{dsp,sid}.ts`, fitted independently against reSID-fp's own 8580 tables (`fit:c64 -- --model 8580`), not ported from its `config[1]` (decision 41); reSID's `filter.cc` 8580 R5 curve and reSID-fp's `Dac` docs' 2.0 ladder ratio read as measurement data. A second oracle block, reSID-fp as an 8580 (`corpus/c64/parity-residfp-8580.json`, `check:residfp-8580`, in CI), 99.28 % identical; the two divergences are the combined-waveform fit's own shortfall, not a bug. See [c64.md#the-8580](chips/c64.md#the-8580) |
@@ -864,7 +869,7 @@ it.
 | P8-10 | Quantized live recording and overdubbing from the note palette and drums, with undo | implemented | D. Audio-clock tap capture, stable backing loop, one Undo per take and draft recovery; [qualification](evals/RECORDING-2026-09-06.md). Physical-phone checks remain P8-9 |
 | P8-23 | Controlled variations: vary a role, lock others, undo. Start with authored/rule-based music, without a remote AI dependency | implemented | Seeded local melody/drum/timbre transforms, locked roles and Undo; silent patterns preserved; decision 26 |
 | P8-11 | Web MIDI input using the same tested transport and ownership model | implemented | Opt-in MIDI taps share audition/recording; channel-10 drums and cleanup tested with simulated ports. Physical MIDI latency remains unmeasured |
-| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM, plus NES NSF (NEXT-10, PR #106) and Game Boy GBS (NEXT-10, this PR); independent ZIP reader and byte parity; decision 26 |
+| P8-12 | Producer exports: stems, render on all five machines, VGM where supported | implemented | Cancellable WAV/stems/five-machine ZIP and NES/GB/MD VGM, plus NES NSF (NEXT-10, PR #106) and Game Boy GBS (NEXT-10, PR #108); independent ZIP reader and byte parity; decision 26 |
 | P8-13 | Expose the SID's actual filter and sweep; consider alongside SNES triads and FM drums as richer musical arrangements | done | D. P7-9 done: the SID's filter is reachable from the arranger. P5-10 done: FM drums and the LFO in the MD arranger. P6-10 done: SNES triads and hardware-noise hats; no simulated generic substitute |
 
 ## Audit follow-ups
@@ -1127,7 +1132,7 @@ phase after any silence is approximate. The oracle is used for the pulses and
 the triangle, cycle for cycle. The noise is verified by the formula tests and by
 its envelope, which shares code with the pulses. The sheet says so.
 
-**2026-09-06, P4-7.** All three demo SNES loops match the native DSP, but their driver saturates the dry sum on 13–20% of 32-clock windows before master attenuation. Lowering per-voice levels removes measured dry/echo-input clipping while retaining exact native parity. `recordSong` also inserted early stop events in its final block; complete PCM replay now guards all five consoles. See [the evaluation protocol](AUDIO-EVALUATION.md).
+**2026-09-06, P4-7.** All three demo SNES loops match the native DSP, but their driver saturates the dry sum on 13-20% of 32-clock windows before master attenuation. Lowering per-voice levels removes measured dry/echo-input clipping while retaining exact native parity. `recordSong` also inserted early stop events in its final block; complete PCM replay now guards all five consoles. See [the evaluation protocol](AUDIO-EVALUATION.md).
 
 
 **2026-09-06, continuous playback and public lab.** The demo retains Play through
@@ -1139,7 +1144,7 @@ an explicitly versioned, on-demand snapshot. See
 [implementation and regression evidence](CONTINUOUS-PLAYBACK-LAB.md).
 
 
-**2026-09-06, composition controls.** Tempo now uses a shared 40–300 BPM slider
+**2026-09-06, composition controls.** Tempo now uses a shared 40-300 BPM slider
 with a synchronized manual input and grouped Undo. Further controls and sourced
 Mario/Zelda/Sonic repertoire proposals are recorded in
 [composition controls](COMPOSITION-CONTROLS.md); these proposals are not yet
@@ -1184,7 +1189,7 @@ Further work is deliberately separate: identify DAC drum sample boundaries/types
 for portable arrangements; recover FM envelope/release/stereo expression for
 editing; measure physical output filtering and PSG balance against real hardware.
 Native command/digital verification does not complete those fidelity claims.
-The identified 8–10 kHz alias mechanism is repaired by filtering before
+The identified 8-10 kHz alias mechanism is repaired by filtering before
 decimation; FM, DAC and PSG have separate comparisons. Physical output/DAC
 uncertainty remains. See [the measured repair](evals/AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07.md).
 
@@ -1225,16 +1230,16 @@ Contract and verification: [continuous playback](CONTINUOUS-PLAYBACK-LAB.md).
 Reload restoration, cross-tab playback coordination and collaborative editing remain separate work.
 
 
-## Interactive audio latency — audit, 2026-09-08
+## Interactive audio latency - audit, 2026-09-08
 
 Status: implemented and locally qualified; release qualification runs in CI. See [measurements, prototype and acceptance criteria](INTERACTION-LATENCY.md).
 
-- [x] LAT-1 — Immediate prepared selections, deduplicated score loading, independent metadata updates.
-- [x] LAT-2 — Lazy reference audio and bounded caches keyed by musical settings.
-- [x] LAT-3 — Progressive project preview using the existing compiler and DSP, separate from WAV export.
-- [x] LAT-4 — Bounded progressive musical updates, reuse of unchanged/stopped compatible engines and readiness notifications.
-- [x] LAT-5 — Stateful mid-song switching and seeking with per-chip checkpoint capabilities.
-- [x] LAT-6 — Reusable publication descriptors and audio range delivery with bounded server reads.
-- [x] LAT-7 — Cold/warm latency measurements, sustained rendering, desktop/mobile and sonic continuity regression tests.
+- [x] LAT-1 - Immediate prepared selections, deduplicated score loading, independent metadata updates.
+- [x] LAT-2 - Lazy reference audio and bounded caches keyed by musical settings.
+- [x] LAT-3 - Progressive project preview using the existing compiler and DSP, separate from WAV export.
+- [x] LAT-4 - Bounded progressive musical updates, reuse of unchanged/stopped compatible engines and readiness notifications.
+- [x] LAT-5 - Stateful mid-song switching and seeking with per-chip checkpoint capabilities.
+- [x] LAT-6 - Reusable publication descriptors and audio range delivery with bounded server reads.
+- [x] LAT-7 - Cold/warm latency measurements, sustained rendering, desktop/mobile and sonic continuity regression tests.
 
 Preview and offline rendering share the compiler and DSP. Complete DSP checkpoints and latest-input cancellation preserve the native-reference and continuous-playback contracts. An in-place retiming API for arbitrary register histories is deliberately outside this change; inactive spare worklets are disposed rather than consuming CPU behind a mute. Cold history reconstruction and device/network latency remain explicit limits.

@@ -41,7 +41,7 @@
 | MIX-01〜11 | API に記載したハードウェア、校正、有限フレーズの制約を含め実装済み。 |
 | MIX-12 | 自動評価器とブラインド試聴素材を提供。人間による好みの観察は未完了。 |
 | MIX-13 | 固定候補の未使用データ、頑健性、開発用除去実験が公開したコーパス・時間範囲内で成功。 |
-| MIX-14 | [レンダー一致性](RENDER-PARITY_ja.md): Node・Chromium・Firefox・WebKit のレンダーハッシュ照合に合格(22件中22件、不一致ゼロ)。実機スマートフォン・実Safariでの計測は[`/lab/render-parity`](https://chipvoice.dev/lab/render-parity)での1分の人手作業として残ります。 |
+| MIX-14 | [レンダー一致性](RENDER-PARITY_ja.md): Node・Chromium・Firefox・WebKit のレンダーハッシュ照合に合格(22件中22件、不一致ゼロ)。[`/lab/render-parity`](https://chipvoice.dev/lab/render-parity)での人手の確認も2026-09-28に合格(デスクトップのChrome、MacのSafari、iPhone 16 ProのSafariで各22件中22件)。 |
 | MIX-15〜16 | SDK・サイト・ゲームフレーズの共通統合と英日文書を提供。 |
 | MIX-17 | 全公開物を再生成し、本番のレポートと全公開音声ファイルを検証済み。 |
 | MIX-18 | 0.16.1 を npm から空の利用側プロジェクトにインストールし、公開 API と AudioWorklet テストが成功。 |

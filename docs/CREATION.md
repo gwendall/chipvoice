@@ -69,16 +69,16 @@ console.log(plan?.losses, plan?.mix);
 | Parameter or operation | Contract |
 | --- | --- |
 | `settings.chip` | `2a03`, `dmg`, `md`, `snes`, `c64`; C64 stays hidden in the public demo |
-| `tempoScale` | Positive multiplier 0.1–10; compact scores must also remain within their valid BPM range |
+| `tempoScale` | Positive multiplier 0.1-10; compact scores must also remain within their valid BPM range |
 | `transpose` | Semitones, −48 to +48 for performances; legacy scores require integer values within their note range |
-| `gain` | Linear master gain, 0–1; defaults retain the source family's existing render policy |
+| `gain` | Linear master gain, 0-1; defaults retain the source family's existing render policy |
 | `allowLoss` | SDK default false; the interactive preview explicitly allows reported adaptation losses |
 | `parts` | Optional array of source part IDs when preparing/loading; compact source IDs are `lead`, `chord`, `bass`, `perc` |
-| `sampleRate` | Integer Hz, 8000–96000; defaults to 44100 |
+| `sampleRate` | Integer Hz, 8000-96000; defaults to 44100 |
 | `renderProject.seconds` | Optional excerpt length, positive and at most 600 seconds; never expands the source |
 | `load` / `update` | Resolve true only for the accepted selection, false for failure or supersession; inspect `error` |
 | `playing`, `position`, `duration`, `audibleProject` | Current transport intent and audible presentation; preparing does not replace these with pending values |
-| `preparing`, `progress`, `prepared`, `onChange` | Preparation state, progress 0–1, last accepted result and change notification; position is read on your animation frame |
+| `preparing`, `progress`, `prepared`, `onChange` | Preparation state, progress 0-1, last accepted result and change notification; position is read on your animation frame |
 | `cancel` / `dispose` | Abort preparation; disposal also releases transport, workers and object URLs; closes only an internally owned AudioContext |
 
 `ProjectPlayer({context})` accepts an existing AudioContext. `output` allows an output tap; `setVolume` changes the listening gain without altering the project. An export contains the project master gain, not the listening volume. `PerformancePart.program` supplies a default instrument for new notes; explicit note programs take precedence. `muted` and `mix.gainDb` remain effective without automatic balancing. The browser worker and server share `renderProject`; legacy `Chip`, SFX, raw registers, `recordSong`, `toVgm` and, for NES songs, `exportNsf`, and for SNES, `exportSpc` (a standard `.spc` snapshot that plays in any SPC player) remain available. `projectCapabilities()` distinguishes facade WAV export from lower-level register export (VGM for 2A03/DMG/MD, SPC for SNES) and lists chip voices/roles; it does not claim every chip implements every foreign instrument.
@@ -96,7 +96,7 @@ The [OpenAPI document](https://chipvoice.dev/.well-known/openapi.json) and [agen
 | `GET /api/v1/projects` | Public search by `q` (title/creator), `tag`, `chip`, `handle`; `sort=recent|popular`; opaque `cursor` |
 | `GET/PUT /api/v1/profile` | Account profile with unique case-insensitive handle, separate display name and bio |
 | `PUT/DELETE /api/v1/projects/{id}/favourite` | One favourite per account; self-favourites excluded |
-| `POST /api/v1/projects/{id}/report` | Authenticated reason, 3–500 characters; one report per account/publication |
+| `POST /api/v1/projects/{id}/report` | Authenticated reason, 3-500 characters; one report per account/publication |
 | `POST /api/v1/projects/{id}/render` | Owner starts `{kind: 'preview'|'full'}`; idempotent per publication/kind |
 | `GET/DELETE /api/v1/jobs/{id}` | Progress/status or owner cancellation |
 | `GET /api/v1/jobs/{id}/audio` | Ready pinned WAV or MP3 (`?format=mp3`), with publication access control |

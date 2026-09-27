@@ -35,7 +35,7 @@ curl http://localhost:3010/api/v1/generations \
   -d '{"prompt":"An original space theme, a clear melody with a contrasting bridge and restrained percussion","target":"md","durationSeconds":60,"loop":false}'
 ```
 
-Read supported `target` IDs from `/api/v1/capabilities`; the prompt uses the same generated capability catalogue. Duration is an integer from 10 to 90 seconds; default 60. Prompt length is 1–2000 JavaScript string units after trimming. `loop` expresses musical intent, not a verified seamless-loop guarantee. An owner may choose an owned `profileId`; agents use their authorized artist. Optional `visibility` accepts `private` (default), `unlisted` or `public`.
+Read supported `target` IDs from `/api/v1/capabilities`; the prompt uses the same generated capability catalogue. Duration is an integer from 10 to 90 seconds; default 60. Prompt length is 1-2000 JavaScript string units after trimming. `loop` expresses musical intent, not a verified seamless-loop guarantee. An owner may choose an owned `profileId`; agents use their authorized artist. Optional `visibility` accepts `private` (default), `unlisted` or `public`.
 
 The response contains `id` and `status`. For live updates, stream `GET /api/v1/generations/{id}/events` with the same credential (`curl -N`); reconnect after its approximately 20-second closure without resubmitting the request. See [the SSE contract](GENERATIVE-COMPOSITION.md#implemented-contract). Alternatively, poll `GET /api/v1/generations/{id}` with the same credential, following `Retry-After: 2`. Status progresses through `queued`, `composing`, `validating`, `saving`, `rendering` and `ready`, or ends as `failed`/`cancelled`. Send `DELETE` to the same URL to cancel unfinished work.
 

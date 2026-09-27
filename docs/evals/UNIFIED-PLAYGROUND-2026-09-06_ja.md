@@ -1,5 +1,5 @@
-<a id="unified-playground-evaluation--2026-09-06"></a>
-# 統合プレイグラウンド評価 — 2026-09-06
+<a id="unified-playground-evaluation---2026-09-06"></a>
+# 統合プレイグラウンド評価 - 2026-09-06
 
 <p align="center">
   <a href="UNIFIED-PLAYGROUND-2026-09-06.md">English</a> &bull;

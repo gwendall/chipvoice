@@ -69,6 +69,14 @@ Playwright's WebKit is the closest automatable stand-in for Safari available in 
 
 Open **https://chipvoice.dev/lab/render-parity** on the device to check. It fetches the same fixed inputs this sheet uses (a shorter excerpt of each, so the page stays light), renders them in that browser with the same `renderPerformance` call, and shows each input's hash next to the Node reference used to build the page - a match or a mismatch per input, no setup beyond opening the page. It takes about a minute: open the link, wait for every row to finish, and note whether every row matches. A mismatch is worth reporting with the device, OS and browser version shown on the page.
 
+Checked by hand so far (recorded in `scores/render-parity/manual-checks.json`, which this sheet renders; add a row there, not here). The page's Node reference is rebuilt with the engine, so a check stands for the deployment it names:
+
+| Date | Deployment | Browser | Device | Result |
+| --- | --- | --- | --- | --- |
+| 2026-09-28 | `6da5ac1` | Chrome | desktop | all 22 match |
+| 2026-09-28 | `6da5ac1` | Safari | Mac | all 22 match |
+| 2026-09-28 | `6da5ac1` | Safari | iPhone 16 Pro | all 22 match |
+
 <a id="what-runs-in-ci"></a>
 
 ## What runs in CI

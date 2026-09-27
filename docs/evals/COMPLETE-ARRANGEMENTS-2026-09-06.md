@@ -1,4 +1,4 @@
-# Complete arrangements — 2026-09-06
+# Complete arrangements - 2026-09-06
 
 <p align="center">
   <a href="COMPLETE-ARRANGEMENTS-2026-09-06.md">English</a> &bull;

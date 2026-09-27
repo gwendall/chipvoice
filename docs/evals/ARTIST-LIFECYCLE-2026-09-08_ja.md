@@ -1,5 +1,5 @@
-<a id="artist-lifecycle-evaluation--2026-09-08"></a>
-# アーティスト機能の評価 — 2026-09-08
+<a id="artist-lifecycle-evaluation---2026-09-08"></a>
+# アーティスト機能の評価 - 2026-09-08
 
 <p align="center"><a href="ARTIST-LIFECYCLE-2026-09-08.md">English</a> &bull; <a href="ARTIST-LIFECYCLE-2026-09-08_ja.md">日本語</a></p>
 

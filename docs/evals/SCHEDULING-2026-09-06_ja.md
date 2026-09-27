@@ -1,5 +1,5 @@
-<a id="scheduling-design-and-qualification--2026-09-06"></a>
-# 予約処理の設計と検証 — 2026-09-06
+<a id="scheduling-design-and-qualification---2026-09-06"></a>
+# 予約処理の設計と検証 - 2026-09-06
 
 <p align="center">
   <a href="SCHEDULING-2026-09-06.md">English</a> &bull;

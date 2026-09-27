@@ -1,0 +1,5 @@
+[
+  { "date": "2026-09-28", "revision": "6da5ac16165c70426b68398657ac094b27b99a6e", "browser": "Chrome", "device": "desktop", "matched": 22, "inputs": 22 },
+  { "date": "2026-09-28", "revision": "6da5ac16165c70426b68398657ac094b27b99a6e", "browser": "Safari", "device": "Mac", "matched": 22, "inputs": 22 },
+  { "date": "2026-09-28", "revision": "6da5ac16165c70426b68398657ac094b27b99a6e", "browser": "Safari", "device": "iPhone 16 Pro", "matched": 22, "inputs": 22 }
+]

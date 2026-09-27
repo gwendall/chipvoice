@@ -44,7 +44,7 @@ for its loading state rather than assuming that a network recording arrives in
 ## Reproduce and evidence
 
 - `pnpm --filter chipvoice-web build`
-- `pnpm --filter chipvoice-web test` — owns a production server and temporary DB.
+- `pnpm --filter chipvoice-web test` - owns a production server and temporary DB.
 - `BROWSER=webkit SITE=http://127.0.0.1:<port> node test-arrival.mjs` from `apps/web`.
 - `.artifacts/japanese-playground/{chromium,webkit}/`: initial/stopped/About
   screenshots, interaction videos and measured `result.json`.

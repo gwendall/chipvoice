@@ -38,7 +38,7 @@ console.log(plan.mix, plan.losses);
 const audio = renderPerformance(plan, mdChip);
 ```
 
-`importance` accepts 0–1, and `gainDb` accepts −96 to +12 dB. An explicit zero
+`importance` accepts 0-1, and `gainDb` accepts −96 to +12 dB. An explicit zero
 importance silences a part without removing its source notes or reallocating
 its voices. `allowLoss` is still required to omit notes when hardware voices run
 out. The policy's automatic attenuation bound refers to role/density trims;

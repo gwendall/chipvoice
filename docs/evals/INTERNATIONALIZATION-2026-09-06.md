@@ -1,4 +1,4 @@
-# English / Japanese website — 2026-09-06
+# English / Japanese website - 2026-09-06
 
 <p align="center">
   <a href="INTERNATIONALIZATION-2026-09-06.md">English</a> &bull;

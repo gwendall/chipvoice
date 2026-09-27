@@ -1,4 +1,4 @@
-# Readable frontend type — 2026-09-06
+# Readable frontend type - 2026-09-06
 
 <p align="center">
   <a href="READABLE-TYPE-2026-09-06.md">English</a> &bull;
@@ -8,8 +8,8 @@
 
 The playground, listening lab, About and component catalogue now share four type
 roles: labels (14px), body (16px), section headings (24px), and responsive page
-headings (32–44px), expressed in rem. Mobile layouts no longer reduce labels to
-6–10px. Inputs keep the body size. Navigation, effect pads, filters and footer
+headings (32-44px), expressed in rem. Mobile layouts no longer reduce labels to
+6-10px. Inputs keep the body size. Navigation, effect pads, filters and footer
 wrap to accommodate readable text.
 
 The shared footer links “Made by gwendall” to https://gwendall.com, using the

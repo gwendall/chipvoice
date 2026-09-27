@@ -1,4 +1,4 @@
-# Loop recording evaluation — 2026-09-06
+# Loop recording evaluation - 2026-09-06
 
 <p align="center">
   <a href="RECORDING-2026-09-06.md">English</a> &bull;

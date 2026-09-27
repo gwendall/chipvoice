@@ -16,7 +16,7 @@ See [Local prompt composition](LOCAL-COMPOSITION.md) for setup, examples, exact 
 
 | Route | Behavior |
 | --- | --- |
-| `POST /api/v1/generations` | Authenticated prompt, discovered target, 10–90-second duration, loop intent and optional owned artist; required idempotency key |
+| `POST /api/v1/generations` | Authenticated prompt, discovered target, 10-90-second duration, loop intent and optional owned artist; required idempotency key |
 | `GET /api/v1/generations/{id}` | Authorized progress, prompt/model, usage, evaluation and normal project/render references; polling advances eligible stages |
 | `GET /api/v1/generations/{id}/events` | Authenticated SSE snapshots every two seconds; reconnect after normal stream closure without resubmitting the prompt |
 | `DELETE /api/v1/generations/{id}` | Cancel unfinished composition and rendering |
@@ -61,13 +61,13 @@ Keep the earlier ticket identifiers for continuity; the acceptance scope is simp
 
 | Tickets | State and next action |
 | --- | --- |
-| GEN-02, GEN-06–08 | Local adapter, normal song saving, bounded execution and three routes implemented; first real local Astra trial passed |
+| GEN-02, GEN-06 to GEN-08 | Local adapter, normal song saving, bounded execution and three routes implemented; first real local Astra trial passed |
 | GEN-01, GEN-05 | Harness implemented: [the benchmark doc](GENERATION-BENCHMARK.md), `pnpm gen-bench`, a committed 250-prompt set (50 per console) drives the real generation path, prices cost exactly like the budget and runs the GEN-03 checks; `--mock` covers it in CI with no network or cost. The one-per-console paid sample is blocked on a missing `OPENAI_API_KEY`; the full run is estimated at 70.00 USD and needs the owner's approval |
 | GEN-03 | Implemented: whole-song acoustic checks (clipping, level jumps, silence gaps, an unresolved ending, a loop seam, a duration mismatch), recorded on the generation and never rejecting; see "Whole-song checks" above |
 | GEN-04 | Deferred: add a bounded repair call only if measured failures justify it, preserving exact candidate source and cost visibility |
 | GEN-09 | Implemented: prompt form in `/create`, artist/duration controls, progress/reload/cancel, preserved editor draft and links to the saved song |
 | GEN-10 | Skill/OpenAPI and downloadable client implemented; agent/API/browser qualification is described in the creator journey report; broader budget and musical qualification remain separate |
-| GEN-11–12 | Later: targeted immutable revisions and evaluated console variants, using the existing project lineage and source identity |
+| GEN-11 to GEN-12 | Later: targeted immutable revisions and evaluated console variants, using the existing project lineage and source identity |
 | GEN-13 | Public release only after real musical and operational evaluation; green fixture tests alone do not launch paid inference |
 
 The [creator journey](evals/CREATOR-JOURNEY-2026-09-08.md) verifies author attribution, creation method, visibility and complete MP3 delivery. Direct submission records the route used, not proof of human-only authorship. Keep the core emulator fidelity and deterministic adaptation work independent of this optional composition layer.
