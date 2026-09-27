@@ -29,16 +29,6 @@ const LIMIT = 30 * CPU_HZ;
 const GB_HZ = 4194304;
 /** Comfortably over the slowest chosen program's cycle count (`envrate`'s, at a few million). */
 const C64_BUDGET = 40_000_000;
-/**
- * `busvalue` is a documented, accepted divergence (P2-1): reading OSC3 or
- * ENV3 does not refresh the bus latch the way real hardware's read-only
- * registers do (`docs/chips/c64.md`'s Test ROMs section has the trace). It is
- * pinned here exactly as a parity baseline pins a known state, so this
- * script still fails on a genuine regression - anything passing that should
- * not, or failing that should not - without CI going red forever over a
- * finding that is not this ticket's to fix.
- */
-const C64_EXPECTED_FAIL = new Set(['busvalue/busvalue']);
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -199,5 +189,4 @@ if (sheetPath) {
   fs.writeFileSync(sheetPath, text.slice(0, begin) + lines.join('\n') + text.slice(end + '<!-- roms:end -->'.length));
 }
 
-const ok = chip === 'c64' ? results.every((r) => r.passed === !C64_EXPECTED_FAIL.has(r.name)) : results.every((r) => r.passed);
-process.exit(ok ? 0 : 1);
+process.exit(results.every((r) => r.passed) ? 0 : 1);

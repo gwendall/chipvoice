@@ -488,7 +488,11 @@ export class Sid implements DigitalChip {
   resonanceFilter = 0;
   /** `$D418`: the filter modes and voice 3 off in the high nibble, the volume in the low. */
   modeVolume = 0;
-  /** The last byte written: what a write-only register reads back as. */
+  /**
+   * The last byte on the chip's data bus: what a write-only or missing
+   * register reads back as. A write leaves its byte there, and so does a read
+   * of OSC3 or ENV3 (VICE's `busvalue` test program, run on real chips).
+   */
   private bus = 0;
 
   /** The absolute cycle about to be clocked. */
@@ -530,14 +534,17 @@ export class Sid implements DigitalChip {
     }
   }
 
-  /** OSC3 and ENV3 read; everything else reads the last byte on the bus. */
+  /**
+   * OSC3 and ENV3 read, and leave what they read on the bus; everything else,
+   * the paddles included since none is modelled, reads the last byte there.
+   */
   read(addr: number): number {
     if ((addr & 0xfc00) !== 0xd400) return 0xff;
     switch (addr & 0x1f) {
-      case 0x1b: return this.osc[2].output >> 4;
-      case 0x1c: return this.env[2].env3;
-      default: return this.bus;
+      case 0x1b: this.bus = this.osc[2].output >> 4; break;
+      case 0x1c: this.bus = this.env[2].env3; break;
     }
+    return this.bus;
   }
 
   /** One cycle of the three voices, then the sync between them. */
