@@ -27,10 +27,16 @@ for (const [id, deviation] of Object.entries(today)) {
 // revision before this fix: gt2-hyperspace-alt.sid at 5 cycles (the worst of
 // the four PLAY_TOLERANCE fixtures back then) and both CIA-timed fixtures at
 // 128 cycles. PLAY_TOLERANCE tightened from 5 to 3 catches the first;
-// CIA_CYCLE_BOUND tightened from 134 to 89 catches the second - neither
+// CIA_CYCLE_BOUND tightened from 134 to 46 catches the second - neither
 // gate would have caught these numbers before this ticket, and both catch
 // them now, so a regression back to the old phase is a real, immediate
-// corpus failure rather than a silent pass.
+// corpus failure rather than a silent pass. 46 is one badline period
+// (`BADLINE_STEAL_CYCLES = 43` in psid-import.ts) plus PLAY_TOLERANCE, not
+// two - nothing measured at up to 8x this corpus's default duration ever
+// showed two badline steals stacking into a single call (see corpus.mjs's
+// own CIA_CYCLE_BOUND comment), so 46 is the tightest bound today's 43/42
+// still clears, same as PLAY_TOLERANCE is the tightest bound the four other
+// fixtures still clear.
 const oldBehaviour = {
   'convention-probe': 2, 'frame-rate-probe': 2,
   'gt2-dojo': 3, 'gt2-hyperspace-alt': 5,
@@ -42,6 +48,6 @@ assert.deepEqual(caughtByTightenedGate.map(([id]) => id).sort(), ['gt2-consultan
 // Sanity: the two constants themselves are the tightened values this test's
 // own name promises, not stale ones a future edit forgot to update here.
 assert.equal(PLAY_TOLERANCE, 3);
-assert.equal(CIA_CYCLE_BOUND, 89);
+assert.equal(CIA_CYCLE_BOUND, 46);
 
-console.log('PASS PLAY_TOLERANCE (5 to 3) and CIA_CYCLE_BOUND (134 to 89) both reject the old, pre-PAL_INIT_RASTER_PHASE measurements (5 cycles on gt2-hyperspace-alt.sid, 128 cycles on both CIA-timed fixtures) while still passing every fixture\'s current measurement');
+console.log('PASS PLAY_TOLERANCE (5 to 3) and CIA_CYCLE_BOUND (134 to 46) both reject the old, pre-PAL_INIT_RASTER_PHASE measurements (5 cycles on gt2-hyperspace-alt.sid, 128 cycles on both CIA-timed fixtures) while still passing every fixture\'s current measurement');

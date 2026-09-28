@@ -456,9 +456,15 @@ real game music, and a real unit.
   near a badline in the oracle's real per-line VIC-II, and whether this
   environment's own coarser once-per-CPU-instruction check agrees, drifts
   call to call - a structural granularity mismatch between the two models,
-  not a fixable constant. `CIA_CYCLE_BOUND` stays at 89; see `setupCia1`'s
-  own doc comment in `psid-import.ts` and `CIA_CYCLE_BOUND`'s own comment in
-  `corpus.mjs` for the full evidence. Second, the "this environment takes far longer than the oracle to reach
+  not a fixable constant. That mechanism moves a call's dispatch to one side
+  of a single badline per miss, never two, so `CIA_CYCLE_BOUND` is one
+  badline period plus `PLAY_TOLERANCE`: kept at 89 (two badline periods plus
+  it) when round 2 shipped, then tightened to 46 in a follow-up correction
+  once a second, independent 40-second/8x-budget capture on both CIA-timed
+  fixtures also never showed two steals stacking (`maxCycleDeviation` held
+  at 44, with every still-comparable event matching in full); see
+  `setupCia1`'s own doc comment in `psid-import.ts` and `CIA_CYCLE_BOUND`'s
+  own comment in `corpus.mjs` for the full evidence. Second, the "this environment takes far longer than the oracle to reach
   the first SID write inside the two VBI-timed fixtures' own INIT" aside
   from round 1: that figure (10,000+ cycles) turned out to be stale, from a
   measurement taken mid-sweep before `PAL_INIT_RASTER_PHASE` was finalized.
@@ -489,12 +495,58 @@ real game music, and a real unit.
   enough to push a VBI-timed fixture's own deviation to 4 or 5), but both
   sit deep inside the same 10282-10765 band, within `PLAY_TOLERANCE` itself
   of the nearest passing cycle - 10750 among them, confirmed optimal by the
-  sweep rather than either raw measurement. See `PAL_INIT_RASTER_PHASE`'s
-  own doc comment in `psid-import.ts` for the full arithmetic. All six fixtures measure exactly as round 1 left them (no gate or
-  constant changed): convention-probe and frame-rate-probe at 2 cycles;
+  sweep rather than either raw measurement. A follow-up correction found the
+  comb's own mechanism rather than leaving it an observed shape: this
+  environment checks whether a raster/CIA IRQ has come due only once per CPU
+  instruction, and between dispatches the CPU is parked in a single, 3-cycle
+  `JMP $0350` self-loop, so that check only ever lands on a grid 3 cycles
+  apart - confirmed directly by sweeping the constant one cycle at a time
+  and logging a VBI-timed fixture's own first PLAY-phase cycle, flat across
+  each run of three consecutive values and stepping down by exactly 3 at
+  each boundary between runs. The same correction also says plainly what
+  the sweep already implied: 10745 and 10749 themselves fail this corpus's
+  own `PLAY_TOLERANCE` gate (4 cycles on `frame-rate-probe.sid`/
+  `gt2-dojo.sid` at 10745; 5 cycles on `gt2-hyperspace-alt.sid` at 10749), so
+  10750 is the nearest passing value, not a looser reading of either
+  measurement. See `PAL_INIT_RASTER_PHASE`'s
+  own doc comment in `psid-import.ts` for the full arithmetic. All six fixtures measure exactly as round 1 left them (no fixture's own
+  measured deviation changed, only `CIA_CYCLE_BOUND` itself, above):
+  convention-probe and frame-rate-probe at 2 cycles;
   `gt2-dojo.sid` at 3; `gt2-hyperspace-alt.sid` at 3; `gt2-sanction-cia.sid`
   at 43; `gt2-consultant-alt-cia.sid` at 42. See `docs/chips/c64.md`'s
   "Known limits" and "History".
+- todo follow-up - NEXT-09's own per-cycle badline and IRQ granularity in
+  the PSID environment: this environment checks for a due raster/CIA IRQ
+  once per CPU instruction and steals a whole VIC-II badline's 43 cycles in
+  one lump at a line's own trigger point, rather than libsidplayfp's real
+  per-line, per-cycle VIC-II/CIA model; both approximations are now fully
+  characterized (see `docs/chips/c64.md`'s "Known limits" and its
+  2026-09-28 History entries) rather than left as an assumption, but not
+  fixed. Modeling both at the real per-cycle granularity would fix two
+  things this ticket's own evidence already points at: the two CIA-timed
+  fixtures' own 43/42-cycle PLAY-phase residual (`CIA_CYCLE_BOUND` in
+  `scores/psid-corpus/corpus.mjs`) would collapse toward the four other
+  fixtures' own `PLAY_TOLERANCE = 3`, since the granularity mismatch that
+  causes it - which PLAY calls land near a badline, checked once per
+  instruction on this environment's side versus once per raster cycle on
+  the oracle's - would no longer exist; and `PAL_INIT_RASTER_PHASE`'s own
+  period-3 comb (`psid-import.ts`'s own doc comment) would collapse too,
+  since the comb's own cause is the same once-per-instruction dispatch
+  check landing on a fixed 3-cycle grid while the CPU idles in the
+  post-INIT `JMP $0350` self-loop - a directly measured raster phase would
+  then pass this corpus's own gate on its own, rather than needing the
+  nearest passing comb member substituted for it. Evidence already
+  gathered this round: the deviation histogram is bimodal, not a clean
+  multiple of 43 (ordinary per-line jitter at 0-5 cycles, a second cluster
+  at 38-43); logging every deviating CIA-timed call's own badline state on
+  both engines' raster trackers shows the ~43-cycle deviations landing
+  exactly where the oracle's real per-line VIC-II places a badline this
+  environment's coarser check misses, never the reverse; and sweeping
+  `PAL_INIT_RASTER_PHASE` one cycle at a time while logging a VBI-timed
+  fixture's own first PLAY-phase cycle shows it flat across each run of
+  three consecutive values and stepping down by exactly 3 at each
+  boundary, the direct signature of the 3-cycle grid. No design for the
+  per-cycle model itself is proposed here.
 - done - P6-9: PR #107. `exportSpc` (unblocked by NEXT-08's CPU) turns a SNES capture
   into a standard `.spc` file carrying its own tiny SPC700 player
   (`packages/chipvoice/src/chips/snes/spc-player.ts`), hand-assembled from

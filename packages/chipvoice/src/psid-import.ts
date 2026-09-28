@@ -116,30 +116,68 @@ const VICII_FETCH_CYCLE = 11;
 // cheapest possible check that this constant is still right - see
 // `packages/chipvoice/test/psid-import.mjs`).
 //
+// Plainly: 10750 is not itself a measured cycle. It is the passing value
+// nearest the two measurements above (10745, 10749), and both of those raw
+// measurements themselves fail this corpus's own gate (see below) - this
+// constant uses the nearest pass, not either direct measurement, because
+// neither direct measurement passes.
+//
 // That "handful of candidate cycles" is not one contiguous interval: a
 // cycle-by-cycle sweep of this constant from 10200 to 10850, scored the same
 // way `scores/psid-corpus/corpus.mjs` scores a build (`matched === total`
 // and within `PLAY_TOLERANCE`/`CIA_CYCLE_BOUND` on all six fixtures), passes
-// on exactly one cycle in three, not every cycle - the two VBI-timed
-// fixtures' own maxCycleDeviation cycles through {2, 3, 4, 5} as this
-// constant moves one cycle at a time (real per-line jitter this
-// environment's once-a-frame raster pulse cannot track exactly), and
-// `PLAY_TOLERANCE = 3` only accepts two of every three phases as a result;
-// the two CIA-timed fixtures stay fixed at 43/42 across the whole sweep,
-// confirming again (see `setupCia1`'s own doc comment) that their residual
-// is not phase-sensitive. Within that period-3 comb, every candidate from
-// 10282 to 10765 passes (162 evenly-spaced values spanning 483 cycles,
-// bounded on each side by a short dead zone, roughly 20 cycles wide, where
-// nothing passes - the same shape recurs every ~505 cycles across the wider
-// 9500-12500 range this was also checked against). 10750 sits well inside
-// that band, 468 cycles from its near edge and 15 from its far one, with
-// both its immediate comb neighbors (10747, 10753) passing too - not a
-// knife-edge fit. The two direct measurements above, 10745 and 10749, are
-// not themselves members of the comb (each is 1-2 cycles off it, enough to
-// push a VBI-timed fixture's own deviation to 4 or 5), but both fall deep
-// inside the same 10282-10765 band and each sits within `PLAY_TOLERANCE`
-// itself of the nearest passing cycle - the confirmed-optimal 10750 among
-// them, rather than either raw measurement, is what this constant uses.
+// on exactly one cycle in three, not every cycle. That period-3 shape has a
+// confirmed mechanism, not an assumed one: this environment's main render
+// loop only checks whether a raster/CIA IRQ has come due once per CPU
+// instruction, right after each `cpu.step()` call, and for most of the time
+// between two dispatches the CPU is parked at `IDLE_ADDR`, a single `JMP`
+// instruction to itself - 3 cycles every time, on real hardware and in
+// `cpu6510.ts` alike (`case 0x4c`). So while parked there, "is an IRQ due
+// yet" is only ever asked on a grid spaced 3 cycles apart; shifting this
+// constant by 1 cycle shifts the real target moment by 1 cycle too, but only
+// changes which grid point the check actually lands on - and so only changes
+// the dispatch this constant produces - once every three shifts, when the
+// moving target crosses the next grid line. Confirmed directly: sweeping
+// this constant one cycle at a time from 10744 to 10758 and logging the raw,
+// unshifted cycle of gt2-hyperspace-alt.sid's very first PLAY-phase event,
+// that cycle stays exactly flat across each run of three consecutive values
+// and steps down by exactly 3 cycles at each boundary between runs - the
+// direct signature of a 3-cycle-spaced discovery grid, not a coincidence of
+// scoring. (convention-probe.sid's own zero-tolerance INIT-phase content
+// check, by contrast, passes continuously across that same range with no
+// period-3 pattern at all: INIT's own badline-relative placement is a direct
+// function of this constant, never discovered through the idle loop, so it
+// has no reason to share the grid. It is specifically the two VBI-timed
+// fixtures' own PLAY_TOLERANCE = 3 cycle-position gate - real per-line
+// jitter this environment's once-a-frame raster pulse cannot track exactly,
+// riding on top of the grid above - that cycles through {2, 3, 4, 5} with
+// the period-3 pattern and is what 10745 and 10749 each fail below.) The two
+// CIA-timed fixtures stay fixed at 43/42 across the whole sweep, confirming
+// again (see `setupCia1`'s own doc comment) that their residual is not
+// phase-sensitive - the grid above changes which cycle a call is discovered
+// on, not how many badlines this environment's model crosses versus the
+// oracle's.
+//
+// Within that period-3 comb, every candidate from 10282 to 10765 passes (162
+// evenly-spaced values spanning 483 cycles, bounded on each side by a short
+// dead zone, roughly 20 cycles wide, where nothing passes - the same shape
+// recurs every ~505 cycles across the wider 9500-12500 range this was also
+// checked against). 10750 sits well inside that band, 468 cycles from its
+// near edge and 15 from its far one, with both its immediate comb neighbors
+// (10747, 10753) passing too - not a knife-edge fit. The two direct
+// measurements, 10745 and 10749, sit 1-2 cycles off the comb's own grid and
+// each fails on a different VBI-timed fixture (10745: frame-rate-probe.sid
+// and gt2-dojo.sid at 4 cycles; 10749: gt2-hyperspace-alt.sid at 5 cycles -
+// see `phase-plateau-sweep`-style output for the full per-fixture
+// breakdown), so using either raw measurement directly would regress this
+// corpus's own PLAY_TOLERANCE gate on a real fixture, not just fail some
+// stricter, hypothetical check. Both still fall deep inside the same
+// 10282-10765 band, each within `PLAY_TOLERANCE` itself of the nearest
+// passing cycle, so 10750 is a small, evidenced correction within the same
+// band the measurement already pointed to, not a different answer to a
+// different question. Per-cycle badline and IRQ granularity (see
+// docs/BACKLOG.md's NEXT-09 follow-up work item) would collapse this comb
+// entirely, letting a directly measured phase pass on its own.
 const PAL_INIT_RASTER_PHASE = 10750;
 const CIA_DEFAULT_PAL = 0x4025; // 60 Hz CIA 1 timer A latch, PAL: the SID file format's own default environment.
 const CIA_DEFAULT_NTSC = 0x4295; // Same, NTSC.
