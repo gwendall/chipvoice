@@ -276,6 +276,34 @@ offline.
 brightness to six percent; the rest is the browser starting its context wherever it
 likes.
 
+## Rendering one effect
+
+`renderSfx` is `Chip.sfx()`'s offline half: a chip, a voice, a note and an
+instrument in, a `RenderResult` out, with no `Song` and no sequencer.
+
+```ts
+import { renderSfx, trimRender, levelRender, toWav } from "chipvoice";
+
+const boom = renderSfx("2a03", {
+  channel: "noi",
+  note: 8,
+  duration: 0.3,
+  instrument: { volume: [15, 14, 12, 10, 8, 6, 4, 2, 1, 0], noiseMode: true },
+});
+const file = toWav(levelRender(trimRender(boom), { peak: 0.89 }));
+```
+
+The render is longer than `duration` by default (`delay + duration + 0.5`
+seconds), because a decay table cut off before it reaches the floor is a
+click, not a shorter sound; `trimRender` cuts the silence the tail leaves.
+Pass `seconds` to render a different amount.
+
+A `SfxRecipe` is the same call as one JSON value - `{ chip, channel, note,
+instrument, duration, ... }` - which is what a catalogue stores as a sound's
+`recipe`: `renderSfx(recipe.chip, recipe)` renders it again, and changing one
+field (a note, a duty, a pitch table) is how a catalogue builds variants from
+one recipe rather than recording five unrelated takes.
+
 ## How accurate is it
 
 Accuracy is a measurement here, not an adjective. The chip's **conformance sheet**,

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm --filter web-kit build && pnpm build --filter gamesounds-site",
+  "ignoreCommand": "cd ../.. && git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- apps/sounds packages/gamesounds packages/web-kit pnpm-lock.yaml apps/sounds/vercel.json"
+}

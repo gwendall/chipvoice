@@ -106,6 +106,8 @@ export { arrangeMdTracker } from "./chips/md/tracker.js";
 export type { MdArrangement, MdTrackerChannel, MdTrackerOptions, MdTrackerSection, MdTrackerSong } from "./chips/md/tracker.js";
 export { MD_BRIGHT_PROFILE, levelRender, packSprite, renderMdEvents, renderOnset, scaleRender, trimRender } from "./game-audio.js";
 export type { LevelOptions, OnsetOptions, RenderMdEventsOptions, Sprite, SpriteOptions, TrimOptions } from "./game-audio.js";
+export { renderSfx } from "./render-sfx.js";
+export type { RenderSfxOptions, SfxRecipe, SfxSpec } from "./render-sfx.js";
 export { SNES, snesChip } from "./chips/snes/index.js";
 export { SDsp } from "./chips/snes/sdsp.js";
 export { encodeBrr } from "./chips/snes/brr.js";

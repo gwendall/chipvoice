@@ -175,6 +175,78 @@ jobs:
             .artifacts/i18n
           retention-days: 3
 
+  # gamesounds.ai: a network-free catalogue build, schema/API/runtime unit
+  # tests, the CLI and a browser smoke test. Its own job so a Playwright run
+  # here never queues behind chipvoice's own render-parity or conformance
+  # suites, and vice versa; independent of `build-renderer.mjs` and the
+  # chipvoice engine build the `unit`/`browser` jobs need, since apps/sounds
+  # imports packages/gamesounds's types by relative path rather than
+  # depending on either package's own build (decision 49). gamesounds is our
+  # own sound bank - every sound is rendered by chipvoice itself, no
+  # third-party sounds and no external generation API (decision 50) - so
+  # this job has no source to distrust and nothing to download: the whole
+  # catalogue is rebuilt from committed recipes and checked for determinism
+  # below, not just a subset.
+  sounds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # build-catalog.mjs imports packages/chipvoice's own built dist/index.js
+      # directly (renderSfx, instrumentsFor); pnpm --filter bypasses
+      # turbo.json's own build-order graph (decision 47), so build it
+      # explicitly first, same as the `unit`/`browser`/`conformance` jobs do.
+      - run: pnpm --filter chipvoice build
+      # apps/sounds imports web-kit/*, resolved against its built dist/;
+      # same reason, build it explicitly too.
+      - run: pnpm --filter web-kit build
+      - run: pnpm --filter gamesounds typecheck
+      - run: pnpm --filter gamesounds test:unit
+      - run: pnpm --filter gamesounds-site typecheck
+      # build-catalog.mjs's encode step shells out to ffmpeg (packages/chipvoice's
+      # own renderSfx does not need it, but trimming/encoding every variant to
+      # .ogg/.mp3/.wav does) - not preinstalled on ubuntu-latest, same gap the
+      # `browser` job's own "Audio publication verifier" step papers over for
+      # apps/web.
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      # CI has no license to trust that whatever ffmpeg ships on the runner
+      # re-encodes bytes identically to the author's own machine, so it never
+      # serves the committed catalog.json as-is. Instead it rebuilds the
+      # whole catalogue fresh (network-free: packages/chipvoice's own
+      # synthesis is the only source) and check-determinism.mjs proves the
+      # fresh build's WAV/PCM hashes - each variant's own identity, produced
+      # before any format-specific encoder runs - equal the COMMITTED
+      # catalog.json's entries for every sound. See docs/GAMESOUNDS.md/docs/DECISIONS.md
+      # for the full design.
+      - run: pnpm --filter gamesounds-site catalog:build --out .artifacts/ci-catalog.json
+      - run: pnpm --filter gamesounds-site catalog:check-determinism .artifacts/ci-catalog.json
+      # ogg/mp3 are NOT proven byte-identical across ffmpeg builds/platforms
+      # (only the WAV/PCM layer just got that guarantee above), so the site
+      # this job builds and tests serves the catalogue it just rendered
+      # itself, not the one committed from the author's own machine - the
+      # CI-built catalogue becomes the site's generated/catalog.json for
+      # every remaining step in this job.
+      - run: cp apps/sounds/.artifacts/ci-catalog.json apps/sounds/generated/catalog.json
+      - run: pnpm --filter gamesounds-site test
+      - run: pnpm --filter gamesounds-site build
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      # test-e2e.mjs owns the production server itself (a free port, polled
+      # readiness, closed in a `finally`) - the same pattern as apps/web's
+      # own test-local.mjs - then runs test-smoke.mjs and
+      # packages/gamesounds/test-cli.mjs against it.
+      - run: pnpm --filter gamesounds-site test:e2e
+
   conformance:
     runs-on: ubuntu-latest
     timeout-minutes: 20

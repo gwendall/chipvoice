@@ -11,6 +11,19 @@ overview.
 
 ## Unreleased
 
+`renderSfx(chip, spec, options)` renders a single effect offline - the same
+`Chip.sfx(channel, options)` call, minus the browser: a chip id, a voice, a
+note, an `Instrument` and a duration in, a `RenderResult` out, the same shape
+`renderSong` returns, so `trimRender`, `levelRender`, `packSprite`,
+`renderOnset` and `toWav` all work on it unchanged. A `SfxRecipe` (the spec
+with its chip attached) is a JSON value a catalogue can store as a sound's
+`recipe` and hand back to `renderSfx(recipe.chip, recipe)` to render the exact
+same effect again, or with one field changed for a variant. Added for
+gamesounds.ai's chipvoice-rendered retro sound set (`packages/chipvoice/src/render-sfx.ts`);
+nothing in `scores/arrangements/evaluate.mjs`, `scores/mixing/calibrate.mjs`,
+`scores/instruments/generate.mjs` or `scores/render-parity/inputs.mjs` imports
+it, so it moves none of their hashes.
+
 Progressive preview playback no longer risks an audible stall on a moving
 chip or song handoff (switching mid-playback). The handoff's first
 post-handoff read, the one `ProgressivePlayback`'s internal read-ahead loop

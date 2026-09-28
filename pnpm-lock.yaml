@@ -15,6 +15,40 @@ importers:
         specifier: ^2.5.0
         version: 2.10.12
 
+  apps/sounds:
+    dependencies:
+      next:
+        specifier: ^16.3.6
+        version: 16.3.6(@types/node@22.20.1)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.3.0
+        version: 19.3.0(react@19.3.0)
+      web-kit:
+        specifier: workspace:*
+        version: link:../../packages/web-kit
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.18
+      '@vercel/blob':
+        specifier: 2.8.0
+        version: 2.8.0
+      ajv:
+        specifier: ^8.17.1
+        version: 8.18.0
+      playwright:
+        specifier: ^1.62.1
+        version: 1.62.1
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   apps/web:
     dependencies:
       '@breezystack/lamejs':
@@ -81,6 +115,15 @@ importers:
       chipvoice:
         specifier: workspace:*
         version: link:../chipvoice
+
+  packages/gamesounds:
+    devDependencies:
+      ajv:
+        specifier: ^8.17.1
+        version: 8.18.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   packages/web-kit:
     dependencies:
