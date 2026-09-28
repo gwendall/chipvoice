@@ -114,3 +114,64 @@ All 18 SNES mix/stem/native WAVs match the evaluated phase-2 defaults after the
 review corrections. The report fingerprints the built engine separately from
 subsequent documentation-only commits. `verification.json` records these checks.
 Desktop/mobile A/B screenshots and browser checks are stored under `browser/`.
+
+## Phase 3 evaluation protocol (declared before the bank changed, NEXT-24)
+
+NEXT-24 rewrites the factory bank's brass, strings, picked-bass, kick and snare
+(a real consumer's measured pain points) and turns the S-DSP's echo from a
+hidden, disabled constant into a documented, public `space` choice. This
+section is committed before any bank or driver change, so the probes,
+descriptors and comparison systems below are fixed before the new bank exists
+to tune against; a later commit fills in the measured numbers under "Phase 3
+measurements", never by editing this section.
+
+Five probes, rendered at 44.1 kHz:
+- the three demo scores (`overworld`, `boss`, `midnight` in
+  `apps/web/src/studio/presets.ts`, criterion 5's own reference set), each
+  isolated to its `lead` role by resting every other lane, so a held or
+  moving note is measured on its own rather than mixed with chord/bass/perc;
+- a sustained-chord probe: a single held C4 major triad for four seconds;
+- a drum loop probe: kick/snare/hat on every beat for eight beats at 120
+  BPM, with a two-beat silent tail so a release, and any echo, has room to
+  show.
+
+Each probe renders on three systems: `2a03` (the control, unaffected by this
+ticket), the SNES with the `main`-branch bank preserved as a `dist` build
+from before this ticket's changes, and the SNES with the new bank. The S-DSP
+core itself is not touched by NEXT-24, so any 2A03-vs-SNES difference on the
+same probe is a bank/arrangement effect, not a chip-emulation difference; the
+new-bank SNES render is taken twice, once with `space: "dry"` and once with
+`space: "room"`, since the echo probes below only make sense as a comparison
+between the two.
+
+Descriptors, computed with `packages/conform/src/bench/fft.mjs`'s FFT (a
+4096-sample Hann window, at least 100 ms after a note's attack and 100 ms
+before its release, for every spectral measurement):
+
+| Descriptor | What it separates |
+| --- | --- |
+| Spectral flatness | The 2A03's square/triangle are a fixed, narrow harmonic comb; a sampled, detuned-ensemble timbre spreads energy across more bins around each harmonic, raising flatness. |
+| Odd/even harmonic balance | The 2A03's square and triangle are odd-harmonic-dominant; a bandlimited, non-square sampled timbre is not. |
+| Spectral-centroid movement | A single repeating BRR cycle does not move between two 4096-sample windows 200 ms apart in the sustain; a multi-partial, detuned ensemble loop beats and its centroid drifts. |
+| Attack transient energy | The dB ratio of RMS energy in the first 30 ms after note-on to RMS energy in the following 200 ms of sustain. A one-cycle waveform has almost no separate transient; an authored attack (bow noise, pluck, breath) does. |
+| Echo tail energy | RMS energy in a 200 ms window starting 50 ms after the probe's last note-off, on the sustained-chord and drum-loop probes only, the only two with a clean release-to-silence gap. This is the descriptor the echo default is decided on, not the four timbre descriptors above. |
+
+"Phase 3 measurements" below reports 2A03 control / SNES main / SNES new
+(dry) side by side on the first four descriptors, and adds SNES new (room)
+for echo tail energy. The claim under test: the new bank moves away from the
+2A03 control on the four timbre descriptors, and `space: "room"` moves echo
+tail energy measurably above both dry variants and above SNES main. A
+"measurable" move is a threshold derived from the spread actually measured
+across the five probes plus a stated margin, fixed after the numbers exist
+but never loosened to let a particular probe pass; if a probe fails its own
+descriptor, the fix is in the bank or the probe, recorded here, not in the
+number.
+
+A zero-shot "which console" classifier check is optional and not run here:
+this ticket has no controlled reference (a check that does not first prove
+it calls the unmodified 2A03 renders "NES" under the same prompt is not
+evidence). The blind listening rubric a real kami consumer used to flag
+these instruments is the actual acceptance test, and it runs on the kami
+side with their own key, never this branch's; NEXT-24's final report gives
+the exact command and a packed tarball for that run, not a quoted result
+from it.
