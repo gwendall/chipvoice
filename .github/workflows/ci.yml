@@ -319,6 +319,20 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:ay8910-core-gme
       - run: pnpm --filter chipvoice-conform check:ay8910-edge
       - run: pnpm --filter chipvoice-conform check:ay8910-edge-gme-report
+      # NEXT-16's first half, the Yamaha YM2151 (OPM), against two independent
+      # oracles (Nuked-OPM, this core's own die-shot-derived source, and
+      # ymfm, Aaron Giles - docs/chips/ym2151.md's "Digital parity" section
+      # has the full account). `core` and `edge` are both held to a literal
+      # 100% against Nuked-OPM: every sample, on the same register stream, at
+      # this chip's own native rate. ymfm stays report-only throughout - its
+      # `generate()` is not cycle-exact (`oracles/ymfm/main.cpp` batches
+      # writes to the 64-cycle sample period they fall in rather than
+      # interleaving them cycle by cycle), so decision 48's precedent applies
+      # and a disagreement there is read against Nuked-OPM, not gated on.
+      - run: pnpm --filter chipvoice-conform check:ym2151-core
+      - run: pnpm --filter chipvoice-conform check:ym2151-edge
+      - run: pnpm --filter chipvoice-conform check:ym2151-core-ymfm-report
+      - run: pnpm --filter chipvoice-conform check:ym2151-edge-ymfm-report
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform check:sameboy
       - run: pnpm --filter chipvoice-conform roms:dmg

@@ -646,6 +646,77 @@
         "reached": 0,
         "voices": 3
       }
+    },
+    {
+      "id": "ym2151",
+      "machine": "Arcade and home-computer boards (Sharp X68000, many 1980s Taito/Konami/Sega/Capcom boards)",
+      "chip": "Yamaha YM2151 (OPM)",
+      "sheetPath": "docs/chips/ym2151.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/ym2151.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "Nuked-OPM 1.0 (Nuke.YKT)",
+            "files": 9,
+            "cycles": 7132062,
+            "identical": 7132062,
+            "diverging": 0,
+            "firstDivergence": null
+          },
+          {
+            "marker": "parity-core-ymfm-report",
+            "oracle": "ymfm (Aaron Giles)",
+            "files": 9,
+            "cycles": 7132062,
+            "identical": 1475224,
+            "diverging": 9,
+            "firstDivergence": {
+              "file": "algorithms",
+              "cycle": 208000,
+              "voice": "l",
+              "ours": 0,
+              "theirs": 774
+            }
+          },
+          {
+            "marker": "parity-edge-ymfm-report",
+            "oracle": "ymfm (Aaron Giles)",
+            "files": 6,
+            "cycles": 2575891,
+            "identical": 855586,
+            "diverging": 6,
+            "firstDivergence": {
+              "file": "dt2-mul-zero",
+              "cycle": 136000,
+              "voice": "l",
+              "ours": 0,
+              "theirs": 798
+            }
+          },
+          {
+            "marker": "parity-edge",
+            "oracle": "Nuked-OPM 1.0 (Nuke.YKT)",
+            "files": 6,
+            "cycles": 2575891,
+            "identical": 2575891,
+            "diverging": 0,
+            "firstDivergence": null
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": null,
+      "analogStage": {
+        "label": "none",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 0,
+        "voices": 2
+      }
     }
   ]
 }

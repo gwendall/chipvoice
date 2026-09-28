@@ -1,0 +1,495 @@
+{
+  "chip": "ym2151",
+  "oracle": {
+    "id": "ymfm",
+    "name": "ymfm (Aaron Giles)"
+  },
+  "voices": [
+    "l",
+    "r"
+  ],
+  "date": "2026-09-28",
+  "files": 9,
+  "cycles": 7132062,
+  "identical": 1475224,
+  "diverging": 9,
+  "results": [
+    {
+      "name": "algorithms",
+      "source": "source/algorithms.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 864,
+      "cycles": 1940016,
+      "identical": 209366,
+      "first": {
+        "cycle": 208000,
+        "voice": 0,
+        "a": 0,
+        "b": 774
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 211354,
+          "a": 26857,
+          "b": 26856,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 26857,
+          "onlyB": 26856,
+          "shift": 10,
+          "aligned": 45,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 211802,
+          "a": 26851,
+          "b": 26856,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 26851,
+          "onlyB": 26856,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "detune-multiple",
+      "source": "source/detune-multiple.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 440,
+      "cycles": 1384010,
+      "identical": 136010,
+      "first": {
+        "cycle": 136000,
+        "voice": 0,
+        "a": 0,
+        "b": 940
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 138352,
+          "a": 19330,
+          "b": 19265,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 19330,
+          "onlyB": 19265,
+          "shift": 10,
+          "aligned": 38,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 138362,
+          "a": 19262,
+          "b": 19265,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 19262,
+          "onlyB": 19265,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "envelope",
+      "source": "source/envelope.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 104,
+      "cycles": 508036,
+      "identical": 136000,
+      "first": {
+        "cycle": 136000,
+        "voice": 0,
+        "a": 0,
+        "b": 1064
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 136550,
+          "a": 5692,
+          "b": 5697,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 5692,
+          "onlyB": 5697,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 137036,
+          "a": 5707,
+          "b": 5697,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 5707,
+          "onlyB": 5697,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "feedback",
+      "source": "source/feedback.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 480,
+      "cycles": 1171997,
+      "identical": 112416,
+      "first": {
+        "cycle": 112000,
+        "voice": 0,
+        "a": 0,
+        "b": 1204
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 114858,
+          "a": 16310,
+          "b": 16315,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 16310,
+          "onlyB": 16315,
+          "shift": 10,
+          "aligned": 47,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 114646,
+          "a": 16309,
+          "b": 16315,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 16309,
+          "onlyB": 16315,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "keyon-per-operator",
+      "source": "source/keyon-per-operator.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 82,
+      "cycles": 328003,
+      "identical": 112082,
+      "first": {
+        "cycle": 112000,
+        "voice": 0,
+        "a": 0,
+        "b": 213
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 112680,
+          "a": 3318,
+          "b": 3329,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3318,
+          "onlyB": 3329,
+          "shift": 10,
+          "aligned": 9,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 112826,
+          "a": 3318,
+          "b": 3329,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3318,
+          "onlyB": 3329,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "lfo",
+      "source": "source/lfo.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 152,
+      "cycles": 708036,
+      "identical": 128000,
+      "first": {
+        "cycle": 128000,
+        "voice": 0,
+        "a": 0,
+        "b": 852
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 129038,
+          "a": 8996,
+          "b": 8937,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 8996,
+          "onlyB": 8937,
+          "shift": 10,
+          "aligned": 17,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 129576,
+          "a": 8946,
+          "b": 8937,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 8946,
+          "onlyB": 8937,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "noise",
+      "source": "source/noise.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 74,
+      "cycles": 263961,
+      "identical": 116000,
+      "first": {
+        "cycle": 115968,
+        "voice": 0,
+        "a": 0,
+        "b": 852
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 116032,
+          "a": 2288,
+          "b": 2286,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 2288,
+          "onlyB": 2286,
+          "shift": 10,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 116304,
+          "a": 2295,
+          "b": 2286,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 2295,
+          "onlyB": 2286,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "stereo",
+      "source": "source/stereo.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 128,
+      "cycles": 356006,
+      "identical": 275868,
+      "first": {
+        "cycle": 224000,
+        "voice": 0,
+        "a": 0,
+        "b": 248
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 279934,
+          "a": 1153,
+          "b": 1152,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1153,
+          "onlyB": 1152,
+          "shift": 10,
+          "aligned": 2,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 0,
+            "maxShift": 266
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 284046,
+          "a": 1120,
+          "b": 1122,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1120,
+          "onlyB": 1122,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 0,
+            "maxShift": 298
+          }
+        }
+      ]
+    },
+    {
+      "name": "timers-csm",
+      "source": "source/timers-csm.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 66,
+      "cycles": 471997,
+      "identical": 249482,
+      "first": {
+        "cycle": 249482,
+        "voice": 0,
+        "a": 24,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 249482,
+          "a": 3418,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3418,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 249514,
+          "a": 3438,
+          "b": 0,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3438,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 0,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

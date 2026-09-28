@@ -1851,3 +1851,170 @@ hold up its end.
   `"generated"` origin already reserved for it. Not part of this phase; the
   taxonomy branches it will fill stay defined with zero sounds until it
   ships.
+
+## 51. The YM2151 is Nuked-OPM ported line for line; ymfm is its second, report-only oracle; the YM2610 waits for its own ticket (2026-09-28)
+
+NEXT-16's chip: Yamaha's YM2151 (OPM), the eight-channel, four-operator FM
+synthesiser behind the arcade boards and computers of the mid-to-late
+1980s. `packages/chipvoice/src/chips/ym2151.ts` is Nuked-OPM's `opm.c`
+(Nuke.YKT, LGPL 2.1, written from John McMaster's die shot of the chip) in
+TypeScript, line for line, exactly the choice decision 17 made for the
+YM2612 and Nuked-OPN2: Nuked's own field and function names are kept
+(snake_case fields, camelCase methods with the `OPM_` prefix dropped), the
+file carries the LGPL 2.1 notice, and the package's licence field and
+`LICENSE` file both now name a third file. Nuked-OPM itself, built natively
+in `packages/conform/oracles/nuked-opm` and driven over a register-log
+pipe, is this core's primary oracle, gated exact: every sample equal, for
+the same register stream, at this chip's own native rate (clock/64 - the
+pipeline inside `OPM_Clock` runs at half the input clock and completes a
+full 32-slot sweep every 64 input cycles, independently corroborated by
+ymfm's own `sample_rate() = baseclock / (clock_prescale * OPERATORS)`,
+`2 * 32 = 64`, from a completely separate codebase). `check:ym2151-core`
+and `check:ym2151-edge` (`packages/conform/package.json`) hold `core` and
+`edge` to that gate; `packages/conform/test/ym2151-gate.mjs` proves each
+would actually catch a regression, the same negative-test convention
+`ay8910-gate.mjs` set.
+
+**The second oracle, and why it is report-only.** Aaron Giles's ymfm
+(BSD-3-Clause), vendored in `packages/conform/oracles/ymfm`, is this core's
+second, independent cross-check - written from the public documentation and
+other emulators' behaviour, not from a die shot, and tuned against real
+hardware captures rather than derived from the silicon itself. Its own
+`generate()` is not cycle-exact the way `OPM_Clock` is: it produces one
+finished sample per call from the register state at that instant, with no
+notion of where inside a sample interval a write landed, so
+`oracles/ymfm/main.cpp` batches writes to the sample period they fall in
+(every 64 log cycles) rather than interleaving them cycle by cycle. Decision
+48's own precedent settles what a disagreement between the two oracles
+means: a hardware-verified (here, die-shot-derived) source outranks a
+second, undocumented-against-hardware one that merely differs, so where
+Nuked-OPM and ymfm disagree, Nuked-OPM's reading wins and the disagreement
+is named on `docs/chips/ym2151.md`, not silently absorbed or averaged.
+`check:ym2151-core-ymfm-report` and `check:ym2151-edge-ymfm-report` are
+`--report` only, never gated exact, for exactly the reason decision 48 also
+applied to Game_Music_Emu's `Ay_Apu`: a real difference here is a prompt to
+look and say which side is right and why, not by itself evidence of a bug
+in the port.
+
+**MAME's `ym2151.cpp`** was read as a third reference, to cross-check
+register semantics and the CSM/timer behaviour against a third
+independently-written implementation, but it is GPL and is never vendored
+or copied into anything, harness included: decision 41 allows a GPL
+reference in `packages/conform` only where it is actually run as an oracle
+and built from its own unmodified source tree with its licence alongside
+it, and this ticket has no need of a third built oracle when two already
+disagree by at most a documented, sourced amount. Nothing in `ym2151.ts`,
+`opm.c`, or `ymfm`'s vendored files was copied from MAME; everything traces
+to Nuked-OPM or to ymfm.
+
+**Scope: the YM2151 only, not the YM2164 or the YM2610.** Nuked-OPM's own
+source also models the YM2164 (OPP), a wider-register-map, TL-ramping
+variant selected by a runtime flag (`opm_flags_ym2164`); every `chip->opp`
+branch of the original C, and `OPP_TLRamp` itself, is simply not ported -
+the YM2151-only (`opp = 0`) path is what `ym2151.ts` implements, verbatim.
+NEXT-16 also named the YM2610 (OPNB, the two-chip-in-one used by Neo Geo
+and several other Taito/SNK boards) as its second half; that chip shares
+some FM machinery with the YM2612 lineage but adds ADPCM-A/ADPCM-B sample
+playback entirely absent from both the YM2151 and the YM2612, a
+substantially different core, its own oracle work and its own probe corpus.
+It is out of scope for this PR and is tracked as its own, separate ticket in
+`docs/BACKLOG.md`, not silently folded into "NEXT-16 done."
+
+**No per-channel tap, unlike the YM2612.** `packages/chipvoice/src/chips/md/ym2612.ts`
+exposes a `ch_out` array, because the real YM2612 genuinely has one - Sega's
+Mega Drive wiring reads the six channels separately before its own external
+mixing. The YM2151 has no such pin: Nuked-OPM sums every channel into one
+shared stereo accumulator internally and only the two DAC outputs, left and
+right, ever leave the die. An earlier pass of this port carried a `ch_dry`
+instrumentation array anyway, mirroring the YM2612's shape; it was removed
+before any oracle-side code depended on it, once it was clear that
+supporting it would mean duplicating Nuked-OPM's internal `fm_algorithm`
+routing table a second time inside the C oracle driver, a synchronisation
+risk between two independently-maintained implementations, in service of an
+output the hardware itself does not have. `packages/conform`'s YM2151
+comparison is two voices, `l` and `r`, not eight or ten - the only outputs
+this chip actually has.
+
+**The two-port write-latch settling window, documented rather than
+papered over.** Nuked-OPM's register writes are not immediate: an
+address-port write and the data-port write that follows it are only
+applied once the internal 32-cycle pipeline sweeps back around to that
+register's own channel or slot index (up to 32 `OPM_Clock()` calls, 64
+native cycles at this chip's clock/2-per-tick rate), and a new
+address-port write before that happens clears the pending one
+unconditionally (`reg_data_ready = reg_data_ready && !write_a_en` in the
+vendored `opm.c`), silently dropping it - genuine two-port bus behaviour,
+not an emulator quirk. This was found directly, by a register write that
+appeared to do nothing until the write spacing was widened from 4 to 40
+`OPM_Clock()` calls in a debug build. The probe corpus's own `SETTLE`
+constant (`packages/conform/src/corpus/generate-ym2151.mjs`, 4000 native
+cycles, comfortably past the 64-cycle window) keeps every script except one
+clear of it by a wide margin; `edge/write-clobber.log` is the one script
+that means to hit it, two register writes on the very same VGM sample with
+zero cycles between them, so the behaviour is exercised and gated exact
+rather than only described in a comment.
+
+**Register-stream host.** VGM command `0x54` (`aa dd`, one register write
+per command - the chip's own two-port protocol collapsed into a single
+logical write, unlike the memory-mapped `2a03`/`dmg` commands already in
+`packages/conform/src/vgm.mjs`) is this chip's transport, decoded by a new
+`ym2151` branch of `vgmToWrites`: each command becomes two register-log
+writes at the same cycle, the address-port write then the data-port write,
+matching `Ym2151.write`'s own port numbering. An unmodeled VGM command
+throws by name, the same convention decision 44 set for the NES/Game Boy
+importer. The probe corpus itself is committed as `.vgm` files (`source/`,
+SHA-256 recorded in `manifest.json`, CC0, no external material) decoded
+through this same importer into the `.log` files the harness actually
+runs, so a bug in the importer would show up as a score against the
+oracle rather than only agreeing with itself - the same round-trip
+`generate-vgm-import.mjs` already uses for the 2A03 and Game Boy corpora.
+Real arcade or computer VGM rips of this chip are useful for local
+measurement but are never committed (no rip's licence is ever CC0 or
+otherwise clearable at the level `scores/nsf-corpus`'s own convention
+requires); they stay in a gitignored `.artifacts/` directory, exactly the
+"local-only" precedent `docs/CONFORMANCE.md` already sets for other chips'
+real-world captures.
+
+**No driver, no arranger, no public picker - decision 38's scope again.**
+`Ym2151` does not implement chipvoice's own `DigitalChip` interface
+(`schedule`, `cancel`, `outputs`, `load`, `step`) the way `Ay8910` and
+`Vrc6Apu` do; it only exposes the bare Nuked-OPM-mirroring surface
+(`write`, `read`, `readIRQ`, `readCT1`, `readCT2`, `setIC`, `clock`,
+`reset`). All cycle-stepping for conformance purposes lives in the private
+`packages/conform/src/chips/ym2151.mjs` wrapper, which drives the class
+directly the way `oracles/nuked-opm/main.cpp` drives the C reference, not
+through any shared chipvoice-side scheduler. This is deliberate, not an
+oversight: this ticket's own scope is core, oracle, probes and sheet only,
+exactly what decision 38 already carved out for the AY-3-8910/Sunsoft 5B
+and the VRC6 before it. A driver, an arranger role and a studio picker
+entry are open work, tracked in `docs/BACKLOG.md`.
+
+**Why.** Decision 17's reasoning for the YM2612 - "the die-derived reference
+is still the authority, because it is the oracle... a port keeps the code
+inspectable and the harness's trace inside it" - applies to the YM2151
+without needing to be rediscovered: Nuked-OPM is, like Nuked-OPN2, written
+from a die shot and cycle-exact against it, and a line-for-line port lets a
+divergence the harness finds be traced to one line rather than reverse
+engineered from a black box. Decision 41's boundary (GPL reference material
+stays in the harness, never in the package) is why MAME is read and cited
+but never vendored or copied. Decision 48's boundary (a hardware-verified
+source outranks a second, undocumented one that merely disagrees) is why
+ymfm - a careful, independent, hardware-tuned model, but not a die reading -
+is a report-only cross-check rather than a second exact gate: agreement
+between it and Nuked-OPM is corroboration, disagreement is not evidence
+against the port, and decision 48 already worked out why that asymmetry
+does not go both ways.
+
+**What changes.** `packages/chipvoice/src/chips/ym2151.ts` (new, LGPL
+2.1-or-later), exported as `Ym2151` from `packages/chipvoice/src/index.ts`.
+`packages/chipvoice/LICENSE` and its `package.json`'s `license` field name
+the third LGPL file. `packages/conform/oracles/nuked-opm` and
+`packages/conform/oracles/ymfm` (both vendored, with their own licences and
+READMEs), `packages/conform/src/oracles/nuked-opm.mjs` and `ymfm.mjs`,
+`packages/conform/src/chips/ym2151.mjs`, a `ym2151` branch in
+`packages/conform/src/vgm.mjs`, the probe corpus
+(`packages/conform/corpus/ym2151`), `docs/chips/ym2151.md`, and the
+`check:ym2151-*`/`baseline:ym2151-*`/`corpus:ym2151` scripts in
+`packages/conform/package.json`. No driver, arranger or studio picker
+change; the YM2610 is explicitly not part of this change and is tracked as
+its own ticket.

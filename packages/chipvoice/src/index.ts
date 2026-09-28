@@ -79,6 +79,7 @@ export { nesSunsoft5bChip } from "./chips/nes/sunsoft5b-index.js";
 export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export { MEGA_DRIVE, mdChip } from "./chips/md/index.js";
 export { Ym2612 } from "./chips/md/ym2612.js";
+export { Ym2151 } from "./chips/ym2151.js";
 export { Sn76489 } from "./chips/md/sn76489.js";
 export { MdCore, MD1_PROFILE, MASTER_HZ as MD_MASTER_HZ } from "./chips/md/dsp.js";
 export type { MdOutputProfile } from "./chips/md/dsp.js";
