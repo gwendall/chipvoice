@@ -625,7 +625,7 @@ real game music, and a real unit.
   and Konami's own documents, harness against two independent oracles -
   Game_Music_Emu's `Nes_Vrc6_Apu` and Mesen 2's own vendored VRC6 audio - NSF
   export/playback, the mixing stage's documented inversion modelled, sheet at
-  [docs/chips/vrc6.md](chips/vrc6.md). Round 2 (this PR) split the corpus into
+  [docs/chips/vrc6.md](chips/vrc6.md). Round 2 (#111) split the corpus into
   `core` scripts (no disable after first enable, no `$9003`, no period at or
   below 4) held to a literal 100 % against both oracles, and `edge` scripts
   (disable/re-enable, `$9003`, tiny periods) held exactly to Mesen, which
