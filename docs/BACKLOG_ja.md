@@ -145,21 +145,62 @@
   `packages/chipvoice/src/playback/ProgressivePlayback.ts`の変更が必要で、エンジンを
   変更しない本チケットの範囲外です。提案する修正はREV-11を参照してください。
 
-- todo - REV-11（エンジン、`packages/chipvoice/src/playback/ProgressivePlayback.ts`）:
-  切り替えの読み込み先読み余裕を、REV-10がまさにそのしきい値だと証明した固定
-  0.75秒の`HANDOFF_LEAD`定数ではなく、可変にする。提案する変更：(1)
-  `PreviewSource.read`（65行目付近）で`this.request(...)`の往復時間を
-  `performance.now()`で計測し、`lastReadMs`のような形でソースに保持する。(2)
-  `selectSource`の切り替え拡張ループ（225〜231行目の`while`）で、固定の
-  `Math.round(rate * HANDOFF_LEAD)`という目標値を`Math.round(rate *
-  Math.max(HANDOFF_LEAD, source.lastReadMs / 1000 * 2))`に置き換え、ワーカーの
-  応答が実際に遅いと分かっているソースには、実績のない固定定数に賭けるのではなく、
-  実測した遅延に比例した大きめの余裕を持たせる。(3) REV-10で使ったのと同じ
-  ローカルハーネス（実際の`ProjectPlayer`/`ProgressivePlayback`を本物の移動中
-  切り替えにかけ、`Worker.prototype.postMessage`で`'ahead'`レーンの読み込みを
-  遅延させる）で、アンダーラン0の範囲が注入した遅延に比例して従来の750ミリ秒の
-  崖より先まで伸びることを確認する。再生スケジューリングに触れるため、再生成の
-  チェーン（`verify-publication.mjs`、`check-calibration.mjs`）の再実行が必要。
+- done - REV-11（本PR、エンジン、`packages/chipvoice/src/playback/ProgressivePlayback.ts`）:
+  このチケットがもともと提案していた可変余裕（`max(HANDOFF_LEAD,
+  2*lastReadMs)`）は、机上の議論だけでなく実際に実装して計測したうえで却下した。
+  `lastReadMs`はそのソースの*直前*の読み込み（切り替え拡張ループ自身が新しい
+  グループが有効になる前に行うフォアグラウンドレーンの読み込み）から計測するため、
+  まさにその余裕を計算している読み込み自体の停止には反応できない。なぜならその
+  読み込みはまだ起きていないからだ。REV-10が使ったのと同じ「ほぼ使い切った」
+  切り替え（`test/progressive-playback.mjs`自身の振り付けされたフェーズの
+  フィクスチャ）と、切り替え先の最初のポスト切り替え`'ahead'`レーン読み込みへの
+  900ミリ秒の注入遅延で再現したところ、可変余裕でも単純な0.75秒定数自身の
+  750ミリ秒の崖とまったく同じ1件のアンダーランが発生した。これはREV-10自身の
+  診断と正確に一致する（切り替えの瞬間に起きる稀なホストの停止であり、読み込み
+  時間の履歴から予見できる持続的なソースごとの低速化ではない）ため、固定でも
+  可変でも余裕では直せない。常にまだ起きていない読み込みに対する締め切りだからだ。
+
+  代わりに採用した修正は締め切りそのものをなくす。`selectSource`は、新しい
+  グループが有効になり元のグループが引退する前に、その正確なブロック（切り替え先の
+  最初のポスト切り替え`'ahead'`レーン読み込み）を同期的に取得してキャッシュするため、
+  `pump`自身の最初のポスト切り替え読み込みはキャッシュヒットとなり、外す締め切りが
+  何も残らない。同一ソースの再読み込み（一時停止中のシーク、設定の微調整）や初回
+  再生（引退元グループ自身の先読みと競合する相手がいない）では追加コストなしで
+  スキップされる。ワーカーの単一スロットの`'ahead'`レーン争奪に負けた場合
+  （同一ソースの場合のみ）は捕捉して単純に再試行する。新しい決定論的テスト
+  `packages/chipvoice/test/progressive-handoff-stall.mjs`で証明した。実際の
+  `ProgressivePlayback`、実時間の`AudioContext.currentTime`、実際の
+  `preview-worker.js`の往復を、選んだ1件の`'ahead'`レーン応答を実際の`setTimeout`で
+  遅延させる`FakeWorker`経由で行う（REV-10が削除した`Worker.prototype.postMessage`
+  パッチの、コミットされた版に相当する）。未修正のmainでは900ミリ秒の注入遅延で
+  失敗し（1件のアンダーラン、手動で確認済み）、修正後は900ミリ秒でも、これより
+  大きい定数でも結局は超えられることを示すための5000ミリ秒でも成功する
+  （それぞれアンダーラン0件）。
+
+  コストは実際のブラウザ（Playwright Chromium、実際のWorkerスレッド、本番の
+  `apps/web`ビルド）で計測した。`ProjectPlayer.update({chip})`の切り替え遅延
+  （クリックしてから聞こえるまで）を5つのチップすべてで、単発計測の前後比較で
+  測定した。各切り替えは本物のクロスコンソール切り替え（2a03、md、snes、c64、
+  dmgの順で一周し、どのチップも飛ばさない）：2a03は254から319ミリ秒
+  （+64ミリ秒）、dmgは857から1304ミリ秒（+447ミリ秒）、mdは1418から1689ミリ秒
+  （+271ミリ秒）、snesは183から265ミリ秒（+82ミリ秒）、c64は448から504ミリ秒
+  （+56ミリ秒）。通常の遅延なし条件では、どのチップでもアンダーランは前後とも
+  0件だった。追加バッファはない。先読みしたブロックは`PreviewSource`の既存の
+  `chunks`のLRU（Float32ステレオPCM3秒分と小さな最初のブロックという既存の上限の
+  まま）でキャッシュされ、別のメモリ確保ではない。
+
+  既存の再生テストはすべて通り続けた：`test/progressive-playback.mjs`（10件中
+  10件）、`apps/web/test-progressive-long.mjs`（すべてのシナリオでアンダーラン
+  0件。REV-10の実際のSNESアンダーラン1件を記録した当のスクリプトで、今はクリーン）、
+  `apps/web/test-audio-transitions.mjs`（`gapMs`は0、すべての切り替えで音楽的な
+  小数位相を正確に保持）。`pnpm --filter chipvoice test:unit`（65件中65件）と
+  `typecheck`はクリーンで、`pnpm render-parity:check`は100%のままだった
+  （Node、Chromium、Firefox、WebKitが一致し、フィクスチャは最新）。この変更は
+  どの`scores/arrangements/engine.mjs`のハッシュにも到達しない（再生
+  スケジューリングであり、チップコアやミキサーではない）：
+  `node scores/arrangements/verify-publication.mjs`と
+  `node scores/mixing/check-calibration.mjs`はどちらも変更なしで成功し、
+  再生成チェーンのステップ2から6は不要だった。
 
 <a id="next-steps-2026-09-27"></a>
 ## 次の段階（2026-09-27）
@@ -175,6 +216,7 @@
 - done - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、その書き込みはシークレット`CHIPVOICE_E2E_KEY`を通じて専用テストアカウント`e2e@chipvoice.dev`のものになります。キーを使った最初の実行は、匿名書き込みの警告なしに通過しました。
 - done - NEXT-03: `test-creation-browser.mjs`が失敗したのはロードアベレージ70のときだけで、原因はPlaywrightの既定の30秒待機でした。すべての待機にテストの準備時間と同じ2分を与えます。エディター自体は、ページのCPUを6倍遅くしてもテンポ変更の間Pauseを表示し続けました。
 - done - P7-7: 最小限の6510・VIC-IIラスタ行・CIA1（`src/roms/c64.mjs`）でVICEの`testprogs/SID`から14本を実行します。KERNALなしで判定を出せるものを選び、13本が成功、CIでも実行します（`roms:c64`）。`busvalue`は失敗します。OSC3またはENV3の読み出しが実機のように内部バスラッチを更新しないためで、P2-1の知見として残し、ここでは直しません。その後P2-1（#86）で修正し、14本全てが成功します。`envrate`はDag Lemの実機検証済みレート表と完全に一致しました。
+- done - REV-11（本PR）: REV-10が固定0.75秒の`HANDOFF_LEAD`余裕ちょうどのしきい値で証明した移動中切り替えのアンダーランを、余裕を広げるのではなく、新しいグループが有効になる前に切り替え後最初の読み込みを先読みして締め切りそのものをなくすことで修正しました。このチケットが元々提案していた可変余裕（`max(HANDOFF_LEAD, 2*lastReadMs)`）も実装して計測しましたが、ソースの過去の読み込み遅延にしか反応できず、まさに競合しているその読み込みには反応できないため、900ミリ秒でも依然としてアンダーランしました。`packages/chipvoice/test/progressive-handoff-stall.mjs`は未修正コードでは900ミリ秒の注入遅延で失敗し、修正後は900ミリ秒でも5000ミリ秒でも成功します（それぞれアンダーラン0件）。`test-progressive-long.mjs`と`test-audio-transitions.mjs`はどちらもクリーンなままです。切り替え遅延（クリックしてから聞こえるまで）は5つのチップ全体で56から447ミリ秒増えますが、これは本物のクロスチップ切り替えのときだけで、初回再生や同一ソースの設定変更では発生しません。
 
 **ステップ1. 5つのチップを証明する。** 仕様書は、独立したオラクル、実機向けに書かれたテストROM、実際のゲーム音楽、実機という4つの段階それぞれに数値があるときに完成です。
 

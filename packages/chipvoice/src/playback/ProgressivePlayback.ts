@@ -229,6 +229,38 @@ export class ProgressivePlayback {
         if (ticket !== this.generation || this.disposed) return false;
         chunk = join(chunk, next); position = desired();
       }
+      // A moving handoff's first post-handoff read is the one pump() would
+      // otherwise fire the instant the new group goes live, racing only
+      // HANDOFF_LEAD: any fixed (or history-based adaptive) margin can still be
+      // outrun by a long enough stall, since it is a deadline on a read that
+      // has not happened yet. Fetch and cache that exact block now instead,
+      // before the group is live and before the outgoing one is retired, so
+      // the read has no deadline at all; pump()'s first iteration then finds
+      // it already in PreviewSource's cache and returns immediately. This
+      // costs one extra worker round trip of switch latency, paid only on a
+      // moving handoff to a genuinely different source (never on first
+      // playback, a paused seek, or a same-source settings tweak, where the
+      // still-live previous group's own pump() already keeps this exact
+      // source's read-ahead warm and would only race this prefetch for the
+      // worker's single-slot 'ahead' lane). If the fetch runs long enough to
+      // carry the playhead past this chunk, or loses that race and is
+      // cancelled outright, the position check below just retries with fresh
+      // data, the same way any other slow or superseded read in this loop
+      // already does.
+      if (moving && this.group?.source !== source && position >= chunk.start && position < chunk.start + chunk.left.length) {
+        const end = chunk.start + chunk.left.length;
+        const aheadFrame = end < meta.frames ? end : this.loop ? Math.min(meta.frames - 1, Math.round(meta.loopStartSeconds * rate)) : -1;
+        if (aheadFrame >= 0) {
+          try {await source.read(aheadFrame, Math.min(Math.round(rate * .5), meta.frames - aheadFrame), 'ahead');}
+          catch (error) {
+            if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
+            if (ticket !== this.generation || this.disposed) return false;
+            continue; // superseded, or lost the worker's single-slot 'ahead' lane: retry with fresh data
+          }
+          if (ticket !== this.generation || this.disposed) return false;
+          position = desired();
+        }
+      }
       if (position >= chunk.start && position < chunk.start + chunk.left.length) break;
     }
     if (ticket !== this.generation || this.disposed) return false;

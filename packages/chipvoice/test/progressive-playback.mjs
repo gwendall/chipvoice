@@ -242,6 +242,7 @@ async function playingAt(input, phase, key) {
     const positions = [16500, 31500, 38000, 42000];
     let call = 0;
     const phase = () => (positions[Math.min(call++, positions.length - 1)]) / reference2.frames;
+    const scheduledBefore = context.scheduled.length;
     const selected = await transport.load({ project: project2 }, { key: 'handoff-b', phase });
     assert.ok(selected, 'the cold handoff selects successfully');
     assert.notEqual(transport.group, before, 'a new group replaced the retiring one');
@@ -249,8 +250,18 @@ async function playingAt(input, phase, key) {
     assert.ok(group.nextAt - group.at >= HANDOFF_LEAD - 1e-9,
       `handoff group starts with at least ${HANDOFF_LEAD}s already scheduled (got ${(group.nextAt - group.at).toFixed(4)}s)`);
     // The single joined block handed to the audio node is exactly what the
-    // renderer produces for the same frame range.
-    const scheduledForB = context.scheduled.at(-1);
+    // renderer produces for the same frame range: the new group's own first
+    // block is the one a moving handoff extends, so (like scenario 7) it is
+    // the only one of this load's own new entries with a non-zero in-buffer
+    // offset (it starts mid-block). Not `.at(-1)`: REV-11 caches the group's
+    // first post-handoff 'ahead' read before this call returns, so pump()'s
+    // own fire-and-forget continuation (a cache hit, microtask-fast) can
+    // schedule its own later, offset-0 block before this line runs. Not by
+    // `at` either: the fake context's static clock means an unrelated
+    // earlier group can share the same `at`.
+    const newEntries = context.scheduled.slice(scheduledBefore);
+    const scheduledForB = newEntries.find((entry) => entry.offset > 0);
+    assert.ok(scheduledForB, 'the handoff block itself was scheduled, with its non-zero in-buffer offset');
     const chunkStart = Math.round(group.offset * RATE) - Math.round(scheduledForB.offset * RATE);
     const expected = reference2.read(chunkStart, scheduledForB.left.length);
     assert.deepEqual(scheduledForB.left, expected.left, 'the extended handoff block matches the renderer for the new source');
