@@ -213,5 +213,52 @@ check('VRC6 writes replay frame-for-frame exactly, the same gate 2A03 writes are
 // ('NTSC only, no expansion sound chip') - so the VRC6 bit is set only
 // when the capture actually needs it, never by default.
 
+// -- Sunsoft 5B (NEXT-15): its two sound ports, $C000 (register select) and
+// $E000 (register write), fall inside the same DMC bank-switching window
+// ($C000-$FFFF) this player reserves for sample memory - nsf.ts's own doc
+// comment on this explains why that is not a conflict (mapper-decoded
+// write-only ports vs. whatever is separately mapped there for reads). This
+// capture also writes register 13 (envelope shape, $0D) twice with the
+// high nibble of a $C000 select set nonzero in between, to exercise the
+// "disable writes to $E000 if nonzero" latch nesdev documents
+// (`Sunsoft5bAudio.write`, `sunsoft5b.ts`) end to end through a real NSF
+// round trip, not just the unit-level check in `test/sunsoft5b.mjs`.
+const s5bCycles = Math.round(3.5 * PERIOD);
+const s5bEvents = [
+  { at: 0, addr: 0x4000, value: 0x8f }, // an ordinary 2A03 write, same frame as the 5B writes below
+  { at: 0, addr: 0xc000, value: 0x08 }, // select register 8 (channel A volume)
+  { at: 0, addr: 0xe000, value: 0x0f }, // volume 15, no envelope
+  { at: 0, addr: 0xc000, value: 0x00 }, // select register 0 (channel A period low)
+  { at: 0, addr: 0xe000, value: 0x40 },
+  { at: 0, addr: 0xc000, value: 0x01 }, // register 1 (channel A period high)
+  { at: 0, addr: 0xe000, value: 0x00 },
+  { at: 0, addr: 0xc000, value: 0x07 }, // mixer: channel A tone on, everything else off
+  { at: 0, addr: 0xe000, value: 0x3e },
+  { at: Math.round(1.2 * PERIOD), addr: 0xc000, value: 0x18 }, // select register 8 again, but D nonzero: the next $E000 write must be dropped
+  { at: Math.round(1.2 * PERIOD), addr: 0xe000, value: 0x00 }, // would silence channel A if it landed - it must not
+  { at: Math.round(1.2 * PERIOD), addr: 0xc000, value: 0x02 }, // select register 2 (channel B period low), D clear again: writes resume
+  { at: Math.round(1.2 * PERIOD), addr: 0xe000, value: 0x20 },
+  { at: Math.round(2.4 * PERIOD), addr: 0xc000, value: 0x03 }, // register 3 (channel B period high)
+  { at: Math.round(2.4 * PERIOD), addr: 0xe000, value: 0x00 },
+  { at: Math.round(2.4 * PERIOD), addr: 0x4000, value: 0x00 }, // and back to silencing the 2A03 pulse
+];
+const s5bFile = exportNsf(s5bEvents, s5bCycles, { title: 's5b test' });
+check('the expansion-audio byte sets the Sunsoft 5B bit (5) when the capture writes either sound port', s5bFile[123] === 0x20);
+
+const s5bFrames = Math.ceil(s5bCycles / PERIOD);
+const s5bPlayed = captureNsf(s5bFile, { frames: s5bFrames + 2, track: 0 });
+const s5bCommands = s5bPlayed.events.filter((e) => e.at !== 0);
+const isS5bReg = (addr) => (addr & 0xe000) === 0xc000 || (addr & 0xe000) === 0xe000;
+check('every replayed write is a real 2A03 or Sunsoft 5B register', s5bCommands.length > 0 && s5bCommands.every((e) => (e.addr >= 0x4000 && e.addr <= 0x4017) || isS5bReg(e.addr)), `${s5bCommands.length} commands`);
+
+const s5bGate = compareFrameWrites(s5bEvents, s5bPlayed.events, s5bCycles);
+check('Sunsoft 5B writes replay frame-for-frame exactly, the same gate 2A03 writes are held to', s5bGate.matched === s5bGate.total, `${s5bGate.matched}/${s5bGate.total}`);
+
+// A capture using both VRC6 and Sunsoft 5B registers sets both header bits
+// at once - the two bitfield entries are independent, not mutually exclusive.
+const bothEvents = [...vrc6Events, ...s5bEvents.filter((e) => e.addr !== 0x4000)];
+const bothFile = exportNsf(bothEvents, Math.max(vrc6Cycles, s5bCycles), { title: 'both test' });
+check('the expansion-audio byte sets both the VRC6 and Sunsoft 5B bits when a capture uses both', bothFile[123] === 0x21);
+
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

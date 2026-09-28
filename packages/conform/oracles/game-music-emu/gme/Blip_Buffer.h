@@ -52,6 +52,15 @@ public:
 	resampled_time_t resampled_time( blip_time_t t ) const { return (resampled_time_t) t; }
 	resampled_time_t resampled_duration( int t ) const { return (resampled_time_t) t; }
 
+	// `Ay_Apu::run_until` (main-ay.cpp's own oracle) reads this to find its
+	// "inaudible tone frequency" optimisation threshold - real hardware, not
+	// something added for this stub. This oracle is only ever used against
+	// the Sunsoft 5B's own register logs (`main-ay.cpp`, `chips/ay8910.ts`'s
+	// `prescale` default), all of them stamped in the NES/5B's own CPU-clock
+	// cycles, so a fixed constant is correct here the same way "resampled
+	// time is CPU time, one to one" above already is.
+	long clock_rate() const { return 1789773; }
+
 	// `run_square`/`run_saw` call this once per call regardless of whether
 	// anything actually changed; recording is unconditional already, so this
 	// has nothing to do.

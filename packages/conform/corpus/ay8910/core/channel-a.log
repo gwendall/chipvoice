@@ -1,0 +1,31 @@
+# chipvoice register log v1
+# name: channel-a
+# chip: ay8910
+# clock: 1789773
+# cycles: 22000
+# source: src/corpus/generate-ay8910.mjs
+# notes: Mixer forced to DAC mode once; channel A ramps through every 4-bit volume level up and back down while B and C hold a fixed level, proving a single channel's DAC path exactly.
+0 0007 3F
+0 0009 05
+0 000A 09
+0 0008 00
+200 0008 01
+400 0008 02
+600 0008 03
+800 0008 04
+1000 0008 05
+1200 0008 06
+1400 0008 07
+1600 0008 08
+1800 0008 09
+2000 0008 0A
+2200 0008 0B
+2400 0008 0C
+2600 0008 0D
+2800 0008 0E
+3000 0008 0F
+3200 0008 0E
+3400 0008 0C
+3600 0008 08
+3800 0008 04
+4000 0008 00

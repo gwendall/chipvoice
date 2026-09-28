@@ -42,15 +42,40 @@ text2='#include <cstdio>\nstatic long long vrc6_capture_origin = 0;\n'+text2
 text2=text2.replace('void Nes_Vrc6_Apu::end_frame( blip_time_t time )\n{','void Nes_Vrc6_Apu::end_frame( blip_time_t time )\n{\n vrc6_capture_origin += time;')
 text2=text2.replace('void Nes_Vrc6_Apu::write_osc( blip_time_t time, int osc_index, int reg, int data )\n{','void Nes_Vrc6_Apu::write_osc( blip_time_t time, int osc_index, int reg, int data )\n{\n std::printf("%lld %d %d\\n", vrc6_capture_origin + time, base_addr + osc_index * addr_step + reg, data);')
 if p2.read_text() not in (original2,text2):raise ValueError('Unexpected changes in oracle logging source')
+# NEXT-15: Nsf_Emu dispatches Sunsoft 5B (FME-7) writes to a third, separate
+# class (Nes_Fme7_Apu), but unlike write_osc above, its own write_latch
+# ($C000, the register-select write) takes no time parameter at all - only
+# write_data ($E000) does - so a chip-class-level patch could only ever time
+# one of the two writes accurately. Nsf_Emu.cpp's own dispatcher
+# (cpu_write_misc) calls time() at both call sites regardless, so this patch
+# logs there instead of inside Nes_Fme7_Apu.cpp, with its own free-running
+# accumulator (fme7_capture_origin) kept in step with capture_origin and
+# vrc6_capture_origin the same way: incremented by the exact `duration` every
+# frame, at the same call site Nsf_Emu's own frame loop already drives
+# apu.end_frame/vrc6->end_frame from. This logs both 5B ports as separate
+# events, matching capture-nsf.mjs's own event shape for this chip, and is
+# unaffected by Nes_Fme7_Apu's own incomplete noise/envelope audio synthesis
+# (oracles/game-music-emu/README.md's "Known limits"): this patch captures
+# the write stream at the dispatcher, before Nes_Fme7_Apu ever decides what
+# to do with it.
+p3=repo/'gme/Nsf_Emu.cpp'
+text3=subprocess.check_output(['git','-C',repo,'show',f'{revision}:gme/Nsf_Emu.cpp'],text=True)
+original3=text3
+text3='#include <cstdio>\nstatic long long fme7_capture_origin = 0;\n'+text3
+text3=text3.replace('\t\t\t\tfme7->write_latch( data );','\t\t\t\tstd::printf("%lld %d %d\\n", fme7_capture_origin + time(), (int) addr, data);\n\t\t\t\tfme7->write_latch( data );')
+text3=text3.replace('\t\t\t\tfme7->write_data( time(), data );','\t\t\t\tstd::printf("%lld %d %d\\n", fme7_capture_origin + time(), (int) addr, data);\n\t\t\t\tfme7->write_data( time(), data );')
+text3=text3.replace('\t\tif ( fme7  ) fme7 ->end_frame( duration );','\t\tif ( fme7  ) { fme7_capture_origin += duration; fme7 ->end_frame( duration ); }')
+if p3.read_text() not in (original3,text3):raise ValueError('Unexpected changes in oracle logging source')
 changes=subprocess.check_output(['git','-C',repo,'diff','--name-only'],text=True).splitlines()
-if any(name not in('gme/Nes_Apu.cpp','gme/Nes_Vrc6_Apu.cpp')for name in changes):raise ValueError('Unexpected changes in oracle sources')
+if any(name not in('gme/Nes_Apu.cpp','gme/Nes_Vrc6_Apu.cpp','gme/Nsf_Emu.cpp')for name in changes):raise ValueError('Unexpected changes in oracle sources')
 p.write_text(text)
 p2.write_text(text2)
+p3.write_text(text3)
 run(['cmake','-S',repo,'-B',repo/'build','-DGME_BUILD_SHARED=OFF','-DGME_BUILD_EXAMPLES=OFF',*[f'-DUSE_GME_{kind}=OFF'for kind in ['AY','GBS','GYM','HES','KSS','SAP','SPC','VGM']]])
 run(['cmake','--build',repo/'build','-j','1'])
 run(['c++','-O2','-I',repo/'gme',Path(__file__).with_name('gme-render.cpp'),repo/'build/gme/libgme.a','-lz','-o',out/'gme-render'])
 with (out/'gme-writes.txt').open('w')as trace:run([out/'gme-render',source,out/'mario-gme.pcm',seconds,track],stdout=trace)
 digest=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
-manifest=dict(sourceSha256=digest(source),oracleRevision=revision,track=track,seconds=seconds,sampleRate=44100,channels=2,encoding='s16le',pcmSha256=digest(out/'mario-gme.pcm'),traceSha256=digest(out/'gme-writes.txt'),loggingSourceSha256=digest(p),vrc6LoggingSourceSha256=digest(p2),rendererSourceSha256=digest(Path(__file__).with_name('gme-render.cpp')))
+manifest=dict(sourceSha256=digest(source),oracleRevision=revision,track=track,seconds=seconds,sampleRate=44100,channels=2,encoding='s16le',pcmSha256=digest(out/'mario-gme.pcm'),traceSha256=digest(out/'gme-writes.txt'),loggingSourceSha256=digest(p),vrc6LoggingSourceSha256=digest(p2),fme7LoggingSourceSha256=digest(p3),rendererSourceSha256=digest(Path(__file__).with_name('gme-render.cpp')))
 (out/'native-reference.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print('Reference captured. Compare commands before publishing the audio.')

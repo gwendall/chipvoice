@@ -91,13 +91,15 @@ import {loadArrangement} from '../arrangements/check.mjs';
  * NSF-command recordings, decision 29), this project's own driver's 2A03
  * rendition of those same two arrangements, and every file `nsf-corpus`
  * already carries (its own `sources.json`, read again here) - eight
- * independently authored, redistribution-licensed 2A03 NSFs plus, since
- * round 2, `vrc6-probe`, its one self-authored VRC6 file - each replayed
- * once through `capture-nsf.mjs` to get a source capture, then re-exported.
- * `vrc6-probe` is what closes NEXT-14 round 2 item 3: `exportNsf`'s own
- * VRC6 round-trip, then Game_Music_Emu's `Nsf_Emu` actually playing that
- * export and held to the same four proofs, below, as any 2A03 file - not
- * just the register-level `Nes_Vrc6_Apu` oracle `packages/conform` drives
+ * independently authored, redistribution-licensed 2A03 NSFs plus two
+ * self-authored expansion-audio probes: `vrc6-probe` (round 2 of NEXT-14)
+ * and, since NEXT-15, `sunsoft5b-probe` - each replayed once through
+ * `capture-nsf.mjs` to get a source capture, then re-exported. `vrc6-probe`
+ * closed NEXT-14 round 2 item 3 and `sunsoft5b-probe` closes the equivalent
+ * NEXT-15 item the same way: `exportNsf`'s own round-trip of that chip's
+ * registers, then Game_Music_Emu's `Nsf_Emu` actually playing that export
+ * and held to the same four proofs, below, as any 2A03 file - not just the
+ * register-level `Nes_Vrc6_Apu`/`Ay8910` oracles `packages/conform` drives
  * directly. A file whose source uses DMC (several tracker drums do) is
  * expected to fail `exportNsf` with `dmc_unsupported`: that is this
  * format's own stated limit, not a bug, and is reported as a row here
@@ -398,11 +400,14 @@ function frameCountFor(cycles) {
 // looser one.
 const isVrc6Reg = (addr) => (addr >= 0x9000 && addr <= 0x9003) || (addr >= 0xa000 && addr <= 0xa002) || (addr >= 0xb000 && addr <= 0xb002);
 
+// Sunsoft 5B's two sound ports (NEXT-15): same reasoning as VRC6 above.
+const isSunsoft5bReg = (addr) => (addr & 0xe000) === 0xc000 || (addr & 0xe000) === 0xe000;
+
 function bucketWritesByFrame(events) {
   const buckets = new Map();
   for (const e of events) {
     const is2a03 = e.addr >= 0x4000 && e.addr <= 0x4017 && e.addr !== 0x4014 && e.addr !== 0x4016;
-    if (!is2a03 && !isVrc6Reg(e.addr)) continue;
+    if (!is2a03 && !isVrc6Reg(e.addr) && !isSunsoft5bReg(e.addr)) continue;
     const f = Math.floor(e.at / PERIOD);
     if (!buckets.has(f)) buckets.set(f, []);
     buckets.get(f).push({addr: e.addr, value: e.value});

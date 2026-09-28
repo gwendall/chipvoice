@@ -96,3 +96,80 @@ unchanged under `oracles/mesen/vendor/NES/Mappers/Audio/`, driven by
 section for what it is, what it checks that this oracle cannot ($9003, the
 sawtooth's disable-zeroes-the-accumulator behaviour, any period at or below
 4 cycles), and its own measured cycle-offset convention.
+
+## AY-3-8910/YM2149 (`Ay_Apu`), added for NEXT-15
+
+The same vendor tree also carries `Ay_Apu` (`gme/Ay_Apu.h`/`.cpp`, part of
+the same Game_Music_Emu checkout, unchanged, pinned at the same revision
+`fe8da4b6d3876d7542c2fb69d94487e19836d678`), one of the two oracles for
+`Ay8910` (`packages/chipvoice/src/chips/ay8910.ts`), first hosted as the
+Sunsoft 5B expansion audio. `main-ay.cpp` is ours: it reads a chipvoice
+register log addressed by the chip's own 0-15 register index (`Ay_Apu::write`
+takes it directly - unlike VRC6, there is no CPU-address decode here at all)
+and prints every change of every oscillator's amplitude BYTE - `Ay_Apu`'s own
+16-entry, ~1.5 dB/step `amp_table`, applied inside `write_data_`/`run_until`
+before a value ever reaches `Blip_Buffer`'s recorder, because the raw
+pre-table index is private state with no public accessor (unlike Ayumi's own
+oracle, `oracles/ayumi/README.md`, which reads that raw index straight back
+out of its own public struct fields). `chips/ay8910.mjs`'s `ay8910-gme-amp`
+is the chip-side counterpart that passes chipvoice's own raw index through
+the identical table before comparing, `AY_AMP_TABLE` copied verbatim from
+`Ay_Apu.cpp`'s own comment.
+
+`Blip_Buffer.h`'s stub grew one addition for this oracle specifically:
+`clock_rate()`, which `Ay_Apu::run_until`'s own "inaudible tone frequency"
+optimisation reads (real hardware behaviour, not something added for this
+harness) and which the VRC6 oracle's stub never needed. It returns a fixed
+`1789773` - correct for every log this oracle is ever driven with, since the
+Sunsoft 5B is this repository's only AY/YM host and rides the NES's own CPU
+clock (see the header's own comment).
+
+### Known limits of this oracle, specific to `Ay_Apu`
+
+`docs/DECISIONS.md`'s decision 48 is the full record; in short, read
+directly from `gme/Ay_Apu.cpp`'s own "Emulation inaccuracies" comment and
+confirmed here by instrumenting a debug copy of `run_until` directly, cycle
+numbers included:
+
+- **A fixed-volume (non-envelope), both-generators-disabled "DAC mode" log is
+  the one category measured exact, with no settling and no constant offset.**
+  `Ay8910.outputs`'s gate formula forces `gate = 1` unconditionally when a
+  channel's tone and noise are both disabled in the mixer register, so its
+  output is its volume register alone, sampled every prescaled tick -
+  `corpus/ay8910/core` measures 100% identical against this oracle on that
+  basis, and is the only role `ay8910`/`ay8910-gme-amp` play as `core` here.
+- **Tone and noise period writes carry a phase delta forward from a reset
+  default (`period_factor`, 16) instead of restarting a divider's phase
+  cleanly at the write.** A settle write before the real one (disable
+  everything at cycle 0, the real setup at cycle 32 or later) makes the
+  resulting offset constant and period-independent for tone alone
+  (`corpus/ay8910/edge/tone-sweep.log`: a steady +15-cycle offset measured
+  this way) and for noise alone, but not for both together, and this
+  project's own review lesson ("never patch an oracle to adopt the core's
+  behaviour and call it a convention mapping") is exactly why no such
+  settle-dependent correction is baked into `oracles/game-music-emu-ay.mjs`'s
+  `trace()` the way `oracles/game-music-emu.mjs`'s own sawtooth correction is
+  for VRC6 - it would be silently wrong for any script that does not happen
+  to follow that one convention. Every `edge/` log is `--report` only against
+  this oracle for exactly this reason.
+- **Its own source lists "changes to envelope and noise periods are delayed
+  until next reload" as a known inaccuracy**, which this project's own
+  investigation confirmed empirically: a mid-stream noise-period rewrite
+  after an initial settle breaks the constant-offset property a fresh
+  noise-only run otherwise has.
+- **The amplitude-table comparison (`ay8910-gme-amp`) has no envelope curve
+  at all.** `AY_AMP_TABLE` only covers the 16 fixed-volume levels; a log with
+  the envelope bit set (`corpus/ay8910/edge/envelope-shapes.log` and its
+  neighbours) is still accepted by `chips/ay8910.mjs`'s wrapper but is not a
+  meaningful comparison against this oracle, and no `core` script relies on
+  one being.
+- **Noise-bearing logs disagree with `Ay8910`'s own noise generator for a
+  different reason than the timing offset above.** `Ay_Apu`'s own noise
+  formula (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`) is a Galois-form
+  17-bit LFSR; `Ay8910`'s own noise generator uses the Fibonacci form
+  instead (`chips/ay8910.ts`'s `tick()`), matching MAME's own
+  hardware-verified construction and Ayumi's independent implementation of
+  it (decision 48). This oracle's Galois formula is not documented as
+  hardware-verified anywhere this project found, so it is not trusted for
+  this generator: noise-bearing logs stay `--report` only against it, same
+  as every other `edge` log, for this reason on top of the timing offset.

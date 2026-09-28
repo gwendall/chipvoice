@@ -20,13 +20,14 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
   if (nsf2Features & 0xf0) throw new Error('NSF2 non-returning INIT, its own IRQ, and a suppressed PLAY are not supported');
   const programLength = version === 2 ? bytes[125] | (bytes[126] << 8) | (bytes[127] << 16) : bytes.length - 128;
   if (!Number.isInteger(track) || track < 0 || track >= bytes[6]) throw new Error('Invalid NSF track');
-  // Expansion-audio bitfield: bit 0 is VRC6 (`nsf.ts`'s own exporter sets
-  // only this bit, never any other), which this capture routes to `events`
-  // the same as any 2A03 register (see `isVrc6Reg` below); any other bit
-  // names hardware this capture does not model and is rejected, same as a
-  // PAL file.
+  // Expansion-audio bitfield: bit 0 is VRC6, bit 5 is Sunsoft 5B (`nsf.ts`'s
+  // own exporter sets only these two bits, never any other), each routed to
+  // `events` the same as any 2A03 register (see `isVrc6Reg`/`isSunsoft5bReg`
+  // below); any other bit names hardware this capture does not model and is
+  // rejected, same as a PAL file.
   const usesVrc6 = (bytes[123] & 0x01) !== 0;
-  if ((bytes[123] & ~0x01) || (bytes[122] & 1)) throw new Error('Only NTSC 2A03 NSF, optionally with VRC6, is supported');
+  const usesSunsoft5b = (bytes[123] & 0x20) !== 0;
+  if ((bytes[123] & ~0x21) || (bytes[122] & 1)) throw new Error('Only NTSC 2A03 NSF, optionally with VRC6 and/or Sunsoft 5B, is supported');
   if (!Number.isInteger(frames) || frames < 1 || frames > 20000) throw new Error('Invalid capture length');
   const ram = new Uint8Array(65536), load = view.getUint16(8, true);
   const banked = bytes.subarray(112, 120).some(Boolean);
@@ -59,6 +60,13 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
   // of the same addresses (the data window this player's own ROM may map
   // at $9000-$9FFF, `nsf.ts`'s `DATA_WINDOW_BASE`, is a read-only concern).
   const isVrc6Reg = (addr) => (addr >= 0x9000 && addr <= 0x9003) || (addr >= 0xa000 && addr <= 0xa002) || (addr >= 0xb000 && addr <= 0xb002);
+  // Sunsoft 5B's FME-7 mapper decodes $C000 (register select) and $E000
+  // (register data) as write-only ports, each aliased across their whole
+  // 8 KiB page like the mapper's other bus-controlled ports - the same
+  // "decoded on the write side, independent of read-side banking" reasoning
+  // as VRC6 above, so routing these as events never conflicts with a
+  // program bank mapped to the same addresses for reads.
+  const isSunsoft5bReg = (addr) => (addr & 0xe000) === 0xc000 || (addr & 0xe000) === 0xe000;
   const events = [], calls = [];
   let cpu;
   const bus = {
@@ -72,6 +80,7 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
       if (banked && addr >= 0x5ff8 && addr <= 0x5fff) banks[addr - 0x5ff8] = value;
       else if (addr >= 0x4000 && addr <= 0x4017 && addr !== 0x4014 && addr !== 0x4016) events.push({at: cpu.cycles, addr, value});
       else if (usesVrc6 && isVrc6Reg(addr)) events.push({at: cpu.cycles, addr, value});
+      else if (usesSunsoft5b && isSunsoft5bReg(addr)) events.push({at: cpu.cycles, addr, value});
       else if (addr < 0x2000 || addr >= 0x6000 && addr < 0x8000) ram[addr < 0x2000 ? addr & 0x7ff : addr] = value;
       else throw new Error(`NSF writes unsupported hardware $${addr.toString(16)}`);
     },
@@ -134,5 +143,10 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
     for (let i = 0; i < dmcBytes.length; i++) dmcBytes[i] = bus.read(0xc000 + i);
     memory = [{address: 0xc000, bytes: dmcBytes}];
   }
-  return {chip: usesVrc6 ? '2a03-vrc6' : '2a03', clockHz, period, events, calls, cycles: Math.round(origin + frames * period), memory};
+  // No real cartridge combines two different NES expansion chips, and this
+  // repo has no combined VRC6+Sunsoft-5B chip to render through, so a file
+  // that (unusually) sets both bits still reports the VRC6 chip id here -
+  // the same precedence order the bitfield check above already implies.
+  const chip = usesVrc6 ? '2a03-vrc6' : usesSunsoft5b ? '2a03-sunsoft5b' : '2a03';
+  return {chip, clockHz, period, events, calls, cycles: Math.round(origin + frames * period), memory};
 }

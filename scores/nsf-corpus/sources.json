@@ -89,5 +89,15 @@
     "licence": "CC0",
     "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
     "sha256": "6d228456c393981d7499d16835f4f53e4a60bc3e915353c8696ee9d45a61f674"
+  },
+  "sunsoft5b-probe": {
+    "file": "sunsoft5b-probe.nsf",
+    "title": "sunsoft5b-probe",
+    "author": "gwendall, chipvoice project",
+    "driver": "hand-assembled (make-sunsoft5b-probe.mjs)",
+    "url": "https://github.com/gwendall/chipvoice/tree/main/scores/nsf-corpus/make-sunsoft5b-probe.mjs",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "2086e196562be26433e61be51c6bbe4cb4b94b9ba3fd3351c57c545839cb296e"
   }
 }

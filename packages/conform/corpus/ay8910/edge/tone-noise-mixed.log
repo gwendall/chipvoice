@@ -1,0 +1,20 @@
+# chipvoice register log v1
+# name: tone-noise-mixed
+# chip: ay8910
+# clock: 1789773
+# cycles: 196978
+# source: src/corpus/generate-ay8910.mjs
+# notes: Channel A with both its tone and noise generators running together (mixer's AND-gate combining them), B and C DAC-silenced - gated exact against Ayumi, which restarts both generators' phases cleanly at each write the same discrete way this core does, noise included (decision 48). It is `--report` only against Game_Music_Emu: the one combination this ticket's own investigation found breaks length-for-length even under the tone-only and noise-only offsets' own settle convention, on top of that oracle's own Galois-form noise LFSR (`oracles/game-music-emu-ay.mjs`'s own "known limits").
+0 0007 36
+0 0008 0F
+0 0009 00
+0 000A 00
+0 0000 28
+0 0001 00
+0 0006 03
+89489 0000 C8
+89489 0001 00
+89489 0006 0B
+178978 0000 0C
+178978 0001 00
+178978 0006 19

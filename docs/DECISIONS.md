@@ -1548,3 +1548,101 @@ deployments show `environment_url` as an ephemeral per-deployment Vercel
 alias that every project linked to this repo shares alike, never a fixed
 value that tells them apart, so it cannot be what keeps the second app's
 own production deploy from also firing chipvoice's end-to-end suite.
+
+## 48. A hardware-verified source outranks a second, undocumented oracle that merely agrees (2026-09-28)
+
+NEXT-15's AY-3-8910/YM2149 core needed its 17-bit noise LFSR's feedback
+taps, and nesdev's Sunsoft 5B page gives only a sentence: "a 17-bit linear
+feedback shift register with taps at bits 16 and 13," no pseudocode. This
+decision went through two wrong turns before landing on the sourced answer,
+and records all three states as honest history, not just the last one.
+
+**First wrong turn.** An early version of this ticket's own work read
+Ayumi's `update_noise` (`oracles/ayumi/ayumi.c`, one new bit `bit0 ^ bit3`
+inserted at bit 16 - a Fibonacci-form construction) as an equivalent
+restatement of nesdev's "taps at bits 16 and 13" (16 - 13 = 3) and wrote
+`Ay8910`'s own generator to the same formula without checking that the two
+are actually the same recurrence.
+
+**Second wrong turn.** A later pass through this ticket checked that
+assumption and found it false: an exhaustive search (every insertion bit
+13-16, every XOR tap 1-16, every output bit 0-16) found no relabelling of
+Ayumi's Fibonacci form that reproduces the literal reading of "taps at bits
+16 and 13" - a shift register with XOR gates at two absolute bit positions,
+fed by the bit shifted out, a Galois-form construction
+(`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`, confirmed maximal-length:
+period 131071 from seed 1). Game_Music_Emu's `Ay_Apu` happened to implement
+that identical Galois formula, independently written, which this ticket
+took as corroboration of the literal reading and rewrote `Ay8910` to match.
+That corroboration was weaker than it looked: nothing found at the time
+established that either the literal-taps reading or Game_Music_Emu's own
+formula had ever been checked against real AY-3-8910/YM2149 hardware: it
+was one undocumented emulator agreeing with one literal (but unverified)
+reading of an ambiguous sentence, not independent confirmation of a fact.
+
+**The sourced answer.** MAME's `noise_rng_tick()`
+(`src/devices/sound/ay8910.h`, licence BSD-3-Clause, Couriersud) states
+plainly: "The Random Number Generator of the 8910 is a 17-bit shift
+register. The input to the shift register is bit0 XOR bit3 (bit0 is the
+output). This was verified on AY-3-8910 and YM2149 chips." In code:
+`m_rng = (m_rng >> 1) | ((BIT(m_rng, 0) ^ BIT(m_rng, 3)) << 16)`, output
+`m_rng & 1` - the Fibonacci form, exactly Ayumi's construction, and this is
+the one source found in this investigation that claims a hardware check on
+this specific generator. "Taps" is itself Fibonacci-shift-register
+vocabulary (a Galois LFSR is usually described by its feedback polynomial
+or XOR mask, not "taps"), so nesdev's own wording does not actually settle
+the question in the Galois direction the way the second wrong turn assumed
+- if anything it leans the other way. Weighed against MAME's citation,
+Game_Music_Emu's agreement with the Galois reading no longer corroborates
+anything: it is one hardware-verified source against one unverified
+emulator, not two independent references in a genuine tie.
+`packages/chipvoice/src/chips/ay8910.ts`'s `tick()` now implements the
+Fibonacci form, matching Ayumi exactly; the entire `ay8910`
+`core`/`edge` corpus, including every noise-bearing script, is gated exact
+against Ayumi (`docs/chips/sunsoft5b.md`'s "where oracles disagree",
+`oracles/ayumi`'s own "known limits" - now empty).
+
+Game_Music_Emu's own noise and tone timing cannot be gated exact regardless
+of the LFSR question, for a separate, also-measured reason: its own source
+lists "changes to envelope and noise periods are delayed until next
+reload" as a known inaccuracy, and `Ay_Apu`'s tone-period write carries a
+phase delta forward from its reset default (`period_factor`, not a clean
+zero) rather than restarting a divider's phase at the write - confirmed by
+instrumenting `run_until` directly, cycle numbers included, in the
+investigation this decision records. A settle write before the real one
+makes the resulting offset constant and period-independent for tone alone
+and for noise alone (not both together, and not across a later mid-stream
+period rewrite - GME's own "delayed until next reload" note explains why),
+but baking a settle-dependent correction into the oracle wrapper the way
+decision 41's sawtooth correction does would be silently wrong for any
+corpus script that does not happen to follow that exact convention, so
+this ticket does not do that: `game-music-emu-ay`'s "core" role is
+restricted to logs with no oscillator timing dependency at all (both tone
+and noise held off, a channel acting as a plain 4-bit DAC through its
+volume register alone, verified exact against both oracles with no
+settling needed), and it is `--report` everywhere else, including on
+noise, where it now additionally disagrees on the LFSR's own construction
+as well as on timing.
+
+**Why.** A second implementation agreeing with a reading is corroboration
+only if that second implementation's own claim is itself sourced; two
+undocumented emulators agreeing with each other is not the same evidence as
+one hardware-verified statement, and this ticket spent two wrong turns
+finding that out the direct way before checking for a primary source that
+settles it. Recording all three states - the first unchecked assumption,
+the second, better-but-still-wrong reasoning, and the sourced correction -
+is what keeps a later ticket (an MSX AY-3-8910 host, the YM2203/2608's SSG
+half - both already named as future hosts in `ay8910.ts`'s own class doc
+comment) from re-litigating the same question with less information than
+this one gathered, and from repeating either wrong turn.
+
+**What changes.** `packages/chipvoice/src/chips/ay8910.ts`'s noise LFSR
+feedback formula (Fibonacci form, MAME-cited, matching Ayumi - not the
+Galois form this ticket held at its previous review). `packages/conform`'s
+`check:ay8910-edge` gates the full `edge` corpus exact against Ayumi, no
+`--exclude` needed any more; `check:ay8910-edge-gme-report` (Game_Music_Emu,
+report-only) is unchanged, still report-only, now for two independent
+reasons instead of one. No automatic cross-oracle correction is introduced
+for tone or noise timing, unlike decision 41's own sawtooth case,
+specifically because the underlying offset is convention-dependent rather
+than a fixed property of the oracle itself.

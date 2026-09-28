@@ -1,0 +1,14 @@
+# chipvoice register log v1
+# name: mixer-upper-bits
+# chip: ay8910
+# clock: 1789773
+# cycles: 19500
+# source: src/corpus/generate-ay8910.mjs
+# notes: The mixer register rewritten several times with its unused upper two bits (I/O port direction - the 5B exposes no AY I/O pins, `chips/ay8910.ts`'s own comment) varying, the six gate bits always left at DAC-all - proving those two bits truly play no part in the gate formula.
+0 0008 0B
+0 0009 03
+0 000A 0F
+0 0007 3F
+500 0007 7F
+1000 0007 BF
+1500 0007 FF
