@@ -29,7 +29,7 @@ import {
   sha256Hex,
   toWavBytes,
 } from "./lib/audio.mjs";
-import { checkSound, deriveLoudnessFloor } from "./lib/checks.mjs";
+import { checkSound } from "./lib/checks.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -186,24 +186,19 @@ async function main() {
   const variantChecks = {};
   const { sounds } = await buildChipvoice(variantChecks);
 
-  // The loudness floor is derived from this very build's own output (see
-  // deriveLoudnessFloor's header): the widest peak-to-loudness gap any
-  // variant in the whole catalogue actually measured, plus a stated margin.
-  // Computed once, over every variant of every sound, before any per-sound
-  // check runs, so no single sound's own check can shift the floor that
-  // checks it.
-  const allMeasures = sounds.flatMap((s) => s.variants.map((v) => v.measure));
-  const floorLufs = deriveLoudnessFloor(allMeasures);
-  log(`loudness floor: ${floorLufs} LUFS (derived from the widest measured peak-to-loudness gap plus a ${allMeasures.length ? "" : "default "}margin - see deriveLoudnessFloor in scripts/lib/checks.mjs)`);
+  log(
+    `loudness gate: every variant must reach at least one of its two ceilings (momentary LUFS at most -18, true peak at most -1 dBTP, within 0.2 dB rounding slack) - see checkOneCeilingBinds in scripts/lib/checks.mjs`,
+  );
 
   // Every sound goes through the same signal checks the negative tests
   // exercise (test/checks.test.mjs) before it is allowed into the catalogue:
   // license, chipvoice variant count, per-variant sha256, clipping and
-  // leading silence, plus the loudness ceilings and the derived floor -
-  // every variant now, not just the first (see checkSound's own header).
+  // leading silence, plus the loudness ceilings and the one-ceiling-binds
+  // gate - every variant now, not just the first (see checkSound's own
+  // header).
   const failures = [];
   for (const sound of sounds) {
-    const reasons = checkSound(sound, variantChecks, sha256Hex, { floorLufs });
+    const reasons = checkSound(sound, variantChecks, sha256Hex);
     if (reasons.length) failures.push(`${sound.id}: ${reasons.join("; ")}`);
   }
   if (failures.length) throw new Error(`${failures.length} sound(s) failed signal checks:\n${failures.join("\n")}`);

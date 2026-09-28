@@ -9,12 +9,10 @@ import {
   checkNoClipping,
   checkLeadingSilence,
   checkLoudnessBand,
+  checkOneCeilingBinds,
   checkChipvoiceVariantCount,
   checkSound,
-  deriveLoudnessFloor,
-  loudnessGap,
   LOUDNESS_CEILING_EPSILON_LU,
-  LOUDNESS_FLOOR_MARGIN_DB,
   PEAK_EPSILON_DB,
 } from "../scripts/lib/checks.mjs";
 import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP } from "../scripts/lib/audio.mjs";
@@ -211,45 +209,63 @@ function sha256Hex(bytes) {
 }
 
 {
-  // loudnessGap and deriveLoudnessFloor: the floor is derived from the
-  // widest measured peak-to-loudness gap plus a stated margin, not picked
-  // to pass. A legitimately peak-capped, high-crest-factor variant (peak at
-  // the ceiling, LUFS pulled down by a wide gap) must sit AT or above its
-  // own build's derived floor - it IS the widest gap the floor is derived
-  // from, so it can never itself be refused by the very floor it set.
-  const measures = [
-    { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP }, // an ordinary, loudness-bound variant: gap 17
-    { lufs: -35, peakDb: TRUE_PEAK_CEILING_DBTP }, // a peak-bound click: gap 34, the widest in this build
-  ];
-  assert.equal(loudnessGap(measures[1]), 34, "loudnessGap is exactly peakDb - lufs");
-  const floor = deriveLoudnessFloor(measures);
-  assert.equal(floor, TRUE_PEAK_CEILING_DBTP - 34 - LOUDNESS_FLOOR_MARGIN_DB, "the floor is the ceiling minus the widest measured gap minus the stated margin");
-  for (const measure of measures) {
-    assert.equal(checkLoudnessBand(measure, { floorLufs: floor }).ok, true, "no variant this build actually shipped can fail the floor it was itself used to derive");
-  }
-  console.log(`PASS deriveLoudnessFloor derives ${floor} LUFS from the widest measured gap (34) plus a ${LOUDNESS_FLOOR_MARGIN_DB} dB margin, and never rejects the variant that set it`);
+  // checkOneCeilingBinds replaces the old derived-floor approach: a
+  // correctly leveled variant always lands within epsilon of at least one
+  // ceiling (levelToConvention applies whichever of the two gains is
+  // smaller, so that metric ends up almost exactly on its own ceiling - see
+  // the function's own header). lufs -30 / peak -10 sits well under BOTH
+  // ceilings (gap 20, under this build's old derived floor of about -37.5,
+  // which the old floor-based check let straight through) - this is exactly
+  // the broken-gain-stage case the old derived floor could miss whenever a
+  // wider legitimate gap existed elsewhere in the same build.
+  const brokenVariant = { lufs: -30, peakDb: -10 };
+  const passesTheStaticCeilingsAlone = checkLoudnessBand(brokenVariant).ok;
+  assert.equal(passesTheStaticCeilingsAlone, true, "sanity: the two static ceilings alone do not catch this - checkOneCeilingBinds is what has to");
+  const result = checkOneCeilingBinds(brokenVariant);
+  assert.equal(result.ok, false, "a broken leveling that reaches neither ceiling must fail, proving this gate is strictly stronger than the derived floor it replaces");
+  assert.match(result.reason, /neither/, "the failure reason explains that neither ceiling was reached");
+  console.log("PASS checkOneCeilingBinds fails lufs -30 / peak -10, which the old derived floor would have passed");
 }
 
 {
-  // The floor's whole point: a broken leveling (a wrong target LUFS, a
-  // skipped gain stage) ships audio far quieter than anything the build's
-  // real content actually produced, and its own peak does NOT sit near the
-  // ceiling either (a linear gain shifts both figures by the same amount -
-  // see loudnessGap's header) - so it cannot be explained as "just another
-  // peak-capped click" and must fail, even though a static -18 LUFS ceiling
-  // alone would happily let it through (it is well under -18, not over it).
-  const normalCatalogMeasures = [
-    { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP - 6 },
-    { lufs: -28, peakDb: TRUE_PEAK_CEILING_DBTP }, // the widest legitimate gap this build produced: 27
-  ];
-  const floor = deriveLoudnessFloor(normalCatalogMeasures);
-  const brokenVariant = { lufs: -40, peakDb: -29 }; // gap 11: an ordinary crest factor, not an extreme peak-capped one
-  const passesTheStaticCeilingAlone = checkLoudnessBand(brokenVariant).ok;
-  assert.equal(passesTheStaticCeilingAlone, true, "sanity: a static ceiling alone does not catch this - the floor is what has to");
-  const result = checkLoudnessBand(brokenVariant, { floorLufs: floor });
-  assert.equal(result.ok, false, "a broken -40 LUFS leveling must fail the derived floor even though it passes the static ceiling alone");
-  assert.match(result.reason, /floor/, "the failure reason names the floor, not a ceiling");
-  console.log("PASS the derived floor fails a broken -40 LUFS leveling that a static ceiling alone would miss");
+  // A loudness-bound variant: on-target LUFS, true peak safely under its
+  // own ceiling. The loudness ceiling binds, so this passes even though the
+  // peak ceiling does not.
+  const measure = { lufs: -18, peakDb: -6 };
+  const result = checkOneCeilingBinds(measure);
+  assert.equal(result.ok, true, "lufs -18 / peak -6 passes: the loudness ceiling binds");
+  console.log("PASS checkOneCeilingBinds passes lufs -18 / peak -6 (loudness ceiling binds)");
+}
+
+{
+  // A peak-bound, high-crest-factor variant (a click, a hit): true peak at
+  // its ceiling, LUFS pulled far down by the crest factor. The peak
+  // ceiling binds, so this passes even though LUFS is nowhere near -18 -
+  // exactly the legitimately quiet, peak-capped case the old derived floor
+  // existed to protect, now proven directly from this variant's own two
+  // measures instead of a statistic borrowed from the rest of the build.
+  const measure = { lufs: -34.5, peakDb: -1 };
+  const result = checkOneCeilingBinds(measure);
+  assert.equal(result.ok, true, "lufs -34.5 / peak -1 passes: the true-peak ceiling binds");
+  console.log("PASS checkOneCeilingBinds passes lufs -34.5 / peak -1 (true-peak ceiling binds)");
+}
+
+{
+  // checkSound wires checkOneCeilingBinds in too: a sound whose one variant
+  // sits under both static ceilings (so checkLoudnessBand alone stays
+  // silent) must still fail, with a failure that names the loudness gate
+  // specifically so it reads differently from an over-ceiling failure.
+  const brokenSound = {
+    license: "CC0-1.0",
+    attribution: null,
+    source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
+    origin: "generated", // not "chipvoice": isolates this test from the variant-count check
+    variants: [{ n: 1, sha256: "neitherbinds", measure: { lufs: -30, peakDb: -10 } }],
+  };
+  const failures = checkSound(brokenSound, {}, sha256Hex);
+  assert.ok(!failures.some((f) => f.startsWith("variant 1 loudness:")), "the two static ceilings alone must not fire on this variant");
+  assert.ok(failures.some((f) => f.startsWith("variant 1 loudness gate:")), "checkSound must surface the one-ceiling-binds failure under its own label");
+  console.log("PASS checkSound refuses a variant that reaches neither ceiling, even though the static ceiling checks alone pass it");
 }
 
 {

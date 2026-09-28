@@ -16,52 +16,6 @@ import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP, firstAboveFloor, peakOf }
 export const LOUDNESS_CEILING_EPSILON_LU = 0.2;
 export const PEAK_EPSILON_DB = 0.2;
 
-/** How much extra headroom, beyond the widest peak-to-loudness gap this
- * build has actually measured anywhere, before a quiet variant stops being
- * explainable as "peak-capped" and is refused as a broken leveling instead
- * (see `deriveLoudnessFloor`). Slack added on top of real, measured
- * content - not tuned to make today's catalogue pass - in case a
- * not-yet-built sound has a slightly wider dynamic range than anything seen
- * so far. */
-export const LOUDNESS_FLOOR_MARGIN_DB = 3;
-
-/**
- * A variant's own peak-to-loudness gap: `peakDb - lufs`. `levelToConvention`
- * applies one linear gain to a whole render (its own header), and a linear
- * gain shifts both LUFS and true peak by the same dB amount, so this gap is
- * exactly the SOURCE material's crest factor - invariant to which ceiling
- * actually bound the gain, and invariant to what the target LUFS was even
- * set to (a wrong target shifts `lufs` and `peakDb` together, never their
- * difference). That invariance is what makes `deriveLoudnessFloor` safe to
- * derive from a build's own output even when the whole build is broken: a
- * systematically wrong target does not hide inside this number.
- */
-export function loudnessGap(measure) {
-  return measure.peakDb - measure.lufs;
-}
-
-/**
- * Derives how quiet a variant may legitimately measure, from what this very
- * build actually produced: the widest peak-to-loudness gap seen anywhere in
- * `measures` (see `loudnessGap`), plus `marginDb` of headroom, subtracted
- * from the true-peak ceiling. `peakCeilingDb - gap` is exactly the LUFS a
- * variant with that gap lands at when its own peak is the binding
- * constraint (levelToConvention's "peak cap wins" case) - so no variant with
- * a gap this build has ever actually shipped can legitimately measure
- * quieter than that, and `marginDb` covers a not-yet-seen sound with a
- * slightly wider one. A variant under this floor is not explainable by peak
- * capping using any crest factor this build has produced, so it looks like
- * a broken leveling (a wrong target, a skipped gain stage), not a
- * legitimately quiet, peak-limited sound. Derived from the measured
- * distribution, not picked to pass - see `test/checks.test.mjs` for the
- * negative test proving it rejects a synthetic -40 LUFS variant.
- */
-export function deriveLoudnessFloor(measures, { peakCeilingDb = TRUE_PEAK_CEILING_DBTP, marginDb = LOUDNESS_FLOOR_MARGIN_DB } = {}) {
-  const gaps = measures.map(loudnessGap).filter((g) => Number.isFinite(g));
-  const maxGap = gaps.length ? Math.max(...gaps) : 0;
-  return peakCeilingDb - maxGap - marginDb;
-}
-
 export function checkLicense(sound) {
   if (!sound || typeof sound.license !== "string" || !sound.license.trim()) {
     return { ok: false, reason: "missing license" };
@@ -119,7 +73,7 @@ export function checkLeadingSilence(left, right, sampleRate, { maxMs = 10, floor
  * once peak has already failed. */
 export function checkLoudnessBand(
   measure,
-  { targetLufs = LOUDNESS_TARGET_LUFS, lufsEpsilon = LOUDNESS_CEILING_EPSILON_LU, peakCeilingDb = TRUE_PEAK_CEILING_DBTP, floorLufs = -Infinity } = {},
+  { targetLufs = LOUDNESS_TARGET_LUFS, lufsEpsilon = LOUDNESS_CEILING_EPSILON_LU, peakCeilingDb = TRUE_PEAK_CEILING_DBTP } = {},
 ) {
   if (!measure || typeof measure.lufs !== "number" || typeof measure.peakDb !== "number") {
     return { ok: false, reason: "missing measure.lufs or measure.peakDb" };
@@ -130,13 +84,43 @@ export function checkLoudnessBand(
   if (measure.lufs > targetLufs + lufsEpsilon) {
     return { ok: false, reason: `${measure.lufs} LUFS exceeds the ${targetLufs} LUFS ceiling` };
   }
-  // A floor, not a target: `deriveLoudnessFloor` derives it from what this
-  // build's own peak-capped variants actually measure, so this only fires
-  // on a variant no real crest factor in the build can explain - a broken
-  // leveling, not a legitimately quiet one. Defaults to -Infinity (off) so
-  // every direct caller that does not pass one is unaffected.
-  if (measure.lufs < floorLufs) {
-    return { ok: false, reason: `${measure.lufs} LUFS sits under the derived floor of ${floorLufs} LUFS - too quiet to be explained by this build's own peak-capping, looks like a broken leveling` };
+  return { ok: true };
+}
+
+/**
+ * `levelToConvention` applies exactly one linear gain to a render: whichever
+ * of the two is quieter, the gain that brings momentary LUFS to
+ * `targetLufs` or the gain that brings true peak to `peakCeilingDb` (its own
+ * header - "peak cap takes priority" when the two disagree). That means a
+ * CORRECTLY leveled variant always lands within epsilon of at least one of
+ * the two ceilings: whichever gain was the binding (smaller) one puts that
+ * metric almost exactly on its ceiling, not merely under it. A variant that
+ * sits under BOTH ceilings by more than rounding slack was never leveled by
+ * this function at all - a skipped gain stage, a wrong target, a stray
+ * scale factor - and `checkLoudnessBand`'s two ceiling checks alone cannot
+ * catch it, since "quieter than the ceiling" is exactly what a passing
+ * sound looks like too. Unlike the derived-floor approach this replaces,
+ * this needs no cross-variant statistics (no widest observed gap, no
+ * margin) - it is an exact, per-variant consequence of how the gain was
+ * computed, so it cannot be fooled by a broken variant whose own gap
+ * happens to fall inside another variant's legitimate range. See
+ * `test/checks.test.mjs` for the negative test this replaces: a lufs -30 /
+ * peak -10 variant, which the old derived floor let through.
+ */
+export function checkOneCeilingBinds(
+  measure,
+  { targetLufs = LOUDNESS_TARGET_LUFS, peakCeilingDb = TRUE_PEAK_CEILING_DBTP, lufsEpsilon = LOUDNESS_CEILING_EPSILON_LU, peakEpsilon = PEAK_EPSILON_DB } = {},
+) {
+  if (!measure || typeof measure.lufs !== "number" || typeof measure.peakDb !== "number") {
+    return { ok: false, reason: "missing measure.lufs or measure.peakDb" };
+  }
+  const lufsBinds = measure.lufs >= targetLufs - lufsEpsilon;
+  const peakBinds = measure.peakDb >= peakCeilingDb - peakEpsilon;
+  if (!lufsBinds && !peakBinds) {
+    return {
+      ok: false,
+      reason: `${measure.lufs} LUFS / ${measure.peakDb} dBTP true peak: neither the ${targetLufs} LUFS ceiling nor the ${peakCeilingDb} dBTP true-peak ceiling was reached (within ${lufsEpsilon} dB) - levelToConvention always binds one of the two, so this looks like a broken leveling, not a legitimately quiet, peak-capped sound`,
+    };
   }
   return { ok: true };
 }
@@ -166,15 +150,13 @@ export function checkChipvoiceVariantCount(sound, { min = 3 } = {}) {
  * one key never collides across sounds): `{ bytes, peakLinear, left, right,
  * sampleRate }`. Any field a caller does not have is simply skipped - the
  * negative tests exercise each check directly, so `checkSound`'s own tests
- * only need to prove it wires every check together, not repeat them. */
-/**
- * `loudnessOptions` (typically just `{floorLufs}`, from `deriveLoudnessFloor`
- * over the whole build) is forwarded to every variant's own
- * `checkLoudnessBand` call - every variant is checked on its OWN measure
- * now, not just the sound-level summary (`sound.measure`, which mirrors
+ * only need to prove it wires every check together, not repeat them.
+ *
+ * `loudnessOptions` is forwarded to every variant's own `checkLoudnessBand`
+ * and `checkOneCeilingBinds` calls - every variant is checked on its OWN
+ * measure, not just the sound-level summary (`sound.measure`, which mirrors
  * variant 1 only): a broken leveling on variant 2 or later used to ship
- * unnoticed, since only `sound.measure` was ever checked.
- */
+ * unnoticed, since only `sound.measure` was ever checked. */
 export function checkSound(sound, variantData, sha256Hex, loudnessOptions = {}) {
   const failures = [];
   const license = checkLicense(sound);
@@ -197,6 +179,8 @@ export function checkSound(sound, variantData, sha256Hex, loudnessOptions = {}) 
     }
     const loudness = checkLoudnessBand(variant.measure, loudnessOptions);
     if (!loudness.ok) failures.push(`variant ${variant.n} loudness: ${loudness.reason}`);
+    const oneCeilingBinds = checkOneCeilingBinds(variant.measure, loudnessOptions);
+    if (!oneCeilingBinds.ok) failures.push(`variant ${variant.n} loudness gate: ${oneCeilingBinds.reason}`);
   }
   return failures;
 }

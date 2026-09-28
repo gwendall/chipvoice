@@ -198,10 +198,13 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # build-catalog.mjs imports packages/chipvoice's own built dist/index.js
+      # directly (renderSfx, instrumentsFor); pnpm --filter bypasses
+      # turbo.json's own build-order graph (decision 47), so build it
+      # explicitly first, same as the `unit`/`browser`/`conformance` jobs do.
+      - run: pnpm --filter chipvoice build
       # apps/sounds imports web-kit/*, resolved against its built dist/;
-      # pnpm --filter bypasses turbo.json's own build-order graph (decision
-      # 47), so build it explicitly first, same as the `unit`/`browser` jobs
-      # do for apps/web.
+      # same reason, build it explicitly too.
       - run: pnpm --filter web-kit build
       - run: pnpm --filter gamesounds typecheck
       - run: pnpm --filter gamesounds test:unit
@@ -222,8 +225,8 @@ jobs:
       # before any format-specific encoder runs - equal the COMMITTED
       # catalog.json's entries for every sound. See docs/GAMESOUNDS.md/docs/DECISIONS.md
       # for the full design.
-      - run: pnpm --filter gamesounds-site catalog:build -- --out .artifacts/ci-catalog.json
-      - run: pnpm --filter gamesounds-site catalog:check-determinism -- .artifacts/ci-catalog.json
+      - run: pnpm --filter gamesounds-site catalog:build --out .artifacts/ci-catalog.json
+      - run: pnpm --filter gamesounds-site catalog:check-determinism .artifacts/ci-catalog.json
       # ogg/mp3 are NOT proven byte-identical across ffmpeg builds/platforms
       # (only the WAV/PCM layer just got that guarantee above), so the site
       # this job builds and tests serves the catalogue it just rendered

@@ -1790,14 +1790,24 @@ hold up its end.
   enforce it; `apps/sounds/test/checks.test.mjs` proves both that a
   chipvoice sound under the minimum fails the build and that a non-chipvoice
   origin is not held to it.
-- **A loudness floor derived from real measurements, not asserted, and
-  checked on every variant.** `deriveLoudnessFloor` (`scripts/lib/checks.mjs`)
-  takes every measured `{ peakDb, lufs }` pair across the catalogue, finds
-  `loudnessGap = peakDb - lufs`, the widest gap actually observed, and sets
-  the floor to `TRUE_PEAK_CEILING_DBTP (-1) - maxObservedGap - LOUDNESS_FLOOR_MARGIN_DB (3)`:
-  a number below the loudest a variant can get before it would clip against
-  the true-peak ceiling, with a 3 dB margin, rather than a guessed constant.
-  Every variant is checked against it, not just a sound's first one.
+- **A per-variant loudness gate that catches a broken gain stage exactly,
+  not statistically, checked on every variant.** The first pass derived a
+  floor from the widest peak-to-loudness gap observed anywhere in the
+  build (`peakCeilingDb - maxObservedGap - marginDb`), which a second
+  review round found could miss a broken variant whose own gap happened to
+  fall inside another, legitimate variant's wider range - the floor moved
+  every time the catalogue's widest crest factor changed, so it never
+  bounded any single variant on its own terms. `levelToConvention`
+  (`scripts/lib/audio.mjs`) applies exactly one linear gain per render:
+  whichever of the two is quieter, the gain that brings momentary LUFS to
+  -18 or the gain that brings true peak to -1 dBTP. A correctly leveled
+  variant therefore always lands within rounding slack of at least one of
+  the two ceilings - `checkOneCeilingBinds` (`scripts/lib/checks.mjs`)
+  asserts exactly that, per variant, with no cross-variant statistic
+  involved: `lufs >= -18 - eps OR peakDb >= -1 - eps`, eps 0.2 dB. All 880
+  committed variants pass it; a synthetic -30 LUFS / -10 dBTP variant
+  (a broken gain stage the old derived floor would have let through) fails
+  it, proving the new gate strictly stronger.
 - **The CLI's full scope.** `packages/gamesounds/bin/gamesounds.mjs` gains
   `search`, `swap`, `list` and `sync` alongside `add`; `--json`, `--dir`,
   `--formats` and `--api` are honored across all five, and

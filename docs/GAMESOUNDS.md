@@ -98,17 +98,23 @@ The catalogue build (`apps/sounds/scripts/build-catalog.mjs` and
 documented fade, measures loudness on *every* variant (not just the first)
 and rejects anything outside the stated band: -18 LUFS momentary maximum
 ceiling, true peak <= -1 dBTP ceiling, no more than 10 ms of leading
-silence, no clipping - and a **floor**, so a broken leveling pass (e.g.
-collapsing everything to -40 LUFS) fails loudly instead of shipping quiet.
-The floor is derived, not picked to pass: `deriveLoudnessFloor` in
-`scripts/lib/checks.mjs` measures every variant's own `peakDb - lufs` gap
-(invariant to which ceiling bound the leveling pass's gain or to its target
-LUFS), takes the widest observed gap across the whole catalogue, and
-subtracts a stated margin from the peak ceiling:
-`floor = peakCeilingDb - maxObservedGap - marginDb`. A negative test in
-`apps/sounds/test/checks.test.mjs` proves each check - ceilings and floor
-alike - actually fails a file built to violate it, not just that a passing
-file happens to pass. The build is deterministic given the same recipes:
+silence, no clipping - and **one ceiling must bind**, so a broken leveling
+pass (e.g. a skipped gain stage or a wrong target) fails loudly instead of
+shipping quiet. `levelToConvention` in `scripts/lib/audio.mjs` applies a
+single linear gain per render: whichever of the two is quieter, the gain
+that brings momentary LUFS to -18 or the gain that brings true peak to -1
+dBTP (peak cap wins when the two disagree). A correctly leveled variant
+therefore always lands within rounding slack of at least one of the two
+ceilings - `checkOneCeilingBinds` in `scripts/lib/checks.mjs` asserts
+exactly that: `lufs >= -18 - eps OR peakDb >= -1 - eps`, eps 0.2 dB. This
+needs no cross-variant statistic (no widest observed gap, no margin) - it
+is an exact per-variant consequence of how the gain was computed, so it
+cannot be fooled by a broken variant whose own gap happens to fall inside
+another variant's legitimate range, the gap a derived-floor approach left
+open. A negative test in `apps/sounds/test/checks.test.mjs` proves each
+check - both ceilings and the one-ceiling-binds gate alike - actually
+fails a file built to violate it, not just that a passing file happens to
+pass. The build is deterministic given the same recipes:
 `scripts/check-determinism.mjs` (see "Continuous integration" below)
 rebuilds the whole catalogue fresh and proves it on every CI run against
 the committed catalogue's own per-variant SHA-256.
@@ -295,8 +301,9 @@ something CI re-verifies on every run.
 ## Testing
 
 `apps/sounds`: `pnpm test` (schema, search/resolve logic, audio processing,
-determinism and build-check negatives, including the loudness floor and the
-chipvoice variant-count minimum) plus `node test-smoke.mjs` (Playwright,
+determinism and build-check negatives, including the one-ceiling-binds
+loudness gate and the chipvoice variant-count minimum) plus `node
+test-smoke.mjs` (Playwright,
 closed in a `finally`, against a real built site - home loads, search finds
 results, preload-on-visibility fills the decode cache, play starts a real
 `AudioBufferSourceNode`, the mini-player and waveform playhead track
