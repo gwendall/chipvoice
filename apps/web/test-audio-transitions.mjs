@@ -6,7 +6,19 @@ const base=process.env.SITE??'http://127.0.0.1:3070';
 const out=new URL('../../.artifacts/continuity/',import.meta.url);await mkdir(out,{recursive:true});
 const browser=await chromium.launch();
 try{
- const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage();
+ // REV-01 follow-up: this script's two real CI failures both timed out at the
+ // exact same step (number.fill('183') -> valueIs(slider,'183')), which argues
+ // against generic runner slowness (that would spread failures across this
+ // script's ~20 waits). No deterministic app-level race was found after tracing
+ // RangeControl/useSongDocument's history-coalescing state machine and
+ // empirically delaying the two async gates in Chip creation (AudioContext.resume,
+ // AudioWorklet.addModule) and the debounced LivePlayback.update() reconciliation:
+ // none of that injected latency moved the slider's DOM-update timing. The
+ // default 30 s wait stays in place rather than being raised to 120 s: raising
+ // it would only fail slower if the value never arrives, or hide a real UI bug
+ // if it arrives late. See REV-10 in docs/BACKLOG.md.
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(installOutputProbe);
  await page.addInitScript(()=>{
   const line=Array(64).fill('.');line[0]='C4';
@@ -78,4 +90,18 @@ try{
  const evidence={pass:true,gapMs,silentBlocks:results.blocks.filter(block=>block.peak<.00001),transitions:results.transitions,errors};
  await writeFile(new URL('live-audio.json',out),JSON.stringify(evidence,null,2));
  console.log(JSON.stringify(evidence));
+}catch(error){
+ // A tempo edit that never reaches the DOM leaves no other trace: the
+ // success-only write above never runs, so the run's only evidence is
+ // Playwright's bare timeout. Capture the live state a slow CI host left
+ // behind instead of guessing at it after the fact.
+ await page.screenshot({path:new URL('audio-transitions-failure.png',out).pathname,fullPage:true}).catch(()=>{});
+ const state=await page.evaluate(()=>({
+  slider:{value:document.getElementById('tempo-slider')?.value,disabled:document.getElementById('tempo-slider')?.disabled},
+  number:{value:document.getElementById('tempo')?.value,disabled:document.getElementById('tempo')?.disabled},
+  undo:{count:document.querySelectorAll('[aria-label="Undo"]').length,disabled:document.querySelector('[aria-label="Undo"]')?.disabled},
+  chipvoice:window.chipvoice?{playing:window.chipvoice.playing,chip:window.chipvoice.spec?.id}:null,
+ })).catch(()=>null);
+ await writeFile(new URL('audio-transitions-failure.json',out),JSON.stringify({message:error.message,state,errors},null,2)).catch(()=>{});
+ throw error;
 }finally{await browser.close();}
