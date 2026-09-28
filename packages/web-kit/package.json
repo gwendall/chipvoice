@@ -1,0 +1,72 @@
+{
+  "name": "web-kit",
+  "version": "0.1.0",
+  "description": "Server code shared by chipvoice.dev and the other apps in this monorepo: HTTP envelope, crypto, rate limiting, SSE, the database factory, agent device-flow auth, audio encoding and the i18n core. Private; nothing app-specific belongs here.",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./crypto": {
+      "types": "./dist/crypto/index.d.ts",
+      "import": "./dist/crypto/index.js"
+    },
+    "./http": {
+      "types": "./dist/http/index.d.ts",
+      "import": "./dist/http/index.js"
+    },
+    "./limit": {
+      "types": "./dist/limit/index.d.ts",
+      "import": "./dist/limit/index.js"
+    },
+    "./sse": {
+      "types": "./dist/sse/index.d.ts",
+      "import": "./dist/sse/index.js"
+    },
+    "./db": {
+      "types": "./dist/db/index.d.ts",
+      "import": "./dist/db/index.js"
+    },
+    "./agent-auth": {
+      "types": "./dist/agent-auth/index.d.ts",
+      "import": "./dist/agent-auth/index.js"
+    },
+    "./audio": {
+      "types": "./dist/audio/index.d.ts",
+      "import": "./dist/audio/index.js"
+    },
+    "./agent-docs": {
+      "types": "./dist/agent-docs/index.d.ts",
+      "import": "./dist/agent-docs/index.js"
+    },
+    "./i18n": {
+      "types": "./dist/i18n/core.d.ts",
+      "import": "./dist/i18n/core.js"
+    },
+    "./i18n/react": {
+      "types": "./dist/i18n/react.d.ts",
+      "import": "./dist/i18n/react.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "node scripts/run-unit-tests.mjs"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
+    "@libsql/client": "^0.15.15"
+  },
+  "peerDependencies": {
+    "next": "^16.0.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

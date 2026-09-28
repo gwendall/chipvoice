@@ -1495,3 +1495,48 @@ plus the new `timer-phase.spc` regression fixture and its
 `checkTimerPhase` assertion in `check.mjs`. `.github/workflows/ci.yml`
 gains two steps in the `conformance` job: `check:spc` (previously written
 but never run in CI) and the new `check:spc-export:self-test`.
+
+## 47. Server code shared between the apps moves into web-kit (2026-09-28)
+
+A new private workspace package, `packages/web-kit`, holds the server code
+that chipvoice.dev (`apps/web`) and a second app in this monorepo both need:
+crypto (`hashKey`/`newId`/`secret`), the HTTP route envelope, the in-memory
+rate limiter, SSE parsing, the database factory (connect, migrate,
+windowed admission), device-flow agent authorization (RFC 8628 plus RFC
+8414/9728 discovery), MP3/ID3 audio encoding and byte-range streaming, the
+agent tool manifest built from an OpenAPI spec, and the locale/translator
+core. `apps/web` depends on it like any other workspace package and, per
+decision 37, its unit tests run under `node --test`.
+
+**Why.** The second app needs its own accounts, rate limits, agent
+authorization and audio export, and copying chipvoice's versions forward
+would drift the moment either one changed a table name or a token prefix.
+Everything above was already app-agnostic in every way that mattered except
+the specific values chipvoice happened to hardcode - a table name, a cookie
+name, a token prefix, a default tier budget - so each module became a
+factory or a configuration object (`createDb`, `createAgentAuth`,
+`createRoute`, `createLocaleHelpers`/`createI18nReact`, `agentManifest`)
+that takes those values as arguments instead of assuming them.
+
+**What changes.** `apps/web/src/lib/db.ts`, `migrations.ts`, `limit.ts`,
+`project-http.ts`, `agents.ts`, `auth.ts`, `oauth.ts`, `agent-tools.ts` and
+`apps/web/src/i18n/core.ts`/`react.tsx` are now thin configuration shims
+over `web-kit/*`, unchanged in the shape every call site already used;
+`apps/web/src/lib/crypto.ts` and `sse.ts` were fully redundant and are
+gone, their callers pointed at `web-kit/crypto` and `web-kit/sse` directly.
+Two of `web-kit/agent-auth`'s generic return values name the owning
+resource `ownerId`; chipvoice's external agent API has always answered
+`profileId` (and, for the device-flow poll, `profileUrl`) in these exact
+response bodies, so `apps/web/src/lib/agents.ts` remaps those two fields
+rather than re-exporting the generic shape, keeping the wire format
+byte-for-byte unchanged for every agent client already depending on it.
+Table names, migration names and migration order, the `cv_agent_`/
+`cv_live_`/`cv_session_` token prefixes, and chipvoice's own route-to-scope
+authorization policy (`authorizeAgent`) all stay exactly as they were,
+passed into the shared factories as configuration rather than generalized
+away. `turbo.json`'s existing `dependsOn: ["^build"]` builds `web-kit`
+before `apps/web` with no further wiring. `.github/workflows/e2e.yml`'s
+`deployment_status` trigger now also checks that `environment_url` starts
+with `https://chipvoice.dev`, so the second app's own production deploy
+does not also fire chipvoice's end-to-end suite under the shared default
+"Production" environment name.

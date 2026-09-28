@@ -17,7 +17,11 @@ concurrency:
 
 jobs:
   e2e:
-    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    # A future second app in this monorepo gets its own Vercel project, which
+    # reports deployment_status events under the same default "Production"
+    # environment name; environment_url is the one field Vercel sets to the
+    # actual deployed host, so it is what tells the two projects apart.
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production' && startsWith(github.event.deployment_status.environment_url, 'https://chipvoice.dev'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

@@ -1,5 +1,5 @@
 import { Mp3Encoder } from "@breezystack/lamejs";
-import { id3, type Tags } from "./id3";
+import { id3, type Tags } from "./id3.js";
 
 /**
  * LAME, compiled to JavaScript.
@@ -33,7 +33,10 @@ export function encodeMp3(
       pcm[i] = Math.round(v * 32767);
       if (right && pcmRight) pcmRight[i] = Math.round(Math.max(-1, Math.min(1, right[offset + i])) * 32767);
     }
-    const frame = encoder.encodeBuffer(size === BLOCK ? pcm : pcm.subarray(0, size), pcmRight ? (size === BLOCK ? pcmRight : pcmRight.subarray(0, size)) : undefined);
+    const frame = encoder.encodeBuffer(
+      size === BLOCK ? pcm : pcm.subarray(0, size),
+      pcmRight ? (size === BLOCK ? pcmRight : pcmRight.subarray(0, size)) : undefined,
+    );
     // lamejs returns an owned copy, including for flush; retain it until concat.
     if (frame.length > 0) chunks.push(frame);
   }
@@ -54,3 +57,5 @@ export function encodeMp3(
   }
   return out;
 }
+
+export type { Tags } from "./id3.js";

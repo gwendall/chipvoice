@@ -160,6 +160,7 @@ export async function runProjectJob(id: string) {
               p.rows[0].display_name || p.rows[0].handle || "chipvoice",
             ),
             album: "chipvoice",
+            genre: "Chiptune",
             url: `${SITE}/p/${row.project_id}`,
           },
         },
@@ -313,6 +314,7 @@ export async function runProjectMp3(id: string) {
             title: String(row.title),
             artist: String(row.display_name || row.handle || "chipvoice"),
             album: "chipvoice",
+            genre: "Chiptune",
             url: `${SITE}/p/${row.project_id}`,
           },
         };

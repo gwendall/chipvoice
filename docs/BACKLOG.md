@@ -244,6 +244,19 @@ created the same day.
   `node scores/mixing/check-calibration.mjs` both pass unchanged, so steps 2
   to 6 of the regeneration chain were not needed.
 
+- done - REV-12 `web-kit`: a new private workspace package,
+  `packages/web-kit`, holds the server code a second app in this monorepo
+  will also need: crypto, the HTTP route envelope, the rate limiter, SSE
+  parsing, the database factory, device-flow agent authorization, MP3/ID3
+  audio encoding and byte-range streaming, the agent tool manifest, and the
+  locale/translator core. `apps/web` now depends on it and configures each
+  factory with chipvoice's own values (table names, the `cv_agent_`/
+  `cv_live_`/`cv_session_` token prefixes, its route-to-scope authorization
+  policy); none of chipvoice's production behavior changed.
+  `.github/workflows/e2e.yml`'s `deployment_status` trigger now also checks
+  `environment_url`, so a future second app's own production deploy does not
+  also fire chipvoice's end-to-end suite. See [Decision 47](DECISIONS.md).
+
 ## Next steps (2026-09-27)
 
 Decisions 38 and 39 set the direction after the review: prove the five chips

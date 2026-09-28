@@ -1,6 +1,6 @@
 import { parentPort, workerData } from 'node:worker_threads';
 import { arrange, renderSong, toWav } from 'chipvoice';
-import { encodeMp3 } from './mp3';
+import { encodeMp3 } from 'web-kit/audio';
 import type { AudioJob } from './audio-renderer';
 
 const job = workerData as AudioJob;

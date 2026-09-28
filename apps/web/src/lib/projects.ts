@@ -1,17 +1,13 @@
 import { createHash } from "node:crypto";
 import { parseProject, PROJECT_ENGINE_VERSION, type MusicProject } from "chipvoice";
+import { HttpError } from "web-kit/http";
+import { admitWindow } from "web-kit/db";
 import { SITE } from "./songs";
 import { db, newId } from "./db";
-export class ProjectHttpError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-    readonly retryAfter?: number,
-  ) {
-    super(message);
-  }
-}
+/** An alias, not a subclass: every caller across this app that catches or
+ * throws `ProjectHttpError` is catching or throwing web-kit's own
+ * `HttpError`, so `instanceof` checks stay correct whichever name is used. */
+export const ProjectHttpError = HttpError;
 export type Visibility = "public" | "unlisted" | "private";
 export interface Profile {
   id: string;
@@ -82,34 +78,24 @@ export function canonical(value: unknown): string {
     );
   return JSON.stringify(value);
 }
-// The longest window any caller admits with. `window` below is stored as the
-// window's own absolute start time (ms since epoch), not a dimensionless
-// index, precisely so that one caller's housekeeping delete cannot mistake
-// another caller's longer-lived, still-current row for garbage: the horizon
-// has to outlive the longest window in use, whichever call happens to run it.
-const MAX_ADMISSION_WINDOW_MS = 15 * 60_000;
+/**
+ * chipvoice's own DB-backed call-count admission, against the
+ * `project_admission` table. The window/rollover arithmetic and SQL shape
+ * live once in `web-kit/db`'s `admitWindow`; this wrapper only turns its
+ * non-throwing result into the `ProjectHttpError` every caller here expects.
+ */
 export async function admitProject(
   scope: string,
   limit: number,
   windowMs = 60_000,
 ) {
-  const client = await db(),
-    now = Date.now(),
-    window = Math.floor(now / windowMs) * windowMs;
-  await client.execute({
-    sql: "delete from project_admission where window < ?",
-    args: [window - MAX_ADMISSION_WINDOW_MS * 2],
-  });
-  const result = await client.execute({
-    sql: `insert into project_admission(scope,window,count) values(?,?,1) on conflict(scope) do update set window=excluded.window,count=case when project_admission.window=excluded.window then project_admission.count+1 else 1 end where project_admission.window<>excluded.window or project_admission.count<? returning count`,
-    args: [digest(scope), window, limit],
-  });
-  if (!result.rows.length)
+  const admission = await admitWindow(await db(), "project_admission", scope, limit, windowMs);
+  if (!admission.ok)
     throw new ProjectHttpError(
       429,
       "rate_limited",
       "Please wait before trying again",
-      Math.max(1, Math.ceil((window + windowMs - now) / 1000)),
+      Math.max(1, Math.ceil(admission.retryAfterMs / 1000)),
     );
 }
 /** Render time each caller may spend per minute, on top of admitProject's call-count
