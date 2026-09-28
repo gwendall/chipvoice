@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gamesounds.ai/schema/manifest-1.json",
+  "title": "gamesounds manifest",
+  "description": "sounds.json: written by the gamesounds CLI, read by the gamesounds runtime's loadSounds().",
+  "type": "object",
+  "required": ["$schema", "version", "base", "events", "credits"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "const": "https://gamesounds.ai/schema/manifest-1.json" },
+    "version": { "const": 1 },
+    "base": {
+      "type": "string",
+      "description": "Where every event's files/fallback paths are relative to."
+    },
+    "events": {
+      "type": "object",
+      "description": "Keyed by event id, e.g. \"jump\" or \"combat/hit/heavy\".",
+      "additionalProperties": { "$ref": "#/$defs/event" }
+    },
+    "credits": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/credit" }
+    }
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "required": ["sound", "files"],
+      "additionalProperties": false,
+      "properties": {
+        "sound": { "type": "string", "description": "The sound id this event currently resolves to." },
+        "files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Primary files, one per variant, in round-robin order."
+        },
+        "fallback": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Same order as files, in a format every browser can decode."
+        },
+        "volume": { "type": "number", "minimum": 0, "maximum": 1, "default": 1 },
+        "pitchJitter": { "type": "number", "minimum": 0, "maximum": 1, "default": 0 },
+        "cooldownMs": { "type": "number", "minimum": 0, "default": 0 },
+        "maxVoices": { "type": "integer", "minimum": 1, "default": 4 },
+        "priority": { "type": "number", "default": 1 },
+        "bus": { "type": "string", "default": "sfx" },
+        "loop": {
+          "type": "object",
+          "required": ["start", "end"],
+          "additionalProperties": false,
+          "properties": {
+            "start": { "type": "number", "minimum": 0 },
+            "end": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "credit": {
+      "type": "object",
+      "required": ["sound", "license", "author", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "sound": { "type": "string" },
+        "license": { "type": "string" },
+        "author": { "type": "string" },
+        "source": { "type": "string" },
+        "attribution": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

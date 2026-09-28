@@ -1,0 +1,30 @@
+{
+  "name": "gamesounds-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --turbopack -p 3020",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "test:e2e": "node test-e2e.mjs",
+    "catalog:build": "node scripts/build-catalog.mjs",
+    "catalog:build:fetch-only": "node scripts/build-catalog.mjs --fetch-only",
+    "catalog:build:skip-fetch": "node scripts/build-catalog.mjs --skip-fetch"
+  },
+  "dependencies": {
+    "next": "^16.3.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "web-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "ajv": "^8.17.1",
+    "playwright": "^1.62.1",
+    "typescript": "^5.7.0"
+  }
+}

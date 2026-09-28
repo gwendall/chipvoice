@@ -1,0 +1,12 @@
+{
+  "id": "kenney-ui-audio",
+  "name": "UI Audio",
+  "author": "Kenney Vleugels (kenney.nl)",
+  "homepage": "https://kenney.nl/assets/ui-audio",
+  "zipUrl": "https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "licenseVerifiedOn": "2026-09-28",
+  "sha256": "946fc23a63d535d693eb31b2eabb80c8c28d6351e2186b344ceb71b2cb1d5eb6",
+  "note": "Clicks, mouse rollovers and switch/toggle sounds. Kenney also publishes an Interface Sounds pack that covers the same UI-click territory; skipped for launch to avoid near-duplicate content, tracked in the backlog instead."
+}

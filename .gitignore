@@ -47,3 +47,12 @@ packages/chipvoice/src/project-worker-inline.ts
 .env
 .env.*
 !.env.example
+
+# gamesounds.ai's encoded catalogue audio: content-addressed and rebuilt by
+# `pnpm --filter gamesounds-site catalog:build` - the manifest
+# (generated/catalog.json) is committed, the bytes it points at are not.
+# Deterministic given the same sources, so local dev, CI (test-e2e.mjs) and
+# the production build (apps/sounds/vercel.json's buildCommand) all just
+# rebuild apps/sounds/public/f/ before `next dev`/`next build`/tests run,
+# rather than needing a Blob store the way decision 40's recordings do.
+apps/sounds/public/f/

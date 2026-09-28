@@ -1,0 +1,59 @@
+{
+  "name": "gamesounds",
+  "version": "0.1.0",
+  "description": "A game sound effects bank, filed by event: the runtime and CLI for gamesounds.ai. No account to browse or download; every sound carries its licence.",
+  "keywords": [
+    "game-audio",
+    "sound-effects",
+    "sfx",
+    "web-audio",
+    "game-dev",
+    "cc0"
+  ],
+  "license": "MIT",
+  "author": "Gwendall Esnault (https://gwendall.com)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gwendall/chipvoice.git",
+    "directory": "packages/gamesounds"
+  },
+  "homepage": "https://gamesounds.ai",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema/manifest-1.json": "./schema/manifest-1.json",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "gamesounds": "./bin/gamesounds.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "schema",
+    "README.md",
+    "README_ja.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "test:unit": "node scripts/run-unit-tests.mjs",
+    "test": "npm run test:unit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

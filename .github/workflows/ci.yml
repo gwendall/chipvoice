@@ -175,6 +175,57 @@ jobs:
             .artifacts/i18n
           retention-days: 3
 
+  # gamesounds.ai: catalogue build, schema/API/runtime unit tests, the CLI
+  # and a browser smoke test. Its own job so a Kenney-pack download or a
+  # Playwright run here never queues behind chipvoice's own render-parity or
+  # conformance suites, and vice versa; independent of `build-renderer.mjs`
+  # and the chipvoice engine build the `unit`/`browser` jobs need, since
+  # apps/sounds imports packages/gamesounds's types by relative path rather
+  # than depending on either package's own build (decision 48).
+  sounds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # apps/sounds imports web-kit/*, resolved against its built dist/;
+      # pnpm --filter bypasses turbo.json's own build-order graph (decision
+      # 47), so build it explicitly first, same as the `unit`/`browser` jobs
+      # do for apps/web.
+      - run: pnpm --filter web-kit build
+      - run: pnpm --filter gamesounds typecheck
+      - run: pnpm --filter gamesounds test:unit
+      - run: pnpm --filter gamesounds-site typecheck
+      # public/f/ (the content-addressed audio) is gitignored; the catalogue
+      # build downloads Kenney's source zips (verified by their own recorded
+      # SHA-256) and renders the chipvoice-origin sounds. Deterministic given
+      # the same sources and already idempotent per file (build-catalog.mjs's
+      # fetchSource skips a zip already on disk), so caching the raw
+      # downloads by catalog/sources/*.json's own hash skips the network
+      # entirely once a source pin has been built here before.
+      - uses: actions/cache@v6
+        with:
+          path: apps/sounds/.artifacts/sounds
+          key: gamesounds-catalog-sources-${{ hashFiles('apps/sounds/catalog/sources/*.json') }}
+      - run: pnpm --filter gamesounds-site catalog:build
+      - run: pnpm --filter gamesounds-site test
+      - run: pnpm --filter gamesounds-site build
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium
+      # test-e2e.mjs owns the production server itself (a free port, polled
+      # readiness, closed in a `finally`) - the same pattern as apps/web's
+      # own test-local.mjs - then runs test-smoke.mjs and
+      # packages/gamesounds/test-cli.mjs against it.
+      - run: pnpm --filter gamesounds-site test:e2e
+
   conformance:
     runs-on: ubuntu-latest
     timeout-minutes: 20

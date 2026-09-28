@@ -1646,3 +1646,78 @@ reasons instead of one. No automatic cross-oracle correction is introduced
 for tone or noise timing, unlike decision 41's own sawtooth case,
 specifically because the underlying offset is convention-dependent rather
 than a fixed property of the oracle itself.
+
+## 49. gamesounds.ai ships Phase 1: an agent-first sound-effects bank, the monorepo's second app (2026-09-28)
+
+`apps/sounds` (gamesounds.ai) and `packages/gamesounds` ship a game
+sound-effects bank filed by event, not by pack: 350 sounds over 66
+categories (of 85 in the taxonomy - the 9 top-level branches are pure hubs,
+every sound is filed on a leaf) and 8 of the 10 style facets, all
+`CC0-1.0`, none loop-flagged. Sourcing is restricted to two origins only -
+135 sounds curated from Kenney's CC0 packs, 215 rendered by chipvoice's own
+`renderSfx` - so every sound's licence holds by construction, not by a
+runtime filter. A person browses the site; an agent calls the REST API
+directly or runs `npx gamesounds add <event...>` to pull a `sounds.json`
+and the audio into its own project, with no account and no key.
+
+**Why.** The brief that opened this branch asked for an SFX bank an agent
+can use unattended: resolve a game event to a licensed, loudness-matched
+sound and get playing, without a person auditioning candidates first. That
+is a different shape of product from chipvoice.dev (one engine, one song at
+a time) and a different data model (an event-indexed catalogue, not a
+composition), so it is a second app and a second publishable package
+(`gamesounds`, for its own CLI and runtime), not a page bolted onto the
+first. `packages/gamesounds` depends on nothing else in the workspace, so
+an agent installing it never pulls in chipvoice's own engine or database
+code, and `apps/sounds` imports its types by relative path rather than
+depending on the package's own build, so this app's CI job never needs to
+build `packages/gamesounds` first.
+
+**What changes.** The catalogue build (`apps/sounds/scripts/build-catalog.mjs`)
+downloads Kenney packs and calls `renderSfx` (chipvoice's own offline
+single-effect render, `b649b54`) against a checked-in taxonomy
+(`catalog/taxonomy.json`) and per-sound recipes, trims each take at a zero
+crossing with a documented fade, measures loudness (-18 LUFS momentary max,
+true peak <= -1 dBTP) and rejects anything over 10 ms of leading silence or
+clipping; a negative test proves each check actually fails a bad file. Every
+variant is encoded to `.ogg`/`.mp3`/`.wav` and served content-addressed at
+`/f/<sha256>.<ext>` - the three formats of one take share one filename hash,
+the canonical WAV's own SHA-256 (`apps/sounds/scripts/lib/audio.mjs`'s
+`encodeVariant`), as a group key, so only the `.wav` at that address
+literally hashes to it; the CLI's own SHA-256 verification (below) fetches
+that WAV, in memory only, to check the claim rather than trusting the
+filename. `sounds.json` (schema `packages/gamesounds/schema/manifest-1.json`,
+draft 2020-12) is the one contract every producer and consumer of a
+manifest shares: `POST /api/v1/resolve`, `GET /packs/{id}`, and the CLI's
+own written file are all `buildManifest`'s output, and
+`apps/sounds/test/manifest.test.mjs` validates a real one against the
+published schema (plus three cases the schema must reject) rather than
+trusting that it "looks right." The runtime (`packages/gamesounds/src/runtime.ts`)
+is its own package precisely so an agent's generated game can `import
+"gamesounds"` and play sounds with no server in the loop: round-robin
+variant selection, pitch jitter, cooldowns, per-event and global voice caps
+with priority stealing, bus ducking and the iOS unlock gesture, all driven
+against a fake `AudioContext` in `packages/gamesounds/test/runtime.test.mjs`
+rather than a browser. That suite is new with this decision and found a
+real bug before anything shipped: `reserve()`'s voice-stealing path filtered
+the *triggering* event's own `active` array for a stolen voice, a no-op
+whenever the global cap steals from a *different* event than the one being
+triggered, which left `PlayHandle.playing` reporting `true` for a voice that
+had already been stopped. Fixed by a new `steal()` method that looks up the
+victim's own owning event before filtering it out. `bin/gamesounds.mjs`
+downloads by content hash (a file already on disk is never re-fetched),
+merges into any `sounds.json` already in the target directory rather than
+overwriting it, and rewrites the server's root-relative paths to the
+manifest's own `"./"` base so the file is portable on its own; a Playwright-
+free integration test (`packages/gamesounds/test-cli.mjs`, mirroring
+`apps/sounds/test-smoke.mjs`'s flat-script convention) runs it twice against
+a real local server and checks both behaviors. The site
+(`apps/sounds/src/app/[locale]`) is a keyboard-first result list (`/` search,
+`j`/`k` move, `space`/`1`-`8` play, `r` random variant, `d` download) over
+Web Audio, not `<audio>`, with `llms.txt`, `skill.md`, `openapi.json` and
+`.well-known/mcp.json` all derived from one `openApiSpec()` so the API is
+described once. It ships no Three.js and no vote button: Phase 1 has no
+accounts, and a vote with nothing behind it would be worse than no vote.
+`i18n` routing exists (`/en`, `/ja`) but no page copy is wired through
+`useT` yet - an honest, tracked cut, not a broken feature; see
+`docs/BACKLOG.md`.
