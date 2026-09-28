@@ -13,8 +13,14 @@ import {
   checkChipvoiceVariantCount,
   checkGeneratedVariantCount,
   checkSound,
+  checkFormatPeak,
+  checkFormatPeaks,
+  collectFormatPeakDeltas,
+  checkCatalogFormatPeakMean,
   LOUDNESS_CEILING_EPSILON_LU,
   PEAK_EPSILON_DB,
+  FORMAT_PEAK_TOLERANCE_DB,
+  CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB,
 } from "../scripts/lib/checks.mjs";
 import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP } from "../scripts/lib/audio.mjs";
 
@@ -370,4 +376,109 @@ function sha256Hex(bytes) {
   const failures = checkSound(goodSound, {}, sha256Hex);
   assert.deepEqual(failures, [], "a genuinely clean sound must report no failures (sanity check)");
   console.log("PASS checkSound reports no failures for a genuinely clean sound");
+}
+
+{
+  // checkFormatPeak is a per-variant backstop only - it must still catch a
+  // gross per-file failure that no tolerance should ever admit: a channel
+  // that decoded silent even though the wav's own peak on that channel is
+  // real.
+  const result = checkFormatPeak(0.7, 0, { format: "ogg", channel: "left" });
+  assert.equal(result.ok, false, "a channel that decoded silent must fail regardless of tolerance");
+  console.log("PASS checkFormatPeak fails a channel that decoded silent");
+}
+
+{
+  // checkFormatPeaks must refuse a stereo source whose shipped format
+  // decoded back as mono outright - a channel silently collapsed, never a
+  // loudness rounding difference, so no toleranceDb value should admit it.
+  const sourcePeaks = { left: 0.7, right: 0.65 };
+  const formatPeaks = { ogg: { left: 0.7, right: null }, mp3: { left: 0.7, right: 0.65 } };
+  const result = checkFormatPeaks(sourcePeaks, formatPeaks);
+  assert.equal(result.ok, false, "a stereo source collapsing to a mono ogg must fail");
+  assert.match(result.reason, /silently collapsed/, "the failure must name the collapsed-channel case, not a generic tolerance miss");
+  console.log("PASS checkFormatPeaks refuses a stereo source that collapsed to mono in the shipped ogg");
+}
+
+{
+  // This is the negative test the coordinator's review asked for, made
+  // concrete: the old ogg fallback path's `-ac 2` upmix applies ffmpeg's
+  // default -3.0103 dB (20*log10(1/sqrt(2))) per channel - a real,
+  // content-independent bug, but nowhere near FORMAT_PEAK_TOLERANCE_DB (17
+  // dB, sized to admit legitimate transient-smearing outliers up to 16.23
+  // dB). checkFormatPeak alone, run on a single variant, PASSES this
+  // exact-magnitude delta - proving in code why the per-variant backstop
+  // alone cannot be the fix for a systematic bug like this one, and why
+  // checkCatalogFormatPeakMean (below) has to exist as a second, separate
+  // layer.
+  const oldAcTwoDeltaDb = 20 * Math.log10(1 / Math.sqrt(2));
+  const wavPeak = 0.7;
+  const buggyOggPeak = wavPeak * Math.pow(10, oldAcTwoDeltaDb / 20);
+  const left = checkFormatPeak(wavPeak, buggyOggPeak, { format: "ogg", channel: "left" });
+  assert.equal(left.ok, true, `a single -3.0103 dB -ac 2 style delta must stay within the ${FORMAT_PEAK_TOLERANCE_DB} dB per-variant backstop`);
+  console.log(
+    `PASS checkFormatPeak alone admits a single old-\`-ac 2\`-sized delta (${oldAcTwoDeltaDb.toFixed(4)} dB) - by design, ` +
+      "this is why checkCatalogFormatPeakMean exists as the systematic-bug detector, not this function",
+  );
+}
+
+{
+  // checkCatalogFormatPeakMean is the check that actually catches the bug
+  // above once it is applied across a whole build, not a single variant:
+  // simulate the old `-ac 2` path affecting every fallback-ogg reading in a
+  // 1092-variant-sized catalogue (mirroring collectFormatPeakDeltas' output
+  // shape - one number per format/channel reading) and prove the aggregate
+  // mean fails, even though every individual reading would have passed
+  // checkFormatPeak on its own (previous test).
+  const oldAcTwoDeltaDb = 20 * Math.log10(1 / Math.sqrt(2));
+  const buggyDeltas = Array.from({ length: 3276 }, (_, i) => oldAcTwoDeltaDb + (i % 7) * 0.01); // tiny jitter, same order as real measurement noise
+  const result = checkCatalogFormatPeakMean(buggyDeltas);
+  assert.equal(result.ok, false, "a catalogue-wide reintroduction of the old -ac 2 bug must fail the aggregate mean check");
+  assert.match(result.reason, /catalogue-wide mean/, "the failure must name the aggregate check, not a per-variant one");
+  console.log("PASS checkCatalogFormatPeakMean fails when the old -ac 2 bug's delta is applied across the whole catalogue");
+}
+
+{
+  // The complementary positive case: a healthy build's real mix of mostly
+  // near-zero deltas plus a handful of large, legitimate transient-smearing
+  // outliers (the actual shape measured on this catalogue: mean 0.44 dB,
+  // max 16.23 dB across 3276 readings - see CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB's
+  // own comment) must NOT trip the aggregate check - it is sized to catch a
+  // systematic bug, not to punish rare, real content.
+  const healthyDeltas = [
+    ...Array.from({ length: 3270 }, (_, i) => (i % 2 === 0 ? 0.4 : -0.4)), // near-zero jitter, matching the measured baseline
+    -16.23, -15.34, -14.4, -14.35, -12.14, -12.0, // the real worst-offender outliers this catalogue actually has
+  ];
+  const meanAbs = healthyDeltas.reduce((sum, d) => sum + Math.abs(d), 0) / healthyDeltas.length;
+  assert.ok(meanAbs < CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB, "the synthetic healthy mix must itself sit under the bound (sanity check on the test data)");
+  const result = checkCatalogFormatPeakMean(healthyDeltas);
+  assert.equal(result.ok, true, "a healthy mix of near-zero deltas plus rare legitimate outliers must pass the aggregate mean check");
+  console.log(`PASS checkCatalogFormatPeakMean passes a healthy catalogue-shaped mix (mean |delta| ${meanAbs.toFixed(4)} dB)`);
+}
+
+{
+  // An empty array (no formatPeaks data collected at all) must pass rather
+  // than divide by zero - every other check already ran on whatever data
+  // existed, and this check has nothing of its own to judge.
+  const result = checkCatalogFormatPeakMean([]);
+  assert.equal(result.ok, true, "an empty deltas array must pass, not throw or divide by zero");
+  console.log("PASS checkCatalogFormatPeakMean passes on an empty deltas array");
+}
+
+{
+  // collectFormatPeakDeltas is what build-catalog.mjs actually calls per
+  // variant to build the array checkCatalogFormatPeakMean judges - prove it
+  // returns the same numeric deltas checkFormatPeak itself judges (mono
+  // source upmixed to stereo: both shipped channels compared against the
+  // source's one left peak), and skips the pieces checkFormatPeaks already
+  // reports as an outright failure on their own (here, the mp3's collapsed
+  // channel is absent, not a broken delta).
+  const sourcePeaks = { left: 0.7, right: null };
+  const formatPeaks = { ogg: { left: 0.7, right: 0.7 }, mp3: { left: 0.35, right: null } };
+  const deltas = collectFormatPeakDeltas(sourcePeaks, formatPeaks);
+  assert.equal(deltas.length, 3, "mono source upmixed to stereo ogg (2 readings) plus a mono mp3 (1 reading) = 3 deltas");
+  assert.ok(deltas.every((d) => Number.isFinite(d)), "every collected delta must be a finite number");
+  const mp3Delta = 20 * Math.log10(0.35 / 0.7);
+  assert.ok(deltas.some((d) => Math.abs(d - mp3Delta) < 1e-9), "the mp3 delta must match the plain dB formula");
+  console.log("PASS collectFormatPeakDeltas returns one finite dB delta per valid format/channel reading, matching checkFormatPeak's own math");
 }

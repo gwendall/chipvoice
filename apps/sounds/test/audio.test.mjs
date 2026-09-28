@@ -9,7 +9,7 @@
 //    no step at the seam), not just that the function ran.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -22,8 +22,11 @@ import {
   toWavBytes,
   LOUDNESS_TARGET_LUFS,
   TRUE_PEAK_CEILING_DBTP,
+  encodeVariant,
+  peakPerChannel,
 } from "../scripts/lib/audio.mjs";
-import { checkLeadingSilence } from "../scripts/lib/checks.mjs";
+import { checkLeadingSilence, checkFormatPeaks, FORMAT_PEAK_TOLERANCE_DB } from "../scripts/lib/checks.mjs";
+import { createHash } from "node:crypto";
 
 function run(cmd, args) {
   const result = spawnSync(cmd, args, { maxBuffer: 1024 * 1024 * 64 });
@@ -280,4 +283,72 @@ try {
   const dirty = measureLoopSeam(render, 0, period + Math.floor(period / 4));
   assert.ok(dirty.valueStep >= LOOP_SEAM_MAX_STEP, `a loop cut a quarter-period off must fail the ${LOOP_SEAM_MAX_STEP} threshold, got ${dirty.valueStep}`);
   console.log(`PASS measureLoopSeam reports a dirty seam for a loop cut a quarter-period off (value ${dirty.valueStep.toFixed(4)})`);
+}
+
+{
+  // Regression record for a real bug a PR review caught: WITHOUT bitexact
+  // flags, ffmpeg's ogg/vorbis muxer embeds a random stream serial number on
+  // every encode, so re-encoding byte-identical audio (as a fresh
+  // checkout's build inevitably does) produces a different SHA-256 every
+  // run, even though nothing about the sound changed -
+  // scripts/check-determinism.mjs exists to catch exactly this. This proves
+  // the bug was real by calling the exact PRE-FIX ogg args directly (not
+  // through encodeVariant, which no longer has a non-bitexact path to call)
+  // - a fixture, not a test of current production code, kept so this
+  // regression stays provable even though the code that caused it is gone.
+  const sampleRate = 44100;
+  const n = Math.round(sampleRate * 0.2);
+  const left = new Float32Array(n);
+  for (let i = 0; i < n; i++) left[i] = 0.8 * Math.sin((2 * Math.PI * 440 * i) / sampleRate);
+  const dir = makeWorkDir();
+  try {
+    const wavPath = join(dir, "tone.wav");
+    writeFileSync(wavPath, toWavBytes({ sampleRate, left, right: null, seconds: n / sampleRate, peak: 0.8 }));
+    const hashOf = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
+    const encodeOld = (label) => {
+      const outPath = join(dir, `old-${label}.ogg`);
+      run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, "-ac", "2", "-c:a", "vorbis", "-strict", "-2", "-q:a", "5", outPath]);
+      return hashOf(outPath);
+    };
+    const a = encodeOld("a");
+    const b = encodeOld("b");
+    assert.notEqual(a, b, "the pre-fix ogg args (no bitexact) must be non-deterministic across repeated encodes of the same input, proving BITEXACT_ARGS fixes a real bug");
+    console.log("PASS regression record: the pre-fix ogg fallback args really do produce different bytes across repeated encodes of the same input");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+{
+  // encodeVariant itself (the production path, both fixes together): the
+  // same render encoded twice, in two separate output directories, must
+  // ship byte-identical ogg and mp3 (BITEXACT_ARGS), and the shipped ogg's
+  // own decoded peak (per channel - checkFormatPeaks) must land within
+  // tolerance of the source's peak, never the ~3dB-down loudness the
+  // fallback path's old `-ac 2` upmix used to cause.
+  const sampleRate = 44100;
+  const n = Math.round(sampleRate * 0.25);
+  const left = new Float32Array(n);
+  for (let i = 0; i < n; i++) left[i] = 0.7 * Math.sin((2 * Math.PI * 523 * i) / sampleRate);
+  const render = { sampleRate, left, right: null, seconds: n / sampleRate, peak: 0.7 };
+  const dirA = mkdtempSync(join(tmpdir(), "gamesounds-encode-a-"));
+  const dirB = mkdtempSync(join(tmpdir(), "gamesounds-encode-b-"));
+  try {
+    const a = encodeVariant(render, dirA, { mkdirSync });
+    const b = encodeVariant(render, dirB, { mkdirSync });
+    assert.equal(a.files.ogg.sha256, b.files.ogg.sha256, "encodeVariant's shipped ogg bytes must be identical across two encodes of the same render");
+    assert.equal(a.files.mp3.sha256, b.files.mp3.sha256, "encodeVariant's shipped mp3 bytes must be identical across two encodes of the same render");
+    console.log("PASS encodeVariant is deterministic: the same render encodes to byte-identical ogg and mp3 across two separate runs");
+
+    const sourcePeaks = peakPerChannel(render.left, render.right);
+    const formatCheck = checkFormatPeaks(sourcePeaks, a.formatPeaks);
+    assert.ok(formatCheck.ok, `encodeVariant's own shipped ogg/mp3 must pass checkFormatPeaks: ${formatCheck.reason ?? ""}`);
+    console.log(
+      `PASS encodeVariant's shipped ogg and mp3 decode back within ${FORMAT_PEAK_TOLERANCE_DB} dB of the wav's own peak per channel ` +
+        `(source ${JSON.stringify(a.formatPeaks.source)}, ogg ${JSON.stringify(a.formatPeaks.ogg)}, mp3 ${JSON.stringify(a.formatPeaks.mp3)})`,
+    );
+  } finally {
+    rmSync(dirA, { recursive: true, force: true });
+    rmSync(dirB, { recursive: true, force: true });
+  }
 }

@@ -31,7 +31,7 @@ import {
   toWavBytes,
   peakOf,
 } from "./lib/audio.mjs";
-import { checkSound } from "./lib/checks.mjs";
+import { checkSound, checkCatalogFormatPeakMean, CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB } from "./lib/checks.mjs";
 
 // Presets excluded from the generated half, with why - see this file's
 // buildGenerated(). Empty for now: every preset that reaches the build
@@ -108,6 +108,12 @@ function processVariant(render, n) {
       left: leveled.left,
       right: leveled.right,
       sampleRate: leveled.sampleRate,
+      // Decoded back from the actually-shipped ogg/mp3 bytes by encodeVariant
+      // itself (scripts/lib/audio.mjs) - checkSound's checkFormatPeaks uses
+      // this to catch a format that ships quieter (or louder) than its wav
+      // sibling per channel, the class of bug a missing libvorbis fallback's
+      // old `-ac 2` upmix caused (see encodeVariant's own header).
+      formatPeaks: encoded.formatPeaks,
     },
   };
 }
@@ -308,10 +314,28 @@ async function main() {
   // leading silence, plus the loudness ceilings and the one-ceiling-binds
   // gate - every variant now, not just the first (see checkSound's own
   // header).
+  //
+  // formatPeakDeltas collects every per-format/per-channel dB delta
+  // checkSound measures, across every sound in the whole build - once the
+  // loop is done, checkCatalogFormatPeakMean judges their aggregate mean,
+  // the check that actually catches a systematic per-file bug like the old
+  // fallback ogg path's `-ac 2` upmix (see checks.mjs's own comment on
+  // CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB for why this has to be a
+  // whole-build aggregate and not just another per-variant tolerance).
   const failures = [];
+  const formatPeakDeltas = [];
   for (const sound of sounds) {
-    const reasons = checkSound(sound, variantChecks, sha256Hex);
+    const reasons = checkSound(sound, variantChecks, sha256Hex, {}, formatPeakDeltas);
     if (reasons.length) failures.push(`${sound.id}: ${reasons.join("; ")}`);
+  }
+  if (formatPeakDeltas.length) {
+    const meanAbsDb = formatPeakDeltas.reduce((sum, d) => sum + Math.abs(d), 0) / formatPeakDeltas.length;
+    log(
+      `format peak check: mean |delta| ${meanAbsDb.toFixed(4)} dB across ${formatPeakDeltas.length} ogg/mp3 ` +
+        `format/channel reading(s) (bound: ${CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB} dB) - see checkCatalogFormatPeakMean in scripts/lib/checks.mjs`,
+    );
+    const catalogFormatPeak = checkCatalogFormatPeakMean(formatPeakDeltas);
+    if (!catalogFormatPeak.ok) failures.push(catalogFormatPeak.reason);
   }
   if (failures.length) throw new Error(`${failures.length} sound(s) failed signal checks:\n${failures.join("\n")}`);
 

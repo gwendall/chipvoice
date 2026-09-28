@@ -1,71 +1,82 @@
-// GS-03: POST /api/v1/resolve (buildManifest, the function it calls) must
-// reach the newly-wired generated half of the catalogue through a new style
-// ("realistic" and friends), WITHOUT silently changing what an existing
-// caller gets back for 8bit, 16bit or no style at all - the brief's own
-// words: "existing 8bit/16bit/no-style behavior must NOT change silently
-// (test explicitly, document the no-style default)".
+// GS-03: adding the generated half of the catalogue (packages/sfx-engine's
+// 53 presets) must never change what an EXISTING request already resolved
+// to - it may only fill in gaps that previously resolved to nothing. This
+// is an exhaustive proof of that invariant, not a couple of hand-picked
+// examples: for every (category, tag-or-none, style-or-none) combination
+// the real, built catalogue actually has, the full-catalogue pick must
+// equal the chipvoice-only pick WHENEVER the chipvoice-only pick is
+// non-null. (An earlier version of this test asserted the stronger, wrong
+// claim that "8bit/16bit/no-style behavior is unchanged by construction" -
+// that is false: `pickSoundForEvent`'s own style-fallback ("a style with no
+// candidates falls back to any style in the category rather than resolving
+// to nothing" - src/lib/catalog.ts) means a retro-style request CAN now
+// resolve to a generated sound, for a (category, tag) pair no chipvoice
+// sound ever covered under ANY style. That is filling a gap, not
+// overriding an existing answer, so it is exactly what this test allows and
+// what it does not allow overriding.)
 //
-// "combat/hit" is used throughout because it is the one category GS-03
-// actually put generated sounds into that the existing chipvoice catalogue
-// also already covers (see catalog/generated-recipes.mjs: 10 impact-*
-// presets plus scifi-zap, all tagged "heavy" or "light" where that applies)
-// - the sharpest test of "did adding sounds change who wins" is a category
-// where there is now genuinely something else to win.
+// Both picks are produced by the SAME production function,
+// `pickSoundForEvent`, called with different `sounds` pools (a test-only
+// override added to that function for exactly this purpose - see its own
+// header) - never a second, hand-written copy of its selection logic, which
+// could silently drift from what the real API actually does.
 import assert from "node:assert/strict";
-import { buildManifest, listSounds } from "../src/lib/catalog.ts";
+import { pickSoundForEvent, listSounds, listCategories } from "../src/lib/catalog.ts";
 
-{
-  // A style this ticket adds reaches a generated sound, honestly labelled.
-  const { manifest, resolved, unresolved } = buildManifest(["hit/heavy"], { style: "realistic" });
-  assert.deepEqual(unresolved, []);
-  const soundId = resolved[0].sound;
-  assert.ok(soundId, `hit/heavy --style realistic must resolve to a sound: ${JSON.stringify(resolved)}`);
-  const sound = listSounds().find((s) => s.id === soundId);
-  assert.equal(sound.origin, "generated", `--style realistic must resolve a generated-origin sound, got origin ${sound.origin} (id ${soundId})`);
-  assert.equal(sound.style, "realistic");
-  assert.ok(manifest.events["hit/heavy"], "the manifest carries the resolved event");
-  console.log(`PASS hit/heavy --style realistic resolves a generated-origin sound (${soundId})`);
-}
+const allSounds = listSounds();
+const chipvoiceSounds = allSounds.filter((s) => s.origin === "chipvoice");
+const categories = listCategories();
+const styles = [undefined, "8bit", "16bit"];
 
-{
-  // Existing styles: still chipvoice, still that style, exactly as before
-  // GS-03 added any generated sound to this category.
-  for (const style of ["8bit", "16bit"]) {
-    const { resolved } = buildManifest(["hit/heavy"], { style });
-    const soundId = resolved[0].sound;
-    assert.ok(soundId, `hit/heavy --style ${style} must still resolve: ${JSON.stringify(resolved)}`);
-    const sound = listSounds().find((s) => s.id === soundId);
-    assert.equal(sound.origin, "chipvoice", `hit/heavy --style ${style} must still resolve a chipvoice-origin sound, got origin ${sound.origin}`);
-    assert.equal(sound.style, style);
+assert.ok(chipvoiceSounds.length > 0, "this test needs real chipvoice sounds in the built catalogue to mean anything");
+assert.ok(allSounds.some((s) => s.origin === "generated"), "this test needs real generated sounds in the built catalogue to mean anything");
+
+let combinations = 0;
+const newlyResolved = [];
+
+for (const category of categories) {
+  const catSounds = allSounds.filter((s) => s.category === category.id);
+  if (catSounds.length === 0) continue;
+  const tags = new Set();
+  for (const s of catSounds) for (const t of s.tags) tags.add(t);
+  const tagOptions = [null, ...tags];
+
+  for (const tag of tagOptions) {
+    for (const style of styles) {
+      combinations++;
+      const chipvoicePick = pickSoundForEvent(category.id, { style, tag, sounds: chipvoiceSounds });
+      const fullPick = pickSoundForEvent(category.id, { style, tag, sounds: allSounds });
+      const label = `category=${category.id} tag=${tag ?? "none"} style=${style ?? "none"}`;
+
+      if (chipvoicePick) {
+        // The binding invariant: a request that already had a chipvoice
+        // answer keeps that exact answer once generated sounds exist too.
+        assert.equal(
+          fullPick?.id,
+          chipvoicePick.id,
+          `${label}: full-catalogue pick (${fullPick?.id ?? "null"}) must equal the chipvoice-only pick (${chipvoicePick.id}) - a generated sound must never override an existing chipvoice pick`,
+        );
+      } else if (fullPick) {
+        // No chipvoice sound ever answered this combination (under this
+        // style OR under the fallback-to-any-style pool) - a generated
+        // sound filling that gap is allowed, and is what GS-03 is FOR.
+        // Since chipvoiceSounds is a subset of allSounds, fullPick can only
+        // exist here because a generated sound supplied it.
+        assert.equal(fullPick.origin, "generated", `${label}: the only way ${label} newly resolves is via a generated sound, got origin ${fullPick.origin}`);
+        newlyResolved.push({ category: category.id, tag, style: style ?? null, sound: fullPick.id });
+      }
+      // Both null: still nothing resolves for this combination, unchanged.
+    }
   }
-  console.log("PASS hit/heavy --style 8bit and --style 16bit still resolve chipvoice-origin sounds of that exact style, unchanged by the generated half existing");
 }
 
-{
-  // The no-style default: pickSoundForEvent's tie-break is
-  // `a.id.localeCompare(b.id)` ascending over every candidate regardless of
-  // origin (src/lib/catalog.ts). Every generated sound id is composed as
-  // `${category-slug}-${style}-${preset}` (scripts/build-catalog.mjs's
-  // buildGenerated), and every one of the ten style facets a generated sound
-  // can carry (realistic, scifi, fantasy, cartoon, minimal-ui) starts with a
-  // letter, while both chipvoice styles ("8bit", "16bit") start with a
-  // digit - and under localeCompare a digit always sorts before a letter -
-  // so a generated sound can never become the alphabetically-first (and so
-  // selected) candidate in a category a chipvoice sound already occupies.
-  // This proves that invariant on the real, built catalogue, not just by
-  // the argument above.
-  const before = buildManifest(["hit/heavy"]).resolved[0].sound;
-  assert.ok(before, "hit/heavy with no style must resolve to a sound");
-  const beforeSound = listSounds().find((s) => s.id === before);
-  assert.equal(beforeSound.origin, "chipvoice", `the no-style default for hit/heavy must still pick a chipvoice sound now that generated sounds share its category, got origin ${beforeSound.origin} (id ${before})`);
+console.log(
+  `PASS exhaustive resolve invariant held across ${combinations} (category, tag, style) combination(s) over ${categories.length} categories: ` +
+    `every combination with an existing chipvoice answer kept that exact answer; ${newlyResolved.length} previously-unresolvable combination(s) ` +
+    "now resolve to a generated sound (a gap filled, never an override) - see docs/GAMESOUNDS.md's \"Generated sounds (GS-03)\" section for the full list.",
+);
 
-  // And directly, on the candidate pool itself: no generated sound in this
-  // category sorts ahead of every chipvoice sound in it.
-  const candidates = listSounds().filter((s) => s.category === "combat/hit" && s.tags.includes("heavy"));
-  const chipvoiceIds = candidates.filter((s) => s.origin === "chipvoice").map((s) => s.id);
-  const generatedIds = candidates.filter((s) => s.origin === "generated").map((s) => s.id);
-  assert.ok(chipvoiceIds.length > 0 && generatedIds.length > 0, "this test needs both an existing chipvoice sound and a new generated one in the same pool to mean anything");
-  const winner = [...candidates].sort((a, b) => b.rank.score - a.rank.score || a.id.localeCompare(b.id))[0];
-  assert.equal(winner.origin, "chipvoice", `the id-sorted winner of combat/hit's "heavy" pool must stay chipvoice-origin, got ${winner.id} (${winner.origin})`);
-  console.log(`PASS no-style default for hit/heavy still resolves chipvoice sound ${before}; the id-sort winner of its whole "heavy" pool (${chipvoiceIds.length} chipvoice, ${generatedIds.length} generated candidate(s)) stays chipvoice-origin`);
-}
+// Exposed so a one-off script (or a future doc-generation step) can print
+// the exact list without re-deriving it - see the build note this test's
+// own PASS line points to.
+export { newlyResolved };

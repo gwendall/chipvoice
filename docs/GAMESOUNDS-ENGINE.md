@@ -382,13 +382,14 @@ directly (`channels = right ? 2 : 1`), that the gamesounds.ai catalogue in
 fact ships every chipvoice-origin sound as mono today - chipvoice's own
 `renderSfx` is never called with `stereo: true` anywhere in the catalogue
 build - contrary to what this section previously assumed ("stereo 44.1 kHz
-for most catalogue sources"). Generated sounds ship mono too, for that
-measured reason, not the suggested-by-default alternative: each variant's
-own `RenderedSound.left` (valid as the shipped mono signal exactly because
-`left === right` at `pan: 0`) is fed through the catalogue's own
-`levelToConvention`, which re-measures the actual shipped mono bytes rather
-than trusting this engine's pre-pan self-report - never the reverse. See
-[Decision 54](DECISIONS.md) and the "Loudness" section of
+for most catalogue sources"). Generated sounds ship mono wav and mp3 too,
+for that measured reason, not the suggested-by-default alternative (ogg is
+the one exception, and is not uniform across build machines - see Decision
+54): each variant's own `RenderedSound.left` (valid as the shipped mono
+signal exactly because `left === right` at `pan: 0`) is fed through the
+catalogue's own `levelToConvention`, which re-measures the actual shipped
+mono bytes rather than trusting this engine's pre-pan self-report - never
+the reverse. See [Decision 54](DECISIONS.md) and the "Loudness" section of
 [GAMESOUNDS.md](GAMESOUNDS.md).
 
 ## Quality evidence

@@ -2071,20 +2071,37 @@ pipeline the chipvoice half already uses, 4 seed-ladder variants per
 preset. Two things had to be decided that were left open (or assumed
 incorrectly) when decision 52 shipped.
 
-**Channel layout: mono, catalogue-wide, decided by measurement, not by
-following the suggested default.** Decision 52's own writeup, and
-`docs/BACKLOG.md`'s GS-03 tracking bullet, both assumed the existing
-catalogue ships stereo ("the shipped stereo 44.1 kHz channel layout").
-Direct inspection of `apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes`
-(`channels = right ? 2 : 1`) shows this was never true: chipvoice's own
-`renderSfx` is never called with `stereo: true` anywhere in the catalogue
-build, so every existing chipvoice-origin sound already ships mono. Rather
-than introduce the catalogue's first stereo files to match a documented
-assumption that did not hold, generated sounds ship mono too, for
-consistency with the actual, not aspirationally documented, existing
-convention. This also sidesteps the loudness trap in the direction it
-actually runs: sfx-engine's `loudness/normalize.ts` meters and gains a
-render as mono *before* `panToStereo` runs
+**Channel layout: mono for wav and mp3, catalogue-wide; ogg depends on the
+build machine's ffmpeg - decided by measurement, not by following the
+suggested default.** Decision 52's own writeup, and `docs/BACKLOG.md`'s
+GS-03 tracking bullet, both assumed the existing catalogue ships stereo
+("the shipped stereo 44.1 kHz channel layout"). Direct inspection of
+`apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes` (`channels = right ? 2 :
+1`) shows this was never true: chipvoice's own `renderSfx` is never called
+with `stereo: true` anywhere in the catalogue build, so every existing
+chipvoice-origin sound already ships mono in its wav and mp3. Generated
+sounds match that convention for the same reason - consistency with the
+actual, not aspirationally documented, existing convention - not to
+introduce a stereo file layout no sound actually uses.
+
+The ogg format is the one exception, and it is NOT uniform across a
+catalogue built on different machines: `vorbisEncoderArgs` (same file)
+picks its encoder once per build machine - libvorbis, if the machine's
+ffmpeg has it (true in CI, Ubuntu's apt package), which keeps a mono source
+mono; ffmpeg's own native "experimental" vorbis encoder otherwise (this
+repo's own dev Homebrew ffmpeg, confirmed missing libvorbis), which refuses
+mono input and must upmix to dual-mono stereo instead. A catalogue built in
+CI ships mono ogg files; a catalogue built locally on a libvorbis-less
+machine (what actually built the catalogue this ticket commits) ships
+dual-mono-stereo ogg files of the same, equally-loud sounds. Both are
+correct; a build only needs to know which one it is producing, never assume
+"mono throughout" - see the next-but-one paragraph below for how that
+fallback upmix is kept correctly leveled and byte-for-byte reproducible,
+a defect a PR review of this same ticket's rebuild caught before merge.
+
+This also sidesteps the loudness trap in the direction it actually runs:
+sfx-engine's `loudness/normalize.ts` meters and gains a render as mono
+*before* `panToStereo` runs
 (`packages/sfx-engine/src/render/renderRecipe.ts`), so its own
 self-reported `RenderedSound.loudness` describes the pre-pan signal, not
 the post-pan channel a caller receives - at every preset's `pan: 0`,
@@ -2101,6 +2118,57 @@ engine claims about them.
 real, independently-measured bytes: the correct path passes
 `checkOneCeilingBinds`, and shipping the engine's own pre-pan self-report
 as the recorded measure fails it.
+
+**Ogg's fallback upmix: bitexact determinism and a unity-gain pan, not
+`-ac 2`.** Building on a libvorbis-less machine's fallback path (the one
+that actually built this ticket's committed catalogue) surfaced two
+defects, both caught by a PR review of this same rebuild before merge and
+now fixed in `encodeVariant` (`apps/sounds/scripts/lib/audio.mjs`). First:
+without explicit bitexact flags, ffmpeg's ogg/vorbis and mp3 muxers embed a
+randomized-per-encode stream serial number, so re-running the same build
+with no signal change at all produced different ogg/mp3 bytes and a
+spurious re-hash of every file, catalogue-wide, on every rebuild - fixed by
+adding `-fflags +bitexact -flags:a +bitexact` as OUTPUT options (placed
+after `-i`, immediately before the output path; the same flags placed as an
+INPUT option before `-i` do not fix it), on both formats. Second, and more
+serious: the fallback upmix used `-ac 2`, ffmpeg's generic channel-count
+converter, which applies its default equal-power split (-3.0103 dB,
+`1/sqrt(2)`, per channel) when going from 1 to 2 channels - correct for
+spreading a mono source across a stereo *mix*, wrong for how a browser
+plays a mono file copied to both channels (unity gain, not attenuated), so
+every ogg built on this fallback path shipped about 3 dB too quiet. Fixed
+by replacing `-ac 2` with an explicit unity-gain pan filter,
+`-af pan=stereo|c0=c0|c1=c0` (a literal copy of the source channel into
+both outputs, no channel-count-conversion gain math involved). Verified
+directly with ffmpeg's own `volumedetect`: a -20.0 dBFS source measured
+-22.9 dBFS through the old `-ac 2` path (matching the expected -3.01 dB
+loss almost exactly) and -19.9 dBFS through the new pan-filter path.
+
+`encodeVariant` now also decodes every shipped ogg and mp3 back to PCM and
+measures each one's own peak per channel, recorded as `formatPeaks`;
+`checkSound` (`scripts/lib/checks.mjs`) gates on it two ways, since a
+single flat per-variant tolerance cannot do both jobs a real defect and
+real content both demand: `checkFormatPeak`/`checkFormatPeaks` is a
+generous (17 dB) per-variant backstop, sized to admit a legitimate,
+content-driven outlier (a handful of multi-attack, struck-metal presets
+lose up to 16.23 dB of peak to lossy-codec transient smearing on their
+sharpest attacks - a real, measured, symmetric-across-both-channels
+artifact of block-transform encoding, not a bug) while still refusing a
+gross per-file failure (a dropped or silently-collapsed channel);
+`checkCatalogFormatPeakMean` is a separate, whole-build aggregate check on
+the mean of every per-format/per-channel delta (measured healthy baseline:
+0.44 dB mean across 3276 readings over all 1092 variants), bound at 1.5 dB
+- tight enough that a reintroduced `-ac 2`-style bug (which would apply to
+nearly every fallback-ogg reading, pushing the mean toward 3 dB) fails it,
+loose enough that the rare, legitimate, per-file transient-smearing
+outliers above do not, since they are a small fraction of the whole
+build's readings. `apps/sounds/test/audio.test.mjs` and
+`apps/sounds/test/checks.test.mjs` prove both fixes and both checks,
+including a standing regression record that the pre-fix ogg args really do
+produce different bytes across repeated encodes of the same input, and a
+synthetic proof that the old `-ac 2` delta, reintroduced across a whole
+build, fails `checkCatalogFormatPeakMean` even though a single instance of
+it would pass the per-variant backstop alone.
 
 **Style: what a preset actually models, never a forced fit.** `impact`,
 `footstep`, `whoosh` and `explosion` presets model real-world physics
@@ -2133,14 +2201,34 @@ own build needed no exclusions. Tuning a preset's own sound is explicitly
 out of scope here - sfx-engine's committed hash fixture (decision 52) is
 not touched by this ticket, and a preset that needs tuning gets excluded,
 not silently shipped worse than it should be. `POST /api/v1/resolve`
-reaches a generated sound through an ordinary, origin-blind style match;
-existing `8bit`/`16bit`/no-style resolution is unchanged, both by
-construction (every generated sound's id is
-`${category-slug}-${style}-${preset}`, and every style a generated sound
-can carry starts with a letter, sorting after chipvoice's digit-starting
-`8bit`/`16bit` under the tie-break's `localeCompare`) and by a test
-(`apps/sounds/test/resolve-generated.test.mjs`) run against the real,
-built catalogue.
+reaches a generated sound through an ordinary, origin-blind style match.
+The correctly-scoped guarantee, proven exhaustively (not just
+spot-checked) by `apps/sounds/test/resolve-generated.test.mjs` against the
+real, built catalogue: for every (category, tag-or-none, style)
+combination the catalogue can actually be asked for, the full-catalogue
+pick equals the chipvoice-only pick whenever a chipvoice-only pick exists
+at all - a generated sound can only ever fill a gap a chipvoice sound
+leaves empty, it can never override one that exists, since
+`pickSoundForEvent`'s style fallback and id tie-break (every generated
+sound's id starts with a letter, sorting after chipvoice's digit-starting
+`8bit`/`16bit` under `localeCompare`) never reaches past an existing
+chipvoice candidate. This is a real, intended behavior change for a
+combination that previously resolved to nothing, not a no-op: across 405
+combinations checked (85 categories, every tag actually in use, all three
+styles - none, `8bit`, `16bit`), 138 previously-unresolvable combinations
+now resolve to a generated sound - 46 unique (category, tag) gaps, each
+one filling identically under all three styles, so 92 of the 138 are a
+`8bit`/`16bit` request newly reaching a generated sound, not just the
+style-less default. Examples: `movement/footstep/concrete`,
+`movement/footstep/wood`, `combat/explosion/small`, `combat/shield`,
+`ui/toggle/on`, `collect/coin/coin` and `magic/cast/shimmer` all
+previously resolved to nothing under an explicit `8bit` or `16bit` request
+(no chipvoice sound exists for any of them, in any style) and now resolve
+to a generated one - correctly: gamesounds' resolve behavior has always
+been to widen the search across style rather than return nothing (it never
+falls back across tag), and a generated sound filling a gap the
+chipvoice-only catalogue actually has is that same fallback doing its job
+over a wider candidate pool, not a new kind of override.
 
 **What changes.** `apps/sounds/catalog/generated-recipes.mjs` (new),
 `scripts/build-catalog.mjs` (renders and merges the generated half),

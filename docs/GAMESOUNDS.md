@@ -157,18 +157,27 @@ would silently under-level every generated variant by about 3 dB.
 `RenderedSound.left` as the shipped signal (valid exactly because
 `left === right` at `pan: 0`, the only pan value any preset uses) and runs
 it through the catalogue's own `levelToConvention`, which re-measures
-whatever bytes it is actually given. Generated sounds ship **mono**, the
-same layout the chipvoice half already actually ships (verified directly
-from `apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes`,
+whatever bytes it is actually given. Generated sounds ship **mono wav and
+mp3**, the same layout the chipvoice half already actually ships (verified
+directly from `apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes`,
 `channels = right ? 2 : 1`: chipvoice's `renderSfx` is never called with
 `stereo: true` anywhere in this catalogue), not the "stereo dual-mono"
 layout an earlier note assumed - consistency with the *actual*, not
 aspirationally-documented, existing convention was the measured reason to
-deviate from that default. `apps/sounds/test/generated-loudness.test.mjs`
-proves both directions: a variant leveled through the catalogue's own
-pipeline on its true shipped (mono) layout passes `checkOneCeilingBinds`,
-and a variant that instead ships the engine's own pre-pan self-report as
-its recorded measure fails it, on real, independently-measured bytes.
+deviate from that default. The ogg format is the one exception, and it is
+NOT uniform: `vorbisEncoderArgs` picks libvorbis, which keeps a mono source
+mono, when the build machine's ffmpeg has it (true in CI); otherwise it
+falls back to ffmpeg's own native vorbis encoder, which refuses mono input
+and must upmix to dual-mono stereo instead (true of this repo's own dev
+Homebrew ffmpeg, and so of the catalogue actually committed by this
+ticket). Never assume "mono throughout" for ogg specifically - see
+[Decision 54](DECISIONS.md) for how that fallback upmix is kept correctly
+leveled (a unity-gain pan copy, not a naive channel-count conversion) and
+byte-for-byte reproducible across rebuilds. `apps/sounds/test/generated-loudness.test.mjs`
+proves both loudness directions: a variant leveled through the catalogue's
+own pipeline on its true shipped layout passes `checkOneCeilingBinds`, and
+a variant that instead ships the engine's own pre-pan self-report as its
+recorded measure fails it, on real, independently-measured bytes.
 
 ## Variants
 
@@ -279,10 +288,32 @@ sound can carry starts with a letter (`realistic`, `scifi`, `fantasy`,
 digit (`8bit`, `16bit`) - under `localeCompare`, a digit always sorts
 before a letter, so a generated sound can never become the alphabetically-
 first (and so selected) candidate in a category a chipvoice sound already
-occupies. `apps/sounds/test/resolve-generated.test.mjs` proves this on the
-real, built catalogue: `8bit`/`16bit` resolve unchanged, the no-style
-default for a category with both origins still resolves the same
-chipvoice sound, and `realistic` reaches a generated one.
+occupies.
+
+That id-ordering argument only shows a generated sound can never *outrank*
+an existing chipvoice one within a single already-matched candidate pool -
+it says nothing on its own about whether some other combination of
+category, tag and style could resolve to a *different* pool than before
+GS-03 shipped. `apps/sounds/test/resolve-generated.test.mjs` checks that
+directly and exhaustively, not just a few spot cases: for every (category,
+tag-or-none, style) combination the catalogue can actually be asked for -
+405 of them, covering 85 categories, every tag actually in use, and all
+three styles (none, `8bit`, `16bit`) - it picks the sound the real,
+built catalogue returns and separately picks the sound a chipvoice-only
+subset of that same catalogue would return, and proves the two agree
+whenever the chipvoice-only pick is non-null. A generated sound can only
+ever fill a gap a chipvoice sound leaves empty; it can never override one
+that exists. This is a real, intended behavior change for a combination
+that previously resolved to nothing, not a no-op: 138 of the 405
+combinations previously resolved to nothing and now resolve to a generated
+sound - 46 unique (category, tag) gaps, each filling identically under all
+three styles, so 92 of the 138 are an `8bit`/`16bit` request newly reaching
+a generated sound, not just the style-less default. Examples:
+`movement/footstep/concrete`, `movement/footstep/wood`,
+`combat/explosion/small`, `combat/shield`, `ui/toggle/on`,
+`collect/coin/coin` and `magic/cast/shimmer` all previously resolved to
+nothing under an explicit `8bit` or `16bit` request (no chipvoice sound
+exists for any of them, in any style) and now resolve to a generated one.
 
 ## The manifest (sounds.json)
 

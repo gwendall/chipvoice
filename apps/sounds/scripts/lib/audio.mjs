@@ -42,6 +42,26 @@ function peakOf(left, right) {
   return peak;
 }
 
+/** Like `peakOf`, but kept per channel instead of collapsed to one number -
+ * `checkFormatPeaks` (checks.mjs) needs the LEFT and RIGHT peaks separately,
+ * since the whole class of bug it guards against (the ogg fallback path's
+ * old `-ac 2` upmix - see `vorbisEncoderArgs`) is exactly a per-channel
+ * loudness mismatch that a combined max would never show. */
+function peakPerChannel(left, right) {
+  let l = 0;
+  for (let i = 0; i < left.length; i++) {
+    const a = Math.abs(left[i]);
+    if (a > l) l = a;
+  }
+  if (!right) return { left: l, right: null };
+  let r = 0;
+  for (let i = 0; i < right.length; i++) {
+    const a = Math.abs(right[i]);
+    if (a > r) r = a;
+  }
+  return { left: l, right: r };
+}
+
 function run(cmd, args, options = {}) {
   const result = spawnSync(cmd, args, { maxBuffer: 1024 * 1024 * 512, ...options });
   if (result.error) throw new Error(`${cmd} failed to start: ${result.error.message}`);
@@ -435,16 +455,55 @@ export function levelToConvention(render, { targetLufs = LOUDNESS_TARGET_LUFS, p
 // (mono stays mono) at good quality. A handful of minimal builds (observed
 // on a local dev machine's Homebrew ffmpeg) omit libvorbis and only have
 // ffmpeg's own native, "experimental" vorbis encoder, which refuses mono
-// input - `-ac 2` and `-strict -2` are only added on that fallback path, so
-// the common case never pays for stereo it does not need.
+// input - `-strict -2` is only needed on that fallback path, so the common
+// case never pays for a flag it does not need.
+//
+// The fallback path's channel layout is NOT the same as the libvorbis
+// path's: it must upmix to stereo (the native encoder's own requirement),
+// so a fallback-built ogg is dual-mono stereo where a libvorbis-built ogg
+// of the same sound stays mono - see encodeVariant's own header for why
+// this matters for loudness. That upmix uses an explicit unity-gain pan
+// filter (`-af pan=stereo|c0=c0|c1=c0`, i.e. copy the mono input to both
+// output channels unchanged), not ffmpeg's own default `-ac 2` upmix:
+// ffmpeg's default applies -3.01 dB (1/sqrt(2)) to each channel, which is
+// correct for panning a mono source into a stereo field but wrong here,
+// since every browser's own mono decode plays a mono file at unity in both
+// channels - `-ac 2` alone would ship this fallback path's oggs about 3 dB
+// quieter than every other shipped format of the same sound. Verified
+// experimentally on this machine (ffmpeg 8.0.1, no libvorbis): a 440 Hz
+// test tone measured max_volume -20.0 dB in the source mono wav, -22.9 dB
+// after the old `-ac 2` encode (a ~2.9 dB loss, matching the expected
+// -3.01 dB attenuation), and -19.9 dB after this pan-filter encode
+// (matching the source, modulo ordinary lossy-codec noise).
 let vorbisEncoderArgsCache = null;
 function vorbisEncoderArgs() {
   if (vorbisEncoderArgsCache) return vorbisEncoderArgsCache;
   const result = spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { maxBuffer: 1024 * 1024 * 8 });
   const hasLibvorbis = /libvorbis/.test((result.stdout ?? "").toString());
-  vorbisEncoderArgsCache = hasLibvorbis ? ["-c:a", "libvorbis", "-q:a", "5"] : ["-ac", "2", "-c:a", "vorbis", "-strict", "-2", "-q:a", "5"];
+  vorbisEncoderArgsCache = hasLibvorbis
+    ? ["-c:a", "libvorbis", "-q:a", "5"]
+    : ["-af", "pan=stereo|c0=c0|c1=c0", "-c:a", "vorbis", "-strict", "-2", "-q:a", "5"];
   return vorbisEncoderArgsCache;
 }
+
+// Both ffmpeg output calls in encodeVariant get these unconditionally (ogg
+// AND mp3, libvorbis path and fallback path alike): without them, ffmpeg's
+// ogg/vorbis muxer embeds a random stream serial number, and its mp3 stream
+// carries an encoder/version tag, on every encode - so byte-identical audio
+// re-encoded on a later run (or a fresh checkout) hashes differently even
+// though nothing about the sound changed, which is exactly what
+// scripts/check-determinism.mjs exists to catch. Verified experimentally: a
+// test tone encoded twice with the production fallback ogg args (no
+// bitexact) produced same-size, different-sha256 files; with
+// `-fflags +bitexact -flags:a +bitexact` added as OUTPUT options (after
+// `-i`, before the output path - the placement matters, the same flags
+// placed as INPUT/demuxer options before `-i` do not fix it), three repeated
+// encodes of the same input produced byte-identical output. mp3 already
+// happens to be stable on this machine without bitexact, but only because
+// the current ffmpeg/lame version string it embeds does not change between
+// runs; adding the same flags there too removes that dependency on the
+// build machine's ffmpeg version never changing.
+const BITEXACT_ARGS = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
 
 /**
  * Encodes a leveled render to ogg, mp3 and wav under `outDir`. Each format
@@ -461,6 +520,19 @@ function vorbisEncoderArgs() {
  * name}`) plus the wav's own hash again as `sha256` - the variant's
  * identity, since the wav IS the canonical render every format was encoded
  * from - and the measured loudness of the shipped wav.
+ *
+ * Channel layout is NOT uniform across a catalogue built on different
+ * machines: the wav and mp3 always carry the render's own channel count
+ * (mono for every Phase 1 + GS-03 preset, since none pans away from center -
+ * see sfx-engine's `panToStereo`). The ogg does too, IF the build machine's
+ * ffmpeg has libvorbis (true in CI - Ubuntu's apt package ships it). On a
+ * machine without libvorbis (this repo's own dev Homebrew ffmpeg, confirmed
+ * missing it), the ogg is upmixed to dual-mono stereo instead, because
+ * ffmpeg's native vorbis encoder refuses mono input - see
+ * `vorbisEncoderArgs`'s own header for that upmix and why it must use an
+ * explicit unity-gain pan filter, not `-ac 2`, to avoid a ~3 dB loudness
+ * loss. Both layouts are correct, matched-loudness audio; a build only
+ * needs to know which one it is producing, never assume "mono throughout."
  */
 export function encodeVariant(render, outDir, { mkdirSync } = {}) {
   const wavBytes = toWavBytes(render);
@@ -471,20 +543,38 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
   writeFileSync(wavPath, wavBytes);
 
   const tmpOggPath = join(outDir, `.tmp-${wavHash}.ogg`);
-  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...vorbisEncoderArgs(), tmpOggPath]);
+  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...vorbisEncoderArgs(), ...BITEXACT_ARGS, tmpOggPath]);
   const oggBytes = readFileSync(tmpOggPath);
   const oggHash = sha256Hex(oggBytes);
   const oggName = `${oggHash}.ogg`;
   renameSync(tmpOggPath, join(outDir, oggName));
 
   const tmpMp3Path = join(outDir, `.tmp-${wavHash}.mp3`);
-  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, "-c:a", "libmp3lame", "-q:a", "3", tmpMp3Path]);
+  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, "-c:a", "libmp3lame", "-q:a", "3", ...BITEXACT_ARGS, tmpMp3Path]);
   const mp3Bytes = readFileSync(tmpMp3Path);
   const mp3Hash = sha256Hex(mp3Bytes);
   const mp3Name = `${mp3Hash}.mp3`;
   renameSync(tmpMp3Path, join(outDir, mp3Name));
 
   const measure = measureLoudness(wavPath);
+
+  // Decode the shipped ogg and mp3 back to PCM and measure each one's OWN
+  // per-channel peak, exactly as a browser or the CLI would hear it - not
+  // assumed from the encoder's exit code or from the wav's own peak. This
+  // is what `checkFormatPeaks` (checks.mjs) checks against the render's own
+  // per-channel peak: the ~3 dB fallback-ogg loudness bug this function's
+  // own header describes would show up here as the ogg's decoded peak
+  // sitting well below the wav's, on every affected variant - see that
+  // check's own header for the tolerance and how it was derived.
+  const sourcePeaks = peakPerChannel(render.left, render.right);
+  const decodedOgg = decodeToRender(join(outDir, oggName));
+  const decodedMp3 = decodeToRender(join(outDir, mp3Name));
+  const formatPeaks = {
+    source: sourcePeaks,
+    ogg: peakPerChannel(decodedOgg.left, decodedOgg.right),
+    mp3: peakPerChannel(decodedMp3.left, decodedMp3.right),
+  };
+
   return {
     sha256: wavHash,
     files: {
@@ -494,7 +584,8 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
     },
     duration: render.seconds,
     measure,
+    formatPeaks,
   };
 }
 
-export { peakOf, toWavBytes };
+export { peakOf, peakPerChannel, toWavBytes };
