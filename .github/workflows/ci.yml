@@ -227,6 +227,25 @@ jobs:
       - run: pnpm --filter chipvoice-conform check:vrc6-core-mesen
       - run: pnpm --filter chipvoice-conform check:vrc6-edge-mesen
       - run: pnpm --filter chipvoice-conform check:vrc6-edge-report
+      # NEXT-15's AY-3-8910/YM2149, first hosted as the Sunsoft 5B, against
+      # two independent oracles (Ayumi and Game_Music_Emu's Ay_Apu), on the
+      # same core/edge split VRC6 uses above, drawn on a stricter line
+      # (docs/chips/sunsoft5b.md's own "Digital parity" section explains
+      # why): `core` (every channel's mixer bits disable both generators,
+      # DAC mode - the one path with no known disagreement between the two
+      # oracles) is held to a literal 100% against both. `edge` (tone, noise
+      # and the envelope actually running) is exact against Ayumi on the
+      # four scripts with no known disagreement; the three that exercise the
+      # noise generator are report-only against both oracles, since Ayumi
+      # and Game_Music_Emu use provably different 17-bit LFSR constructions
+      # there (decision 47), and Game_Music_Emu's own tone/noise timing also
+      # carries a phase delta forward from its reset default rather than
+      # restarting cleanly at a write.
+      - run: pnpm --filter chipvoice-conform check:ay8910-core
+      - run: pnpm --filter chipvoice-conform check:ay8910-core-gme
+      - run: pnpm --filter chipvoice-conform check:ay8910-edge
+      - run: pnpm --filter chipvoice-conform check:ay8910-edge-report
+      - run: pnpm --filter chipvoice-conform check:ay8910-edge-gme-report
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform check:sameboy
       - run: pnpm --filter chipvoice-conform roms:dmg

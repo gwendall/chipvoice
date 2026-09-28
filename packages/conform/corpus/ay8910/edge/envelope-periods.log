@@ -1,0 +1,29 @@
+# chipvoice register log v1
+# name: envelope-periods
+# chip: ay8910
+# clock: 1789773
+# cycles: 369684
+# source: src/corpus/generate-ay8910.mjs
+# notes: A single shape (14, the up/down triangle) at six envelope periods spanning small to large - the envelope divider runs at `Clock / (16 * 32 * Period)` per full cycle (nesdev, and this core's own `tick()` comment), so period alone is worth sweeping independently of shape.
+0 0007 3F
+0 0009 00
+0 000A 00
+0 0008 10
+0 000B 01
+0 000C 00
+0 000D 0E
+1524 000B 04
+1524 000C 00
+1524 000D 0E
+6120 000B 10
+6120 000C 00
+6120 000D 0E
+23004 000B 40
+23004 000C 00
+23004 000D 0E
+89040 000B 00
+89040 000C 01
+89040 000D 0E
+351684 000B E8
+351684 000C 03
+351684 000D 0E

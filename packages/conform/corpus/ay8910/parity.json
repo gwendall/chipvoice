@@ -1,0 +1,354 @@
+{
+  "chip": "ay8910",
+  "oracle": {
+    "id": "ayumi",
+    "name": "Ayumi"
+  },
+  "voices": [
+    "a",
+    "b",
+    "c"
+  ],
+  "date": "2026-09-28",
+  "files": 5,
+  "cycles": 104913,
+  "identical": 104913,
+  "diverging": 0,
+  "results": [
+    {
+      "name": "all-three-independent",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 27,
+      "cycles": 19413,
+      "identical": 19413,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 19413,
+          "a": 9,
+          "b": 9,
+          "exact": 9,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 9,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 19413,
+          "a": 7,
+          "b": 7,
+          "exact": 7,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 7,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 19413,
+          "a": 10,
+          "b": 10,
+          "exact": 10,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 10,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "channel-a",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 24,
+      "cycles": 22000,
+      "identical": 22000,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 22000,
+          "a": 21,
+          "b": 21,
+          "exact": 21,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 21,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 22000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 22000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "channel-b",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 24,
+      "cycles": 22000,
+      "identical": 22000,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 22000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 22000,
+          "a": 21,
+          "b": 21,
+          "exact": 21,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 21,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 22000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "channel-c",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 24,
+      "cycles": 22000,
+      "identical": 22000,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 22000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 22000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 22000,
+          "a": 21,
+          "b": 21,
+          "exact": 21,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 21,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixer-upper-bits",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 7,
+      "cycles": 19500,
+      "identical": 19500,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 19500,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 19500,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 19500,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

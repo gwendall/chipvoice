@@ -956,9 +956,9 @@ real game music, and a real unit.
   writes from `Nsf_Emu`, its real NSF player, so the probe gates exactly in
   both `scores/nsf-corpus` and `scores/nsf-export`, alongside every
   real-world 2A03 file there. No driver or arranger role yet, decision 38.
-  VRC7, FDS, N163, Sunsoft 5B, MMC5 still todo. NEXT-15 AY-3-8910 and
-  YM2149, NEXT-16 YM2151 and YM2610, NEXT-17 OPL2 and OPL3; then PC Engine,
-  Game Boy Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.
+  VRC7, FDS, N163, MMC5 still todo. NEXT-15 (below) added the Sunsoft 5B.
+  NEXT-16 YM2151 and YM2610, NEXT-17 OPL2 and OPL3; then PC Engine, Game Boy
+  Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.
 - todo - NEXT-14 VRC6 pulse duty-phase capture: a real VRC6 cartridge (a
   flash cart such as an EverDrive N8 Pro on a Famicom, or an original board)
   playing back `scores/nsf-corpus`'s `vrc6-probe` NSF, recorded, to settle
@@ -968,6 +968,46 @@ real game music, and a real unit.
   deviations". Settling it against hardware may mean flipping this core's own
   convention, or dropping `Vrc6Pulse.h`'s chipvoice patch and accepting the
   no-regression baseline for the pulse too.
+- doing - NEXT-15 AY-3-8910 / YM2149, first hosted as the Sunsoft 5B: core
+  written from nesdev's "Sunsoft 5B audio" page and General Instrument's
+  AY-3-8910/8912/8913 datasheet (three 12-bit tone channels, one shared
+  17-bit-LFSR 5-bit noise channel, a per-channel AND-gate mixer, 4-bit
+  volume or a shared 16-bit-period/16-shape envelope generator), hosted as
+  the Sunsoft 5B the same way NEXT-14 hosted VRC6: the FME-7 mapper's
+  $C000 (register select) / $E000 (register write) two-port bus
+  (`Sunsoft5bAudio`), a combined 2A03+5B digital core and mixing stage, and
+  the NSF expansion-audio header's bit 5, sheet at
+  [docs/chips/sunsoft5b.md](chips/sunsoft5b.md). Two independent oracles:
+  Peter Sovietov's Ayumi (MIT) and Game_Music_Emu's `Ay_Apu` (LGPL, stays in
+  the harness). The corpus splits the same way VRC6's does, on a stricter
+  line: `core` (every channel's mixer bits disable both generators, DAC
+  mode) gates at a literal 100 % against both oracles; `edge` (tone, noise
+  and the envelope actually running) gates exactly against Ayumi on the
+  four scripts with no known disagreement, and is report-only elsewhere
+  (94.9742 % identical cycles against Ayumi over the full `edge` corpus,
+  74.1047 % against Game_Music_Emu). The two oracles' own noise generators
+  use provably different 17-bit LFSR constructions (Galois vs Fibonacci
+  feedback, decision 47) - the first time this project's two oracles for one
+  chip have disagreed with each other on a specific feature rather than one
+  being trusted over the other for the whole chip; documented, not patched
+  away (the standing review lesson from NEXT-14: never patch an oracle to
+  adopt the core's behaviour and call it a convention mapping). NSF export
+  routes the 5B's two ports the same indirect-store way VRC6's writes
+  already needed; a self-authored probe (CC0, `sunsoft5b-probe`,
+  `make-sunsoft5b-probe.mjs`) closes NEXT-15's own NSF corpora the same way
+  VRC6's did, extending `native-oracle.py` a third time - unlike VRC6's
+  `write_osc`, the 5B's register-select write carries no timing parameter
+  inside `Nes_Fme7_Apu.cpp` at all, so this patch logs both writes one level
+  up, in `Nsf_Emu.cpp`'s own dispatcher, where accurate timing is available
+  for both regardless: an exact command-stream match in `nsf-corpus`
+  (8400/8400) and, in `nsf-export`, an exact command-stream match
+  (8530/8530), an exact frame-write match (301/301) and an export loss of
+  0.0 %. Analog stage unmeasured; the DAC curve is nesdev's own documented
+  1.5 dB/step logarithmic table, the mix gain into the composite render a
+  placeholder reusing VRC6's own anchor point for lack of a better
+  documented one. No driver or arranger role yet, decision 38. Remains: a
+  real test ROM (none found to automate); a unit's line-out; other AY/YM
+  hosts (MSX's own AY-3-8910, the YM2203/YM2608 SSG half).
 - A chip enters the public picker when its sheet is filled, or when the sheet
   states which levels are still missing.
 

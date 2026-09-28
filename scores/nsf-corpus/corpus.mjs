@@ -44,9 +44,11 @@ import {compareNsfTrace} from './compare.mjs';
  * never written to the sheet or the committed JSON; CI never populates
  * that directory, so it contributes nothing there.
  *
- * Every third-party file here is 2A03-only NTSC; `vrc6-probe` is the one
- * exception, by design. Other expansion-audio formats (VRC7, FDS, N163,
- * Sunsoft 5B, MMC5) remain out of scope and are rejected by
+ * Every third-party file here is 2A03-only NTSC; `vrc6-probe` and, since
+ * NEXT-15, `sunsoft5b-probe` are the two exceptions, by design (the same
+ * self-authored-fixture convention, for the same reason: no redistribution-
+ * licensed VRC6 or Sunsoft 5B NSF this project found). Other expansion-audio
+ * formats (VRC7, FDS, N163, MMC5) remain out of scope and are rejected by
  * `capture-nsf.mjs` itself.
  */
 const HERE = path.dirname(fileURLToPath(import.meta.url));

@@ -60,10 +60,32 @@
  * sets bit 0 (VRC6) whenever the capture used any of the ten registers, so
  * a player that supports VRC6 knows to route them, and one that does not
  * knows to refuse the file rather than misplay it silently.
+ *
+ * Sunsoft's 5B (`isSunsoft5bAddr`, `chips/nes/sunsoft5b-core.ts`) rides the
+ * same bus at $C000-$DFFF/$E000-$FFFF, needing the very same indirect-store
+ * table VRC6 already needed - so it costs nothing new here beyond being
+ * included in the same `kept` filter and `registerTable`, and setting its
+ * own expansion-audio bit, 5 (`0x20`), instead of VRC6's bit 0. The one
+ * thing worth writing down, because it looks alarming at a glance: $C000
+ * and $E000 fall inside the DMC bank-switching window this player reserves
+ * for sample memory (`DMC_FIRST_REG`/`DMC_REG_COUNT`, `$C000-$FFFF`). That
+ * is not a conflict. Nesdev's own FME-7/5B page (and Game_Music_Emu's
+ * `Nes_Fme7_Apu`, `latch_addr = 0xC000`/`data_addr = 0xE000`) describe the
+ * 5B's sound ports as mapper-decoded write-only registers: writing $C000 or
+ * $E000 always reaches the sound chip's latch or data port, regardless of
+ * which ROM bank is currently switched into that window for *reads* - the
+ * same bank DMC's own DMA and ordinary code fetches see. A `STA $C000`
+ * always lands on the 5B; a DMC sample byte read from $C000 during the same
+ * song always comes from whatever ROM bank is mapped there. VRC6's own
+ * $9000-$B002 writes already share this player's single fixed data window
+ * ($9000-$9FFF, `DATA_WINDOW_REG`) the same way, for the same reason: a
+ * mapper's write-only control ports are never the same physical storage as
+ * whatever is readable at that address.
  */
 
 import type { RegisterEvent } from "./chip.js";
 import { isVrc6Addr } from "./chips/nes/vrc6-core.js";
+import { isSunsoft5bAddr } from "./chips/nes/sunsoft5b-core.js";
 
 /** Standard $411a NTSC frame period, in CPU cycles: 357366 PPU clocks over
  * four frames (the NTSC APU frame counter's own rate), matching the
@@ -535,13 +557,14 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
     throw new NsfExportError("invalid_loop_point", `loopAtCycle must fall within [0, cycles); got ${loopAtCycle} for a ${cycles}-cycle capture.`, { measured: loopAtCycle, limit: cycles });
   }
 
-  // 2A03 registers and Konami VRC6's ten (`isVrc6Addr`, three pages away at
-  // $9000-$9003/$A000-$A002/$B000-$B002) are carried the same way: every
-  // distinct register this capture actually writes gets one entry in
+  // 2A03 registers, Konami VRC6's ten (`isVrc6Addr`, three pages away at
+  // $9000-$9003/$A000-$A002/$B000-$B002) and Sunsoft 5B's two sound ports
+  // (`isSunsoft5bAddr`, $C000-$DFFF/$E000-$FFFF) are carried the same way:
+  // every distinct register this capture actually writes gets one entry in
   // `registerTable`, in first-seen order, and each write is encoded as an
   // index into it (`encodeFrames`) rather than an offset from a single
   // fixed base - see `assemblePlayer`'s doc comment for why.
-  const kept = events.filter((e) => (e.addr >= REG_BASE && e.addr <= REG_LAST) || isVrc6Addr(e.addr)).sort((a, b) => a.at - b.at);
+  const kept = events.filter((e) => (e.addr >= REG_BASE && e.addr <= REG_LAST) || isVrc6Addr(e.addr) || isSunsoft5bAddr(e.addr)).sort((a, b) => a.at - b.at);
   const registerTable: number[] = [];
   const registerIndex = new Map<number, number>();
   for (const w of kept) {
@@ -554,6 +577,7 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
     throw new NsfExportError("too_many_registers", `This capture writes ${registerTable.length} distinct registers; the player's write table can only address up to 256 of them (one index byte per write).`, { measured: registerTable.length, limit: 256 });
   }
   const usesVrc6 = registerTable.some((addr) => isVrc6Addr(addr));
+  const usesSunsoft5b = registerTable.some((addr) => isSunsoft5bAddr(addr));
 
   const { frames, loopFrame } = quantizeToFrames(kept, cycles, loopAtCycle);
   const { data, loopOffset } = encodeFrames(frames, loopFrame, registerIndex);
@@ -600,7 +624,7 @@ export function exportNsf(events: RegisterEvent[], cycles: number, options: NsfO
   }
   view.setUint16(120, 19997, true); // PAL speed, unused (NTSC-only below) but set to the standard value
   file[122] = 0; // NTSC only
-  file[123] = usesVrc6 ? 0x01 : 0; // expansion sound chip bitfield, bit 0 = VRC6
+  file[123] = (usesVrc6 ? 0x01 : 0) | (usesSunsoft5b ? 0x20 : 0); // expansion sound chip bitfield: bit 0 = VRC6, bit 5 = Sunsoft 5B
   file.set(pool, HEADER);
   return file;
 }

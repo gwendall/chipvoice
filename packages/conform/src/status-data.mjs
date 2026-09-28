@@ -116,6 +116,23 @@ export const CHIPS = [
       'Remains: a studio/arranger integration; a real test ROM (none exists to automate - see the sheet); a unit\'s line-out.',
     ],
   },
+  {
+    id: 'ay8910',
+    machine: 'NES, Famicom (Sunsoft 5B mapper: Gimmick!)',
+    chip: 'AY-3-8910 / YM2149, first hosted as the Sunsoft 5B',
+    sheet: 'docs/chips/sunsoft5b.md',
+    since: '0.19.1',
+    analog: { done: 0, label: 'none' },
+    /** Voices the driver reaches, of the chip's. None yet: decision 38 keeps this chip out of the studio picker and the arranger. */
+    driver: { reached: 0, voices: 3 },
+    voices: ['a', 'b', 'c'],
+    notes: [
+      'Written from nesdev\'s "Sunsoft 5B audio" page and General Instrument\'s AY-3-8910/8912/8913 datasheet, compared against two independent oracles: Peter Sovietov\'s Ayumi (MIT) and Game_Music_Emu\'s Ay_Apu (LGPL, stays in the harness). The corpus is split by what each script exercises: `core` (DAC mode, both generators bypassed) gates at a literal 100 % against both oracles; `edge` (tone/noise/envelope running) gates exactly against Ayumi wherever it has no known disagreement, and is report-only elsewhere. The two oracles\' own noise generators use provably different 17-bit LFSR constructions (Galois vs Fibonacci feedback, decision 47) - the first time this project\'s two oracles for one chip have disagreed with each other on a specific feature rather than one being trusted over the other for the whole chip.',
+      'Analog: unmeasured; the DAC curve is nesdev\'s own documented 1.5 dB/step logarithmic table, the mix gain into the composite render a placeholder reusing VRC6\'s own anchor point for lack of a better documented one.',
+      'Driver: none yet - the studio picker and the arranger do not reach this chip (decision 38); NSF export and the conformance harness are its only public paths today.',
+      'Remains: a studio/arranger integration; a real test ROM (none found to automate - see the sheet); a unit\'s line-out; other AY/YM hosts (MSX, the YM2203/YM2608 SSG half).',
+    ],
+  },
 ];
 
 export const PLANNED = [

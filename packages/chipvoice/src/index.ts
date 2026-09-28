@@ -6,6 +6,7 @@ import { mdChip } from "./chips/md/index.js";
 import { snesChip } from "./chips/snes/index.js";
 import { c64Chip } from "./chips/c64/index.js";
 import { nesVrc6Chip } from "./chips/nes/vrc6-index.js";
+import { nesSunsoft5bChip } from "./chips/nes/sunsoft5b-index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
 export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
@@ -61,6 +62,20 @@ export {
   isVrc6Addr,
 } from "./chips/nes/vrc6-core.js";
 export { nesVrc6Chip } from "./chips/nes/vrc6-index.js";
+export { Ay8910, AY8910_VOICES } from "./chips/ay8910.js";
+export type { Ay8910Options } from "./chips/ay8910.js";
+export { Sunsoft5bAudio } from "./chips/nes/sunsoft5b.js";
+export {
+  NES_SUNSOFT5B,
+  NES_SUNSOFT5B_VOICES,
+  Sunsoft5bNesCore,
+  Sunsoft5bNesDigital,
+  Sunsoft5bMixStage,
+  SUNSOFT5B_DAC,
+  SUNSOFT5B_MIX_UNIT_GAIN,
+  isSunsoft5bAddr,
+} from "./chips/nes/sunsoft5b-core.js";
+export { nesSunsoft5bChip } from "./chips/nes/sunsoft5b-index.js";
 export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export { MEGA_DRIVE, mdChip } from "./chips/md/index.js";
 export { Ym2612 } from "./chips/md/ym2612.js";
@@ -152,6 +167,7 @@ export function chipFor(id: string): ChipDefinition | null {
   if (id === "snes") return snesChip;
   if (id === "c64") return c64Chip;
   if (id === "2a03-vrc6") return nesVrc6Chip;
+  if (id === "2a03-sunsoft5b") return nesSunsoft5bChip;
   return getChip(id);
 }
 

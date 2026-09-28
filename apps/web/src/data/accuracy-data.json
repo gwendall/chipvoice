@@ -581,6 +581,86 @@
         "reached": 0,
         "voices": 3
       }
+    },
+    {
+      "id": "ay8910",
+      "machine": "NES, Famicom (Sunsoft 5B mapper: Gimmick!)",
+      "chip": "AY-3-8910 / YM2149, first hosted as the Sunsoft 5B",
+      "sheetPath": "docs/chips/sunsoft5b.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/sunsoft5b.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "Ayumi",
+            "files": 5,
+            "cycles": 104913,
+            "identical": 104913,
+            "diverging": 0,
+            "firstDivergence": null
+          },
+          {
+            "marker": "parity-core-gme",
+            "oracle": "Game_Music_Emu (Ay_Apu)",
+            "files": 5,
+            "cycles": 104913,
+            "identical": 104913,
+            "diverging": 0,
+            "firstDivergence": null
+          },
+          {
+            "marker": "parity-edge-ayumi-report",
+            "oracle": "Ayumi",
+            "files": 7,
+            "cycles": 1893115,
+            "identical": 1797970,
+            "diverging": 3,
+            "firstDivergence": {
+              "file": "gate-toggle",
+              "cycle": 71590,
+              "voice": "a",
+              "ours": 0,
+              "theirs": 27
+            }
+          },
+          {
+            "marker": "parity-edge-ayumi",
+            "oracle": "Ayumi",
+            "files": 4,
+            "cycles": 1493880,
+            "identical": 1493880,
+            "diverging": 0,
+            "firstDivergence": null
+          },
+          {
+            "marker": "parity-edge-gme-report",
+            "oracle": "Game_Music_Emu (Ay_Apu)",
+            "files": 7,
+            "cycles": 1893115,
+            "identical": 1402887,
+            "diverging": 7,
+            "firstDivergence": {
+              "file": "envelope-and-tone",
+              "cycle": 1264,
+              "voice": "a",
+              "ours": 0,
+              "theirs": 32
+            }
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": null,
+      "analogStage": {
+        "label": "none",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 0,
+        "voices": 3
+      }
     }
   ]
 }

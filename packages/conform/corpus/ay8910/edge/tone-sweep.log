@@ -1,0 +1,25 @@
+# chipvoice register log v1
+# name: tone-sweep
+# chip: ay8910
+# clock: 1789773
+# cycles: 1034616
+# source: src/corpus/generate-ay8910.mjs
+# notes: Channel A's tone generator alone (noise off on A, B and C fully DAC-silenced at volume 0) through seven periods spanning the 12-bit range, each its own run past the gap - Ayumi's `update_tone` restarts a fresh phase at every reset the same discrete way this core's own `toneCounter` does, so this is gated exact against it; Game_Music_Emu's `Ay_Apu` carries a delta forward from its own reset default instead (decision 47), so this is `--report` only against it.
+0 0007 3E
+0 0008 0F
+0 0009 00
+0 000A 00
+0 0000 01
+0 0001 00
+6000 0000 02
+6000 0001 00
+12000 0000 0F
+12000 0001 00
+18000 0000 63
+18000 0001 00
+56216 0000 F4
+56216 0001 01
+248416 0000 D0
+248416 0001 07
+1016616 0000 FF
+1016616 0001 0F

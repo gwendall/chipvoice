@@ -1,0 +1,17 @@
+# chipvoice register log v1
+# name: gate-toggle
+# chip: ay8910
+# clock: 1789773
+# cycles: 125385
+# source: src/corpus/generate-ay8910.mjs
+# notes: Channel A's mixer bits cycled through all four tone/noise-enabled combinations (both off, tone alone, noise alone, both on) with the period registers held fixed throughout - exercising `outputs`'s AND-gate formula across every state it can be in, one state per run.
+0 0008 0D
+0 0009 00
+0 000A 00
+0 0000 3C
+0 0001 00
+0 0006 09
+0 0007 3F
+35795 0007 3E
+71590 0007 37
+107385 0007 36

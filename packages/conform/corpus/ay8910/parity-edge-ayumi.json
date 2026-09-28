@@ -1,0 +1,287 @@
+{
+  "chip": "ay8910",
+  "oracle": {
+    "id": "ayumi",
+    "name": "Ayumi"
+  },
+  "voices": [
+    "a",
+    "b",
+    "c"
+  ],
+  "date": "2026-09-28",
+  "files": 4,
+  "cycles": 1493880,
+  "identical": 1493880,
+  "diverging": 0,
+  "results": [
+    {
+      "name": "envelope-and-tone",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 9,
+      "cycles": 18000,
+      "identical": 18000,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 18000,
+          "a": 102,
+          "b": 102,
+          "exact": 102,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 102,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 18000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 18000,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "envelope-periods",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 22,
+      "cycles": 369684,
+      "identical": 369684,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 369684,
+          "a": 353,
+          "b": 353,
+          "exact": 353,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 353,
+          "runs": {
+            "ours": 4,
+            "theirs": 4,
+            "alignedTimes": 4,
+            "alignedValues": 4,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 369684,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 369684,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "envelope-shapes",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 37,
+      "cycles": 71580,
+      "identical": 71580,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 71580,
+          "a": 682,
+          "b": 682,
+          "exact": 682,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 682,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 71580,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 71580,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "tone-sweep",
+      "source": "src/corpus/generate-ay8910.mjs",
+      "writes": 18,
+      "cycles": 1034616,
+      "identical": 1034616,
+      "first": null,
+      "edges": [
+        {
+          "voice": "a",
+          "identical": 1034616,
+          "a": 659,
+          "b": 659,
+          "exact": 659,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 659,
+          "runs": {
+            "ours": 49,
+            "theirs": 49,
+            "alignedTimes": 49,
+            "alignedValues": 49,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "b",
+          "identical": 1034616,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "c",
+          "identical": 1034616,
+          "a": 1,
+          "b": 1,
+          "exact": 1,
+          "near": 0,
+          "onlyA": 0,
+          "onlyB": 0,
+          "shift": 0,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 1,
+            "alignedValues": 1,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

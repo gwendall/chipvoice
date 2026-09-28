@@ -1,0 +1,31 @@
+# chipvoice register log v1
+# name: channel-b
+# chip: ay8910
+# clock: 1789773
+# cycles: 22000
+# source: src/corpus/generate-ay8910.mjs
+# notes: The same volume ramp as channel-a, on channel B this time.
+0 0007 3F
+0 0008 03
+0 000A 0C
+0 0009 00
+200 0009 01
+400 0009 02
+600 0009 03
+800 0009 04
+1000 0009 05
+1200 0009 06
+1400 0009 07
+1600 0009 08
+1800 0009 09
+2000 0009 0A
+2200 0009 0B
+2400 0009 0C
+2600 0009 0D
+2800 0009 0E
+3000 0009 0F
+3200 0009 0E
+3400 0009 0C
+3600 0009 08
+3800 0009 04
+4000 0009 00
