@@ -54,6 +54,7 @@
     "test": "npm run test:unit"
   },
   "devDependencies": {
+    "ajv": "^8.17.1",
     "typescript": "^5.7.0"
   }
 }

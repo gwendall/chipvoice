@@ -1,4 +1,4 @@
-import { getSound } from "@/lib/catalog";
+import { getSound, type AudioFile } from "@/lib/catalog";
 import { licenseText } from "@/lib/credits";
 import { readPublicFile } from "@/lib/files";
 import { corsPreflight, HttpError, route } from "@/lib/http";
@@ -14,8 +14,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
     const entries: ZipEntry[] = [];
     for (const variant of sound.variants) {
-      for (const [ext, url] of Object.entries(variant.files) as [string, string][]) {
-        entries.push({ name: `${sound.id}/${sound.id}-${variant.n}.${ext}`, data: readPublicFile(url) });
+      for (const [ext, file] of Object.entries(variant.files) as [string, AudioFile][]) {
+        entries.push({ name: `${sound.id}/${sound.id}-${variant.n}.${ext}`, data: await readPublicFile(file.url) });
       }
     }
     entries.push({ name: "LICENSE.txt", data: new TextEncoder().encode(licenseText([sound])) });

@@ -36,6 +36,9 @@ importers:
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.18
+      '@vercel/blob':
+        specifier: 2.8.0
+        version: 2.8.0
       ajv:
         specifier: ^8.17.1
         version: 8.18.0
@@ -115,6 +118,9 @@ importers:
 
   packages/gamesounds:
     devDependencies:
+      ajv:
+        specifier: ^8.17.1
+        version: 8.18.0
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

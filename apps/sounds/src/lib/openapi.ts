@@ -1,4 +1,4 @@
-import { STYLES } from "./catalog";
+import { AUDIO_FORMATS, STYLES } from "./catalog";
 import { SITE } from "./site";
 
 /**
@@ -14,6 +14,19 @@ const CATEGORY = {
     title: { type: "string" },
     aliases: { type: "array", items: { type: "string" } },
     parent: { type: "string", nullable: true },
+    count: {
+      type: "integer",
+      description: "Sounds actually filed here (own leaf plus every descendant leaf for a branch). The taxonomy keeps categories with no sounds yet - a future style or origin may fill them - so this is always present and honest, never omitted to imply content that is not there.",
+    },
+  },
+};
+
+const AUDIO_FILE = {
+  type: "object",
+  properties: {
+    sha256: { type: "string", description: "SHA-256 of this exact file's own bytes." },
+    bytes: { type: "integer" },
+    url: { type: "string", description: "Content-addressed, immutable path: /f/<sha256>.<ext>." },
   },
 };
 
@@ -21,12 +34,17 @@ const VARIANT = {
   type: "object",
   properties: {
     n: { type: "integer", description: "1-based position among the sound's variants." },
-    sha256: { type: "string" },
+    sha256: { type: "string", description: "SHA-256 of the canonical PCM/WAV render this variant was encoded from (the variant's own identity)." },
     duration: { type: "number" },
     files: {
       type: "object",
-      properties: { ogg: { type: "string" }, mp3: { type: "string" }, wav: { type: "string" } },
-      description: "Content-addressed, immutable paths: /f/<sha256>.<ext>.",
+      properties: { ogg: AUDIO_FILE, mp3: AUDIO_FILE, wav: AUDIO_FILE },
+      description: "Each format is content-addressed by its OWN bytes, not borrowed from a sibling format.",
+    },
+    measure: {
+      type: "object",
+      properties: { lufs: { type: "number" }, peakDb: { type: "number" }, duration: { type: "number" } },
+      description: "Loudness and level, measured on this variant's own shipped wav.",
     },
     peaks: { type: "array", items: { type: "number" }, description: "96 points, 0 to 1, for an instant waveform." },
   },
@@ -47,7 +65,11 @@ const SOUND = {
       type: "object",
       properties: { name: { type: "string" }, url: { type: "string" }, author: { type: "string" }, pack: { type: "string" } },
     },
-    origin: { type: "string", enum: ["curated", "chipvoice", "generated"] },
+    origin: {
+      type: "string",
+      enum: ["chipvoice", "generated"],
+      description: 'Every Phase 1 sound is "chipvoice" (rendered by chipvoice\'s own renderSfx, no third-party sounds). "generated" is reserved for the procedural synthesis engine, not built yet.',
+    },
     loop: {
       type: "object",
       nullable: true,
@@ -237,6 +259,19 @@ export function openApiSpec() {
                   properties: {
                     events: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 64 },
                     style: { type: "string", enum: STYLES },
+                    formats: {
+                      type: "array",
+                      items: { type: "string", enum: AUDIO_FORMATS },
+                      minItems: 1,
+                      maxItems: 2,
+                      description: "Which content-addressed formats to put in files (formats[0]) and fallback (formats[1]). Defaults to [ogg, mp3].",
+                    },
+                    exclude: {
+                      type: "array",
+                      items: { type: "string" },
+                      maxItems: 64,
+                      description: "Sound ids to skip when picking a candidate - used to resolve 'the next best sound, not this one'.",
+                    },
                   },
                 },
               },

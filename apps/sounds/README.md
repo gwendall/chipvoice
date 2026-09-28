@@ -24,19 +24,22 @@ pnpm --filter gamesounds-site dev             # next dev --turbopack -p 3020
 ```
 
 `public/f/` (the content-addressed audio files) is gitignored - `catalog:build`
-downloads Kenney's source packs, renders the chipvoice-origin sounds, and
-writes both the catalogue and every served file. It is deterministic given
-the same sources, so it is safe to run again; `--fetch-only`/`--skip-fetch`
-split the network step from the render step for a faster edit loop once the
-raw sources are already on disk. `generated/catalog.json` is committed, so
-the site itself can build and run without a rebuild.
+renders every chipvoice recipe and writes both the catalogue and every
+served file. gamesounds is our own sound bank: every sound is made by
+chipvoice's own synthesis, no third-party sounds and no external generation
+API, so this build never touches the network. It is deterministic given the
+same recipes, so it is safe to run again; `--out <path>` writes elsewhere
+instead of `generated/catalog.json` (used by `catalog:check-determinism` to
+rebuild fresh without clobbering the committed file it checks against).
+`generated/catalog.json` is committed, so the site itself can build and run
+without a rebuild.
 
 ## Layout
 
 | Path | Holds |
 | --- | --- |
-| `catalog/taxonomy.json`, `catalog/sources/*.json`, `catalog/packs.ts` | The taxonomy, per-source recipes/credits, and the starter packs (`/packs/<id>`) |
-| `scripts/build-catalog.mjs`, `scripts/lib/*.mjs` | The catalogue build: fetch, render, trim, measure, encode, write |
+| `catalog/taxonomy.json`, `catalog/chipvoice-recipes.mjs`, `catalog/packs.ts` | The taxonomy, the per-event/chip recipes, and the starter packs (`/packs/<id>`) |
+| `scripts/build-catalog.mjs`, `scripts/lib/*.mjs` | The catalogue build: render, trim, measure, encode, write |
 | `generated/catalog.json` | The built catalogue, committed |
 | `public/f/` | Content-addressed audio (`/f/<sha256>.<ext>`), gitignored |
 | `src/lib/catalog.ts` | Loads `generated/catalog.json`; search, event resolution, `buildManifest()` |
@@ -57,8 +60,10 @@ node apps/sounds/test-smoke.mjs         # Playwright, against a running build
 `test/*.test.mjs` covers schema validation (`manifest.test.mjs`, against
 `packages/gamesounds/schema/manifest-1.json`), the catalogue's own build
 checks (`checks.test.mjs`, with negative cases that prove a bad file is
-actually rejected) and its source mapping (`mapping.test.mjs`).
-`test-smoke.mjs` needs a built, running server (`next build && next start -p 3020`,
+actually rejected), audio processing (`audio.test.mjs`) and the
+determinism gate (`determinism.test.mjs`, see "Continuous integration" in
+`docs/GAMESOUNDS.md`). `test-smoke.mjs` needs a built, running server
+(`next build && next start -p 3020`,
 or `SITE=<url>` for another one) - it drives a real browser, closed in a
 `finally`, to prove the home page loads, search returns results, play
 starts a real `AudioBufferSourceNode`, a download's bytes match its

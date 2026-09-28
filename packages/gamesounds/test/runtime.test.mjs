@@ -54,12 +54,34 @@ function event(files, overrides = {}) {
   console.log("PASS pitch jitter hits both bounds exactly and never fires when unconfigured");
 }
 {
-  // `detune` (PlayOptions) stacks on top of jitter, in semitones.
+  // `detune` (PlayOptions) is semitones, applied exponentially: playback
+  // rate is `2 ** (semitones / 12)`, not a linear add - +12 must exactly
+  // double the rate and -12 must exactly halve it.
   const ctx = new FakeAudioContext();
   const sounds = await loadSounds({ manifest: manifest({ hit: event(["a.wav"]) }) }, { context: ctx, fetch: fakeFetch() });
-  sounds.play("hit", { detune: 1200 });
-  assert.equal(ctx.sources.at(-1).playbackRate.value, 1 + 12, "1200 cents (12 semitones) doubles playback rate on top of the base 1");
-  console.log("PASS PlayOptions.detune stacks correctly on top of the base playback rate");
+  sounds.play("hit", { detune: 12 });
+  assert.equal(ctx.sources.at(-1).playbackRate.value, 2, "+12 semitones doubles playback rate exactly");
+}
+{
+  const ctx = new FakeAudioContext();
+  const sounds = await loadSounds({ manifest: manifest({ hit: event(["a.wav"]) }) }, { context: ctx, fetch: fakeFetch() });
+  sounds.play("hit", { detune: -12 });
+  assert.equal(ctx.sources.at(-1).playbackRate.value, 0.5, "-12 semitones halves playback rate exactly");
+  console.log("PASS PlayOptions.detune is exponential in semitones: +12 doubles, -12 halves");
+}
+{
+  // Jitter and detune compose: `(1 + jitterOffset) * 2 ** (semitones / 12)`,
+  // checked against a seeded random so the exact expected rate is known,
+  // not just its sign or rough magnitude.
+  const ctx = new FakeAudioContext();
+  const sounds = await loadSounds(
+    { manifest: manifest({ hit: event(["a.wav"], { pitchJitter: 0.2 }) }) },
+    { context: ctx, fetch: fakeFetch(), random: () => 0.75 }, // jitterOffset = (0.75*2-1)*0.2 = 0.1
+  );
+  sounds.play("hit", { detune: 12 });
+  const expected = (1 + 0.1) * 2 ** (12 / 12);
+  assert.equal(ctx.sources.at(-1).playbackRate.value, expected, "jitter and detune compose to the exact expected rate under a seeded random");
+  console.log(`PASS jitter (seeded) and detune compose to the exact expected rate (${expected})`);
 }
 
 // ----------------------------------------------------------------- cooldown

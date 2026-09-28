@@ -32,7 +32,7 @@ export default async function SoundPage({ params }: { params: Promise<{ id: stri
         <div className="row">
           <PlayButton sound={sound} label="Play" />
           <div style={{ flex: 1 }}>
-            <Waveform peaks={sound.variants[0]?.peaks ?? []} height={48} />
+            <Waveform peaks={sound.variants[0]?.peaks ?? []} height={48} soundId={sound.id} variantN={sound.variants[0]?.n} />
           </div>
           <a className="button button-accent" href={`/api/v1/sounds/${sound.id}.zip`} data-testid="download-button">
             Download all ({sound.variants.length} variant{sound.variants.length === 1 ? "" : "s"})
@@ -46,18 +46,18 @@ export default async function SoundPage({ params }: { params: Promise<{ id: stri
           <li key={variant.n} className="row">
             <PlayButton sound={sound} variantIndex={variant.n - 1} label={`Variant ${variant.n}`} />
             <div style={{ flex: "0 0 160px" }}>
-              <Waveform peaks={variant.peaks} />
+              <Waveform peaks={variant.peaks} soundId={sound.id} variantN={variant.n} />
             </div>
             <span className="muted" style={{ fontSize: "0.85em" }}>
               {variant.duration.toFixed(2)}s
             </span>
-            <a href={variant.files.ogg} className="muted" style={{ fontSize: "0.85em" }}>
+            <a href={variant.files.ogg.url} className="muted" style={{ fontSize: "0.85em" }}>
               .ogg
             </a>
-            <a href={variant.files.mp3} className="muted" style={{ fontSize: "0.85em" }}>
+            <a href={variant.files.mp3.url} className="muted" style={{ fontSize: "0.85em" }}>
               .mp3
             </a>
-            <a href={variant.files.wav} className="muted" style={{ fontSize: "0.85em" }}>
+            <a href={variant.files.wav.url} className="muted" style={{ fontSize: "0.85em" }}>
               .wav
             </a>
             <code className="muted" style={{ fontSize: "0.75em" }} data-testid="variant-sha256">

@@ -12,7 +12,7 @@ export function PlayButton({ sound, variantIndex = 0, label = "Play" }: { sound:
   const { playing, play } = usePlayer();
   const variant = sound.variants[variantIndex];
   if (!variant) return null;
-  const isPlaying = playing.soundId === sound.id && playing.variant === variant.n;
+  const isPlaying = playing.isPlaying && playing.soundId === sound.id && playing.variant === variant.n;
 
   return (
     <button
@@ -22,7 +22,7 @@ export function PlayButton({ sound, variantIndex = 0, label = "Play" }: { sound:
       data-playing={isPlaying ? "true" : "false"}
       aria-pressed={isPlaying}
       aria-label={`${label} ${sound.title}`}
-      onClick={() => void play(sound.id, { ogg: variant.files.ogg, mp3: variant.files.mp3 }, variant.n)}
+      onClick={() => void play(sound, variant)}
     >
       {isPlaying ? "Playing" : label}
     </button>

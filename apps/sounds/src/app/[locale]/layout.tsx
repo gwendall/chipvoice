@@ -5,6 +5,7 @@ import { getMessages } from "@/i18n/server";
 import { I18nProvider } from "@/i18n/react";
 import { PlayerProvider } from "@/lib/player";
 import { Header } from "@/components/Header";
+import { MiniPlayer } from "@/components/MiniPlayer";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -29,6 +30,7 @@ export default async function RootLayout({ children, params }: { children: React
           <PlayerProvider>
             <Header />
             <main id="main">{children}</main>
+            <MiniPlayer />
           </PlayerProvider>
         </I18nProvider>
       </body>

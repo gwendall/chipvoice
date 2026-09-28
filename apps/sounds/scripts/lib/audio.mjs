@@ -18,7 +18,7 @@
 // this file's own math had no part in choosing.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -446,20 +446,55 @@ function vorbisEncoderArgs() {
   return vorbisEncoderArgsCache;
 }
 
-/** Encodes a leveled render to ogg, mp3 and wav under `outDir`, named by the SHA-256 of the canonical WAV. Returns the content-addressed file names and the measured loudness of the shipped WAV. */
+/**
+ * Encodes a leveled render to ogg, mp3 and wav under `outDir`. Each format
+ * is named by its OWN bytes' SHA-256, not borrowed from a sibling format:
+ * an ogg and an mp3 encoded from the same wav compress to different bytes,
+ * so a shared filename hash would only ever be provably correct for the
+ * wav itself - the bug that motivated this (see docs/DECISIONS.md). Every
+ * ffmpeg output is written to a temp name first, hashed from the bytes
+ * actually on disk, then renamed to its own content-addressed name - the
+ * hash this function returns is always the hash of the exact bytes that
+ * ship, never assumed from the encoder's own exit code.
+ *
+ * Returns the content-addressed file record per format (`{sha256, bytes,
+ * name}`) plus the wav's own hash again as `sha256` - the variant's
+ * identity, since the wav IS the canonical render every format was encoded
+ * from - and the measured loudness of the shipped wav.
+ */
 export function encodeVariant(render, outDir, { mkdirSync } = {}) {
   const wavBytes = toWavBytes(render);
-  const hash = sha256Hex(wavBytes);
+  const wavHash = sha256Hex(wavBytes);
   if (mkdirSync) mkdirSync(outDir, { recursive: true });
-  const wavName = `${hash}.wav`;
-  const oggName = `${hash}.ogg`;
-  const mp3Name = `${hash}.mp3`;
+  const wavName = `${wavHash}.wav`;
   const wavPath = join(outDir, wavName);
   writeFileSync(wavPath, wavBytes);
-  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...vorbisEncoderArgs(), join(outDir, oggName)]);
-  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, "-c:a", "libmp3lame", "-q:a", "3", join(outDir, mp3Name)]);
+
+  const tmpOggPath = join(outDir, `.tmp-${wavHash}.ogg`);
+  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...vorbisEncoderArgs(), tmpOggPath]);
+  const oggBytes = readFileSync(tmpOggPath);
+  const oggHash = sha256Hex(oggBytes);
+  const oggName = `${oggHash}.ogg`;
+  renameSync(tmpOggPath, join(outDir, oggName));
+
+  const tmpMp3Path = join(outDir, `.tmp-${wavHash}.mp3`);
+  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, "-c:a", "libmp3lame", "-q:a", "3", tmpMp3Path]);
+  const mp3Bytes = readFileSync(tmpMp3Path);
+  const mp3Hash = sha256Hex(mp3Bytes);
+  const mp3Name = `${mp3Hash}.mp3`;
+  renameSync(tmpMp3Path, join(outDir, mp3Name));
+
   const measure = measureLoudness(wavPath);
-  return { sha256: hash, files: { ogg: oggName, mp3: mp3Name, wav: wavName }, duration: render.seconds, measure };
+  return {
+    sha256: wavHash,
+    files: {
+      wav: { sha256: wavHash, bytes: wavBytes.length, name: wavName },
+      ogg: { sha256: oggHash, bytes: oggBytes.length, name: oggName },
+      mp3: { sha256: mp3Hash, bytes: mp3Bytes.length, name: mp3Name },
+    },
+    duration: render.seconds,
+    measure,
+  };
 }
 
 export { peakOf, toWavBytes };

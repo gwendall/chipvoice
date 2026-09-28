@@ -32,7 +32,7 @@ const sounds = await loadSounds({ manifest });
 document.addEventListener("pointerdown", () => sounds.unlock(), { once: true });
 
 sounds.play("jump");                    // round-robin variant, jitter, cooldown
-sounds.play("hit/heavy", { detune: 200 });
+sounds.play("hit/heavy", { detune: -2 });      // 2 semitones down
 const music = sounds.bus("music");
 music.duck(0.4);                        // ready for a one-shot on the sfx bus
 

@@ -386,8 +386,11 @@ export class GameSounds {
     source.buffer = buffer;
     const jitter = state.config.pitchJitter;
     const jitterOffset = jitter > 0 ? (this.opts.random() * 2 - 1) * jitter : 0;
-    const detuneSemis = (options.detune ?? 0) / 100;
-    source.playbackRate.value = Math.max(0.01, 1 + jitterOffset + detuneSemis);
+    // detune is semitones (PlayOptions' own doc comment): a playback-rate
+    // multiplier is exponential in pitch, not linear, so +12 must double the
+    // rate and -12 must halve it, not add/subtract 0.12 - see docs/DECISIONS.md.
+    const semitones = options.detune ?? 0;
+    source.playbackRate.value = Math.max(0.01, (1 + jitterOffset) * 2 ** (semitones / 12));
     if (loop) {
       source.loop = true;
       if (state.loop) {

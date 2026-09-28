@@ -11,8 +11,7 @@
     "test": "node --test test/*.test.mjs",
     "test:e2e": "node test-e2e.mjs",
     "catalog:build": "node scripts/build-catalog.mjs",
-    "catalog:build:fetch-only": "node scripts/build-catalog.mjs --fetch-only",
-    "catalog:build:skip-fetch": "node scripts/build-catalog.mjs --skip-fetch"
+    "catalog:check-determinism": "node scripts/check-determinism.mjs"
   },
   "dependencies": {
     "next": "^16.3.6",
@@ -23,6 +22,7 @@
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
+    "@vercel/blob": "2.8.0",
     "ajv": "^8.17.1",
     "playwright": "^1.62.1",
     "typescript": "^5.7.0"

@@ -1,4 +1,4 @@
-import { buildManifest, getSound, type Sound } from "@/lib/catalog";
+import { buildManifest, getSound, type AudioFile, type Sound } from "@/lib/catalog";
 import { licenseText } from "@/lib/credits";
 import { readPublicFile } from "@/lib/files";
 import { corsPreflight, HttpError, route } from "@/lib/http";
@@ -26,8 +26,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       if (!sound) continue;
       const eventSlug = event.replace(/\//g, "-");
       for (const variant of sound.variants) {
-        for (const [ext, url] of Object.entries(variant.files) as [string, string][]) {
-          entries.push({ name: `${eventSlug}/${eventSlug}-${variant.n}.${ext}`, data: readPublicFile(url) });
+        for (const [ext, file] of Object.entries(variant.files) as [string, AudioFile][]) {
+          entries.push({ name: `${eventSlug}/${eventSlug}-${variant.n}.${ext}`, data: await readPublicFile(file.url) });
         }
       }
       if (!credited.has(sound.id)) {

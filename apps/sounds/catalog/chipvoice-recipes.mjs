@@ -1,5 +1,6 @@
-// Retro chip-rendered sounds: chipvoice's own hardware voices as a second
-// catalogue origin alongside the curated Kenney sounds. Every recipe here is
+// Retro chip-rendered sounds: chipvoice's own hardware voices, the whole
+// catalogue's only origin (no third-party sounds, no external generation
+// API - see docs/DECISIONS.md, decision 50). Every recipe here is
 // a real chipvoice `SfxRecipe` (chip, channel, note, instrument, duration) -
 // the exact JSON `Sound.recipe` round-trips through `renderSfx(recipe.chip,
 // recipe)` to render the same sound again (packages/chipvoice/src/render-sfx.ts).
@@ -82,7 +83,7 @@ const EVENTS = [
     build: (inst, v) => ({ note: v === 0 ? "B5" : "C6", duration: 0.1, instrument: { ...inst.chord, arp: undefined } }),
   },
   {
-    category: "combat/hit", tags: ["impact"], title: "Hit", description: "A short noise burst for a melee or projectile impact.",
+    category: "combat/hit", tags: ["impact", "heavy"], title: "Hit", description: "A short noise burst for a melee or projectile impact.",
     role: "perc-snare",
     build: (inst, v) => ({ note: inst.perc.S.note, duration: v === 0 ? inst.perc.S.duration : inst.perc.S.duration * 0.7, instrument: inst.perc.S.instrument }),
   },
@@ -166,6 +167,11 @@ const EVENTS = [
   // voice/blip-speech), past the launch set above, so the catalogue clears
   // Phase 1 acceptance's 300-sound / 40-category floor without resorting to
   // a non-Kenney, non-chipvoice source.
+  {
+    category: "movement/footstep", tags: ["grass"], title: "Footstep", description: "A soft, short noise tick for a footstep on grass or soft ground.",
+    role: "perc-hat",
+    build: (inst, v) => ({ note: inst.perc.H.note, duration: v === 0 ? Math.min(inst.perc.H.duration * 0.8, 0.04) : Math.min(inst.perc.H.duration * 1.1, 0.05), instrument: v === 0 ? inst.perc.H.instrument : { ...inst.perc.H.instrument, slide: -0.2 } }),
+  },
   {
     category: "movement/double-jump", tags: ["air-jump"], title: "Double jump", description: "A brighter second jump slide, for an air jump.",
     role: "lead",
@@ -278,42 +284,149 @@ const EVENTS = [
   },
 ];
 
+// A chipvoice sound is generated, not sourced, so it has no excuse to ship
+// fewer than VARIANTS_PER_GROUP takes (docs/GAMESOUNDS.md's 3-to-5 range,
+// checked at build time by checkChipvoiceVariantCount). Each event's own
+// `build(inst, v)` only ever picks between two hand-tuned shapes (`v === 0 ?
+// X : Y`) - and for some event/chip combinations (channel mapping strips the
+// field the two shapes actually differ on, e.g. `slide` on a chip/role with
+// no slide-capable channel) those two shapes render to byte-identical PCM.
+// So every take beyond the first gets its OWN nudge on top of its shape -
+// duration and detune, the two universal SfxSpec/recipe fields (every shape
+// has a duration, and `detune` is chipvoice's own top-level semitone offset,
+// packages/chipvoice/src/render-sfx.ts's frameSemitones).
+//
+// A single fixed nudge per take is not enough, though: several of chipvoice's
+// own quantization steps are coarse enough that even a real, whole-semitone
+// or double-digit-percent nudge can still land on the exact same rendered
+// bytes as another take, or - rarer, but seen on a Game Boy noise take -
+// silence. Two concrete, verified-against-the-real-renderer cases:
+//   - A noise voice (driver.ts's `frames()`) resolves its period as
+//     `Math.round(noiseBase + semis)`, clamped to 0-15. A base near either
+//     end of that range clamps several different nudges to the SAME
+//     extreme, and a purely one-directional nudge ladder (0, -1, -2, -3...)
+//     can walk a base that is already near 0 (or 15) into that same clamped
+//     value every single rung.
+//   - Very short takes (a UI tick, a hat) round their duration to a whole
+//     60Hz engine frame (`noteFrameCount` in driver.ts); a small percentage
+//     stretch can round back to the identical frame count, and an
+//     instrument's own volume envelope can also just decay to silence
+//     before a longer duration would have mattered anyway.
+// So each take is a candidate LADDER, not a single nudge: buildChipvoice (in
+// scripts/build-catalog.mjs) renders candidates in order and keeps the first
+// VARIANTS_PER_GROUP that are both audible and byte-distinct from every take
+// already kept, rejecting - never accepting - a collision or a silent
+// render. Each parity's own ladder (see PARITY_LADDERS) alternates sign and
+// grows in magnitude specifically so it cannot get stuck walking one
+// direction into a clamp; STRETCH_LADDER grows independently so a duration
+// collision escalates too. This is intentionally a general escape hatch, not
+// a per-chip special case - the exact quantization step that collides varies
+// by chip and is not worth hand-tracking per event.
+const VARIANTS_PER_GROUP = 4;
+
+// Rung 0 of parity 0 is the untouched, hand-tuned canonical shape (no nudge
+// at all - see applyNudge's no-op branch). Every other rung is a real,
+// whole-semitone detune plus a duration stretch, both growing and
+// alternating sign as the rung number rises.
+const PARITY_LADDERS = [
+  [0, -1, 1, -2, 2, -3, 3, -4, 4, -5],
+  [1, -1, 2, -2, 3, -3, 4, -4, 5, -5],
+];
+const STRETCH_LADDER = [1, 1.09, 0.91, 1.18, 0.82, 1.27, 0.73, 1.36, 0.64, 1.45];
+// A THIRD, independent lever, for the rare group neither of the above moves
+// a single sample in: every `perc`-role recipe on the SNES is forced onto
+// its one period-addressed voice (v3, `notes: "period"` in
+// chips/snes/index.ts) no matter which percussion instrument (kick, snare,
+// hat) the event actually reaches for, and that shared voice can render a
+// long, already-decayed hit or an already-floored short tick identically
+// across this whole detune/duration range - verified against the real
+// renderer, not assumed (see docs/DECISIONS.md, decision 50). Shifting the
+// instrument's own volume table by a small, clamped, alternating-sign amount
+// changes the amplitude at every rendered frame directly, so it cannot be
+// absorbed the same way duration or period can.
+const VOLUME_LADDER = [0, -2, 2, -3, 3, -4, 4, -5, 5, -6];
+
 /**
- * Builds every chipvoice-origin recipe: one entry per event x chip x variant
- * (2 variants), each a `{id, category, style, tags, title, description,
- * recipe}` ready for the build script to render with `renderSfx(recipe.chip,
- * recipe)`, trim, level and encode exactly like a curated sound.
+ * Nudges an event's own shape by one rung's {detuneNudge, stretch,
+ * volumeShift}, a no-op only for rung 0 of parity 0 (all three zero/1
+ * together). See VARIANTS_PER_GROUP's comment for why duration, detune and
+ * the volume table are the levers here.
  */
-export function chipvoiceRecipes(instrumentsFor) {
+function applyNudge(shape, detuneNudge, stretch, volumeShift) {
+  if (stretch === 1 && detuneNudge === 0 && volumeShift === 0) return shape;
+  const instrument = shape.instrument;
+  const shiftedVolume = volumeShift !== 0 && Array.isArray(instrument?.volume)
+    ? instrument.volume.map((v) => Math.max(0, Math.min(15, v + volumeShift)))
+    : instrument?.volume;
+  return {
+    ...shape,
+    duration: Math.max(0.02, shape.duration * stretch),
+    detune: (shape.detune ?? 0) + detuneNudge,
+    ...(shiftedVolume !== instrument?.volume ? { instrument: { ...instrument, volume: shiftedVolume } } : {}),
+  };
+}
+
+/**
+ * One (event, chip) group's ordered candidate ladder: alternates parity
+ * (event.build(inst, 0) / event.build(inst, 1), the hand-tuned shape split)
+ * and climbs both parities' own nudge ladders one rung at a time, so the
+ * first two candidates are exactly the two hand-tuned shapes untouched
+ * (rung 0), and every candidate after that is a real, escalating nudge on
+ * top of one of those two shapes. `buildChipvoice` (scripts/build-catalog.mjs)
+ * renders these in order and keeps the first VARIANTS_PER_GROUP that survive
+ * its own audible/distinct check - most groups never need more than the
+ * first four.
+ */
+function groupCandidates(event, chip, inst) {
+  const baseRole = event.role.startsWith("perc") ? "perc" : event.role;
+  const channel = ROLE_CHANNEL[chip][baseRole];
+  const style = CHIP_STYLE[chip];
+  const candidates = [];
+  for (let rung = 0; rung < STRETCH_LADDER.length; rung++) {
+    for (const parity of [0, 1]) {
+      const detuneNudge = PARITY_LADDERS[parity][rung];
+      const stretch = STRETCH_LADDER[rung];
+      const volumeShift = VOLUME_LADDER[rung];
+      const shape = applyNudge(event.build(inst, parity), detuneNudge, stretch, volumeShift);
+      candidates.push({
+        category: event.category,
+        style,
+        tags: event.tags,
+        title: event.title,
+        description: event.description,
+        group: `${event.category}::${chip}`,
+        recipe: {
+          chip,
+          channel,
+          note: shape.note,
+          instrument: shape.instrument,
+          duration: shape.duration,
+          ...(shape.detune !== undefined ? { detune: shape.detune } : {}),
+        },
+      });
+    }
+  }
+  return candidates;
+}
+
+/**
+ * Builds every chipvoice-origin (event, chip) group's own candidate ladder -
+ * `{event, chip, candidates}`, one entry per event x chip. `candidates` is
+ * ordered (see groupCandidates); the build script renders from the front of
+ * each list until it has VARIANTS_PER_GROUP audible, distinct takes for that
+ * group, exactly like it would render a curated sound's fixed file list.
+ */
+export function chipvoiceGroups(instrumentsFor) {
   const out = [];
   for (const event of EVENTS) {
     for (const chip of CHIPS) {
       const inst = instrumentsFor(chip, undefined);
-      for (let variant = 0; variant < 2; variant++) {
-        const baseRole = event.role.startsWith("perc") ? "perc" : event.role;
-        const shape = event.build(inst, variant);
-        const channel = ROLE_CHANNEL[chip][baseRole];
-        out.push({
-          id: `${event.category.replace("/", "-")}-${CHIP_STYLE[chip]}-${chip}-${variant + 1}`,
-          category: event.category,
-          style: CHIP_STYLE[chip],
-          tags: event.tags,
-          title: event.title,
-          description: event.description,
-          take: variant + 1,
-          group: `${event.category}::${chip}`,
-          recipe: {
-            chip,
-            channel,
-            note: shape.note,
-            instrument: shape.instrument,
-            duration: shape.duration,
-          },
-        });
-      }
+      out.push({ event, chip, candidates: groupCandidates(event, chip, inst) });
     }
   }
   return out;
 }
+
+export { VARIANTS_PER_GROUP };
 
 export { CHIPS, CHIP_STYLE, ROLE_CHANNEL };

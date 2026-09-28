@@ -34,21 +34,49 @@ export const STYLES: readonly Style[] = [
   "8bit", "16bit", "arcade", "cartoon", "realistic", "scifi", "fantasy", "horror", "cozy", "minimal-ui",
 ];
 
-/** Where a sound came from: hand-picked, rendered by chipvoice, or (phase 2) generated. */
-export type Origin = "curated" | "chipvoice" | "generated";
+/**
+ * Where a sound came from. Every Phase 1 sound is `"chipvoice"` (rendered by
+ * chipvoice's own `renderSfx`, no third-party sounds and no external
+ * generation API - see docs/DECISIONS.md). `"generated"` is reserved for the
+ * procedural synthesis engine tracked as GS-02 in docs/BACKLOG.md (our own
+ * DSP, deterministic, recipe + seed), not built in this phase.
+ */
+export type Origin = "chipvoice" | "generated";
 
 /** SPDX id. The launch catalogue is `"CC0-1.0"` only; the type stays open for later. */
 export type License = "CC0-1.0" | string;
+
+/**
+ * One shipped file of a variant: named by its OWN bytes' SHA-256, not
+ * borrowed from a sibling format - an ogg, an mp3 and a wav encoded from the
+ * same source render each compress to different bytes, so each gets its own
+ * hash, its own byte count and its own `/f/<sha256>.<ext>` URL. This is what
+ * lets a CLI or a build check verify exactly the bytes it actually has for a
+ * given format, instead of only ever being able to verify the WAV.
+ */
+export interface AudioFile {
+  sha256: string;
+  bytes: number;
+  /** Content-addressed, immutable path: `/f/<sha256>.<ext>`. */
+  url: string;
+}
 
 /** One take of a sound: its files, content hash and precomputed waveform. */
 export interface Variant {
   /** 1-based position among the sound's variants. */
   n: number;
-  /** SHA-256 of the canonical (WAV) source this variant was encoded from. */
+  /**
+   * SHA-256 of the canonical PCM/WAV render this variant was encoded from -
+   * the variant's own identity, shared by every format encoded from it
+   * (equal to `files.wav.sha256`, since the wav IS that canonical render).
+   * Kept as its own field because it is what "the same take, re-encoded"
+   * means, independent of which formats happen to exist.
+   */
   sha256: string;
   duration: number;
-  /** Content-addressed, immutable paths: `/f/<sha256>.<ext>`. */
-  files: { ogg: string; mp3: string; wav: string };
+  files: { ogg: AudioFile; mp3: AudioFile; wav: AudioFile };
+  /** Loudness and level, as measured on this variant's own shipped wav. */
+  measure: Measure;
   /** 96 points, 0 to 1, for an instant waveform before any audio loads. */
   peaks: number[];
 }
@@ -99,8 +127,12 @@ export interface Sound {
    */
   recipe?: unknown;
   loop: { start: number; end: number } | null;
-  /** 1 to 8 takes of the same idea. */
+  /** 1 to 8 takes of the same idea; every variant carries its own `measure`
+   * too (checked individually - see docs/GAMESOUNDS.md's loudness section). */
   variants: Variant[];
+  /** The first variant's measure, kept at sound level for a quick summary
+   * (list views, sorting) without reaching into `variants[0]` - the binding
+   * check is per variant, not this field. */
   measure: Measure;
   rank: Rank;
 }

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import audioStore from "./audio-store.json";
 
 const config: NextConfig = {
   skipProxyUrlNormalize: true,
@@ -20,6 +21,20 @@ const config: NextConfig = {
         {
           source: "/api/v1/packs/:id([a-z0-9-]+).zip",
           destination: "/api/v1/packs/:id/zip",
+        },
+        /*
+         * Shipped audio lives in a Vercel Blob store, not in git (decision
+         * 40's pattern, apps/sounds/scripts/audio-store.mjs). Every file
+         * already names its own content (/f/<sha256>.<ext>), so this maps
+         * one to one and never goes stale. `afterFiles` runs after public
+         * files, so a local copy from `pnpm sounds:pull` (or a dev/test
+         * build's own generated/public/f) is served first - the store is
+         * only ever a fallback for a byte this checkout does not have on
+         * disk.
+         */
+        {
+          source: "/f/:file([0-9a-f]{64}).:ext(ogg|mp3|wav)",
+          destination: `${audioStore.base}/f/:file.:ext`,
         },
       ],
       fallback: [],

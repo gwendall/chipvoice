@@ -14,11 +14,11 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Category, Manifest, ManifestCredit, ManifestEvent, Sound, Style, Variant } from "../../../../packages/gamesounds/src/types.ts";
-import { MANIFEST_SCHEMA_URL, MANIFEST_VERSION, STYLES } from "../../../../packages/gamesounds/src/types.ts";
+import type { AudioFile, AudioFormat, Category, Manifest, ManifestCredit, ManifestEvent, Sound, Style, Variant } from "../../../../packages/gamesounds/src/types.ts";
+import { AUDIO_FORMATS, MANIFEST_SCHEMA_URL, MANIFEST_VERSION, STYLES } from "../../../../packages/gamesounds/src/types.ts";
 
-export type { Category, Manifest, ManifestCredit, ManifestEvent, Sound, Style, Variant };
-export { STYLES };
+export type { AudioFile, AudioFormat, Category, Manifest, ManifestCredit, ManifestEvent, Sound, Style, Variant };
+export { AUDIO_FORMATS, STYLES };
 
 interface CatalogFile {
   $comment: string;
@@ -53,6 +53,24 @@ export function childCategories(parentId: string | null): Category[] {
   return loadCatalogFile().categories.filter((c) => c.parent === parentId);
 }
 
+export interface CategoryWithCount extends Category {
+  /** Sounds filed on this category's own leaf plus every descendant leaf
+   * (a branch has none of its own). The taxonomy may keep a category with
+   * zero sounds - a future style or the procedural engine (GS-02,
+   * docs/BACKLOG.md) may fill it later - but nothing that shows this count
+   * may omit it or otherwise present an empty category as if it had
+   * content; see `GET /api/v1/categories`. */
+  count: number;
+}
+
+export function listCategoriesWithCounts(): CategoryWithCount[] {
+  const { categories, sounds } = loadCatalogFile();
+  return categories.map((c) => ({
+    ...c,
+    count: sounds.filter((s) => s.category === c.id || s.category.startsWith(`${c.id}/`)).length,
+  }));
+}
+
 export function listSounds(): Sound[] {
   return loadCatalogFile().sounds;
 }
@@ -61,10 +79,19 @@ export function getSound(id: string): Sound | null {
   return loadCatalogFile().sounds.find((s) => s.id === id) ?? null;
 }
 
-/** Finds the sound and the exact variant a given shipped file's sha256 belongs to - used to verify a download's bytes match the catalogue's own record. */
+/**
+ * Finds the sound and the exact variant a given shipped file's sha256
+ * belongs to - used to verify a download's bytes match the catalogue's own
+ * record. Each of a variant's three formats is content-addressed by its own
+ * bytes now (decision 40's pattern, extended per-file), so this matches
+ * against the variant identity (`v.sha256`, the WAV/PCM source hash) or any
+ * one of its three shipped files' own hashes.
+ */
 export function getSoundByVariantSha(sha256: string): { sound: Sound; variant: Variant } | null {
   for (const sound of loadCatalogFile().sounds) {
-    const variant = sound.variants.find((v) => v.sha256 === sha256);
+    const variant = sound.variants.find(
+      (v) => v.sha256 === sha256 || v.files.ogg.sha256 === sha256 || v.files.mp3.sha256 === sha256 || v.files.wav.sha256 === sha256,
+    );
     if (variant) return { sound, variant };
   }
   return null;
@@ -161,12 +188,27 @@ export function resolveEvent(input: string): ResolvedEvent {
  * A style with no candidates falls back to any style in the category rather
  * than resolving to nothing, since a category is more important to answer
  * than a style preference.
+ *
+ * `exclude` (the CLI's `swap`) drops given sound ids from the candidate pool
+ * before picking, so "the next best" is simply "the best of what is left" -
+ * the same deterministic sort, just missing what the caller already has.
  */
-export function pickSoundForEvent(category: string, { style, tag }: { style?: Style; tag?: string | null } = {}): Sound | null {
+export function pickSoundForEvent(
+  category: string,
+  { style, tag, exclude }: { style?: Style; tag?: string | null; exclude?: Set<string> } = {},
+): Sound | null {
   let candidates = listSounds().filter((s) => s.category === category);
   if (tag) {
     const needle = tag.toLowerCase();
     candidates = candidates.filter((s) => s.tags.some((t) => t.toLowerCase() === needle));
+  }
+  if (exclude && exclude.size > 0) {
+    const withoutExcluded = candidates.filter((s) => !exclude.has(s.id));
+    // Excluding everything is worse than ignoring the exclusion: a swap
+    // request with no other candidate should say so honestly (by returning
+    // the same sound again, resolvable by the caller as "nothing else
+    // exists"), not silently return nothing.
+    if (withoutExcluded.length > 0) candidates = withoutExcluded;
   }
   if (candidates.length === 0) return null;
   let pool = style ? candidates.filter((s) => s.style === style) : candidates;
@@ -191,13 +233,29 @@ export interface ResolveResult {
  * Builds a sounds.json-shaped Manifest (validated against
  * public/schema/manifest-1.json by test/manifest.test.mjs) for a list of
  * event strings: one sound per event, deduplicated credits. Every sound in
- * the Phase 1 catalogue is CC0-1.0 (catalog/sources/*.json and the
- * chipvoice-origin builder both hardcode it - see
- * test/mapping.test.mjs and the binding "Kenney + chipvoice only" sourcing
- * rule in docs/DECISIONS.md), so "all CC0" holds by construction, not by a
- * runtime filter here.
+ * the Phase 1 catalogue is CC0-1.0 (the chipvoice-origin builder hardcodes
+ * it - see scripts/build-catalog.mjs's assembleSound, and the "chipvoice
+ * only, no third-party sounds" rule in docs/DECISIONS.md), so "all CC0"
+ * holds by construction, not by a runtime filter here.
+ *
+ * `formats` picks which of a variant's own content-addressed files
+ * (decision 40, extended per-file - see `AudioFile`) become `files`
+ * (formats[0]) and `fallback` (formats[1], if given) - the CLI's
+ * `--formats` flag (packages/gamesounds/bin/gamesounds.mjs) passes this
+ * straight through, so `--formats ogg` writes only ogg URLs into the
+ * manifest and nothing else gets downloaded. Defaults to `["ogg", "mp3"]`,
+ * the runtime's own primary/fallback pair.
+ *
+ * `exclude` drops given sound ids from every event's candidate pool before
+ * picking - the CLI's `swap` uses it to resolve "the next best sound" as
+ * "the best sound that isn't the one already chosen".
  */
-export function buildManifest(events: string[], { style }: { style?: Style } = {}): ResolveResult {
+export function buildManifest(
+  events: string[],
+  { style, formats, exclude }: { style?: Style; formats?: [AudioFormat] | [AudioFormat, AudioFormat]; exclude?: string[] } = {},
+): ResolveResult {
+  const [primaryFormat, fallbackFormat] = formats ?? (["ogg", "mp3"] as const);
+  const excludeSet = exclude && exclude.length > 0 ? new Set(exclude) : undefined;
   const manifestEvents: Record<string, ManifestEvent> = {};
   const credits: ManifestCredit[] = [];
   const creditedSoundIds = new Set<string>();
@@ -211,7 +269,7 @@ export function buildManifest(events: string[], { style }: { style?: Style } = {
       resolved.push({ event: raw, sound: null, category: null });
       continue;
     }
-    const sound = pickSoundForEvent(category, { style, tag });
+    const sound = pickSoundForEvent(category, { style, tag, exclude: excludeSet });
     if (!sound) {
       unresolved.push(raw);
       resolved.push({ event: raw, sound: null, category });
@@ -219,8 +277,8 @@ export function buildManifest(events: string[], { style }: { style?: Style } = {
     }
     manifestEvents[raw] = {
       sound: sound.id,
-      files: sound.variants.map((v) => v.files.ogg),
-      fallback: sound.variants.map((v) => v.files.mp3),
+      files: sound.variants.map((v) => v.files[primaryFormat].url),
+      ...(fallbackFormat ? { fallback: sound.variants.map((v) => v.files[fallbackFormat].url) } : {}),
     };
     if (!creditedSoundIds.has(sound.id)) {
       creditedSoundIds.add(sound.id);
