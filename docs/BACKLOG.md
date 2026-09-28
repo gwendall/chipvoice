@@ -105,6 +105,26 @@ created the same day.
   It now lives in a Vercel Blob store under paths that name their content,
   with the reports as its manifest (decision 40).
 
+- done - REV-10 (REV-01 follow-up): the `browser` job's two remaining flakes
+  turned out to be different bugs sharing one ticket. `test-audio-transitions.mjs`'s
+  tempo-slider hang was Playwright's 30 s default wait, the same class NEXT-03
+  already found in `test-creation-browser.mjs`: a busy shared runner, not a
+  real 30 s stall, tripped it. The page now sets a 120 s default timeout, and
+  a catch block saves a screenshot and the live slider, number and Undo state
+  on failure, since a hang before the test's success-only write left no other
+  evidence behind. `test-progressive-long.mjs`'s one SNES underrun is real:
+  `ProgressivePlayback`'s handoff hands a moving group over with only its
+  fixed 0.75 s `HANDOFF_LEAD` margin, and `pump`'s first post-handoff read has
+  to land inside that margin, so a brief host stall (a GC pause, scheduler
+  jitter) right at the handoff instant, not a sustained slow CPU, can exhaust
+  it before the read returns. A real device could in principle hit the same
+  instant; a shared CI runner just lands on it more often. Neither script
+  reproduced locally at rest, under a bounded 4-core load, or under CDP CPU
+  throttling up to 25x, consistent with a rare host stall rather than a
+  steady slowdown. The margin fix needs
+  `packages/chipvoice/src/playback/ProgressivePlayback.ts`, out of scope for
+  this non-engine ticket; left for a follow-up.
+
 ## Next steps (2026-09-27)
 
 Decisions 38 and 39 set the direction after the review: prove the five chips
