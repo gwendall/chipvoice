@@ -199,7 +199,8 @@ stream - identical sample for sample on every log, echo and FIR included, on
 the port's first run. A BRR encoder that searches every filter and shift
 against the chip's own decoder; the sample instrument shape as a name in the
 driver's bank (`Instrument.sample`) and `ChipDriver.memory()` for the bank
-itself; the echo on as the signature. Still to come: real triads across
+itself; the echo on as the signature then, off by default since 0.16.3 and an
+explicit `space: "room"` opt-in since decision 53. Still to come: real triads across
 voices for the chord (P6-10), SPC export (P6-9), a capture of a unit (P6-8).
 
 ### Phase 7. C64

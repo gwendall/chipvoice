@@ -11,6 +11,24 @@ overview.
 
 ## Unreleased
 
+The SNES factory bank's brass, strings, picked-bass, kick and snare move onto
+a shared ensemble/detune synthesis formula (several detuned partials per
+loop, closing exactly on a period boundary regardless of detune), a direct
+response to a real consumer's complaint that these instruments sounded thin.
+Mallet, harp, reed-bass and synth-bass render byte-identical audio to before,
+since the same formula collapses to the prior single-partial synthesis at
+`unison: 1, detuneCents: 0`; flute gets a small added breath noise. Every
+sample name and its tuning are unchanged. The S-DSP's echo, previously a
+disabled constant, is now `ChipCreateOptions.space`: `"dry"` (the factory
+default, byte-identical to every prior register stream) or `"room"` (a
+measured, documented, opt-in echo return on the pitched voices, threaded
+through `renderSong`/`recordSong`'s own `space` option). A related power-on
+fix mutes MVOL/EVOL before anything else, removing a moment of decoded
+power-on-garbage audio a captured console state could otherwise produce
+regardless of `space`. See [SNES-PALETTE.md](docs/SNES-PALETTE.md)'s Phase 3
+measurements and decision 53 in [DECISIONS.md](docs/DECISIONS.md) for the
+evidence behind both the bank and the default.
+
 `renderSfx(chip, spec, options)` renders a single effect offline - the same
 `Chip.sfx(channel, options)` call, minus the browser: a chip id, a voice, a
 note, an `Instrument` and a duration in, a `RenderResult` out, the same shape

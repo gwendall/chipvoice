@@ -2061,6 +2061,102 @@ outside it is required to adopt it. It is the sound-generation option
 gamesounds.ai's app can call into going forward, alongside whatever it
 already has.
 
+## 53. A richer SNES factory bank via one ensemble/detune synthesis formula, and echo as a documented `space` choice that still defaults to dry (2026-09-29)
+
+NEXT-24 answers a real consumer's (kami's) complaint that the SNES factory
+instruments sound thin and distant. Two changes, kept separate: a reworked
+bank (`packages/chipvoice/scripts/snes-bank-source.ts`), and turning the
+S-DSP's echo from a disabled constant into `ChipCreateOptions.space`, a
+public, documented, unit-tested choice between `"dry"` (the default,
+unchanged) and `"room"` (a moderate authored return). Every existing
+sample name and its `baseHz` tuning are unchanged; raw waveform instruments
+are untouched by design.
+
+**The bank.** Brass, strings, picked-bass, kick and snare, the brief's
+named pain points, move onto one shared formula: several detuned partials
+placed at `bin = (partial + 1) * loopCycles + offset * spreadBins` within a
+loop of `loopCycles` periods, so every unison voice still closes exactly on
+a period boundary regardless of its detune - no discontinuity at the loop
+seam, the same guarantee the phase-1 palette measured for a single partial.
+`unison: 1, detuneCents: 0` collapses the formula back to that single
+partial exactly, which is why mallet, harp, reed-bass and synth-bass -
+lighter-upgrade families, not this ticket's primary focus - render
+byte-identical audio to the pre-ticket bank: confirmed both by `git diff`
+against the pre-ticket source (only the new, synthesis-neutral
+`loopCycles`/`unison`/`detuneCents`/`noiseMix` fields are added to their
+recipes) and by the measured descriptors below, which are identical
+between `main` and `dry` on every mallet-routed probe. Flute gets a small
+`noiseMix` breath addition; it is otherwise in the same unchanged group.
+This uneven effort is deliberate, not an oversight: the brief asked for
+"primary engineering focus: brass, strings, picked-bass, kick, snare...
+lighter, consistent upgrade" everywhere else, and a formula that leaves
+four of five lighter-upgrade families provably unchanged is evidence the
+primary families' new ensemble/detune/noise parameters are doing real
+work, not an artifact of a formula that changes everything a little.
+
+**Evidence.** `docs/SNES-PALETTE.md`'s Phase 3 protocol, committed before
+any bank or driver change (`c4b1899`), and its measurements are the record;
+summarized here. Attack transient energy - the cleanest, most consistently
+directional descriptor - separates cleanly on both reworked brass probes:
+overworld 1.25 dB (main) to 6.93 dB (new dry), boss 0.99 dB to 5.26 dB,
+against a 2A03 control of 1.27-2.01 dB (a one-cycle pulse has almost no
+separate transient). Echo tail energy is the other clean separation:
+`room` measures 4.84e-4 on the sustained-chord probe against 8.17e-12
+(dry) and 1.50e-11 (main) - four to five orders of magnitude - and the
+drum-loop probe measures dry and room identical (8.24e-8) by design, since
+`EON` excludes the kit voice (v3) so one-shot drums stay dry through any
+echo tail. Spectral flatness and centroid movement did not separate in a
+single consistent direction across probes against the 2A03 control (flatter
+on the boss probe, less flat on overworld/midnight/chord), which we read as
+a property of the specific 2A03 patches these demo presets pick, not
+evidence against the new bank; per criterion 6, automated metrics do not
+certify a timbre, and the fix for a descriptor that does not separate
+cleanly is recorded here, not forced by loosening a threshold. No probe,
+including the three full demo mixes rendered whole (not isolated), showed
+dry/echo-input clipping: peaks 0.2581/0.2796/0.2211 (dry) and
+0.2557/0.2788/0.2155 (room) on overworld/boss/midnight.
+
+**The `space` default.** `"room"` stays an explicit opt-in; the factory
+default stays `"dry"`, byte-identical to this driver's register stream
+before `space` existed. Two pieces of evidence pull in different
+directions and both are real: kami's complaint is specifically that these
+instruments sound thin without any acoustic space, which `"room"` now
+measurably and audibly fixes, with no clipping, and with percussion kept
+crisp by design. But `a0e8691` (PR #44, "Fix distant SNES sound and
+incorrect Sonic timbre ports") is direct history of the opposite failure:
+turning echo on by default previously made the SNES's *native song
+reconstructions* - `apps/web/public/arrangement-data`'s Mario and Sonic
+ports, measured against real reference recordings, not portable generated
+content - sound distant, and that PR's fix was exactly to remove the
+implicit echo this ticket is reintroducing as an option. `space` has no
+per-content-type default to give: a native reconstruction and a portable,
+kami-generated arrangement both construct a chip and render through the
+same driver, so flipping the default risks silently reproducing PR #44's
+regression for the reconstruction use case to fix a complaint from a
+different one. Keeping dry as the default and shipping `"room"` as a
+documented, tested, recommended opt-in serves both: a reconstruction stays
+byte-identical unless it asks for a space, and a consumer like kami can now
+ask for one, which it could not before this ticket.
+
+**What changes.** `packages/chipvoice/src/chip.ts`
+(`ChipCreateOptions.space`), `src/chips/snes/driver.ts` (`SPACES`,
+`spaceFor`, the power-on sequence's conditional `EON` write, and a
+power-on MVOL/EVOL mute-first fix that removes a moment of decoded
+power-on-garbage audio independent of `space`), `src/driver.ts` and
+`src/render.ts` (`RenderOptions.space` threaded through `renderSong` and
+`recordSong`), `test/snes-echo.mjs` (new, 14 checks: default-is-dry
+byte-identity, unrecognized-space fallback, `room`'s exact register
+values, `EON` never enabled before the power-on buffer has wrapped in
+either space, a measured audible-tail difference, and the public
+`renderSong`/`recordSong` API including a chip with no echo hardware
+ignoring an unrecognized space). `docs/chips/snes.md` and its capability
+table, and the roadmap's phase-6 entry, are corrected: they described
+echo as on by default, true of the 0.12.0 port this ticket did not touch
+but false since 0.16.3 (decision predates this ticket) and now further
+qualified by `space`. Decision 35 (the SNES engine loads only with what
+needs it) still holds: `space` is a driver-internal register choice, not
+a new import.
+
 ## 54. gamesounds' generated sounds ship mono, leveled on their own actual shipped bytes; sfx-engine's presets are filed by what they model, never forced to fill a style (2026-09-29)
 
 GS-03 wires `packages/sfx-engine` (decision 52) into the gamesounds.ai

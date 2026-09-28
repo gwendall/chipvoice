@@ -694,7 +694,7 @@
 | P4-8 | studio各rowのintent picker | done | P8-6、PR #20で出荷 |
 | P4-6 | FamiStudio方式のsweepによる滑らかなvibrato、period上位境界で位相をresetしない | done | `NesDriver.smoothHighByte`、golden変更、末尾参照 |
 | P4-7 | agentの曲が良く聞こえることを独立の測定目標に | doing | `feat/console-listening-evals`、[試聴方法と初見](AUDIO-EVALUATION_ja.md)、preset matrix、stems、native SNES比較、level整合版比較。人の参照試聴は残件 |
-| P4-9 | SNESパレット：独自／許諾BRR、作成済みenvelope、多声和音を明示参照で評価 | doing | build時独自BRR、hardware envelope、同時和音を実装。[測定と受け入れ](SNES-PALETTE_ja.md)。選定音楽参照での試聴は未完、DSP一致だけで音楽的類似は証明しない |
+| P4-9 | SNESパレット：独自／許諾BRR、作成済みenvelope、多声和音を明示参照で評価 | doing | build時独自BRR、hardware envelope、同時和音を実装。[測定と受け入れ](SNES-PALETTE_ja.md)。NEXT-24はブラス／ストリングス／ピッキングベース／キック／スネアを共有アンサンブル／デチューン式へ移し、エコーを文書化された`space`の任意選択（既定`"dry"`は変わらず）にした。[フェーズ3測定](SNES-PALETTE_ja.md#phase-3-measurements)、決定53。実際の利用者自身のブラインド試聴が次の実受け入れテストで、彼ら側で圧縮tarballに対し実行する。DSP一致だけで音楽的類似は証明しない |
 
 <a id="operations"></a>
 ## 運用

@@ -304,7 +304,7 @@ is divided across its notes; pitched chord voices have moderate stereo spread.
 | --- | --- | --- |
 | v0, v1, v2, v4 to v7 | original BRR attacks and separate sustain loops, per-family hardware ADSR, pitch and stereo volume per frame, key-on, note off as a fast GAIN decrease, echo; legacy periodic waveforms also available | GAIN's other modes, pitch modulation, hardware noise |
 | v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame; the kit's hats routed to the DSP's own noise through `NON`, at the one clock `FLG`'s very first power-on write sets | a held drum note's noise clock changed mid-note (the corpus scripts this; the kit does not) |
-| the echo | on for the pitched voices: 48 ms, feedback `$38`, the low-pass FIR most games used, enabled once the power-on buffer has wrapped | other FIRs, other delays |
+| the echo | off by default (`space: "dry"`); `space: "room"` turns it on for the pitched voices only, once the power-on buffer has wrapped: 48 ms, feedback `$38`, the low-pass FIR below | other FIRs, other delays |
 
 ## Known deviations
 
@@ -323,14 +323,27 @@ of 28 KB - the noise register at `$4000`, the counters at zero. The driver's
 power-on does what the IPL ROM and a program did: disables echo writes and
 mutes echo output (reads can initially wrap into sample RAM), keys
 every voice off, sets the directory, the volumes, the echo and every voice's
-envelope, then releases KOFF, and enables echo writes and echo output a quarter
+envelope, then releases KOFF, and enables echo output a quarter
 of a second later, once the power-on buffer has wrapped. The very first of
 those writes - the one that disables echo writes - also sets the noise
 clock, `FLG`'s low five bits, to its fastest rate - the one clock every voice
 routed to noise shares - because a note can start as early as the song's own
 time zero, before the echo buffer has finished settling. The later write that
-turns echo writes back on repeats the same clock rather than setting it for
+would turn echo writes back on repeats the same clock rather than setting it for
 the first time; it is never rewritten to a different value after.
+
+Whether that later write actually turns `EON` on depends on `ChipCreateOptions.space`
+(`packages/chipvoice/src/chip.ts`): `"dry"`, the factory default, leaves `EVOL`
+and `EON` at zero forever, exactly as this driver did before `space` existed,
+so its register stream and every golden built from it are unchanged. `"room"`
+sets `EVOL`/`EFB` to a moderate authored return and writes `EON` for the
+pitched voices only (`v3`, the kit, stays excluded so one-shot drums read
+clean through the tail) once the quarter-second wait above has passed. Neither
+space writes `EON` any earlier, so the power-on buffer never plays back
+whatever wrapped into sample RAM during that wait. See
+[the SNES palette's Phase 3 protocol and measurements](../SNES-PALETTE.md)
+and decision 53 in [DECISIONS.md](../DECISIONS.md) for why dry stays the
+default even though room is now measured, audible and available.
 
 The factory bank occupies 21,472 bytes below the echo buffer at 57,344. Sample
 generation and BRR encoding happen at build time. Voice volume is capped at

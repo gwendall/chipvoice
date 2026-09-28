@@ -175,3 +175,69 @@ these instruments is the actual acceptance test, and it runs on the kami
 side with their own key, never this branch's; NEXT-24's final report gives
 the exact command and a packed tarball for that run, not a quoted result
 from it.
+
+## Phase 3 measurements
+
+Four timbre descriptors, 2A03 control / SNES main (pre-ticket) / SNES new
+(dry), rounded to 2 decimal places (dB for flatness/odd-even/attack, Hz for
+centroid movement):
+
+| Probe (routed instrument) | | Flatness (dB) | Odd/even (dB) | Centroid move (Hz) | Attack (dB) |
+| --- | --- | --- | --- | --- | --- |
+| overworld lead (brass) | control | -17.86 | 0.51 | 185.0 | 2.01 |
+| | main | -27.08 | 6.40 | 137.8 | 1.25 |
+| | new dry | -24.79 | 5.22 | 51.1 | 6.93 |
+| boss lead (brass) | control | -41.87 | 0.46 | 39.8 | 1.27 |
+| | main | -34.67 | 6.91 | 0.8 | 0.99 |
+| | new dry | -33.74 | 6.04 | 2.8 | 5.26 |
+| midnight lead (mallet) | control | -34.49 | 42.83 | 8.7 | 2.27 |
+| | main | -41.22 | 22.45 | 2.5 | 5.90 |
+| | new dry | -41.22 | 22.45 | 2.5 | 5.90 |
+| sustained chord (strings) | control | -18.01 | 17.47 | 3.0 | 1.28 |
+| | main | -38.81 | 6.99 | 4.0 | -4.11 |
+| | new dry | -39.06 | 6.72 | 51.6 | -0.54 |
+
+Echo tail energy (RMS, linear), the descriptor the `space` default is
+decided on:
+
+| Probe | control | main | new dry | new room |
+| --- | --- | --- | --- | --- |
+| sustained-chord echo tail | 3.35e-30 | 1.50e-11 | 8.17e-12 | 4.84e-4 |
+| drum-loop echo tail | 3.35e-30 | 4.37e-8 | 8.24e-8 | 8.24e-8 |
+
+Peak sample on the three complete demo mixes, rendered whole (not isolated),
+new bank: overworld 0.2581 (dry) / 0.2557 (room); boss 0.2796 / 0.2788;
+midnight 0.2211 / 0.2155. No dry/echo-input clipping on any probe.
+
+**Reading these honestly, per criterion 6.** Attack transient energy and
+echo tail energy are the two descriptors that separate cleanly and in the
+direction the protocol predicted: attack jumps 4-6 dB from main to new dry
+on both reworked-brass probes, against a 2A03 control that stays near 1-2
+dB throughout (a one-cycle pulse has almost no separate transient); echo
+tail on `room` sits four to five orders of magnitude above dry and main on
+the chord probe, and matches dry and main exactly on the drum probe, since
+`EON` excludes the kit voice (v3) by design. Spectral flatness and
+centroid movement did not separate in one consistent direction against the
+2A03 control: flatness reads the SNES bank (both main and new) as *less*
+flat than control on three of four probes and *more* flat only on boss,
+and centroid movement's own two-snapshot, 200 ms-apart measurement is
+close to the brass ensemble's own beat period at these pitches (about 255
+ms for the E5 demo-lead probes, from the brass recipe's `loopCycles`/
+`detuneCents`), so it can land anywhere in a beat cycle rather than
+reliably tracking "does this timbre wander." We are recording this as a
+limit of these two descriptors on this bank's specific probes, per
+criterion 6 ("automated metrics do not certify human preference"), not
+editing the descriptors or the probes to force a cleaner-looking number:
+the protocol above is unchanged from `c4b1899`. Odd/even balance moved for
+every reworked-family probe (brass, strings) but not in a single direction
+relative to control either, since the 2A03's own odd/even balance varies
+widely by patch (0.46-0.51 dB on the two brass-routed demo presets, 17.47
+dB on the chord probe's control). Mallet, main and new dry are identical to
+two decimal places on every descriptor above, confirming by direct
+measurement (not just source diff) that the ensemble formula's
+`unison: 1, detuneCents: 0` case renders unchanged audio, exactly as
+designed.
+
+Decision 53 in [DECISIONS.md](DECISIONS.md) records the `space` default
+decision itself and its full evidence, including the historical PR #44
+regression this measurement alone does not capture.
