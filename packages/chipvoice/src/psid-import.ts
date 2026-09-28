@@ -83,6 +83,102 @@ const NTSC_RASTER_LINES = 263; // Real 6567R8 hardware timing - independent of N
 // at the line's own start, likewise confirmed by direct instrumentation.
 const BADLINE_STEAL_CYCLES = 43;
 const VICII_FETCH_CYCLE = 11;
+// The real raster phase (cycles into a PAL frame, same units as `rasterCycle`
+// below) at the exact moment libsidplayfp's own reference driver
+// (`psiddrv.a65`'s `cold:` routine) calls a tune's INIT - not copied from
+// that GPL source (decision 41), measured against the pinned oracle the same
+// way `BADLINE_STEAL_CYCLES`/`VICII_FETCH_CYCLE` above were: the oracle's own
+// `cold:` routine writes the SID's volume to maximum ($D418=$0F) once, at a
+// fixed, tune-independent absolute cycle (167873 - confirmed identical
+// across all six psid-corpus fixtures) before it does anything else, then
+// spends a further small, fixed number of its own 6502 cycles - clearing
+// pending IRQs, priming the CIA, choosing the raster-IRQ compare line,
+// picking the VIC-raster-vs-CIA-timer IRQ source, the bank/flags ceremony -
+// before it ever reaches `jsr init`. `scores/psid-corpus`'s own
+// `convention-probe.sid` and a CIA-timed equivalent make that second span
+// exact rather than estimated: each fixture's INIT writes to a SID register
+// as its own literal first instruction, so the oracle's first traced write
+// lands on the real cycle `jsr init` itself ran at, with zero ambiguity from
+// INIT's own runtime. That gives 167993 (a VBI/VIC-raster-timed tune) and
+// 167997 (a CIA-timer-timed tune) - 120 and 124 further driver-only cycles
+// past the ceremony write, four cycles apart (the extra `bne` this
+// environment's own `speedBit` selects on real hardware, before the wider
+// CIA-vs-VIC IRQ-enable sequence). Reduced modulo `PAL_FRAME_CYCLES`, both
+// land within five cycles of each other (10745 / 10749); this environment
+// models one raster pulse a frame rather than libsidplayfp's real per-line
+// VIC-II, so - exactly like `PLAY_TOLERANCE` in `scores/psid-corpus/
+// corpus.mjs` - the single cycle within that handful this environment
+// actually uses is the one confirmed, against
+// every psid-corpus fixture, to place a badline-sensitive probe's own INIT
+// on the same side of a badline boundary the oracle's real INIT is on (an
+// off-by-a-few-cycle choice here flips `convention-probe.sid`/
+// `frame-rate-probe.sid`'s own zero-tolerance INIT-phase cycle match, the
+// cheapest possible check that this constant is still right - see
+// `packages/chipvoice/test/psid-import.mjs`).
+//
+// Plainly: 10750 is not itself a measured cycle. It is the passing value
+// nearest the two measurements above (10745, 10749), and both of those raw
+// measurements themselves fail this corpus's own gate (see below) - this
+// constant uses the nearest pass, not either direct measurement, because
+// neither direct measurement passes.
+//
+// That "handful of candidate cycles" is not one contiguous interval: a
+// cycle-by-cycle sweep of this constant from 10200 to 10850, scored the same
+// way `scores/psid-corpus/corpus.mjs` scores a build (`matched === total`
+// and within `PLAY_TOLERANCE`/`CIA_CYCLE_BOUND` on all six fixtures), passes
+// on exactly one cycle in three, not every cycle. That period-3 shape has a
+// confirmed mechanism, not an assumed one: this environment's main render
+// loop only checks whether a raster/CIA IRQ has come due once per CPU
+// instruction, right after each `cpu.step()` call, and for most of the time
+// between two dispatches the CPU is parked at `IDLE_ADDR`, a single `JMP`
+// instruction to itself - 3 cycles every time, on real hardware and in
+// `cpu6510.ts` alike (`case 0x4c`). So while parked there, "is an IRQ due
+// yet" is only ever asked on a grid spaced 3 cycles apart; shifting this
+// constant by 1 cycle shifts the real target moment by 1 cycle too, but only
+// changes which grid point the check actually lands on - and so only changes
+// the dispatch this constant produces - once every three shifts, when the
+// moving target crosses the next grid line. Confirmed directly: sweeping
+// this constant one cycle at a time from 10744 to 10758 and logging the raw,
+// unshifted cycle of gt2-hyperspace-alt.sid's very first PLAY-phase event,
+// that cycle stays exactly flat across each run of three consecutive values
+// and steps down by exactly 3 cycles at each boundary between runs - the
+// direct signature of a 3-cycle-spaced discovery grid, not a coincidence of
+// scoring. (convention-probe.sid's own zero-tolerance INIT-phase content
+// check, by contrast, passes continuously across that same range with no
+// period-3 pattern at all: INIT's own badline-relative placement is a direct
+// function of this constant, never discovered through the idle loop, so it
+// has no reason to share the grid. It is specifically the two VBI-timed
+// fixtures' own PLAY_TOLERANCE = 3 cycle-position gate - real per-line
+// jitter this environment's once-a-frame raster pulse cannot track exactly,
+// riding on top of the grid above - that cycles through {2, 3, 4, 5} with
+// the period-3 pattern and is what 10745 and 10749 each fail below.) The two
+// CIA-timed fixtures stay fixed at 43/42 across the whole sweep, confirming
+// again (see `setupCia1`'s own doc comment) that their residual is not
+// phase-sensitive - the grid above changes which cycle a call is discovered
+// on, not how many badlines this environment's model crosses versus the
+// oracle's.
+//
+// Within that period-3 comb, every candidate from 10282 to 10765 passes (162
+// evenly-spaced values spanning 483 cycles, bounded on each side by a short
+// dead zone, roughly 20 cycles wide, where nothing passes - the same shape
+// recurs every ~505 cycles across the wider 9500-12500 range this was also
+// checked against). 10750 sits well inside that band, 468 cycles from its
+// near edge and 15 from its far one, with both its immediate comb neighbors
+// (10747, 10753) passing too - not a knife-edge fit. The two direct
+// measurements, 10745 and 10749, sit 1-2 cycles off the comb's own grid and
+// each fails on a different VBI-timed fixture (10745: frame-rate-probe.sid
+// and gt2-dojo.sid at 4 cycles; 10749: gt2-hyperspace-alt.sid at 5 cycles -
+// see `phase-plateau-sweep`-style output for the full per-fixture
+// breakdown), so using either raw measurement directly would regress this
+// corpus's own PLAY_TOLERANCE gate on a real fixture, not just fail some
+// stricter, hypothetical check. Both still fall deep inside the same
+// 10282-10765 band, each within `PLAY_TOLERANCE` itself of the nearest
+// passing cycle, so 10750 is a small, evidenced correction within the same
+// band the measurement already pointed to, not a different answer to a
+// different question. Per-cycle badline and IRQ granularity (see
+// docs/BACKLOG.md's NEXT-09 follow-up work item) would collapse this comb
+// entirely, letting a directly measured phase pass on its own.
+const PAL_INIT_RASTER_PHASE = 10750;
 const CIA_DEFAULT_PAL = 0x4025; // 60 Hz CIA 1 timer A latch, PAL: the SID file format's own default environment.
 const CIA_DEFAULT_NTSC = 0x4295; // Same, NTSC.
 const RESERVED_LOW = 0x0400; // "$0000-$03FF" - the file format spec's own reserved area; where this environment's PLAY trampoline and idle loop live.
@@ -355,16 +451,58 @@ class PsidEnvironment implements Cpu6510Bus {
     return stolen;
   }
 
+  /**
+   * `counter` loads from `latch` unconditionally, with no raster-phase
+   * offset of its own - tried as a fix for the two CIA-timed fixtures'
+   * residual PLAY-phase deviation (43/42 cycles, against 2-3 for every
+   * VBI-timed fixture) and found not to help. An exhaustive sweep of an
+   * added start-phase offset - fine, -200 to +200 cycles; coarse, the CIA's
+   * own full period, 0 to 16421 step 137 - never drove either fixture's
+   * `maxCycleDeviation` below today's 43/42; offset 0 (today's behavior) is
+   * already the sweep's own optimum. The real mechanism, confirmed with
+   * per-call evidence rather than assumed: a CIA-timed fixture's own
+   * dispatch period is not a multiple of the badline recurrence period
+   * (`PAL_CYCLES_PER_LINE * 8 = 504`, since a badline only qualifies once
+   * every 8 raster lines), so which PLAY calls land near a badline drifts
+   * call to call. Logging every deviating call on both fixtures against a
+   * badline check run on each engine's own raster phase at that instant
+   * (the oracle's is exact, free-running since power-on; ours is this
+   * environment's own once-a-frame-pulse `rasterCycle`) shows the ~43-cycle
+   * deviations landing exactly where the oracle's real per-line VIC-II
+   * places a badline but this environment's own coarser, once-per-CPU-
+   * instruction badline check does not (or, on calls late enough into a
+   * run to have accumulated an earlier miss, where the two engines' raster
+   * trackers have already drifted a badline period apart) - a granularity
+   * mismatch between the two models, not a wrong constant. No offset fixes
+   * that, because the two engines' badline counts diverge by a different
+   * amount on different calls, not a fixed one; see `CIA_CYCLE_BOUND` in
+   * `scores/psid-corpus/corpus.mjs` for the resulting bound.
+   */
   setupCia1(latch: number, running: boolean, irqEnabled: boolean) {
     this.cia1.latch = latch; this.cia1.counter = latch; this.cia1.running = running;
     this.cia1.icrMask = irqEnabled ? 0x01 : 0; this.cia1.icrLatch = 0; this.cia1.oneShot = false;
   }
 
+  /**
+   * `pal`'s own real starting raster phase (see `PAL_INIT_RASTER_PHASE`) is
+   * applied to both `cycleInFrame` (the once-a-frame VBI IRQ pulse) and
+   * `rasterCycle` (badline placement) alike, not `rasterCycle` alone: on
+   * real PAL hardware `PAL_CYCLES_PER_LINE * PAL_RASTER_LINES` equals
+   * `framePeriod` exactly, so both trackers describe the same real moment
+   * and must start at it together - splitting them (one at the real phase,
+   * the other still at 0) was tried and reverted (see docs/BACKLOG.md's
+   * NEXT-09 follow-up): it left the VBI IRQ itself firing a full extra
+   * `PAL_INIT_RASTER_PHASE` cycles late on its very first dispatch, wrongly
+   * positioned against the badline pattern the now-correctly-phased
+   * `rasterCycle` placed. No equivalent NTSC measurement exists (no NTSC
+   * fixture in `scores/psid-corpus`), so NTSC keeps starting at 0.
+   */
   setupVic(framePeriod: number, irqEnabled: boolean, pal: boolean) {
-    this.vic.framePeriod = framePeriod; this.vic.cycleInFrame = 0; this.vic.irqEnabled = irqEnabled; this.vic.irqLatch = 0;
+    const phase = pal ? PAL_INIT_RASTER_PHASE : 0;
+    this.vic.framePeriod = framePeriod; this.vic.cycleInFrame = phase % framePeriod; this.vic.irqEnabled = irqEnabled; this.vic.irqLatch = 0;
     this.vic.cyclesPerLine = pal ? PAL_CYCLES_PER_LINE : NTSC_CYCLES_PER_LINE;
     this.vic.rasterLines = pal ? PAL_RASTER_LINES : NTSC_RASTER_LINES;
-    this.vic.rasterCycle = 0;
+    this.vic.rasterCycle = phase % (this.vic.cyclesPerLine * this.vic.rasterLines);
   }
 }
 

@@ -102,6 +102,7 @@ excluded from the committed JSON and the sheet.
 ```sh
 pnpm --filter chipvoice build
 node scores/psid-corpus/test-compare.mjs   # the comparator alone, no oracle build
+node scores/psid-corpus/test-corpus.mjs    # PLAY_TOLERANCE/CIA_CYCLE_BOUND alone, no oracle build
 pnpm psid-corpus:check                     # the full corpus against libsidplayfp
 pnpm psid-corpus:sheet                     # also rewrites docs/chips/c64.md's marker block
 ```

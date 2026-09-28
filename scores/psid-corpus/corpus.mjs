@@ -43,35 +43,81 @@ const ORACLE_REVISION = 'ecd932b3ef87746008472bc7e65b0c419a483e02';
 // own doc comment); the bound belongs here, one per fixture family, because
 // it is corpus policy, not comparator mechanics. Measured directly against
 // this revision: convention-probe.sid and frame-rate-probe.sid deviate by
-// at most 2 cycles, gt2-dojo.sid by 3, gt2-hyperspace-alt.sid by 5 - real,
+// at most 2 cycles, gt2-dojo.sid and gt2-hyperspace-alt.sid by 3 - real,
 // bounded per-line VIC-II/CIA jitter around the nominal frame period that
 // this environment's own simplified once-a-frame raster pulse does not
 // reproduce cycle for cycle, not a growing drift. PLAY_TOLERANCE is set to
 // the highest of those four measurements, not a round number, so any of the
 // four regressing past its own true best case is still caught here.
-const PLAY_TOLERANCE = 5;
+//
+// Both gt2-hyperspace-alt.sid's 5-cycle-then-3-cycle measurement and the CIA
+// bound below moved together, and for the same reason: `setupVic()` used to
+// start both `cycleInFrame` (the once-a-frame VBI IRQ pulse) and
+// `rasterCycle` (badline placement) at cycle 0, well before the real
+// cold-start reaches a tune's own INIT (see `PAL_INIT_RASTER_PHASE` in
+// `psid-import.ts`). Starting both at that real phase together - not
+// `rasterCycle` alone, which was tried first and reverted (see
+// docs/BACKLOG.md's NEXT-09 follow-up) - fixed the CIA-timed fixtures
+// without regressing the VBI-timed ones, which is why PLAY_TOLERANCE only
+// tightens here (5 to 3) rather than trading one family off against another.
+const PLAY_TOLERANCE = 3;
 
 // The two CIA-timed fixtures (gt2-sanction-cia.sid, gt2-consultant-alt-cia.sid)
 // have a second, understood source of PLAY-phase cycle deviation on top of
 // that same per-line jitter: a CIA timer's own dispatch period is not a
-// multiple of the VIC-II badline's own 504-cycle recurrence
+// multiple of the VIC-II badline's own DMA-steal recurrence
 // (`BADLINE_STEAL_CYCLES = 43` in `psid-import.ts`), so which PLAY calls
 // land near a badline - and how many badlines this environment's own
 // once-a-frame raster model crosses versus libsidplayfp's real per-line one
-// - varies call to call by up to a few badline periods before the pattern
-// repeats. Measured directly against this revision: 128 cycles maximum for
-// both files (matching 2 badline periods within a cycle or two, not 3),
-// stable across a 20-second/~31000-event capture (4x this corpus's default
-// budget) - not a growing, unbounded drift. See docs/chips/c64.md's "Known
+// - varies call to call before the pattern repeats. Measured directly
+// against this revision, with `PAL_INIT_RASTER_PHASE` applied: 43 and 42
+// cycles at this corpus's default budget, 44 cycles for both files across a
+// 20-second/~31000-event capture (4x that budget), and still 44 across a
+// second, independent 40-second/~59000-to-65000-event capture (8x that
+// budget) - a stable ceiling matching one badline period, not a growing
+// drift. That 40-second check also re-verified every content-correct event
+// it could still compare (the oracle's own trace runs out of events before
+// ours does at that length, a separate, unrelated effect; every event either
+// side still has a counterpart for matched exactly). This replaces a much
+// larger, now-understood 128-cycle deviation (see docs/chips/c64.md's "Known
 // limits", docs/BACKLOG.md's NEXT-09 follow-up, and scores/psid-corpus/
-// README.md for the full account, including what was tried to close this
-// gap and why it was reverted. The bound below is exactly that mechanism, 3
-// badline periods (a real margin over the measured 2) plus the same
-// PLAY_TOLERANCE jitter every other fixture already allows - not a number
-// picked to make today's measurement pass.
+// README.md for the full account, including what was tried first and why it
+// was reverted): that number came from `rasterCycle` and `cycleInFrame`
+// starting at the wrong phase, not from a larger amount of real jitter. The
+// bound below is one badline period, plus the same PLAY_TOLERANCE jitter
+// every other fixture already allows, not two or three: nothing measured so
+// far, at any duration tried, shows a call where two steals stack into
+// something near 86 cycles, only ever the same 43/42/44 ceiling.
+//
+// This is a structural mismatch, not a leftover phase bug: a full sweep of
+// an added CIA start-phase offset (fine, plus or minus 200 cycles; coarse,
+// the CIA's own full 16422-cycle period) never drove either fixture's
+// maxCycleDeviation below 43/42 (see `setupCia1`'s own doc comment in
+// `psid-import.ts`), so CIA_CYCLE_BOUND is not tightening further. Direct
+// per-call evidence: logging every deviating call's own badline state on
+// both engines' raster trackers shows the ~43-cycle deviations landing on
+// calls where the oracle's real per-line VIC-II places a badline but this
+// environment's own once-per-CPU-instruction check does not - never the
+// reverse (this environment never invents a badline the oracle does not
+// also have) - with a further small share landing there once the two
+// engines' raster trackers have already drifted a badline period apart from
+// an earlier such miss. That mechanism, by its own description, moves a
+// call's dispatch to the near side or the far side of a single badline once
+// per miss, not twice - matching the ceiling actually measured. The
+// deviation histogram itself is bimodal, not a clean multiple of 43:
+// ordinary per-line jitter clusters at 0-5 cycles (matching every other
+// fixture's own PLAY_TOLERANCE), and the badline-granularity cluster lands
+// at 38-43, not only 43 itself - both measured directly against a fresh
+// capture at this corpus's default budget. Per-cycle badline and IRQ
+// granularity (docs/BACKLOG.md's NEXT-09 follow-up work item) would collapse
+// this cluster toward PLAY_TOLERANCE instead of merely bounding it.
 const CIA_TIMED = new Set(['gt2-sanction-cia', 'gt2-consultant-alt-cia']);
-const CIA_CYCLE_BOUND = 3 * 43 + PLAY_TOLERANCE; // 134
+const CIA_CYCLE_BOUND = 43 + PLAY_TOLERANCE; // 46: one badline steal, plus the same jitter margin every other fixture gets.
 const cycleBoundFor = (id) => (CIA_TIMED.has(id) ? CIA_CYCLE_BOUND : PLAY_TOLERANCE);
+// Exported for test-corpus.mjs alone (no live oracle involved): a fast check
+// that these two gates actually reject the old, pre-`PAL_INIT_RASTER_PHASE`
+// measurements, not just today's.
+export {PLAY_TOLERANCE, CIA_CYCLE_BOUND, cycleBoundFor};
 
 const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 
@@ -257,10 +303,9 @@ async function main() {
   // per fixture: PLAY_TOLERANCE for everything but the two CIA-timed files,
   // which are held to the wider, mechanism-derived CIA_CYCLE_BOUND instead
   // (see both constants' own comments above). A regression past either
-  // bound is a real, new problem; today's own measurements sit comfortably
-  // under both (5 cycles across the four PLAY_TOLERANCE fixtures against a
-  // bound of 5; 128 cycles across the two CIA fixtures against a bound of
-  // 134).
+  // bound is a real, new problem; today's own measurements sit at or under
+  // both (3 cycles across the four PLAY_TOLERANCE fixtures against a bound
+  // of 3; 43 cycles across the two CIA fixtures against a bound of 89).
   const cycleBroken = results.filter((r) => r.comparison && r.comparison.maxCycleDeviation > cycleBoundFor(r.id));
   if (cycleBroken.length) {
     console.error(`${cycleBroken.length} file(s) exceeded their own PLAY-phase cycle-position bound: ${cycleBroken.map((r) => `${r.id} (max ${r.comparison.maxCycleDeviation}c > ${cycleBoundFor(r.id)}c)`).join(', ')}`);
@@ -268,4 +313,7 @@ async function main() {
   }
 }
 
-main();
+// Only when run as a CLI, not when imported (test-corpus.mjs imports
+// PLAY_TOLERANCE/CIA_CYCLE_BOUND/cycleBoundFor alone, and must not trigger a
+// full, oracle-building corpus run as a side effect of that import).
+if (import.meta.url === `file://${process.argv[1]}`) main();

@@ -234,15 +234,24 @@ throws('seconds out of range is rejected', () => importPsid(buildPsid({loadAddre
 // qualifying raster line ($30-$F7, whose low 3 bits match $D011's own
 // YSCROLL, with DEN set) - see `BADLINE_STEAL_CYCLES` in psid-import.ts.
 // Isolated from CIA/IRQ timing entirely: INIT alone runs a fixed-cost delay
-// (1700 NOPs, 3400 cycles) long enough to cross the first qualifying
-// line's own real trigger point - line 51, the first line in $30-$F7 whose
-// low 3 bits are 3 (this environment's own default YSCROLL) - at its own
-// `VICII_FETCH_CYCLE` offset: 51*63+11 = 3224 - then writes once, with DEN
-// left at the environment's own default ($D011=$1B, DEN on) in one run and
-// turned off first in the other, otherwise byte-for-byte identical code.
+// long enough to cross exactly one qualifying line's own real trigger point,
+// then writes once, with DEN left at the environment's own default
+// ($D011=$1B, DEN on) in one run and turned off first in the other,
+// otherwise byte-for-byte identical code.
+//
+// `setupVic()` starts `rasterCycle` at `PAL_INIT_RASTER_PHASE` (10750, not 0
+// - see that constant's own comment in psid-import.ts), so the first
+// qualifying line reachable from execution start is not line 51 any more:
+// 10750 is line 170 (170*63=10710), 40 cycles into it, and the next line
+// whose low 3 bits are 3 (this environment's own default YSCROLL) is line
+// 171 (171 mod 8 = 3). That line's own `VICII_FETCH_CYCLE` offset - raster
+// cycle 171*63+11 = 10784 - is only 10784-10750 = 34 cycles into execution;
+// the one after that (line 179) is 538 cycles in, so 200 NOPs (400 cycles)
+// before the write crosses line 171 alone, with a wide 138-cycle margin
+// before line 179 would add a second steal.
 {
   const loadAddress = 0x1000, initAddress = 0x1000;
-  const nops = new Array(1700).fill(NOP);
+  const nops = new Array(200).fill(NOP);
   const write = [0xa9, 0x2a, 0x8d, 0x00, 0xd4, 0x60]; // LDA #$2A; STA $D400; RTS
   const denOnPrg = Uint8Array.from([...nops, ...write]);
   const denOffPrg = Uint8Array.from([0xa9, 0x00, 0x8d, 0x11, 0xd0, ...nops, ...write]); // LDA #$00; STA $D011 first
@@ -250,15 +259,16 @@ throws('seconds out of range is rejected', () => importPsid(buildPsid({loadAddre
   const off = importPsid(buildPsid({loadAddress, initAddress, prg: denOffPrg}), {seconds: 0.01});
   const onAt = on.events.find((e) => e.addr === 0xd400)?.at;
   const offAt = off.events.find((e) => e.addr === 0xd400)?.at;
-  // DEN-off: the 5-byte disabling prefix (6 cycles) plus the same 3400
+  // DEN-off: the 5-byte disabling prefix (6 cycles) plus the same 400
   // cycles of NOPs plus LDA #$2A (2 cycles) before the write - no steal is
-  // ever possible, so this is exactly 6 + 3400 + 2 = 3408.
-  check('badline: DEN off never steals a cycle', offAt === 3408, `offAt=${offAt}`);
-  // DEN-on: no disabling prefix, so only 3400 (NOPs) + 2 (LDA #$2A) = 3402
-  // cycles of real instruction work happen before the write - but line 51's
-  // own fetch point (3224) falls within that span, so one BADLINE_STEAL_CYCLES
-  // (43) steal happens along the way, landing the write at 3402 + 43 = 3445.
-  check('badline: DEN on loses exactly one steal (43 cycles) crossing line 51', onAt === 3445, `onAt=${onAt}`);
+  // ever possible, so this is exactly 6 + 400 + 2 = 408.
+  check('badline: DEN off never steals a cycle', offAt === 408, `offAt=${offAt}`);
+  // DEN-on: no disabling prefix, so only 400 (NOPs) + 2 (LDA #$2A) = 402
+  // cycles of real instruction work happen before the write - but line 171's
+  // own fetch point (34 cycles in) falls within that span, so one
+  // BADLINE_STEAL_CYCLES (43) steal happens along the way, landing the write
+  // at 402 + 43 = 445.
+  check('badline: DEN on loses exactly one steal (43 cycles) crossing line 171', onAt === 445, `onAt=${onAt}`);
 }
 
 if (failures) { console.log(`${failures} FAILURES`); process.exit(1); }

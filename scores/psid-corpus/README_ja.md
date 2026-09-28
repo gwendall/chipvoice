@@ -30,6 +30,7 @@ gitignoreされた`.artifacts/psid-private/`ディレクトリーも、nsf-corpu
 ```sh
 pnpm --filter chipvoice build
 node scores/psid-corpus/test-compare.mjs   # 比較器だけを検証。参照実装のビルドなし
+node scores/psid-corpus/test-corpus.mjs    # PLAY_TOLERANCE/CIA_CYCLE_BOUNDだけを検証。参照実装のビルドなし
 pnpm psid-corpus:check                     # コーパス全体をlibsidplayfpと比較
 pnpm psid-corpus:sheet                     # docs/chips/c64.mdの生成ブロックも書き換える
 ```
