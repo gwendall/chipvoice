@@ -50,6 +50,14 @@ pnpm --filter chipvoice test:unit
 pnpm --filter chipvoice test:fresh   # installs the built tarball into an empty project
 ```
 
+`test:unit` runs most files four at a time, then runs
+`test/progressive-handoff-stall.mjs` alone. That file races a real wall clock
+against an in-process render, so a busy machine can make it report an underrun
+or a pump that never settles without any code being wrong. If it fails
+locally while other heavy work is running, rerun it on a quieter machine
+(`node --test test/progressive-handoff-stall.mjs` from `packages/chipvoice`)
+before treating it as a regression.
+
 Score, arrangement and mixing regressions (no browser, run from the repo root):
 
 ```bash

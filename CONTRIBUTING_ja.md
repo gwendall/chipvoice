@@ -45,6 +45,9 @@ pnpm --filter chipvoice test:unit
 pnpm --filter chipvoice test:fresh   # ビルド済みtarballを空のプロジェクトへインストールして確認
 ```
 
+`test:unit`はほとんどのファイルを4つずつ並列に実行し、その後で
+`test/progressive-handoff-stall.mjs`だけを単独で実行します。このファイルは実際の壁時計とプロセス内のレンダリングを競わせるため、マシンが混んでいると、コードに問題がなくてもアンダーランや、いつまでも落ち着かないpumpを報告することがあります。他の重い処理を動かしながらローカルで失敗した場合は、回帰とみなす前に、空いているマシンで再実行してください（`packages/chipvoice`から`node --test test/progressive-handoff-stall.mjs`）。
+
 スコア・編曲・ミキシングの回帰チェック（ブラウザー不要、リポジトリルートから実行）：
 
 ```bash
