@@ -105,25 +105,75 @@ created the same day.
   It now lives in a Vercel Blob store under paths that name their content,
   with the reports as its manifest (decision 40).
 
-- done - REV-10 (REV-01 follow-up): the `browser` job's two remaining flakes
-  turned out to be different bugs sharing one ticket. `test-audio-transitions.mjs`'s
-  tempo-slider hang was Playwright's 30 s default wait, the same class NEXT-03
-  already found in `test-creation-browser.mjs`: a busy shared runner, not a
-  real 30 s stall, tripped it. The page now sets a 120 s default timeout, and
-  a catch block saves a screenshot and the live slider, number and Undo state
-  on failure, since a hang before the test's success-only write left no other
-  evidence behind. `test-progressive-long.mjs`'s one SNES underrun is real:
-  `ProgressivePlayback`'s handoff hands a moving group over with only its
-  fixed 0.75 s `HANDOFF_LEAD` margin, and `pump`'s first post-handoff read has
-  to land inside that margin, so a brief host stall (a GC pause, scheduler
-  jitter) right at the handoff instant, not a sustained slow CPU, can exhaust
-  it before the read returns. A real device could in principle hit the same
-  instant; a shared CI runner just lands on it more often. Neither script
+- doing - REV-10 (REV-01 follow-up): diagnostics added, not fixed. The
+  `browser` job's two remaining flakes turned out to be different bugs
+  sharing one ticket, and only one of the two is understood well enough to
+  call solved.
+
+  `test-audio-transitions.mjs`'s tempo-slider hang: both of its two real CI
+  failures on record timed out at the exact same step,
+  `number.fill('183'); valueIs(slider,'183')`, which argues against plain
+  runner slowness (that would spread across this script's ~20 waits, not
+  land on one every time). A deterministic app-level race was looked for and
+  not found: tracing `RangeControl`'s and `useSongDocument`'s history/group
+  coalescing against this exact Home/End/ArrowLeft/Undo/drag/Undo/fill
+  sequence turned up no logic bug, and two rounds of empirical delay
+  injection (entirely outside `packages/chipvoice/src`, via
+  `page.addInitScript`) found nothing to explain the hang either: patching
+  `AudioContext.resume`/`AudioWorklet.addModule` with an 8 s delay never
+  moved the slider's DOM-update timing, and tracing `LivePlayback.reconcile`
+  showed only one `createChip` cycle for the whole interaction sequence,
+  finishing hundreds of milliseconds before the `fill('183')` step even
+  starts, so a pile-up of engine recreations isn't it either. The earlier
+  120 s default-timeout change (the NEXT-03 fix, applied here on the theory
+  of a busy shared runner) has been reverted: raising the budget would only
+  make a real hang fail slower, and if the value does eventually arrive after
+  30 s that is itself a UI bug worth seeing, not hiding. What stays from that
+  attempt is the failure-diagnostics `catch` block (a screenshot plus the
+  live slider, number and Undo state on failure), since a hang before the
+  test's success-only write otherwise leaves no evidence behind. The
+  clustering at one exact step remains unexplained.
+
+  `test-progressive-long.mjs`'s one SNES underrun is now proven, not just
+  argued: `ProgressivePlayback`'s handoff hands a moving group over with only
+  its fixed 0.75 s `HANDOFF_LEAD` margin, and `pump`'s first post-handoff
+  read has to land inside that margin. A local, uncommitted harness drove a
+  real `ProjectPlayer`/`ProgressivePlayback` through a genuine moving handoff
+  (native Mario performance, 2A03 to Mega Drive) and delayed only the
+  `'ahead'`-lane worker read `pump` issues right after the handoff, by
+  patching `Worker.prototype.postMessage` from the test page (no
+  `packages/chipvoice/src` edit). Two independent sweeps at
+  0/300/600/750/900/1200/2000 ms of injected delay produced 0 underruns at
+  every point at or under 600 ms and a nonzero count at every point at or
+  over 750 ms, in both sweeps, with the handoff's group confirmed present
+  each time: the threshold sits exactly at `HANDOFF_LEAD`. Neither script
   reproduced locally at rest, under a bounded 4-core load, or under CDP CPU
-  throttling up to 25x, consistent with a rare host stall rather than a
-  steady slowdown. The margin fix needs
-  `packages/chipvoice/src/playback/ProgressivePlayback.ts`, out of scope for
-  this non-engine ticket; left for a follow-up.
+  throttling up to 25x, consistent with a rare host stall (a GC pause,
+  scheduler jitter right at the handoff instant) rather than a steady
+  slowdown a local Mac can reliably mimic; a real device could in principle
+  hit the same instant, a shared CI runner just lands on it more often. The
+  margin fix needs `packages/chipvoice/src/playback/ProgressivePlayback.ts`,
+  out of scope for this non-engine ticket. See REV-11 for the proposed fix.
+
+- todo - REV-11 (engine, `packages/chipvoice/src/playback/ProgressivePlayback.ts`):
+  make the handoff's read-ahead margin adaptive instead of the fixed 0.75 s
+  `HANDOFF_LEAD` constant that REV-10 proved is the exact threshold for its
+  one real SNES underrun. Proposed change: (1) in `PreviewSource.read`
+  (around line 65), time each `this.request(...)` round trip with
+  `performance.now()` and keep the latest duration on the source, e.g.
+  `lastReadMs`; (2) in `selectSource`'s handoff-extension loop (the `while`
+  at lines 225-231), replace the fixed `Math.round(rate * HANDOFF_LEAD)`
+  target with `Math.round(rate * Math.max(HANDOFF_LEAD, source.lastReadMs /
+  1000 * 2))`, so a source whose worker has just shown itself slow gets a
+  proportionally bigger buffer before the handoff goes live, instead of
+  gambling on one fixed constant regardless of demonstrated latency; (3)
+  confirm with the same local harness REV-10 used (a `ProjectPlayer`/
+  `ProgressivePlayback` driven through a real moving handoff with
+  `Worker.prototype.postMessage` delaying the `'ahead'`-lane read) that the
+  0-underrun range now extends past the old 750 ms cliff in proportion to
+  the injected delay. Needs the regeneration chain re-run
+  (`verify-publication.mjs`, `check-calibration.mjs`) since this touches
+  playback scheduling.
 
 ## Next steps (2026-09-27)
 

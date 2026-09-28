@@ -7,11 +7,17 @@ const out=new URL('../../.artifacts/continuity/',import.meta.url);await mkdir(ou
 const browser=await chromium.launch();
 try{
  const page=await browser.newPage();
- // NEXT-03 hit this same wall in test-creation-browser.mjs: Playwright's
- // 30 s default wait, not a real 30 s stall, once a shared CI runner is busy.
- // A generous, explicit budget replaces it everywhere; every assertion below
- // still checks the exact expected value, so a genuinely wrong value still fails.
- page.setDefaultTimeout(120000);
+ // REV-01 follow-up: this script's two real CI failures both timed out at the
+ // exact same step (number.fill('183') -> valueIs(slider,'183')), which argues
+ // against generic runner slowness (that would spread failures across this
+ // script's ~20 waits). No deterministic app-level race was found after tracing
+ // RangeControl/useSongDocument's history-coalescing state machine and
+ // empirically delaying the two async gates in Chip creation (AudioContext.resume,
+ // AudioWorklet.addModule) and the debounced LivePlayback.update() reconciliation:
+ // none of that injected latency moved the slider's DOM-update timing. The
+ // default 30 s wait stays in place rather than being raised to 120 s: raising
+ // it would only fail slower if the value never arrives, or hide a real UI bug
+ // if it arrives late. See REV-10 in docs/BACKLOG.md.
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(installOutputProbe);
  await page.addInitScript(()=>{
