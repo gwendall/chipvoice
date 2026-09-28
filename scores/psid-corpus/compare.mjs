@@ -18,17 +18,19 @@ import assert from 'node:assert/strict';
  * cycle alignment:
  *
  * INIT phase: `psid-import.ts`'s own environment starts running INIT at
- * cycle 0. libsidplayfp's `cold:` routine spends many thousands of cycles
- * first - clearing pending IRQs, priming the CIA and, distinctively,
- * deliberately waiting for a specific raster line (311) before it ever
- * calls INIT, so that a real player's audio timing does not depend on how
- * long INIT itself takes to run. That whole prelude is a constant, one-time
- * offset with no bearing on either side's own conformance; it is measured
- * from the first INIT-authored write both sides agree on (`initShift`) and
- * subtracted back out. Once removed, every INIT-phase write these two
- * fixtures produce lands on the exact same cycle - confirmed empirically
- * (see `docs/chips/c64.md`), so INIT-phase events are matched with zero
- * further tolerance.
+ * `PAL_INIT_RASTER_PHASE` (cycle 0 for NTSC, which has no measured fixture
+ * here). libsidplayfp's `cold:` routine spends many thousands of cycles
+ * first - clearing pending IRQs, priming the CIA, picking the VIC-raster-vs
+ * -CIA-timer IRQ source - before it ever calls INIT; there is no raster-line
+ * busy-wait anywhere in that routine (confirmed by reading `psiddrv.a65`
+ * itself), just a fixed run of 6502 instructions, so a real player's INIT
+ * always starts at the same absolute cycle regardless of the tune. That
+ * whole prelude is a constant, one-time offset with no bearing on either
+ * side's own conformance; it is measured from the first INIT-authored write
+ * both sides agree on (`initShift`) and subtracted back out. Once removed,
+ * every INIT-phase write these two fixtures produce lands on the exact same
+ * cycle - confirmed empirically (see `docs/chips/c64.md`), so INIT-phase
+ * events are matched with zero further tolerance.
  *
  * PLAY phase: the first real IRQ after INIT does not land at the same
  * phase-within-frame on both sides either (chipvoice's own raster model

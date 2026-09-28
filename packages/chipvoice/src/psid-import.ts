@@ -83,6 +83,39 @@ const NTSC_RASTER_LINES = 263; // Real 6567R8 hardware timing - independent of N
 // at the line's own start, likewise confirmed by direct instrumentation.
 const BADLINE_STEAL_CYCLES = 43;
 const VICII_FETCH_CYCLE = 11;
+// The real raster phase (cycles into a PAL frame, same units as `rasterCycle`
+// below) at the exact moment libsidplayfp's own reference driver
+// (`psiddrv.a65`'s `cold:` routine) calls a tune's INIT - not copied from
+// that GPL source (decision 41), measured against the pinned oracle the same
+// way `BADLINE_STEAL_CYCLES`/`VICII_FETCH_CYCLE` above were: the oracle's own
+// `cold:` routine writes the SID's volume to maximum ($D418=$0F) once, at a
+// fixed, tune-independent absolute cycle (167873 - confirmed identical
+// across all six psid-corpus fixtures) before it does anything else, then
+// spends a further small, fixed number of its own 6502 cycles - clearing
+// pending IRQs, priming the CIA, choosing the raster-IRQ compare line,
+// picking the VIC-raster-vs-CIA-timer IRQ source, the bank/flags ceremony -
+// before it ever reaches `jsr init`. `scores/psid-corpus`'s own
+// `convention-probe.sid` and a CIA-timed equivalent make that second span
+// exact rather than estimated: each fixture's INIT writes to a SID register
+// as its own literal first instruction, so the oracle's first traced write
+// lands on the real cycle `jsr init` itself ran at, with zero ambiguity from
+// INIT's own runtime. That gives 167993 (a VBI/VIC-raster-timed tune) and
+// 167997 (a CIA-timer-timed tune) - 120 and 124 further driver-only cycles
+// past the ceremony write, four cycles apart (the extra `bne` this
+// environment's own `speedBit` selects on real hardware, before the wider
+// CIA-vs-VIC IRQ-enable sequence). Reduced modulo `PAL_FRAME_CYCLES`, both
+// land within five cycles of each other (10745 / 10749); this environment
+// models one raster pulse a frame rather than libsidplayfp's real per-line
+// VIC-II, so - exactly like `PLAY_TOLERANCE` in `scores/psid-corpus/
+// corpus.mjs` - the single cycle within that handful this environment
+// actually uses is the one confirmed, against
+// every psid-corpus fixture, to place a badline-sensitive probe's own INIT
+// on the same side of a badline boundary the oracle's real INIT is on (an
+// off-by-a-few-cycle choice here flips `convention-probe.sid`/
+// `frame-rate-probe.sid`'s own zero-tolerance INIT-phase cycle match, the
+// cheapest possible check that this constant is still right - see
+// `packages/chipvoice/test/psid-import.mjs`).
+const PAL_INIT_RASTER_PHASE = 10750;
 const CIA_DEFAULT_PAL = 0x4025; // 60 Hz CIA 1 timer A latch, PAL: the SID file format's own default environment.
 const CIA_DEFAULT_NTSC = 0x4295; // Same, NTSC.
 const RESERVED_LOW = 0x0400; // "$0000-$03FF" - the file format spec's own reserved area; where this environment's PLAY trampoline and idle loop live.
@@ -360,11 +393,26 @@ class PsidEnvironment implements Cpu6510Bus {
     this.cia1.icrMask = irqEnabled ? 0x01 : 0; this.cia1.icrLatch = 0; this.cia1.oneShot = false;
   }
 
+  /**
+   * `pal`'s own real starting raster phase (see `PAL_INIT_RASTER_PHASE`) is
+   * applied to both `cycleInFrame` (the once-a-frame VBI IRQ pulse) and
+   * `rasterCycle` (badline placement) alike, not `rasterCycle` alone: on
+   * real PAL hardware `PAL_CYCLES_PER_LINE * PAL_RASTER_LINES` equals
+   * `framePeriod` exactly, so both trackers describe the same real moment
+   * and must start at it together - splitting them (one at the real phase,
+   * the other still at 0) was tried and reverted (see docs/BACKLOG.md's
+   * NEXT-09 follow-up): it left the VBI IRQ itself firing a full extra
+   * `PAL_INIT_RASTER_PHASE` cycles late on its very first dispatch, wrongly
+   * positioned against the badline pattern the now-correctly-phased
+   * `rasterCycle` placed. No equivalent NTSC measurement exists (no NTSC
+   * fixture in `scores/psid-corpus`), so NTSC keeps starting at 0.
+   */
   setupVic(framePeriod: number, irqEnabled: boolean, pal: boolean) {
-    this.vic.framePeriod = framePeriod; this.vic.cycleInFrame = 0; this.vic.irqEnabled = irqEnabled; this.vic.irqLatch = 0;
+    const phase = pal ? PAL_INIT_RASTER_PHASE : 0;
+    this.vic.framePeriod = framePeriod; this.vic.cycleInFrame = phase % framePeriod; this.vic.irqEnabled = irqEnabled; this.vic.irqLatch = 0;
     this.vic.cyclesPerLine = pal ? PAL_CYCLES_PER_LINE : NTSC_CYCLES_PER_LINE;
     this.vic.rasterLines = pal ? PAL_RASTER_LINES : NTSC_RASTER_LINES;
-    this.vic.rasterCycle = 0;
+    this.vic.rasterCycle = phase % (this.vic.cyclesPerLine * this.vic.rasterLines);
   }
 }
 

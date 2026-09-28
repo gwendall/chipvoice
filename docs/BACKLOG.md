@@ -401,34 +401,54 @@ real game music, and a real unit.
   hardware capture corpus, and a small measured per-frame cycle wobble
   against the real per-line VIC-II (comfortably inside the corpus
   comparator's own tolerance). See `docs/chips/c64.md#psidrsid-playback`.
-- todo follow-up - NEXT-09's CIA-timed PLAY-phase cycle deviation
+- done - NEXT-09's CIA-timed PLAY-phase cycle deviation
   (`gt2-sanction-cia.sid`/`gt2-consultant-alt-cia.sid`, up to 128 cycles;
-  see `docs/chips/c64.md`'s "Known limits") is bounded and fully understood
-  in mechanism, but not yet closed, and one experiment's own result is
-  itself not fully understood. What was tried: libsidplayfp's own `cold:`
-  driver ceremony always reaches its pre-INIT `$D418=$0F` write at the same
-  absolute cycle (167873, tune-independent, confirmed across all six
-  fixtures, `SidConfig::powerOnDelay = 0` as this corpus already sets) -
-  measured, not inferred, giving a real raster phase at that moment
-  (167873 mod 19656 = raster line 168, cycle 41 within it, PAL) rather than
-  this environment's own default (`rasterCycle = 0` at INIT,
-  `psid-import.ts`'s `setupVic()`). Pinning `rasterCycle` to that measured
-  value, instead of 0, substantially improves both CIA-timed fixtures (max
-  PLAY-phase cycle deviation 128 to 47-48) but introduces a similar-sized
-  new deviation (about 45-47 cycles, up from the 3 and 5 the corpus
-  sheet's own "PLAY cycle deviation" column currently shows) on
-  `gt2-dojo.sid` and `gt2-hyperspace-alt.sid`, the two VBI-timed fixtures
-  that otherwise match content and cycle position closely today; the two
-  self-authored probe fixtures (`convention-probe.sid`,
-  `frame-rate-probe.sid`) are unaffected either way. That is the puzzle:
-  on one internally consistent raster model, using the oracle's own real,
-  measured phase, all six fixtures should match at least as well as today,
-  not trade one pair's accuracy for another's - so something in this
-  environment's own VBI/raster timing is already compensating for the
-  "wrong" (default, zero) phase in a way not yet understood, and changing
-  only the phase surfaces rather than removes that compensation. Reverted,
-  not shipped (`rasterCycle = 0` stays default); left here rather than
-  silently dropped, for whoever picks this up next.
+  see `docs/chips/c64.md`'s "Known limits") is closed, and so is the
+  "compensating mechanism" puzzle a first attempt at this left behind (an
+  earlier fix pinned `rasterCycle` to the oracle's pre-INIT `$D418=$0F`
+  ceremony write's own raster phase - 167873 mod 19656, tune-independent,
+  confirmed across all six fixtures - and substantially improved both
+  CIA-timed fixtures, 128 to 47-48, but introduced a similar-sized new
+  deviation, about 45-47 cycles, on the two VBI-timed fixtures,
+  `gt2-dojo.sid` and `gt2-hyperspace-alt.sid`, that otherwise matched
+  closely; reverted rather than shipped). Root cause, found with direct
+  evidence rather than another guess: that ceremony write's own cycle is
+  not the phase to pin to at all - it is not the cycle `jsr init` itself
+  runs at, only a fixed, further-measured number of the driver's own 6502
+  cycles earlier. Two self-authored, zero-ambiguity probe fixtures (each
+  one's INIT writes to a SID register as its own literal first
+  instruction, so the oracle's first traced write lands on the exact cycle
+  `jsr init` ran at) measured that real cycle directly: 167993 for a
+  VBI-timed tune, 167997 for a CIA-timed one - 120 and 124 further
+  driver-only cycles past the ceremony write, four cycles apart (the extra
+  `bne` a CIA-timed tune's own `speed` byte selects on real hardware).
+  Reduced modulo the PAL frame period (19656), both land within five
+  cycles of each other (10745 / 10749, not the ceremony write's own 10625)
+  - `psid-import.ts`'s new `PAL_INIT_RASTER_PHASE = 10750` constant, from
+  the confirmed-optimal residue of a systematic sweep across that handful
+  of candidate cycles. The second half of the fix: `setupVic()` now starts
+  both `rasterCycle` (badline placement) and `cycleInFrame` (the
+  once-a-frame VBI IRQ pulse) at that same phase together, not
+  `rasterCycle` alone - splitting them, as the first attempt above did, is
+  what left the VBI IRQ itself dispatching at the wrong phase against the
+  now-correctly-placed badlines, which was the "compensating mechanism"
+  puzzle itself. Measured result, all six fixtures at least as good as
+  before with no VBI regression: convention-probe and frame-rate-probe
+  unchanged at 2 cycles; `gt2-dojo.sid` unchanged at 3;
+  `gt2-hyperspace-alt.sid` 5 to 3; `gt2-sanction-cia.sid` 128 to 43;
+  `gt2-consultant-alt-cia.sid` 128 to 42 - stable, not a growing drift,
+  across a 20-second/~31000-event capture (4x this corpus's default
+  budget). `corpus.mjs`'s own `PLAY_TOLERANCE` (5 to 3) and
+  `CIA_CYCLE_BOUND` (134 to 89) both tightened to match, with a new
+  `scores/psid-corpus/test-corpus.mjs` proving each tightened gate rejects
+  the old, pre-fix measurements. One aside, investigated and found
+  harmless but not fully explained: this environment takes far longer
+  than the oracle to reach the first SID write inside the two VBI-timed
+  fixtures' own (real, third-party) INIT code specifically - ruled out
+  badline-count limits and raster/CIA register polling as causes, and
+  confirmed it has zero effect on the measurement above (the corpus's own
+  per-file `initShift`/`playShift` calibration absorbs it in full). See
+  `docs/chips/c64.md`'s "Known limits" and "History".
 - done - P6-9: PR #107. `exportSpc` (unblocked by NEXT-08's CPU) turns a SNES capture
   into a standard `.spc` file carrying its own tiny SPC700 player
   (`packages/chipvoice/src/chips/snes/spc-player.ts`), hand-assembled from
