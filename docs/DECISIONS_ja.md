@@ -718,8 +718,8 @@ kamiのような利用者はこの依頼より前にはできなかった選択�
 み込む）は変わりません：`space`はドライバー内部のレジスタ選択であり、
 新しい読み込み対象ではないからです。
 
-**外部レビュー（kamiのPunk Kartセッション、code-30）。** 盲検の聴取者
-（音声のみを聞き、どの機種か尋ねられる）は、どちらのspaceでも「NES」
+**外部レビュー（kamiのPunk Kartセッション、code-30）。** 自動の盲検判定器
+（kamiの音声のみの音楽評価。人ではなくモデルで、どの機種か尋ねられる）は、どちらのspaceでも「NES」
 から動きませんでした（トラックごとに1回の回答）：race - base
 （0.19.0とkami自身の`snesEcho`パッチ）はNES、NEXT-24 dryはNES、
 NEXT-24 roomはNES。final - baseはNES、dryはNES、roomは「Game Boy」。

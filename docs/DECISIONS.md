@@ -2157,8 +2157,9 @@ qualified by `space`. Decision 35 (the SNES engine loads only with what
 needs it) still holds: `space` is a driver-internal register choice, not
 a new import.
 
-**External review (kami's Punk Kart session, code-30).** A blind listener
-(audio only, asked which console) did not move off "NES" for either
+**External review (kami's Punk Kart session, code-30).** An automated
+blind judge (kami's audio-only music eval, a model, not a person, asked
+which console) did not move off "NES" for either
 space, one guess per track: race - base (0.19.0 plus kami's own
 `snesEcho` patch) NES, NEXT-24 dry NES, NEXT-24 room NES; final - base
 NES, dry NES, room "Game Boy"; results - NES on all three. A parallel
