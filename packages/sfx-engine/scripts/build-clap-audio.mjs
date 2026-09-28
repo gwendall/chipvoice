@@ -5,8 +5,12 @@
  * under `.artifacts/audio/`:
  *  - `real/<id>-seed<seed>.wav`: every named preset, rendered normally (the
  *    engine as shipped), at each of `SEEDS` below - not just each preset's
- *    own reference seed, so the eval's per-item hit/miss statistics pool
- *    several independent renders per prompt instead of one.
+ *    own reference seed, so the eval has more than one render per prompt to
+ *    work with. These are NOT independent trials (a seed only jitters a
+ *    recipe a few percent - see `ModelMetadata.seedJitter`), so
+ *    `eval/clap_eval.py` treats each preset's `SEEDS` renders as one
+ *    correlated cluster, not `len(SEEDS)` separate data points, in every
+ *    significance test it runs.
  *  - `degraded/<id>-seed<seed>.wav`: the same preset/seed, rendered from a
  *    graph put through `clap-degrade-graph.mjs` (filters/envelopes
  *    bypassed, physically-informed generators replaced with raw noise) -

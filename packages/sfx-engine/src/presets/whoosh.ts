@@ -86,7 +86,7 @@ const metadata: ModelMetadata = {
     { name: 'car pass-by', description: 'A fast object passing close by.', params: { kind: 'fast-pass-by' }, seed: 1 },
     { name: 'cloth flutter', description: 'A cloak or cloth swinging softly.', params: { kind: 'cloth' }, seed: 1 },
   ],
-  seedJitterLabels: ['whoosh-speed'],
+  seedJitter: [{ label: 'whoosh-speed', affects: "whoosh resolved duration (via its speed/length formula)", min: -0.08, max: 0.08 }],
 };
 
 export const whooshModel: SfxModel = { metadata, compile };

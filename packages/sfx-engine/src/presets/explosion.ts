@@ -101,7 +101,7 @@ const metadata: ModelMetadata = {
     { name: 'distant artillery', description: 'A big explosion heard from far away.', params: { size: 'distant' }, seed: 1 },
     { name: 'half-distant rumble', description: 'A big explosion halfway between close and distant, with a light debris tail.', params: { size: 'big', distance: 0.5, debrisAmount: 0.3 }, seed: 1 },
   ],
-  seedJitterLabels: ['explosion-duration'],
+  seedJitter: [{ label: 'explosion-duration', affects: 'explosion duration', min: -0.05, max: 0.05 }],
 };
 
 export const explosionModel: SfxModel = { metadata, compile };

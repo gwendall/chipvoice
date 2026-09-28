@@ -134,7 +134,15 @@ const metadata: ModelMetadata = {
     { name: 'computer beep', description: 'A two-tone computer acknowledgement beep.', params: { kind: 'computer-beep' }, seed: 1 },
     { name: 'deep laser', description: 'A laser transposed an octave down, stretched to twice the length.', params: { kind: 'laser', pitch: -12, duration: 2 }, seed: 1 },
   ],
-  seedJitterLabels: ['laser-pitch', 'zap-mod', 'teleport-from', 'teleport-to', 'teleport-vibrato', 'power-range', 'beep-pitch'],
+  seedJitter: [
+    { label: 'laser-pitch', affects: 'laser sweep start frequency', min: -0.1, max: 0.1 },
+    { label: 'zap-mod', affects: 'zap ring-modulator frequency', min: -0.15, max: 0.15 },
+    { label: 'teleport-from', affects: 'teleport sweep start frequency', min: -0.08, max: 0.08 },
+    { label: 'teleport-to', affects: 'teleport sweep end frequency', min: -0.08, max: 0.08 },
+    { label: 'teleport-vibrato', affects: 'teleport vibrato rate', min: -0.1, max: 0.1 },
+    { label: 'power-range', affects: 'power up/down sweep range', min: -0.06, max: 0.06 },
+    { label: 'beep-pitch', affects: 'computer beep base frequency', min: -0.08, max: 0.08 },
+  ],
 };
 
 export const scifiModel: SfxModel = { metadata, compile };

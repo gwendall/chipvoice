@@ -123,7 +123,7 @@ const metadata: ModelMetadata = {
     { name: 'puddle splash step', description: 'A step in a shallow puddle.', params: { surface: 'water-puddle', weight: 'light' }, seed: 1 },
     { name: 'medium wood step, deep', description: 'A half-intensity wood step transposed down an octave.', params: { surface: 'wood', intensity: 0.5, pitch: -12 }, seed: 1 },
   ],
-  seedJitterLabels: ['footstep-duration'],
+  seedJitter: [{ label: 'footstep-duration', affects: 'footstep duration', min: -0.05, max: 0.05 }],
 };
 
 export const footstepModel: SfxModel = { metadata, compile };

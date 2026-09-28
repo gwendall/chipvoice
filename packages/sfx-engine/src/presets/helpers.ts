@@ -130,7 +130,11 @@ export function toneBlip(
  * model that wants a granular, glittery texture without a real granular
  * engine (each grain is just a toneBlip placed by a mix layer's offsetMs).
  * Every grain's time/pitch/gain comes from `seededRange` with its own
- * label, so the whole layer is exactly reproducible per seed.
+ * label - `${label}-t${i}` (onset, a fraction of `duration`), `${label}-f${i}`
+ * (pitch spread) and `${label}-g${i}` (gain) - so the whole layer is exactly
+ * reproducible per seed. A caller's `ModelMetadata.seedJitter` declares
+ * these three as separate `-t`/`-f`/`-g` prefixed entries (see that field's
+ * doc comment in types.ts for the `-t` entry's duration-fraction convention).
  */
 export function sparkleLayer(
   idGen: () => string,
@@ -165,22 +169,23 @@ export function sparkleLayer(
  * (`ModelParamMeta.seedJitter`).
  */
 // Test-only instrumentation: `test/seed-jitter-coverage.test.mjs` installs a
-// listener here (via `__setSeedJitterListener`) to observe every label
-// `seededRange` is called with while compiling every preset and every
-// model's metadata examples, then checks each against that model's
-// `ModelMetadata.seedJitterLabels`. `null` (the default, and the only state
-// any non-test caller ever sees) costs one `if` per call and does nothing.
-let seedJitterListener: ((label: string) => void) | null = null;
+// listener here (via `__setSeedJitterListener`) to observe every
+// `(label, min, max)` `seededRange` is called with while compiling every
+// preset and every model's metadata examples, then checks each against that
+// model's `ModelMetadata.seedJitter`. `null` (the default, and the only
+// state any non-test caller ever sees) costs one `if` per call and does
+// nothing.
+let seedJitterListener: ((label: string, min: number, max: number) => void) | null = null;
 
 /** Test-only. Installs (or, with `null`, removes) a listener called with
- * every label passed to `seededRange`. Never used outside
+ * every `(label, min, max)` passed to `seededRange`. Never used outside
  * `test/seed-jitter-coverage.test.mjs`. */
-export function __setSeedJitterListener(listener: ((label: string) => void) | null): void {
+export function __setSeedJitterListener(listener: ((label: string, min: number, max: number) => void) | null): void {
   seedJitterListener = listener;
 }
 
 export function seededRange(seed: number, label: string, min: number, max: number): number {
-  if (seedJitterListener) seedJitterListener(label);
+  if (seedJitterListener) seedJitterListener(label, min, max);
   return createPrng(deriveSeed(seed, label)).range(min, max);
 }
 

@@ -19,9 +19,9 @@ Run (from packages/sfx-engine/):
     .artifacts/venv/bin/python3 eval/clap_eval.py
 
 For each of the 53 named presets, at each of `SEEDS` (not just each
-preset's own reference seed - pooling several independent renders per
-prompt gives every statistic below a real sample size instead of n=1 per
-item):
+preset's own reference seed - several renders per prompt, though NOT
+independent ones, since a seed only jitters a recipe a few percent; see
+"The unit of analysis" below for how this file actually accounts for that):
   - `eval/prompts.json` has one plain-English description of the sound,
     written before any of this ran and never edited afterward.
   - `.artifacts/audio/real/<id>-seed<seed>.wav` is the preset rendered
@@ -49,17 +49,38 @@ and then pooled across all 4 seeds into per-(item, seed) hit/miss trials:
      embeddings - must score clearly worse than `real` for the metric to
      mean anything (the brief's explicit requirement).
 
+The unit of analysis for every significance test below is the PRESET
+(n=53), not the (item, seed) trial (n=212): a preset's `SEEDS` renders
+differ only by a few-percent seed jitter (see `ModelMetadata.seedJitter`),
+so they are highly correlated, not independent draws - treating the 212
+pooled outcomes as 212 independent Bernoulli trials understates every
+p-value below whatever that correlation happens to be. The pooled-212
+figures are still computed and reported (`*_pooled_212_DESCRIPTIVE_ONLY`),
+but only as descriptive rates, explicitly not as significance tests.
+
 Pre-declared statistical tests (not tuned post hoc to make anything pass):
-  - Exact binomial test (scipy.stats.binomtest, one-sided "greater") of the
-    pooled hit count against the condition's theoretical chance rate
-    (1/53 for top1, 5/53 for top5), for the `real` and `degraded`
-    conditions. `shuffled` gets the same test two-sided, since the whole
-    point of that control is to NOT reject chance.
-  - Exact paired sign test (McNemar's test collapses to this for a 2x2 with
-    binary outcomes: a binomial test on the discordant pairs) of
-    real-vs-degraded on the 212 per-(item, seed) top1 hit/miss pairs, and
-    again on the 212 top5 pairs, one-sided ("real" beats "degraded"),
-    alpha 0.05.
+  - real-vs-chance and degraded-vs-chance: an exact permutation
+    (randomization) test at the preset level. For `NUM_PERMUTATION_REPS`
+    (10000) reps, independently permute the prompt<->audio correspondence
+    WITHIN each seed (the real embeddings are untouched - only which prompt
+    is graded against which audio changes) and sum top-k hits across all 4
+    seeds, building an empirical null distribution for that pooled total;
+    p = (1 + count(null >= observed)) / (reps + 1), one-sided. Chosen over
+    the alternative considered (a per-preset "hit in >= j of 4 seeds"
+    binomial against the exact chance rate for that threshold event) because
+    it uses the real embedding geometry directly rather than an assumed
+    per-trial chance rate, needs no independence assumption between a
+    preset's seeds at all (each replicate carries the exact same cross-seed
+    correlation structure the observed statistic has), and does not throw
+    away the 0-4 hit count's magnitude the way binarizing "hit in >= j of 4"
+    would. RNG: `numpy.random.default_rng(PERMUTATION_RNG_SEED)`,
+    `PERMUTATION_RNG_SEED` fixed below so a run is exactly reproducible.
+  - real-vs-degraded: a paired exact sign test over the 53 presets, on each
+    preset's (hits_real - hits_degraded) out of 4 seeds; ties (diff = 0)
+    dropped; one-sided ("real" beats "degraded"); alpha 0.05. This is
+    McNemar's exact test applied at the preset level (the discordant-pairs
+    binomial), the same construction the previous pooled-212 version used,
+    just with presets instead of raw trials as the paired unit.
 
 Also reports a family x family confusion matrix for the `real` condition's
 top-1 predictions (8x8, families from eval/families.json, one row per
@@ -153,22 +174,35 @@ def topk_hits(text_embed, audio_embed, correct_index_for, ks=(1, 5)):
 
 identity = list(range(N))
 
-# 1 & 3. real and degraded, per seed, pooled into per-(item, seed) trials.
-real_hits1, real_hits5 = [], []  # each a flat list over (seed, item), aligned with real_trial_ids
+# 1 & 3. real and degraded, per seed, pooled into per-(item, seed) trials
+# (kept for the descriptive-only pooled rates) AND kept per-seed (real_hits_by_seed
+# / degraded_hits_by_seed) so the preset-level tests below can treat each of
+# the 53 presets, not each of the 212 trials, as the unit of analysis.
+real_hits1, real_hits5 = [], []  # each a flat list over (seed, item), aligned with trial_ids
 degraded_hits1, degraded_hits5 = [], []
 trial_ids, trial_seeds = [], []
 real_top1_by_seed, degraded_top1_by_seed = {}, {}
+real_hits_by_seed, degraded_hits_by_seed = {}, {}  # seed -> {1: [bool*N], 5: [bool*N]}
 for seed in SEEDS:
     r_hits, r_top1 = topk_hits(text_embed, real_embed_by_seed[seed], identity)
     d_hits, d_top1 = topk_hits(text_embed, degraded_embed_by_seed[seed], identity)
     real_top1_by_seed[seed] = r_top1
     degraded_top1_by_seed[seed] = d_top1
+    real_hits_by_seed[seed] = r_hits
+    degraded_hits_by_seed[seed] = d_hits
     real_hits1.extend(r_hits[1]); real_hits5.extend(r_hits[5])
     degraded_hits1.extend(d_hits[1]); degraded_hits5.extend(d_hits[5])
     trial_ids.extend(IDS); trial_seeds.extend([seed] * N)
 
 TOTAL_TRIALS = len(trial_ids)
 assert TOTAL_TRIALS == N * len(SEEDS)
+
+# Per-preset hit counts out of len(SEEDS) - the unit of analysis for every
+# preset-level test below.
+real_top1_by_preset = [sum(real_hits_by_seed[seed][1][i] for seed in SEEDS) for i in range(N)]
+real_top5_by_preset = [sum(real_hits_by_seed[seed][5][i] for seed in SEEDS) for i in range(N)]
+degraded_top1_by_preset = [sum(degraded_hits_by_seed[seed][1][i] for seed in SEEDS) for i in range(N)]
+degraded_top5_by_preset = [sum(degraded_hits_by_seed[seed][5][i] for seed in SEEDS) for i in range(N)]
 
 # 2. shuffled labels: average over several random derangements of the
 # identity pairing PER SEED, each graded with the exact same topk_hits
@@ -211,50 +245,106 @@ def exact_binomial_vs_chance(hits, chance_p, alternative):
     }
 
 
-def exact_paired_sign_test(hits_a, hits_b, a_name, b_name):
-    """McNemar's exact test for two paired binary classifiers: only the
-    discordant pairs carry information, and under the null (both equally
-    likely to be the one that's right when they disagree) their split is
-    Binomial(b+c, 0.5) - an exact binomial test on that is McNemar's exact
-    test. One-sided: is `a_name` significantly more often right than
-    `b_name`?"""
-    assert len(hits_a) == len(hits_b)
-    b = sum(1 for x, y in zip(hits_a, hits_b) if x and not y)  # a right, b wrong
-    c = sum(1 for x, y in zip(hits_a, hits_b) if not x and y)  # a wrong, b right
-    both_right = sum(1 for x, y in zip(hits_a, hits_b) if x and y)
-    both_wrong = sum(1 for x, y in zip(hits_a, hits_b) if not x and not y)
+def exact_paired_sign_test_on_counts(counts_a, counts_b, a_name, b_name):
+    """Preset-level paired exact sign test: the unit is one preset's hit
+    count out of len(SEEDS) seeds, NOT one (item, seed) trial - a preset's
+    SEEDS renders differ only by a few-percent seed jitter and are not
+    independent draws (see this file's module docstring). For each preset,
+    diff = count_a - count_b; ties (diff == 0) are dropped; b = #presets
+    where a > b, c = #presets where b > a; under the null the split of the
+    b+c discordant presets is Binomial(b+c, 0.5) - an exact one-sided
+    binomial test on that is the exact sign test (McNemar's exact test,
+    applied at the preset level instead of the raw-trial level)."""
+    assert len(counts_a) == len(counts_b)
+    diffs = [a - b for a, b in zip(counts_a, counts_b)]
+    b = sum(1 for d in diffs if d > 0)
+    c = sum(1 for d in diffs if d < 0)
+    ties = sum(1 for d in diffs if d == 0)
     if b + c == 0:
         return {
-            "b_a_right_b_wrong": b, "c_a_wrong_b_right": c,
-            "both_right": both_right, "both_wrong": both_wrong,
-            "p_value": 1.0, "note": "no discordant pairs - test is degenerate",
+            "presets_a_better": b, "presets_b_better": c, "ties_dropped": ties, "n_presets": N,
+            "p_value": 1.0, "note": "no discordant presets - test is degenerate",
             "significant_at_0.05": False,
         }
     result = binomtest(b, b + c, 0.5, alternative="greater")
     return {
-        "b_a_right_b_wrong": b, "c_a_wrong_b_right": c,
-        "both_right": both_right, "both_wrong": both_wrong,
-        "p_value": result.pvalue, "alternative": f"{a_name} > {b_name}",
+        "presets_a_better": b, "presets_b_better": c, "ties_dropped": ties, "n_presets": N,
+        "p_value": result.pvalue, "alternative": f"{a_name} > {b_name} (preset-level, one-sided)",
         "significant_at_0.05": result.pvalue < ALPHA,
     }
 
 
+PERMUTATION_RNG_SEED = 20260929  # today's date at the time this test was written - fixed so a run is exactly reproducible
+NUM_PERMUTATION_REPS = 10000
+
+
+def permutation_test_vs_chance(embed_by_seed, observed_hits_total, k, num_reps, rng):
+    """Exact-by-construction permutation/randomization test for "is this
+    condition's pooled retrieval accuracy above chance", valid regardless of
+    how correlated a preset's SEEDS renders are with each other: per rep,
+    independently permute the prompt<->audio correspondence WITHIN each seed
+    (the real embeddings are untouched - only which prompt is graded against
+    which audio changes) and sum top-k hits across all SEEDS, building a
+    null distribution of that pooled total over `num_reps` reps. See this
+    file's module docstring for why this was chosen over the "hit in >= j of
+    4 seeds" binomial alternative."""
+    null_totals = np.empty(num_reps, dtype=np.int64)
+    for r in range(num_reps):
+        total = 0
+        for seed in SEEDS:
+            perm = rng.permutation(N)
+            hits, _ = topk_hits(text_embed, embed_by_seed[seed], perm)
+            total += sum(hits[k])
+        null_totals[r] = total
+    p = (1 + int(np.sum(null_totals >= observed_hits_total))) / (num_reps + 1)
+    return {
+        "observed_hits": observed_hits_total, "trials": N * len(SEEDS),
+        "num_permutation_reps": num_reps, "rng_seed": PERMUTATION_RNG_SEED,
+        "null_mean": float(null_totals.mean()), "null_std": float(null_totals.std()),
+        "p_value": float(p), "alternative": "greater (one-sided)",
+        "significant_at_0.05": bool(p < ALPHA),
+    }
+
+
+perm_rng = np.random.default_rng(PERMUTATION_RNG_SEED)
+preset_level_tests = {
+    "real_vs_chance_permutation": {
+        "top1": permutation_test_vs_chance(real_embed_by_seed, sum(real_top1_by_preset), 1, NUM_PERMUTATION_REPS, perm_rng),
+        "top5": permutation_test_vs_chance(real_embed_by_seed, sum(real_top5_by_preset), 5, NUM_PERMUTATION_REPS, perm_rng),
+    },
+    "degraded_vs_chance_permutation": {
+        "top1": permutation_test_vs_chance(degraded_embed_by_seed, sum(degraded_top1_by_preset), 1, NUM_PERMUTATION_REPS, perm_rng),
+        "top5": permutation_test_vs_chance(degraded_embed_by_seed, sum(degraded_top5_by_preset), 5, NUM_PERMUTATION_REPS, perm_rng),
+    },
+    "real_vs_degraded_paired_sign_test": {
+        "top1": exact_paired_sign_test_on_counts(real_top1_by_preset, degraded_top1_by_preset, "real", "degraded"),
+        "top5": exact_paired_sign_test_on_counts(real_top5_by_preset, degraded_top5_by_preset, "real", "degraded"),
+    },
+}
+
 stats = {
-    "real_vs_chance": {
+    "preset_level_tests": preset_level_tests,
+    "pooled_212_trials_NOTE": (
+        "The conditions below pool 53 presets x 4 seeds = 212 (item, seed) "
+        "trials. A preset's 4 seed-renders differ only by a few-percent "
+        "seed jitter, so they are highly correlated, not independent "
+        "Bernoulli draws - these binomial/sign-test p-values assume iid "
+        "trials and are NOT valid significance tests under that clustering. "
+        "Kept only as descriptive rates; see 'preset_level_tests' above for "
+        "the actual pre-declared significance tests (53 presets, not 212 "
+        "trials, as the unit of analysis)."
+    ),
+    "real_vs_chance_pooled_212_DESCRIPTIVE_ONLY": {
         "top1": exact_binomial_vs_chance(real_hits1, 1 / N, "greater"),
         "top5": exact_binomial_vs_chance(real_hits5, 5 / N, "greater"),
     },
-    "degraded_vs_chance": {
+    "degraded_vs_chance_pooled_212_DESCRIPTIVE_ONLY": {
         "top1": exact_binomial_vs_chance(degraded_hits1, 1 / N, "greater"),
         "top5": exact_binomial_vs_chance(degraded_hits5, 5 / N, "greater"),
     },
     "shuffled_vs_chance_two_sided": {
         "top1": exact_binomial_vs_chance(shuffled_hits1, 1 / N, "two-sided"),
         "top5": exact_binomial_vs_chance(shuffled_hits5, 5 / N, "two-sided"),
-    },
-    "real_vs_degraded_paired_sign_test": {
-        "top1": exact_paired_sign_test(real_hits1, degraded_hits1, "real", "degraded"),
-        "top5": exact_paired_sign_test(real_hits5, degraded_hits5, "real", "degraded"),
     },
 }
 
@@ -277,17 +367,17 @@ family_hit_rate = {fam: {"hits": family_hits[fam], "trials": family_trials[fam],
 
 per_item = []
 for i, id_ in enumerate(IDS):
-    real_top1_hits_per_seed = [real_top1_by_seed[seed][i] == i for seed in SEEDS]
-    degraded_top1_hits_per_seed = [degraded_top1_by_seed[seed][i] == i for seed in SEEDS]
     per_item.append({
         "id": id_,
         "prompt": PROMPTS[id_],
         "family": FAMILIES[id_],
-        "real_top1_hits": sum(real_top1_hits_per_seed),
-        "real_top1_trials": len(SEEDS),
+        "real_top1_hits": real_top1_by_preset[i],
+        "real_top5_hits": real_top5_by_preset[i],
+        "real_trials": len(SEEDS),
         "real_top1_predicted_ids_by_seed": {str(seed): IDS[real_top1_by_seed[seed][i]] for seed in SEEDS},
-        "degraded_top1_hits": sum(degraded_top1_hits_per_seed),
-        "degraded_top1_trials": len(SEEDS),
+        "degraded_top1_hits": degraded_top1_by_preset[i],
+        "degraded_top5_hits": degraded_top5_by_preset[i],
+        "degraded_trials": len(SEEDS),
     })
 
 report = {
@@ -336,8 +426,11 @@ print("\n=== CLAP retrieval accuracy (pooled over 4 seeds, 212 trials/condition)
 print(f"real:      top1={report['conditions']['real']['top1']:.3f}  top5={report['conditions']['real']['top5']:.3f}")
 print(f"shuffled:  top1={shuffled_acc[1]:.3f}  top5={shuffled_acc[5]:.3f}  (theoretical chance top1={1/N:.3f}, top5={5/N:.3f}, over {NUM_SHUFFLE_RUNS} derangement-runs)")
 print(f"degraded:  top1={report['conditions']['degraded_engine_control']['top1']:.3f}  top5={report['conditions']['degraded_engine_control']['top5']:.3f}")
-print("\n=== Pre-declared statistical tests (alpha=0.05) ===")
+print("\n=== Pre-declared statistical tests (alpha=0.05); unit of analysis is the 53 presets, not the 212 pooled trials ===")
 for name, d in stats.items():
+    if isinstance(d, str):
+        print(f"{name}: {d}")
+        continue
     print(f"{name}:")
     for k, v in d.items():
         print(f"  {k}: {v}")

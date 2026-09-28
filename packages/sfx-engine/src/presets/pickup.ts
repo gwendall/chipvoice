@@ -112,7 +112,17 @@ const metadata: ModelMetadata = {
     { name: 'level up', description: 'A triumphant four-note level-up chime.', params: { kind: 'level-up' }, seed: 1 },
     { name: 'low slow coin', description: 'A coin pickup transposed down an octave and stretched to twice the length.', params: { kind: 'coin', pitch: -12, duration: 2 }, seed: 1 },
   ],
-  seedJitterLabels: ['coin-pitch', 'key-size', 'powerup-pitch', 'gem-sparkle', 'levelup-sparkle'],
+  seedJitter: [
+    { label: 'coin-pitch', affects: 'coin tone pair frequency', min: -0.02, max: 0.02 },
+    { label: 'key-size', affects: 'key modal strike size (inversely, pitch)', min: -0.1, max: 0.1 },
+    { label: 'powerup-pitch', affects: 'powerup tone trio frequency', min: -0.02, max: 0.02 },
+    { label: 'gem-sparkle-t', affects: "gem sparkle grain onset time, as a fraction of the cue's duration", min: 0, max: 0.8 },
+    { label: 'gem-sparkle-f', affects: 'gem sparkle grain pitch spread around its centre frequency', min: -0.5, max: 0.5 },
+    { label: 'gem-sparkle-g', affects: 'gem sparkle grain gain offset', min: 0, max: 0.35 },
+    { label: 'levelup-sparkle-t', affects: "level-up sparkle grain onset time, as a fraction of the cue's duration", min: 0, max: 0.8 },
+    { label: 'levelup-sparkle-f', affects: 'level-up sparkle grain pitch spread around its centre frequency', min: -0.5, max: 0.5 },
+    { label: 'levelup-sparkle-g', affects: 'level-up sparkle grain gain offset', min: 0, max: 0.35 },
+  ],
 };
 
 export const pickupModel: SfxModel = { metadata, compile };

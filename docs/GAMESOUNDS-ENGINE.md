@@ -199,14 +199,63 @@ exact at the boundary, and `semitoneMultiplier(0) === 1` exactly (both
 test:hash-fixture` confirms this directly: all 159 hashes (53 presets x 3
 seeds) are unchanged by this work.
 
-Every `seededRange` jitter each of these five models' `compile()` calls
+Every `seededRange` jitter any of the eight models' `compile()` calls
 (directly, or indirectly through `sparkleLayer`) is declared on
-`ModelMetadata.seedJitterLabels` and mechanically checked by
+`ModelMetadata.seedJitter` as `{ label, affects, min, max }` - `label` is the
+`seededRange` prefix, `affects` is the plain-English quantity it changes, and
+`min`/`max` are the exact multiplicative offsets passed to `seededRange`
+(e.g. `-0.1`/`0.1` for +-10%) - and mechanically checked by
 `test/seed-jitter-coverage.test.mjs`, which compiles every preset and every
 model's metadata `examples`, instruments `seededRange`, and fails if any
-captured label is not covered by a declared prefix (or if a declared prefix
-is never actually used). The human-readable "which quantity, by how much"
-side of the same jitters lives on each param's `seedJitter` prose.
+captured `(label, min, max)` is not covered by a declared entry whose prefix
+matches AND whose bounds match exactly (or if a declared entry is never
+actually used). One exception: `sparkleLayer`'s grain-onset-time entries
+(any `label` ending in `-t`) are declared as a fraction of the cue's own
+duration rather than raw seconds, since a fixed seconds figure would be
+wrong at any duration other than the one it was measured at; the test scales
+that entry's declared bounds by each render's actual compiled `duration`
+before comparing. Every declared entry, by model:
+
+| Model | Label | Affects | Range |
+| --- | --- | --- | --- |
+| `scifi` | `laser-pitch` | laser sweep start frequency | +-10% |
+| `scifi` | `zap-mod` | zap ring-modulator frequency | +-15% |
+| `scifi` | `teleport-from` | teleport sweep start frequency | +-8% |
+| `scifi` | `teleport-to` | teleport sweep end frequency | +-8% |
+| `scifi` | `teleport-vibrato` | teleport vibrato rate | +-10% |
+| `scifi` | `power-range` | power up/down sweep range | +-6% |
+| `scifi` | `beep-pitch` | computer beep base frequency | +-8% |
+| `magic` | `cast-sparkle-t` | cast sparkle grain onset time | 0 to 80% of duration |
+| `magic` | `cast-sparkle-f` | cast sparkle grain pitch spread | +-60% |
+| `magic` | `cast-sparkle-g` | cast sparkle grain gain offset | 0 to +0.35 |
+| `magic` | `shimmer-t` | shimmer grain onset time | 0 to 80% of duration |
+| `magic` | `shimmer-f` | shimmer grain pitch spread | +-80% |
+| `magic` | `shimmer-g` | shimmer grain gain offset | 0 to +0.35 |
+| `magic` | `heal-sparkle-t` | heal sparkle grain onset time | 0 to 80% of duration |
+| `magic` | `heal-sparkle-f` | heal sparkle grain pitch spread | +-50% |
+| `magic` | `heal-sparkle-g` | heal sparkle grain gain offset | 0 to +0.35 |
+| `magic` | `buff-sparkle-t` | buff sparkle grain onset time | 0 to 80% of duration |
+| `magic` | `buff-sparkle-f` | buff sparkle grain pitch spread | +-60% |
+| `magic` | `buff-sparkle-g` | buff sparkle grain gain offset | 0 to +0.35 |
+| `pickup` | `coin-pitch` | coin tone pair frequency | +-2% |
+| `pickup` | `key-size` | key modal strike size (inversely, pitch) | +-10% |
+| `pickup` | `powerup-pitch` | powerup tone trio frequency | +-2% |
+| `pickup` | `gem-sparkle-t` | gem sparkle grain onset time | 0 to 80% of duration |
+| `pickup` | `gem-sparkle-f` | gem sparkle grain pitch spread | +-50% |
+| `pickup` | `gem-sparkle-g` | gem sparkle grain gain offset | 0 to +0.35 |
+| `pickup` | `levelup-sparkle-t` | level-up sparkle grain onset time | 0 to 80% of duration |
+| `pickup` | `levelup-sparkle-f` | level-up sparkle grain pitch spread | +-50% |
+| `pickup` | `levelup-sparkle-g` | level-up sparkle grain gain offset | 0 to +0.35 |
+| `footstep` | `footstep-duration` | footstep duration | +-5% |
+| `explosion` | `explosion-duration` | explosion duration | +-5% |
+| `impact` | `impact-size` | impact modal size (inversely, pitch) | +-6% |
+| `whoosh` | `whoosh-speed` | whoosh resolved duration (via its speed/length formula) | +-8% |
+| `ui` | `ui-pitch` | UI event base pitch (when `baseFreq` is omitted) | +-2% |
+
+The human-readable "which quantity, by how much" side of a jitter tied to
+one specific param also still lives on that param's `seedJitter` prose
+(e.g. `impact`'s `size` param); the table above is the mechanically-enforced
+source of truth for the exact numbers.
 `test/continuous-params.test.mjs` renders every new param at its declared
 min/default/max, asserts the engine's own signal-sanity checks pass at each
 point, and asserts one directional metric moves the documented way between
@@ -312,6 +361,30 @@ presets: max observed difference 0.058 LU, tolerance 0.25 LU (roughly 4x
 margin). Both tolerances are derived from the measured distribution plus a
 stated margin, not picked to make today's output pass.
 
+### Loudness convention across engines
+
+This engine's own `loudness/normalize.ts` measures and gains a render as
+mono, since every recipe here renders one channel. The gamesounds.ai
+catalogue build (`apps/sounds/scripts/lib/audio.mjs`'s `levelToConvention`,
+same -18 LUFS momentary / -1 dBTP true-peak ceilings, same peak-wins
+tie-break) instead measures and levels each file on its own shipped channel
+layout - stereo 44.1 kHz for most catalogue sources. BS.1770's channel
+summation reads a mono signal about `-10*log10(2) = -3.0103` LU quieter than
+the same content played as two identical (dual-mono) channels, for the same
+reason Table 1's stereo test cases needed that exact shift above: a render
+of THIS engine gained to exactly -18 LUFS as measured here would, played
+back, sit about 3 dB louder in the listener's ear than a catalogue sound
+nominally at -18 LUFS, because the catalogue's meter is crediting a second
+channel this engine's meter never sees. This is a real cross-engine
+mismatch, not a rounding error, and this PR does not change either engine's
+normalization to fix it. GS-03, when it wires sfx-engine into the
+catalogue, must reconcile it: either re-level every sfx-engine render
+through the catalogue's own `levelToConvention` on the render's actual
+shipped channel layout (mono stays mono, or is duplicated to stereo first,
+whichever the catalogue ends up shipping for procedural sounds), or ship
+and meter mono consistently catalogue-wide - either way, so both engines'
+sounds land at the same -18 LUFS in the listener's ears, not just on paper.
+
 ## Quality evidence
 
 ### Listening report
@@ -367,9 +440,11 @@ leaving only raw oscillators/noise/constants wired the same way).
 seed runs a separate 53-prompt vs 53-audio retrieval (an item's correct
 match is always among that same seed's 53 candidates, never mixed across
 seeds), then pools the resulting per-(item, seed) hit/miss outcomes into 212
-trials per condition for the statistics below - four independent renders
-per prompt instead of one, so the significance tests have real statistical
-power.
+trials per condition for the descriptive rates below. A preset's 4
+seed-renders are NOT independent trials, though - a seed only jitters a
+recipe a few percent (see "Continuous params" above, `ModelMetadata.seedJitter`) -
+so every significance test below treats the preset (n=53), not the
+(item, seed) trial (n=212), as the unit of analysis.
 
 | Condition | What it measures |
 | --- | --- |
@@ -387,42 +462,61 @@ condition):**
 | `shuffled labels` | 1.4% (theoretical chance 1.9%) | 8.9% (theoretical chance 9.4%) |
 | `degraded engine` | 4.7% (10/212) | 21.7% (46/212) |
 
-**Pre-declared statistical tests (alpha 0.05, exact tests - replacing the
-arbitrary ratio thresholds an earlier version of this eval used):** an
-exact binomial test (`scipy.stats.binomtest`) of each condition's pooled
-hit count against the theoretical chance rate (1/53 for top-1, 5/53 for
-top-5), one-sided for `real` and `degraded` (do they beat chance), two-sided
-for `shuffled` (the point of that control is to *not* reject chance); and an
-exact paired sign test (McNemar's exact test) of `real` against `degraded`
-on the 212 paired per-(item, seed) outcomes, one-sided (`real` beats
-`degraded`).
+**Pre-declared statistical tests (alpha 0.05, exact tests):** the unit of
+analysis is the preset (n=53), not the (item, seed) trial (n=212) - a
+preset's 4 seed-renders differ only by a few-percent seed jitter, so they
+are correlated, not independent Bernoulli draws, and treating them as 212
+independent trials (an earlier version of this eval did exactly that)
+understates every p-value below. `real` and `degraded` vs chance use an
+exact permutation (randomization) test: `NUM_PERMUTATION_REPS = 10000` reps,
+RNG seed `PERMUTATION_RNG_SEED = 20260929` (both in `eval/clap_eval.py`),
+each rep independently permutes the prompt<->audio correspondence within
+each seed and sums top-k hits across all 4 seeds, building an empirical
+null distribution for that pooled total - chosen over the alternative
+considered (a per-preset "hit in >= k of 4 seeds" binomial against the exact
+chance rate for that threshold event) because it uses the real embedding
+geometry directly rather than an assumed per-trial chance rate, needs no
+independence assumption between a preset's seeds at all, and does not throw
+away the 0-4 hit count's magnitude the way binarizing "hit in >= k of 4"
+would. `real` vs `degraded` uses a paired exact sign test over the 53
+presets' (hits_real - hits_degraded) out of 4 seeds, ties dropped,
+one-sided. `shuffled` keeps its original pooled two-sided binomial test (a
+sanity check that the retrieval methodology itself is unbiased, not a claim
+this eval leans on).
 
 | Test | top-1 p-value | top-5 p-value |
 | --- | --- | --- |
-| `real` vs chance (greater) | 1.61e-10 (significant) | 1.40e-28 (significant) |
-| `degraded` vs chance (greater) | 0.00752 (significant) | 7.38e-08 (significant) |
-| `shuffled` vs chance (two-sided) | 0.309 (not significant) | 0.563 (not significant) |
-| `real` vs `degraded`, paired sign test (real greater) | 0.0251 (significant) | 0.00062 (significant) |
+| `real` vs chance (permutation, greater) | <0.0001 (significant) | <0.0001 (significant) |
+| `degraded` vs chance (permutation, greater) | 0.0066 (significant) | <0.0001 (significant) |
+| `shuffled` vs chance (pooled, two-sided) | 0.309 (not significant) | 0.563 (not significant) |
+| `real` vs `degraded`, preset-level paired sign test (real greater) | 0.395 (not significant) | 0.055 (not significant) |
 
-Read plainly: `real` beats chance decisively at both top-1 and top-5,
-`shuffled` does not differ from chance in either direction (the retrieval
-methodology itself is sound, not biased toward a "correct" answer), and
-`real` beats `degraded` significantly at both top-1 and top-5, so stripping
-filters/envelopes/physically-informed generators does measurably destroy
-what the model was recognizing. `real`'s numbers can therefore be read as
-evidence, not just a number: a general-purpose text-audio model, never
-tuned against these prompts, ranks the correct sound in its top 5 out of 53
-candidates over a third of the time (37.7%) from a one-line English
-description alone, well above chance (9.4%) and significantly above the
-degraded control (21.7%).
+The pooled-212-trial binomial/sign-test p-values an earlier version of this
+section reported (real vs chance top-1 p=1.61e-10; real-vs-degraded paired
+sign test top-1 p=0.0251, top-5 p=0.00062, both "significant") assumed 212
+independent Bernoulli trials. They are dropped here as invalid under the
+seed clustering described above, not reconciled against the numbers below;
+`.artifacts/clap-report.json` still computes them, labeled
+`*_pooled_212_DESCRIPTIVE_ONLY`, as descriptive rates only.
 
-The one honest wrinkle: `degraded` also beats chance significantly, at both
-top-1 (p=0.00752) and top-5 (p=7.38e-08) - raw noise wired through the same
-graph shape still carries some retrievable signal (duration, coarse
-spectral tilt, the rhythm of onsets), it is not literally at chance. That is
-a real, reportable finding, not a failure of the control: the pre-declared
-test that matters for this eval's purpose is `real` vs `degraded` directly,
-and that test is significant at both top-1 and top-5.
+Read plainly, and without re-framing: `real` and `degraded` both beat chance
+decisively at both top-1 and top-5 - even a stripped-down, noise-based
+render still carries some retrievable signal (duration, coarse spectral
+tilt, the rhythm of onsets), it is not literally at chance. But at the
+preset level, with only 53 independent units, `real` does **not** beat
+`degraded` at a statistically significant level: the preset-level paired
+sign test gives top-1 p=0.395 (8 of 53 presets where `real` scored higher,
+6 where `degraded` did, 39 ties) and top-5 p=0.055 (21 vs 11, 21 ties) -
+close, but on the wrong side of alpha=0.05. This is a real weakening from
+the previous (invalid, pooled-212) analysis, which had reported this exact
+comparison as significant at both top-1 and top-5; the honest reading is
+that this eval, at 53 presets, does not have enough statistical power to
+confirm that filters/envelopes/physically-informed generators measurably
+improve CLAP-recognizability over the degraded control, even though
+`real`'s descriptive numbers (37.7% top-5 vs 21.7% for `degraded`) point
+that way. Seeding more renders of the same 53 presets would not fix this -
+seeds are exactly the correlated, non-independent axis causing the problem;
+more presets would.
 
 Per-family confusion (`real` condition, top-1 predictions, pooled over 4
 seeds; rows are the prompt's actual family, columns are the family of the
@@ -481,10 +575,14 @@ pinned dependency versions, a tracked script path, or pre-declared
 statistical tests; they are superseded by the pooled, statistically tested
 results in this section, not reconciled against them.
 
-If the pre-declared tests above had not shown `real` beating both `shuffled`
-and `degraded`, this section would say so plainly instead of quoting the
-numbers as evidence of quality; they did, so the numbers above stand as
-evidence - see "Limits of this evidence" below for what they do not cover.
+If the pre-declared tests above had not shown `real` beating chance, or had
+shown `shuffled` behaving as anything but chance, this section would say so
+plainly instead of quoting the numbers as evidence of quality. They did not
+show that; they did show `real`-vs-`degraded` losing significance once
+seed-clustering is accounted for, and that is reported plainly above rather
+than smoothed over - `real`'s numbers stand as evidence of beating chance,
+not (yet, at this sample size) as evidence of beating the degraded control.
+See "Limits of this evidence" below for what they do not cover.
 
 ### Best of N helper
 

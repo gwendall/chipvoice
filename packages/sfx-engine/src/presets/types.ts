@@ -47,19 +47,32 @@ export interface ModelMetadata {
   /** 2-4 named, ready-to-render examples spanning the model's range. */
   examples: ModelExample[];
   /**
-   * The exact set of `seededRange` label prefixes this model's `compile()`
-   * is allowed to use, machine-checked by
-   * `test/seed-jitter-coverage.test.mjs` (which compiles every preset and
-   * every one of `examples` above, instruments `seededRange` and fails if
-   * any captured label does not start with one of these prefixes). A prefix
-   * rather than an exact label so one entry can cover a dynamically-indexed
-   * family of labels (e.g. `sparkleLayer`'s `${label}-t${i}` grain labels).
-   * Human-readable "which quantity, by how much" prose for each jitter
-   * still lives on the relevant `ModelParamMeta.seedJitter` above (or, for a
-   * jitter with no single owning param, in this model's own file comment) -
-   * this field is the mechanical enforcement half, not a replacement for it.
+   * The exact set of `seededRange` calls this model's `compile()` is
+   * allowed to make, machine-checked by `test/seed-jitter-coverage.test.mjs`
+   * (which compiles every preset and every one of `examples` above,
+   * instruments `seededRange` and fails if any captured `(label, min, max)`
+   * does not both start with one of these `label` prefixes AND carry that
+   * entry's exact `min`/`max`). `label` is a prefix rather than an exact
+   * label so one entry can cover a dynamically-indexed family of calls
+   * (e.g. `sparkleLayer`'s `${label}-g${i}` grain-gain labels). `affects` is
+   * the plain-English quantity a jittered seed changes (e.g. "laser sweep
+   * start frequency"); `min`/`max` are the exact multiplicative offsets
+   * passed to `seededRange` (e.g. `-0.1`/`0.1` for +-10%), so an LLM reading
+   * this metadata sees both what varies and by how much, not just a label.
+   *
+   * One exception: a `label` ending in `-t` (`sparkleLayer`'s grain-onset-
+   * time sub-jitter) has a `min`/`max` expressed as a fraction of the cue's
+   * own compiled `duration`, not raw seconds - a fixed seconds figure would
+   * be wrong for any duration other than the one it was measured at. The
+   * coverage test scales such an entry's declared bounds by that render's
+   * actual `duration` before comparing.
+   *
+   * Human-readable "which quantity, by how much" prose for a jitter tied to
+   * one specific param still lives on that param's `ModelParamMeta.seedJitter`
+   * above; this field is the mechanically-enforced, model-level source of
+   * truth for the exact numbers, not a replacement for that prose.
    */
-  seedJitterLabels?: readonly string[];
+  seedJitter?: readonly { label: string; affects: string; min: number; max: number }[];
 }
 
 export interface SfxModel {

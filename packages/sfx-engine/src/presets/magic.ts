@@ -111,7 +111,20 @@ const metadata: ModelMetadata = {
     { name: 'curse', description: 'A dark, dissonant curse.', params: { kind: 'curse' }, seed: 1 },
     { name: 'deep slow cast', description: 'A cast transposed down an octave and stretched to twice the length.', params: { kind: 'cast', pitch: -12, duration: 2 }, seed: 1 },
   ],
-  seedJitterLabels: ['cast-sparkle', 'shimmer', 'heal-sparkle', 'buff-sparkle'],
+  seedJitter: [
+    { label: 'cast-sparkle-t', affects: "cast sparkle grain onset time, as a fraction of the cue's duration", min: 0, max: 0.8 },
+    { label: 'cast-sparkle-f', affects: 'cast sparkle grain pitch spread around its centre frequency', min: -0.6, max: 0.6 },
+    { label: 'cast-sparkle-g', affects: 'cast sparkle grain gain offset', min: 0, max: 0.35 },
+    { label: 'shimmer-t', affects: "shimmer grain onset time, as a fraction of the cue's duration", min: 0, max: 0.8 },
+    { label: 'shimmer-f', affects: 'shimmer grain pitch spread around its centre frequency', min: -0.8, max: 0.8 },
+    { label: 'shimmer-g', affects: 'shimmer grain gain offset', min: 0, max: 0.35 },
+    { label: 'heal-sparkle-t', affects: "heal sparkle grain onset time, as a fraction of the cue's duration", min: 0, max: 0.8 },
+    { label: 'heal-sparkle-f', affects: 'heal sparkle grain pitch spread around its centre frequency', min: -0.5, max: 0.5 },
+    { label: 'heal-sparkle-g', affects: 'heal sparkle grain gain offset', min: 0, max: 0.35 },
+    { label: 'buff-sparkle-t', affects: "buff sparkle grain onset time, as a fraction of the cue's duration", min: 0, max: 0.8 },
+    { label: 'buff-sparkle-f', affects: 'buff sparkle grain pitch spread around its centre frequency', min: -0.6, max: 0.6 },
+    { label: 'buff-sparkle-g', affects: 'buff sparkle grain gain offset', min: 0, max: 0.35 },
+  ],
 };
 
 export const magicModel: SfxModel = { metadata, compile };

@@ -117,7 +117,7 @@ const metadata: ModelMetadata = {
     { name: 'error buzz', description: 'A dissonant, slightly crushed error tone.', params: { kind: 'error' }, seed: 1 },
     { name: 'gentle notification', description: 'A three-note ascending notification chime.', params: { kind: 'notification' }, seed: 1 },
   ],
-  seedJitterLabels: ['ui-pitch'],
+  seedJitter: [{ label: 'ui-pitch', affects: 'UI event base pitch (when baseFreq is omitted)', min: -0.02, max: 0.02 }],
 };
 
 export const uiModel: SfxModel = { metadata, compile };
