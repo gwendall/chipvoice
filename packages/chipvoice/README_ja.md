@@ -222,6 +222,27 @@ writeFileSync("theme.wav", toWav(audio));
 
 `test/parity.mjs`が両方を測って比較します。ラウドネスは千分の1、明るさは6%以内で一致し、残りはブラウザーが任意の位置でコンテキストを開始するためです。
 
+<a id="rendering-one-effect"></a>
+## 効果音を1つだけレンダーする
+
+`renderSfx`は`Chip.sfx()`のオフライン版です。チップ、ボイス、音、楽器を渡すと、`Song`もシーケンサーもなしに`RenderResult`が返ります。
+
+```ts
+import { renderSfx, trimRender, levelRender, toWav } from "chipvoice";
+
+const boom = renderSfx("2a03", {
+  channel: "noi",
+  note: 8,
+  duration: 0.3,
+  instrument: { volume: [15, 14, 12, 10, 8, 6, 4, 2, 1, 0], noiseMode: true },
+});
+const file = toWav(levelRender(trimRender(boom), { peak: 0.89 }));
+```
+
+レンダー長は既定で`duration`より長くなります(`delay + duration + 0.5`秒)。減衰テーブルが底に届く前に打ち切られるのは短い音ではなくクリックノイズになるからです。`trimRender`が末尾の無音を切り詰めます。`seconds`を渡せば別の長さでレンダーできます。
+
+`SfxRecipe`は同じ呼び出しを1つのJSON値にしたものです - `{ chip, channel, note, instrument, duration, ... }` - カタログが音の`recipe`として保存する形そのものです。`renderSfx(recipe.chip, recipe)`で同じ効果音を再びレンダーでき、1つのフィールド(音、デューティ、ピッチテーブルなど)を変えるだけで、無関係な5テイクを録り直す代わりに1つのレシピからバリエーションを作れます。
+
 <a id="how-accurate-is-it"></a>
 ## どれほど正確か
 

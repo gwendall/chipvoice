@@ -11,6 +11,8 @@
 <a id="unreleased"></a>
 ## 未リリース
 
+`renderSfx(chip, spec, options)`は単一の効果音をオフラインでレンダリングします - `Chip.sfx(channel, options)`と同じ呼び出しから、ブラウザーだけを取り除いたものです。チップID、ボイス、音、`Instrument`、長さを渡すと、`renderSong`が返すのと同じ形の`RenderResult`が返るので、`trimRender`、`levelRender`、`packSprite`、`renderOnset`、`toWav`はそのまま使えます。`SfxRecipe`(仕様にチップを添えたもの)はJSON値で、カタログが音の`recipe`として保存し、`renderSfx(recipe.chip, recipe)`へ渡せば同じ効果音を、あるいは一つだけ値を変えてバリエーションを、再びレンダリングできます。gamesounds.aiのchipvoiceレンダー版レトロサウンドセットのために追加しました(`packages/chipvoice/src/render-sfx.ts`)。`scores/arrangements/evaluate.mjs`、`scores/mixing/calibrate.mjs`、`scores/instruments/generate.mjs`、`scores/render-parity/inputs.mjs`のどれもこれをインポートしないため、これらのハッシュはどれも動きません。
+
 プログレッシブなプレビュー再生は、チップや曲を再生中に切り替えるとき、もう
 聞こえるほどの停止の危険を負わなくなりました。切り替え後最初の読み込み -
 `ProgressivePlayback`内部の先読みループが新しいグループの引き継ぎ直後に発行する
