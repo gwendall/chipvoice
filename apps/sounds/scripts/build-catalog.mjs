@@ -30,14 +30,29 @@ import {
   sha256Hex,
   toWavBytes,
   peakOf,
+  energyPerChannel,
 } from "./lib/audio.mjs";
-import { checkSound, checkCatalogFormatPeakMean, CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB } from "./lib/checks.mjs";
+import { checkSound, collectFormatEnergyDeltas, FORMAT_ENERGY_TOLERANCE_DB } from "./lib/checks.mjs";
 
 // Presets excluded from the generated half, with why - see this file's
-// buildGenerated(). Empty for now: every preset that reaches the build
-// passes checkSound; if one is added here later, name it, quote the actual
-// failure/judgment, and say what the engine (a separate ticket) would need.
-const EXCLUDED_PRESETS = {};
+// buildGenerated(). Each reason is a measured judgment, not a guess: decode
+// the shipped ogg/mp3 back to PCM and compare its total energy (the sum of
+// each sample squared, not a mean - see energyPerChannel in scripts/lib/
+// audio.mjs for why) against the source wav's, per channel (scripts/lib/checks.mjs's
+// checkFormatEnergies/FORMAT_ENERGY_TOLERANCE_DB is the same measurement the
+// build gate itself runs on every other variant). These three lose real
+// energy - not the harmless peak-only "transient smearing" a first pass
+// wrongly assumed - because most of their own synthesized content sits above
+// ~16 kHz, inside the range both ffmpeg's native vorbis encoder and
+// libmp3lame filter away at this catalogue's quality settings. A follow-up
+// ticket (docs/BACKLOG.md, GS-05) tracks finding why sfx-engine's modal
+// synthesis puts energy there and fixing it at the source; tuning the engine
+// itself is out of scope for this ticket (decision 52, decision 54).
+const EXCLUDED_PRESETS = {
+  "pickup-key": "97.4% of the source wav's own energy sits above 16 kHz (steep highpass measurement); the shipped ogg/mp3 lose 13.2 to 18.2 dB of real (summed) energy against the wav across the seed ladder, far outside FORMAT_ENERGY_TOLERANCE_DB - a codec passband loss, not transient smearing",
+  "impact-glass-light": "77.6% of the source wav's own energy sits above 16 kHz; the shipped ogg/mp3 lose 6.1 to 6.9 dB of real (summed) energy against the wav across the seed ladder, outside FORMAT_ENERGY_TOLERANCE_DB - a codec passband loss, not transient smearing",
+  "footstep-metal": "31.0% of the source wav's own energy sits above 16 kHz; the shipped ogg/mp3 lose 2.2 to 15.6 dB of real (summed) energy against the wav across the seed ladder - every one of the eight candidate seeds exceeds FORMAT_ENERGY_TOLERANCE_DB, not only the worst ones - a codec passband loss, not transient smearing",
+};
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -108,12 +123,17 @@ function processVariant(render, n) {
       left: leveled.left,
       right: leveled.right,
       sampleRate: leveled.sampleRate,
-      // Decoded back from the actually-shipped ogg/mp3 bytes by encodeVariant
-      // itself (scripts/lib/audio.mjs) - checkSound's checkFormatPeaks uses
-      // this to catch a format that ships quieter (or louder) than its wav
-      // sibling per channel, the class of bug a missing libvorbis fallback's
-      // old `-ac 2` upmix caused (see encodeVariant's own header).
+      // Both decoded back from the actually-shipped ogg/mp3 bytes by
+      // encodeVariant itself (scripts/lib/audio.mjs). formatEnergy is what
+      // checkSound's checkFormatEnergies actually gates on (total energy -
+      // the sum of each sample squared - per channel) - the class of bug a
+      // missing libvorbis fallback's old `-ac 2` upmix caused shows up here
+      // as an exact -3.01 dB delta.
+      // formatPeaks is kept only as informational build-log data
+      // (collectFormatPeakDeltas) - see checks.mjs's own header for why peak
+      // was retired as a gate.
       formatPeaks: encoded.formatPeaks,
+      formatEnergy: encoded.formatEnergy,
     },
   };
 }
@@ -311,31 +331,57 @@ async function main() {
   // Every sound goes through the same signal checks the negative tests
   // exercise (test/checks.test.mjs) before it is allowed into the catalogue:
   // license, chipvoice variant count, per-variant sha256, clipping and
-  // leading silence, plus the loudness ceilings and the one-ceiling-binds
-  // gate - every variant now, not just the first (see checkSound's own
-  // header).
+  // leading silence, plus the loudness ceilings, the one-ceiling-binds gate,
+  // and the per-variant format energy gate (checkFormatEnergies) - every
+  // variant now, not just the first (see checkSound's own header).
   //
-  // formatPeakDeltas collects every per-format/per-channel dB delta
-  // checkSound measures, across every sound in the whole build - once the
-  // loop is done, checkCatalogFormatPeakMean judges their aggregate mean,
-  // the check that actually catches a systematic per-file bug like the old
-  // fallback ogg path's `-ac 2` upmix (see checks.mjs's own comment on
-  // CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB for why this has to be a
-  // whole-build aggregate and not just another per-variant tolerance).
+  // formatPeakDeltas collects every per-format/per-channel peak dB delta
+  // checkSound measures, purely as informational build-log data - it is
+  // never a gate any more (see checks.mjs's own header for why the old
+  // two-layer peak design, a loose per-variant backstop plus a whole-build
+  // aggregate mean, was replaced by the per-variant energy gate above: a
+  // partial regression could hide in an aggregate mean, energy cannot).
+  // formatEnergyDeltas mirrors it for the metric that IS the gate - every
+  // reading, not just the ones a failure message would print, so the build
+  // log always shows the real distribution this file's own tolerance and
+  // exclusions were set against (docs/DECISIONS.md decision 54).
   const failures = [];
   const formatPeakDeltas = [];
+  const formatEnergyDeltas = [];
+  const worstEnergyBySound = [];
   for (const sound of sounds) {
-    const reasons = checkSound(sound, variantChecks, sha256Hex, {}, formatPeakDeltas);
+    const reasons = checkSound(sound, variantChecks, sha256Hex, {}, formatPeakDeltas, formatEnergyDeltas);
     if (reasons.length) failures.push(`${sound.id}: ${reasons.join("; ")}`);
+    let worstDb = 0;
+    for (const variant of sound.variants ?? []) {
+      const data = variantChecks[variant.sha256];
+      if (!data?.left || !data.formatEnergy) continue;
+      const sourceEnergy = energyPerChannel(data.left, data.right ?? null);
+      for (const d of collectFormatEnergyDeltas(sourceEnergy, data.formatEnergy)) {
+        if (Math.abs(d) > Math.abs(worstDb)) worstDb = d;
+      }
+    }
+    worstEnergyBySound.push({ id: sound.id, worstDb });
   }
   if (formatPeakDeltas.length) {
     const meanAbsDb = formatPeakDeltas.reduce((sum, d) => sum + Math.abs(d), 0) / formatPeakDeltas.length;
+    const maxAbsDb = formatPeakDeltas.reduce((max, d) => Math.max(max, Math.abs(d)), 0);
     log(
-      `format peak check: mean |delta| ${meanAbsDb.toFixed(4)} dB across ${formatPeakDeltas.length} ogg/mp3 ` +
-        `format/channel reading(s) (bound: ${CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB} dB) - see checkCatalogFormatPeakMean in scripts/lib/checks.mjs`,
+      `format peak (informational only, not a gate): mean |delta| ${meanAbsDb.toFixed(4)} dB, max |delta| ${maxAbsDb.toFixed(4)} dB ` +
+        `across ${formatPeakDeltas.length} ogg/mp3 format/channel reading(s) - see collectFormatPeakDeltas in scripts/lib/checks.mjs`,
     );
-    const catalogFormatPeak = checkCatalogFormatPeakMean(formatPeakDeltas);
-    if (!catalogFormatPeak.ok) failures.push(catalogFormatPeak.reason);
+  }
+  if (formatEnergyDeltas.length) {
+    const abs = formatEnergyDeltas.map((d) => Math.abs(d)).sort((a, b) => a - b);
+    const meanAbsDb = abs.reduce((sum, d) => sum + d, 0) / abs.length;
+    const maxAbsDb = abs[abs.length - 1];
+    const p99Db = abs[Math.min(abs.length - 1, Math.ceil(0.99 * abs.length) - 1)];
+    const worstFive = [...worstEnergyBySound].sort((a, b) => Math.abs(b.worstDb) - Math.abs(a.worstDb)).slice(0, 5);
+    log(
+      `format energy (the actual gate, FORMAT_ENERGY_TOLERANCE_DB=${FORMAT_ENERGY_TOLERANCE_DB}): mean |delta| ${meanAbsDb.toFixed(4)} dB, ` +
+        `p99 |delta| ${p99Db.toFixed(4)} dB, max |delta| ${maxAbsDb.toFixed(4)} dB across ${formatEnergyDeltas.length} ogg/mp3 format/channel reading(s); ` +
+        `worst 5 by sound: ${worstFive.map((w) => `${w.id} (${w.worstDb.toFixed(2)} dB)`).join(", ")} - see collectFormatEnergyDeltas in scripts/lib/checks.mjs`,
+    );
   }
   if (failures.length) throw new Error(`${failures.length} sound(s) failed signal checks:\n${failures.join("\n")}`);
 

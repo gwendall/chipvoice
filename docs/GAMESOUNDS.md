@@ -134,16 +134,31 @@ ticket adds none):
 
 **Quality gate**: every generated variant runs through the same
 `checkSound` every chipvoice variant does (license, variant count, sha256,
-no clipping, leading silence, both loudness checks). A preset whose
-variants fail, whose style judgment cannot be made honestly, or that
-simply sounds wrong would be excluded by name and reason in
-`build-catalog.mjs`'s `EXCLUDED_PRESETS` map (kept empty and documented for
-future use) rather than shipped or force-fit - this ticket's own build run
-needed no exclusions: all 53 presets produced 4 audible, byte-distinct
-variants and passed every check. Tuning a preset's own sound is a separate
-ticket (sfx-engine's fixture-pinned output, GS-02's own hash fixture, is
-not touched here); a preset that needs that gets excluded, not silently
-shipped worse than it should be.
+no clipping, leading silence, both loudness checks, and a per-variant
+format-energy check - see below). The format-energy check gates on each
+variant's TOTAL energy per channel (the sum of each sample squared, not a
+mean or a peak - see `energyPerChannel` in
+`apps/sounds/scripts/lib/audio.mjs` and [Decision 54](DECISIONS.md) for
+why it must be a sum), decoding the shipped ogg/mp3 back to PCM and
+comparing against the source wav within `FORMAT_ENERGY_TOLERANCE_DB`
+(1.0 dB). A preset whose variants fail, whose style judgment cannot be
+made honestly, or that simply sounds wrong is excluded by name and reason
+in `build-catalog.mjs`'s `EXCLUDED_PRESETS` map rather than shipped or
+force-fit. This ticket's own build excludes three of the 53 presets this
+way: `pickup-key`, `impact-glass-light` and `footstep-metal` each put
+most of their own synthesized energy above 16 kHz (97.4%, 77.6% and 31.0%
+respectively, measured with a steep highpass) - inside the range both
+ffmpeg's native vorbis encoder and libmp3lame filter away at this
+catalogue's quality settings, so their shipped ogg/mp3 lose real energy
+against their own wav across the seed ladder (13.2 to 18.2 dB, 6.1 to 6.9
+dB and 2.2 to 15.6 dB respectively) rather than the harmless peak-only
+"transient smearing" some other presets legitimately show. A follow-up
+ticket tracks finding why sfx-engine's own modal synthesis puts their
+energy there and fixing it at the source (see `docs/BACKLOG.md`); tuning
+a preset's own sound stays out of scope here (sfx-engine's fixture-pinned
+output, GS-02's own hash fixture, is not touched by this ticket) - a
+preset that needs that gets excluded, not silently shipped worse than it
+should be, and can come back once fixed.
 
 **Loudness's own trap** (see [Decision 54](DECISIONS.md) and
 [GAMESOUNDS-ENGINE.md](GAMESOUNDS-ENGINE.md#loudness-convention-across-engines)
@@ -178,6 +193,24 @@ proves both loudness directions: a variant leveled through the catalogue's
 own pipeline on its true shipped layout passes `checkOneCeilingBinds`, and
 a variant that instead ships the engine's own pre-pan self-report as its
 recorded measure fails it, on real, independently-measured bytes.
+
+**Known, non-blocking issue: dev-machine ogg trailing-silence padding.**
+When the build machine's ffmpeg lacks libvorbis (true of this repo's own
+dev Homebrew ffmpeg, not true of CI's Ubuntu apt ffmpeg - see the ogg
+fallback-upmix paragraph above), the native vorbis encoder it falls back
+to does not trim the ogg's own end granule, so a decoded ogg built on
+this machine comes back padded with trailing silence out to the next
+1024-sample block boundary (up to 1023 samples, about 23 ms at 44.1 kHz).
+This is harmless to the format-energy gate itself, because that gate
+compares TOTAL energy (a sum of squares), and trailing zero-valued
+padding contributes exactly 0 to a sum - but it did once cause a mean-based
+version of the same gate to fail 36 sounds that had no real defect (see
+[Decision 54](DECISIONS.md)'s round-3 correction for the full story). The
+padding remains in this machine's locally-built oggs; a developer
+rebuilding the catalogue locally will get ogg bytes that differ from
+CI's, though neither is wrong under the current gate. Building shipped
+oggs with libvorbis on every machine (tracked as `docs/BACKLOG.md` GS-06)
+would remove the difference entirely rather than merely tolerate it.
 
 ## Variants
 
@@ -314,6 +347,22 @@ a generated sound, not just the style-less default. Examples:
 `collect/coin/coin` and `magic/cast/shimmer` all previously resolved to
 nothing under an explicit `8bit` or `16bit` request (no chipvoice sound
 exists for any of them, in any style) and now resolve to a generated one.
+
+The same invariant extends to the EXCLUDE (swap) path -
+`pickSoundForEvent`'s `exclude` parameter, the mechanism behind
+`POST /resolve`'s `exclude` field and the CLI's `swap`. For every
+combination with a chipvoice-only pick, excluding that pick's own id must
+give the same next pick on both the chipvoice-only pool and the full pool,
+whenever the chipvoice-only pool still has another candidate once its own
+pick is excluded. When the chipvoice-only pool has no other candidate -
+`pickSoundForEvent`'s own documented fallback returns the same excluded
+sound again rather than nothing, since "a swap request with no other
+candidate should say so honestly" - the only permitted difference on the
+full pool is a generated sound filling that gap in place of "the same
+sound again", the same gap-filling-never-overriding rule applied to the
+swap case. `apps/sounds/test/resolve-generated.test.mjs` proves this
+exhaustively too, against the same real, built catalogue and the same
+production `pickSoundForEvent` function.
 
 ## The manifest (sounds.json)
 

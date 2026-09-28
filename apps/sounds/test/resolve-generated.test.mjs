@@ -76,6 +76,74 @@ console.log(
     "now resolve to a generated sound (a gap filled, never an override) - see docs/GAMESOUNDS.md's \"Generated sounds (GS-03)\" section for the full list.",
 );
 
+// Requirement 3 (round-2 review): the resolve invariant above also has to
+// hold on the EXCLUDE (swap) path, not just the plain pick - `exclude`
+// removes a given sound id from the candidate pool before picking, so "swap
+// for the next best" must agree between the chipvoice-only pool and the
+// full pool exactly the way the plain pick does above.
+//
+// For every combination that has a chipvoice-only pick, exclude that pick's
+// own id and compare what each pool resolves to next:
+//   - if the chipvoice-only pool still has another candidate once its own
+//     pick is excluded, the full pool (excluding that same id) must resolve
+//     to that SAME alternate - a generated sound must never step in ahead of
+//     a real remaining chipvoice alternate.
+//   - if the chipvoice-only pool has no other candidate, pickSoundForEvent's
+//     own documented fallback returns the same excluded sound again (see its
+//     header) - the only permitted difference on the full pool is a
+//     generated sound filling that gap in place of "the same sound again".
+let excludeCombinations = 0;
+let excludeAlternateFound = 0;
+let excludeGapFilledByGenerated = 0;
+
+for (const category of categories) {
+  const catSounds = allSounds.filter((s) => s.category === category.id);
+  if (catSounds.length === 0) continue;
+  const tags = new Set();
+  for (const s of catSounds) for (const t of s.tags) tags.add(t);
+  const tagOptions = [null, ...tags];
+
+  for (const tag of tagOptions) {
+    for (const style of styles) {
+      const chipvoicePick = pickSoundForEvent(category.id, { style, tag, sounds: chipvoiceSounds });
+      if (!chipvoicePick) continue; // requirement 3 only applies where a chipvoice-only pick exists
+      excludeCombinations++;
+      const label = `category=${category.id} tag=${tag ?? "none"} style=${style ?? "none"}`;
+      const exclude = new Set([chipvoicePick.id]);
+      const chipvoiceOnlyNext = pickSoundForEvent(category.id, { style, tag, exclude, sounds: chipvoiceSounds });
+      const fullNext = pickSoundForEvent(category.id, { style, tag, exclude, sounds: allSounds });
+
+      if (chipvoiceOnlyNext && chipvoiceOnlyNext.id !== chipvoicePick.id) {
+        excludeAlternateFound++;
+        assert.equal(
+          fullNext?.id,
+          chipvoiceOnlyNext.id,
+          `${label}: excluding ${chipvoicePick.id} on the full pool must give the same next pick (${chipvoiceOnlyNext.id}) as the chipvoice-only pool, not ${fullNext?.id ?? "null"}`,
+        );
+      } else if (fullNext && fullNext.id !== chipvoicePick.id) {
+        excludeGapFilledByGenerated++;
+        assert.equal(
+          fullNext.origin,
+          "generated",
+          `${label}: with no other chipvoice candidate once ${chipvoicePick.id} is excluded, the full pool may only differ by a generated sound filling the gap, got origin ${fullNext.origin}`,
+        );
+      } else {
+        assert.equal(
+          fullNext?.id,
+          chipvoicePick.id,
+          `${label}: with no other chipvoice candidate once ${chipvoicePick.id} is excluded and no generated sound fills the gap, the full pool must fall back to the same sound again too, got ${fullNext?.id ?? "null"}`,
+        );
+      }
+    }
+  }
+}
+
+console.log(
+  `PASS exhaustive exclude/swap resolve invariant held across ${excludeCombinations} combination(s) with an existing chipvoice pick: ` +
+    `${excludeAlternateFound} had a genuine alternate chipvoice candidate (the full pool matched it exactly); ${excludeGapFilledByGenerated} had none, ` +
+    "and a generated sound filled the gap in place of \"the same sound again\" (the only permitted difference) - see docs/GAMESOUNDS.md's resolve-invariant paragraph.",
+);
+
 // Exposed so a one-off script (or a future doc-generation step) can print
 // the exact list without re-deriving it - see the build note this test's
 // own PASS line points to.

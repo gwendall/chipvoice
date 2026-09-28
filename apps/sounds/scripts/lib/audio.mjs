@@ -43,10 +43,16 @@ function peakOf(left, right) {
 }
 
 /** Like `peakOf`, but kept per channel instead of collapsed to one number -
- * `checkFormatPeaks` (checks.mjs) needs the LEFT and RIGHT peaks separately,
- * since the whole class of bug it guards against (the ogg fallback path's
- * old `-ac 2` upmix - see `vorbisEncoderArgs`) is exactly a per-channel
- * loudness mismatch that a combined max would never show. */
+ * this catalogue's own build log reports each shipped format's decoded peak
+ * against the wav's own peak, per channel, purely as informational data (see
+ * `collectFormatPeakDeltas` in checks.mjs). It is not the build's actual
+ * loudness gate any more: sample peak is too fragile under a lossy codec
+ * (a legitimate, non-buggy encode can lose double-digit dB of peak to a
+ * single sharp attack while its real total energy stays intact, and
+ * conversely a preset whose energy sits mostly above the codec's own
+ * passband can look fine on peak while losing most of its actual loudness -
+ * see `energyPerChannel`, which is what `checkFormatEnergies` in checks.mjs
+ * actually gates on). */
 function peakPerChannel(left, right) {
   let l = 0;
   for (let i = 0; i < left.length; i++) {
@@ -60,6 +66,46 @@ function peakPerChannel(left, right) {
     if (a > r) r = a;
   }
   return { left: l, right: r };
+}
+
+/** Total energy per channel (the sum of each sample squared - deliberately
+ * NOT divided by sample count). A round-2 review shipped this as a MEAN
+ * first, on the theory that a sum would bias the ratio `checkFormatEnergies`
+ * computes whenever a codec's decoded PCM comes back a different length than
+ * the wav it was encoded from. That was backwards, caught by a round-3
+ * review before it ever shipped: this repo's dev-machine ffmpeg has no
+ * libvorbis (see `vorbisEncoderArgs`'s own header), so its native vorbis
+ * encoder is used, which does not trim the ogg's own end granule - the
+ * decoded ogg routinely comes back padded with up to ~1023 samples of
+ * TRAILING SILENCE, rounded up to the next 1024-sample block. Silence
+ * contributes exactly zero to a SUM no matter how much of it there is, so
+ * the sum is unaffected by this padding; but it grows the sample COUNT a
+ * MEAN divides by, so a mean-square metric reports a bogus loss that gets
+ * worse the shorter the real signal is relative to one block - a ~1029-
+ * sample click padded to 2048 samples measured -3.02 dB of "lost" mean-
+ * square energy with its actual (summed) energy unchanged to within 0.03 dB.
+ * 36 real catalogue variants failed the build's tolerance this way before
+ * the metric was fixed (all ogg; mp3/lame's own padding is already trimmed
+ * by ffmpeg, so mp3 never showed this). A uniform gain bug (the old ogg
+ * fallback path's `-ac 2` upmix) still shows up in the sum exactly as it did
+ * in the mean - `10*log10(k**2)` for a uniform amplitude scale `k` does not
+ * depend on sample count - so the sum keeps this function's whole purpose
+ * (see `checkFormatEnergies` in checks.mjs) while losing the padding bias
+ * the mean had. This is the signal `checkFormatEnergies` gates the build on:
+ * total energy survives a lossy re-encode even when a single sharp sample's
+ * own peak does not (see `peakPerChannel`'s own header), so energy is the
+ * honest measure of "does this format still sound as loud", and peak is
+ * not. */
+function energyPerChannel(left, right) {
+  const totalEnergy = (samples) => {
+    if (!samples || samples.length === 0) return 0;
+    let sum = 0;
+    for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+    return sum;
+  };
+  const l = totalEnergy(left);
+  if (!right) return { left: l, right: null };
+  return { left: l, right: totalEnergy(right) };
 }
 
 function run(cmd, args, options = {}) {
@@ -559,20 +605,32 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
   const measure = measureLoudness(wavPath);
 
   // Decode the shipped ogg and mp3 back to PCM and measure each one's OWN
-  // per-channel peak, exactly as a browser or the CLI would hear it - not
-  // assumed from the encoder's exit code or from the wav's own peak. This
-  // is what `checkFormatPeaks` (checks.mjs) checks against the render's own
-  // per-channel peak: the ~3 dB fallback-ogg loudness bug this function's
-  // own header describes would show up here as the ogg's decoded peak
-  // sitting well below the wav's, on every affected variant - see that
-  // check's own header for the tolerance and how it was derived.
+  // per-channel peak AND per-channel energy, exactly as a browser or the CLI
+  // would decode them - never assumed from the encoder's exit code or from
+  // the wav's own numbers. `formatEnergy` (total energy per channel - the
+  // sum of each sample squared, not a mean; see `energyPerChannel`'s own
+  // header for why a mean is the wrong quantity here) is what
+  // `checkFormatEnergies` (checks.mjs) actually gates the build on: a
+  // systematic loudness bug (the old fallback ogg path's `-ac 2` upmix) and
+  // a preset whose real content sits mostly above the codec's own passband
+  // (round 2's finding - see build-catalog.mjs's EXCLUDED_PRESETS) both show
+  // up here as real energy loss, which sample peak alone can miss or
+  // over-report depending on the signal's own shape. `formatPeaks` is kept
+  // too, purely as informational data for the build log (see
+  // `peakPerChannel`'s own header for why it is not a gate).
   const sourcePeaks = peakPerChannel(render.left, render.right);
+  const sourceEnergy = energyPerChannel(render.left, render.right);
   const decodedOgg = decodeToRender(join(outDir, oggName));
   const decodedMp3 = decodeToRender(join(outDir, mp3Name));
   const formatPeaks = {
     source: sourcePeaks,
     ogg: peakPerChannel(decodedOgg.left, decodedOgg.right),
     mp3: peakPerChannel(decodedMp3.left, decodedMp3.right),
+  };
+  const formatEnergy = {
+    source: sourceEnergy,
+    ogg: energyPerChannel(decodedOgg.left, decodedOgg.right),
+    mp3: energyPerChannel(decodedMp3.left, decodedMp3.right),
   };
 
   return {
@@ -585,7 +643,8 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
     duration: render.seconds,
     measure,
     formatPeaks,
+    formatEnergy,
   };
 }
 
-export { peakOf, peakPerChannel, toWavBytes };
+export { peakOf, peakPerChannel, energyPerChannel, toWavBytes };

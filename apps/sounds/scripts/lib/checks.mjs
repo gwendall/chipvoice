@@ -1,56 +1,92 @@
 // The catalogue build's signal checks. Every one of these is exercised by a
 // negative test in test/checks.test.mjs that feeds it input built to fail,
 // so a broken check cannot silently start passing everything.
-import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP, firstAboveFloor, peakOf, peakPerChannel } from "./audio.mjs";
+import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP, firstAboveFloor, peakOf, peakPerChannel, energyPerChannel } from "./audio.mjs";
 
-// Two different, complementary checks guard the shipped ogg/mp3's own
-// decoded loudness against the wav it was encoded from - both derived from
-// decoding and measuring every one of the 1092 real variants in this
-// catalogue (both origins, both formats) after the two fixes this file
-// exists to guard (BITEXACT_ARGS and the fallback ogg path's unity-gain pan
-// filter - see audio.mjs's vorbisEncoderArgs and encodeVariant).
+// checkFormatEnergies guards the shipped ogg/mp3's own decoded loudness
+// against the wav it was encoded from - built from decoding and measuring
+// every real variant in this catalogue (both origins, both formats) after
+// the two fixes this file exists to guard (BITEXACT_ARGS and the fallback
+// ogg path's unity-gain pan filter - see audio.mjs's vorbisEncoderArgs and
+// encodeVariant).
 //
-// A single flat per-variant peak tolerance turns out NOT to be the right
-// tool by itself: measured across the real catalogue, a per-channel decoded
-// peak can legitimately sit up to ~16 dB under its wav sibling's peak, on a
-// handful of presets whose technique is several sharp, fast-decaying
-// struck-metal resonances in one short clip (`pickup-key`,
-// `footstep-metal` - "modal synthesis") - a textbook case of lossy
-// block-transform pre-echo/transient smearing (both libmp3lame and
-// ffmpeg's native vorbis encoder spread a very short, sharp transient's
-// energy across an entire MDCT block, lowering its peak while roughly
-// preserving total energy), not a bug: verified directly by decoding both
-// the wav and the shipped mp3/ogg into 20ms-bucket peak envelopes for the
-// worst offender (`collect-key-realistic-pickup-key` v4) - the encoded
-// formats' peaks are quiet only in the first ~160ms (the sharp attacks),
-// converging to match the wav's own envelope almost exactly by the
-// decay tail. The bug this whole file exists to catch (the old `-ac 2`
-// upmix) has the opposite signature: a near-exact, content-INDEPENDENT
-// -3.0103 dB (20*log10(1/sqrt(2))) on every single affected file, never a
-// content-dependent outlier - so the two checks below are shaped around
-// that difference, not a single number that tries to do both jobs:
+// This went through two designs, in order, and the first one was wrong in a
+// way a round-2 review caught before merge:
 //
-// FORMAT_PEAK_TOLERANCE_DB is a per-variant, generous backstop (measured
-// max |delta| across the real catalogue was 16.23 dB; this rounds up past
-// it) - it exists to catch a gross per-file failure (a dropped/silent
-// channel, a channel decoding far quieter than even the worst genuine
-// transient-smearing case observed), not the systematic multi-dB bug.
-export const FORMAT_PEAK_TOLERANCE_DB = 17;
-
-// CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB is the check that actually catches
-// a systematic bug like the old `-ac 2` upmix: it is not a per-variant
-// gate but a whole-build aggregate (checkCatalogFormatPeakMean, called once
-// after every sound's checkSound has run - see build-catalog.mjs), over the
-// mean of every per-format/per-channel |delta| collected across the whole
-// build. Measured on the real, fixed catalogue (3276 format/channel
-// readings across all 1092 variants): mean |delta| = 0.44 dB - the
-// handful of genuinely peaky outliers above barely move it, since they are
-// a small fraction of 3276 readings. A reintroduced `-ac 2` bug would push
-// this mean toward -3 dB instead (it applies to EVERY fallback-path ogg
-// channel, not a handful of presets), so a bound of 1.5 dB - over 3x the
-// measured healthy baseline, and half the systematic bug's own size -
-// separates the two cases with real margin in both directions.
-export const CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB = 1.5;
+// Design 1 (replaced): a per-variant PEAK tolerance loose enough (17 dB) to
+// admit what looked like legitimate outliers, backstopped by a separate
+// whole-build AGGREGATE check on the mean of every peak delta. This was
+// built on a misdiagnosis. The outliers it was widened to admit -
+// `pickup-key` losing up to 16.23 dB of peak, `impact-glass-light` and
+// `footstep-metal` losing smaller but still large amounts - were assumed to
+// be lossy-codec transient smearing (a block-transform codec spreading a
+// sharp attack's energy across an MDCT block, which lowers peak while
+// roughly preserving total energy: a real, harmless artifact on OTHER
+// presets in this catalogue). They are not that. Decoding both the wav and
+// the shipped ogg/mp3 and measuring actual ENERGY (not peak) showed these
+// three presets lose real, substantial energy through the lossy encode -
+// `pickup-key` 13.2 to 16.5 dB, `impact-glass-light` up to 6.6 dB,
+// `footstep-metal` up to 7.8 dB - and a steep 16 kHz highpass on their own
+// source wav shows why: 97.4%, 77.6% and 31.0% of each preset's own energy
+// sits above 16 kHz, respectively, well inside the range both ffmpeg's
+// native vorbis encoder and libmp3lame simply filter away at this
+// catalogue's quality settings (`impact-metal-heavy`, an unaffected
+// preset, has 0.0% of its energy up there). Transient smearing preserves
+// energy; a codec's own lowpass removing content the source never had a
+// chance to keep does not - the wav and the shipped lossy files are
+// audibly different sounds for these three, not a measurement artifact.
+// They are excluded (`build-catalog.mjs`'s `EXCLUDED_PRESETS`), with a
+// follow-up ticket in `docs/BACKLOG.md` to find why sfx-engine's own modal
+// synthesis puts their energy there and fix it at the source - tuning the
+// engine itself is out of scope for this ticket (decision 52, decision 54).
+// A whole-build aggregate mean check also had its own, separate problem
+// once framed this way: bugging only the generated half of a build (half
+// of ~1092 variants) would move the catalogue-wide mean by roughly 0.4 dB,
+// comfortably under even a tight bound - a partial regression could hide in
+// the average. Peak itself was also simply the wrong signal for either
+// job: it is fragile under a lossy codec in both directions (a legitimate
+// sharp attack can lose double-digit dB of peak with no real loudness
+// loss; a legitimately quiet signal can occasionally decode a hair louder
+// on peak alone), so it is kept below only as informational build-log data
+// (`collectFormatPeakDeltas`), never as a gate.
+//
+// Design 2 (current): a single per-variant, per-channel, per-format ENERGY
+// gate, `checkFormatEnergies`/`checkFormatEnergy`. Total energy (the sum of
+// each sample squared) is preserved by encoding, so a real, legitimate
+// outlier no longer forces the tolerance wide - the three presets above are
+// excluded, not admitted through a loosened bound - and a single variant now
+// catches a systematic bug directly, with no aggregate needed and no partial
+// regression able to hide in a mean.
+//
+// This design's own metric went through two versions before it ever shipped,
+// caught by a round-3 review before merge: the first version measured MEAN-
+// square power (a per-sample average), not total energy, on the theory that
+// a sum would be biased by a codec's decoded PCM coming back a different
+// length than the source wav. That was backwards. See `energyPerChannel` in
+// audio.mjs for the full story: this repo's dev-machine ffmpeg lacks
+// libvorbis, so its native vorbis encoder pads a decoded ogg with trailing
+// silence out to a 1024-sample block boundary; silence cannot move a SUM,
+// but it dilutes a MEAN, so the mean-square version flagged 36 real,
+// unaffected catalogue variants (33 pre-existing chipvoice sounds plus 3
+// more generated presets) as failing on nothing but that padding - as much
+// as -3.02 dB of apparent loss with the real (summed) energy unchanged to
+// within 0.03 dB. Switching the metric to a plain sum fixed all 36 with no
+// change to what the check actually catches: a uniform gain bug still
+// produces the same dB delta in a sum as it did in a mean (see
+// `energyPerChannel`'s header).
+//
+// FORMAT_ENERGY_TOLERANCE_DB is derived from the real, healthy catalogue
+// (every shipped chipvoice and generated variant, both formats, both
+// channels, AFTER the three EXCLUDED_PRESETS above and measured with the
+// total-energy metric) - see docs/DECISIONS.md decision 54 for the full
+// measured distribution (mean, max, p99, worst five by name) this number was
+// set against. The bug this check exists to catch (the old ogg fallback
+// path's `-ac 2` upmix) has an exact, content-independent signature of
+// -3.0103 dB (`10*log10((1/sqrt(2))**2)`, the same value in the energy
+// domain as its peak-domain `20*log10(1/sqrt(2))` counterpart, since a
+// uniform amplitude scale produces the same dB delta in either domain) on
+// every affected channel.
+export const FORMAT_ENERGY_TOLERANCE_DB = 1.0;
 
 /** How far a sound's measured LUFS or true peak may sit above its ceiling
  * (never below - both are stated as "at most", not a target to hit exactly;
@@ -209,116 +245,21 @@ export function checkGeneratedVariantCount(sound, { min = 3 } = {}) {
 }
 
 /** The raw dB delta between one shipped format's decoded peak and the wav's
- * own peak, on one channel - the number `checkFormatPeak` judges against
- * `toleranceDb` below, and the same number `checkCatalogFormatPeakMean`
- * collects across the whole build (see `collectFormatPeakDeltas`). Returns
- * `null` when there is nothing meaningful to compare: a silent source (peak
- * 0 - `checkNoClipping`/`checkLeadingSilence` already refuse a genuinely
- * silent variant, and dividing by a zero source peak would only ever
- * produce a useless +/-Infinity dB reading) or an invalid/silent decoded
- * peak (`checkFormatPeak` itself reports that case as an outright failure,
- * not a delta - it does not belong in an aggregate mean, which measures
- * "how loud", not "how broken"). */
+ * own peak, on one channel - informational only (see `peakPerChannel`'s own
+ * header in audio.mjs for why peak is no longer a gate). Returns `null` when
+ * there is nothing meaningful to compare: a silent source (peak 0) or an
+ * invalid/silent decoded peak. */
 function formatPeakDeltaDb(sourcePeakLinear, formatPeakLinear) {
   if (!(sourcePeakLinear > 0)) return null;
   if (!Number.isFinite(formatPeakLinear) || formatPeakLinear <= 0) return null;
   return 20 * Math.log10(formatPeakLinear / sourcePeakLinear);
 }
 
-/** One format, one channel: does the shipped file's own decoded peak sit
- * within `toleranceDb` of the wav's own peak on that channel? A silent
- * source (peak 0) is skipped rather than compared - `checkNoClipping`/
- * `checkLeadingSilence` already refuse a genuinely silent variant, and
- * dividing by a zero source peak here would only ever produce a useless
- * +/-Infinity dB reading, not a meaningful pass or fail.
- *
- * `toleranceDb` defaults to `FORMAT_PEAK_TOLERANCE_DB`, the generous
- * per-variant backstop - see its own comment above for why this check alone
- * is not what catches a systematic bug like the old `-ac 2` upmix
- * (`checkCatalogFormatPeakMean` does that). This function's job is narrower:
- * catch a gross per-file failure (a dropped/silent channel, a channel
- * decoding far quieter than even the worst genuine transient-smearing case
- * observed on this catalogue), not a multi-dB systematic drift. */
-export function checkFormatPeak(sourcePeakLinear, formatPeakLinear, { format, channel, toleranceDb = FORMAT_PEAK_TOLERANCE_DB } = {}) {
-  if (!(sourcePeakLinear > 0)) return { ok: true };
-  if (!Number.isFinite(formatPeakLinear) || formatPeakLinear < 0) {
-    return { ok: false, reason: `${format} ${channel} channel peak is not a valid number (${formatPeakLinear})` };
-  }
-  if (formatPeakLinear === 0) {
-    return { ok: false, reason: `${format} ${channel} channel decoded silent, but the wav's own ${channel} peak is ${sourcePeakLinear.toFixed(4)}` };
-  }
-  const deltaDb = formatPeakDeltaDb(sourcePeakLinear, formatPeakLinear);
-  if (Math.abs(deltaDb) > toleranceDb) {
-    return {
-      ok: false,
-      reason:
-        `${format} ${channel} channel peak is ${deltaDb.toFixed(2)} dB from the wav's own ${channel} peak ` +
-        `(wav ${sourcePeakLinear.toFixed(4)}, ${format} ${formatPeakLinear.toFixed(4)}), outside the +/-${toleranceDb} dB tolerance`,
-    };
-  }
-  return { ok: true };
-}
-
-/**
- * Every shipped ogg and mp3 must sound as loud as the wav it was encoded
- * from, per channel - not just "some channel is loud enough somewhere",
- * which the old `-ac 2` mono-to-stereo upmix bug would have passed (it made
- * BOTH channels uniformly quiet, never silent or clipped). `formatPeaks` is
- * `encodeVariant`'s own record of decoding the shipped ogg/mp3 bytes back to
- * PCM and measuring each one's peak per channel (scripts/lib/audio.mjs) -
- * this function never re-decodes anything itself, it only judges numbers
- * `encodeVariant` already measured on the exact bytes that ship.
- *
- * A mono source (`sourcePeaks.right === null`) upmixed to a stereo file
- * (the ogg fallback path) must land BOTH shipped channels within tolerance
- * of the source's one (left) peak - that upmix is supposed to be a unity
- * copy, so the right channel has no excuse to differ from the left. A
- * stereo source's shipped format decoding back as mono is refused outright:
- * that is a channel silently collapsed, not a loudness rounding difference,
- * and no tolerance value makes that acceptable.
- *
- * This is the generous per-variant backstop, not the primary regression
- * detector for a systematic bug - see `toleranceDb`'s default
- * (`FORMAT_PEAK_TOLERANCE_DB`) and `checkCatalogFormatPeakMean` below for
- * why: a single file can legitimately land far under its wav's peak
- * (lossy-codec transient smearing on a handful of multi-attack presets,
- * measured up to 16.23 dB on this catalogue), so this function alone would
- * have to be loose enough to admit that and would then be too loose to
- * catch the old `-ac 2` bug's ~3 dB, catalogue-wide drift on its own. It
- * still catches what no tolerance should ever admit: a dropped/silent
- * channel, or a stereo source collapsing to mono on the way out.
- */
-export function checkFormatPeaks(sourcePeaks, formatPeaks, { toleranceDb = FORMAT_PEAK_TOLERANCE_DB } = {}) {
-  if (!sourcePeaks || !formatPeaks) return { ok: true };
-  const failures = [];
-  for (const format of ["ogg", "mp3"]) {
-    const decoded = formatPeaks[format];
-    if (!decoded) {
-      failures.push(`${format}: no decoded peak data to check`);
-      continue;
-    }
-    const left = checkFormatPeak(sourcePeaks.left, decoded.left, { format, channel: "left", toleranceDb });
-    if (!left.ok) failures.push(left.reason);
-    if (decoded.right !== null) {
-      const sourceRight = sourcePeaks.right ?? sourcePeaks.left;
-      const right = checkFormatPeak(sourceRight, decoded.right, { format, channel: "right", toleranceDb });
-      if (!right.ok) failures.push(right.reason);
-    } else if (sourcePeaks.right !== null) {
-      failures.push(`${format}: the wav is stereo but the shipped ${format} decoded as mono - a channel was silently collapsed`);
-    }
-  }
-  return failures.length ? { ok: false, reason: failures.join("; ") } : { ok: true };
-}
-
-/** Every valid per-format/per-channel dB delta `checkFormatPeaks` would
- * judge for this one variant, as plain numbers - the raw material
- * `checkCatalogFormatPeakMean` needs. `build-catalog.mjs` calls this once
- * per variant (alongside `checkFormatPeaks` itself) and appends the results
- * into one flat array across the whole build. Skips exactly what
- * `formatPeakDeltaDb` skips (a silent source or an invalid/silent decoded
- * peak) - the latter is already reported as an outright failure by
- * `checkFormatPeaks` itself, so it does not belong in a mean that measures
- * "how loud", not "how broken". */
+/** Every valid per-format/per-channel peak dB delta for one variant, as
+ * plain numbers - reported data for the build log only (`build-catalog.mjs`
+ * logs summary statistics from this across the whole build), never a gate.
+ * See audio.mjs's `peakPerChannel` header and this file's own header for why
+ * peak was retired as a check in favor of `checkFormatEnergies` below. */
 export function collectFormatPeakDeltas(sourcePeaks, formatPeaks) {
   const deltas = [];
   if (!sourcePeaks || !formatPeaks) return deltas;
@@ -336,36 +277,124 @@ export function collectFormatPeakDeltas(sourcePeaks, formatPeaks) {
   return deltas;
 }
 
-/**
- * The whole-build aggregate check that actually catches a systematic
- * per-file bug like the old `-ac 2` upmix - see
- * `CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB`'s own comment above for the full
- * reasoning and the measured numbers (healthy baseline mean 0.44 dB across
- * 3276 readings over 1092 variants; a reintroduced `-ac 2` bug would push
- * this toward -3 dB, since it would apply to nearly every fallback-path ogg
- * reading rather than a handful of outliers).
- *
- * Takes every delta `collectFormatPeakDeltas` produced across every variant
- * in the build (`build-catalog.mjs` collects them into one flat array as it
- * runs `checkSound` over every sound) and asserts their mean absolute value
- * stays under `maxMeanAbsDeltaDb`. An empty array (nothing to check - e.g. a
- * build with no `formatPeaks` data at all) passes rather than divides by
- * zero; every other check already ran on whatever data existed.
- */
-export function checkCatalogFormatPeakMean(deltasDb, { maxMeanAbsDeltaDb = CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB } = {}) {
-  if (!deltasDb || deltasDb.length === 0) return { ok: true };
-  const meanAbsDb = deltasDb.reduce((sum, d) => sum + Math.abs(d), 0) / deltasDb.length;
-  if (meanAbsDb > maxMeanAbsDeltaDb) {
+/** The raw dB delta between one shipped format's decoded ENERGY (total
+ * energy, the sum of each sample squared - see `energyPerChannel` in
+ * audio.mjs for why a sum and not a mean) and the wav's own energy, on
+ * one channel - the number `checkFormatEnergy` judges against `toleranceDb`
+ * below. Returns `null` when there is nothing meaningful to compare: a
+ * silent source (energy 0 - `checkNoClipping`/`checkLeadingSilence` already
+ * refuse a genuinely silent variant) or an invalid/silent decoded energy
+ * (`checkFormatEnergy` itself reports that case as an outright failure, not
+ * a delta). */
+function energyDeltaDb(sourceEnergyLinear, formatEnergyLinear) {
+  if (!(sourceEnergyLinear > 0)) return null;
+  if (!Number.isFinite(formatEnergyLinear) || formatEnergyLinear <= 0) return null;
+  return 10 * Math.log10(formatEnergyLinear / sourceEnergyLinear);
+}
+
+/** Every valid per-format/per-channel energy dB delta for one variant, as
+ * plain numbers - mirrors `collectFormatPeakDeltas` above, but for the metric
+ * that actually gates the build. Used two ways: `checkSound` below appends
+ * every variant's own reading into a build-wide array purely as informational
+ * build-log data (`build-catalog.mjs` logs summary statistics from it,
+ * alongside the pass/fail gate itself, exactly as it already does for peak);
+ * and it is also how this file's own FORMAT_ENERGY_TOLERANCE_DB and
+ * EXCLUDED_PRESETS reasons were derived - run once over the whole real
+ * catalogue with no tolerance applied yet, then look at the resulting
+ * distribution (see docs/DECISIONS.md decision 54). */
+export function collectFormatEnergyDeltas(sourceEnergy, formatEnergy) {
+  const deltas = [];
+  if (!sourceEnergy || !formatEnergy) return deltas;
+  for (const format of ["ogg", "mp3"]) {
+    const decoded = formatEnergy[format];
+    if (!decoded) continue;
+    const left = energyDeltaDb(sourceEnergy.left, decoded.left);
+    if (left !== null) deltas.push(left);
+    if (decoded.right !== null) {
+      const sourceRight = sourceEnergy.right ?? sourceEnergy.left;
+      const right = energyDeltaDb(sourceRight, decoded.right);
+      if (right !== null) deltas.push(right);
+    }
+  }
+  return deltas;
+}
+
+/** One format, one channel: does the shipped file's own decoded energy sit
+ * within `toleranceDb` of the wav's own energy on that channel? A silent
+ * source (energy 0) is skipped rather than compared, for the same reason as
+ * `checkFormatPeak` used to. `toleranceDb` defaults to
+ * `FORMAT_ENERGY_TOLERANCE_DB` - see its own comment above for the
+ * derivation. This single per-variant check is now the whole gate: no
+ * separate aggregate exists, because energy (unlike peak) does not need one
+ * - a real content-driven outlier is excluded at the preset level
+ * (`build-catalog.mjs`'s `EXCLUDED_PRESETS`) instead of forcing the
+ * tolerance wide enough to hide a systematic bug behind it. */
+export function checkFormatEnergy(sourceEnergyLinear, formatEnergyLinear, { format, channel, toleranceDb = FORMAT_ENERGY_TOLERANCE_DB } = {}) {
+  if (!(sourceEnergyLinear > 0)) return { ok: true };
+  if (!Number.isFinite(formatEnergyLinear) || formatEnergyLinear < 0) {
+    return { ok: false, reason: `${format} ${channel} channel energy is not a valid number (${formatEnergyLinear})` };
+  }
+  if (formatEnergyLinear === 0) {
+    return { ok: false, reason: `${format} ${channel} channel decoded silent, but the wav's own ${channel} energy is ${sourceEnergyLinear.toExponential(4)}` };
+  }
+  const deltaDb = energyDeltaDb(sourceEnergyLinear, formatEnergyLinear);
+  if (Math.abs(deltaDb) > toleranceDb) {
     return {
       ok: false,
       reason:
-        `catalogue-wide mean |format peak delta| is ${meanAbsDb.toFixed(4)} dB across ${deltasDb.length} reading(s), ` +
-        `outside the ${maxMeanAbsDeltaDb} dB bound (CATALOG_MEAN_FORMAT_PEAK_TOLERANCE_DB) - a systematic per-file bug ` +
-        `(like the old fallback ogg path's -ac 2 upmix) would show up here even though FORMAT_PEAK_TOLERANCE_DB's ` +
-        `per-variant backstop is too loose to catch it alone`,
+        `${format} ${channel} channel energy is ${deltaDb.toFixed(2)} dB from the wav's own ${channel} energy, ` +
+        `outside the +/-${toleranceDb} dB tolerance (FORMAT_ENERGY_TOLERANCE_DB) - either a systematic loudness bug ` +
+        `(like the old fallback ogg path's -ac 2 upmix, an exact -3.01 dB) or a preset whose real content sits mostly ` +
+        `above the codec passband (like the three named in EXCLUDED_PRESETS) and needs excluding, not a wider tolerance`,
     };
   }
   return { ok: true };
+}
+
+/**
+ * Every shipped ogg and mp3 must carry as much real energy as the wav it was
+ * encoded from, per channel - not just "some channel is loud enough
+ * somewhere", which the old `-ac 2` mono-to-stereo upmix bug would have
+ * passed (it made BOTH channels uniformly quiet, never silent or clipped).
+ * `formatEnergy` is `encodeVariant`'s own record of decoding the shipped
+ * ogg/mp3 bytes back to PCM and measuring each one's total energy (the sum
+ * of each sample squared) per channel (scripts/lib/audio.mjs) - this function never re-decodes anything
+ * itself, it only judges numbers `encodeVariant` already measured on the
+ * exact bytes that ship.
+ *
+ * A mono source (`sourceEnergy.right === null`) upmixed to a stereo file
+ * (the ogg fallback path) must land BOTH shipped channels within tolerance
+ * of the source's one (left) energy - that upmix is supposed to be a unity
+ * copy, so the right channel has no excuse to differ from the left. A
+ * stereo source's shipped format decoding back as mono is refused outright:
+ * that is a channel silently collapsed, not a loudness rounding difference,
+ * and no tolerance value makes that acceptable.
+ *
+ * This is now the build's only format-loudness gate - see this file's own
+ * header for why the two-layer peak-based design it replaces (a loose
+ * per-variant backstop plus a separate whole-build aggregate mean) was
+ * wrong, not just less elegant.
+ */
+export function checkFormatEnergies(sourceEnergy, formatEnergy, { toleranceDb = FORMAT_ENERGY_TOLERANCE_DB } = {}) {
+  if (!sourceEnergy || !formatEnergy) return { ok: true };
+  const failures = [];
+  for (const format of ["ogg", "mp3"]) {
+    const decoded = formatEnergy[format];
+    if (!decoded) {
+      failures.push(`${format}: no decoded energy data to check`);
+      continue;
+    }
+    const left = checkFormatEnergy(sourceEnergy.left, decoded.left, { format, channel: "left", toleranceDb });
+    if (!left.ok) failures.push(left.reason);
+    if (decoded.right !== null) {
+      const sourceRight = sourceEnergy.right ?? sourceEnergy.left;
+      const right = checkFormatEnergy(sourceRight, decoded.right, { format, channel: "right", toleranceDb });
+      if (!right.ok) failures.push(right.reason);
+    } else if (sourceEnergy.right !== null) {
+      failures.push(`${format}: the wav is stereo but the shipped ${format} decoded as mono - a channel was silently collapsed`);
+    }
+  }
+  return failures.length ? { ok: false, reason: failures.join("; ") } : { ok: true };
 }
 
 /** Runs every per-sound check and returns the failures, if any. Used by the
@@ -374,8 +403,10 @@ export function checkCatalogFormatPeakMean(deltasDb, { maxMeanAbsDeltaDb = CATAL
  *
  * `variantData` is keyed by each variant's own sha256 (content-addressed, so
  * one key never collides across sounds): `{ bytes, peakLinear, left, right,
- * sampleRate, formatPeaks }` (`formatPeaks`: `encodeVariant`'s own record of
- * decoding the shipped ogg/mp3 back to PCM - see checkFormatPeaks). Any
+ * sampleRate, formatPeaks, formatEnergy }` (both `formatPeaks` and
+ * `formatEnergy`: `encodeVariant`'s own record of decoding the shipped
+ * ogg/mp3 back to PCM - see checkFormatEnergies for the gate, and
+ * `collectFormatPeakDeltas` for the informational-only peak report). Any
  * field a caller does not have is simply skipped - the negative tests
  * exercise each check directly, so `checkSound`'s own tests only need to
  * prove it wires every check together, not repeat them.
@@ -388,13 +419,16 @@ export function checkCatalogFormatPeakMean(deltasDb, { maxMeanAbsDeltaDb = CATAL
  *
  * `formatPeakDeltasOut`, if given, is an array this function appends every
  * variant's `collectFormatPeakDeltas` output into (rather than returning a
- * second value, which would force every existing caller to change) - the
- * build collects one shared array across every sound and, once the whole
- * catalogue has run, checks it with `checkCatalogFormatPeakMean` (see that
- * function's own comment). Omitted by default: only the whole-build caller
- * needs it, and the negative tests exercise `checkCatalogFormatPeakMean`
- * directly rather than through `checkSound`. */
-export function checkSound(sound, variantData, sha256Hex, loudnessOptions = {}, formatPeakDeltasOut = null) {
+ * second value, which would force every existing caller to change) - purely
+ * informational build-log data (`build-catalog.mjs` logs summary statistics
+ * from it), never a gate. `formatEnergyDeltasOut` is the same idea for
+ * `collectFormatEnergyDeltas` - energy IS the gate (`checkFormatEnergies`,
+ * which always runs below regardless of this param), so this collector is
+ * purely a second, informational view of the same numbers: every variant's
+ * reading, not just the ones that failed, so the build log (and, once, this
+ * file's own tolerance derivation) can see the whole distribution, not only
+ * the outliers a failure message would print. */
+export function checkSound(sound, variantData, sha256Hex, loudnessOptions = {}, formatPeakDeltasOut = null, formatEnergyDeltasOut = null) {
   const failures = [];
   const license = checkLicense(sound);
   if (!license.ok) failures.push(`license: ${license.reason}`);
@@ -416,11 +450,15 @@ export function checkSound(sound, variantData, sha256Hex, loudnessOptions = {}, 
       const silence = checkLeadingSilence(data.left, data.right ?? null, data.sampleRate);
       if (!silence.ok) failures.push(`variant ${variant.n} leading silence: ${silence.reason}`);
     }
-    if (data?.left && data.formatPeaks) {
+    if (data?.left && data.formatEnergy) {
+      const sourceEnergy = energyPerChannel(data.left, data.right ?? null);
+      const energyCheck = checkFormatEnergies(sourceEnergy, data.formatEnergy);
+      if (!energyCheck.ok) failures.push(`variant ${variant.n} format energy: ${energyCheck.reason}`);
+      if (formatEnergyDeltasOut) formatEnergyDeltasOut.push(...collectFormatEnergyDeltas(sourceEnergy, data.formatEnergy));
+    }
+    if (data?.left && data.formatPeaks && formatPeakDeltasOut) {
       const sourcePeaks = peakPerChannel(data.left, data.right ?? null);
-      const formatCheck = checkFormatPeaks(sourcePeaks, data.formatPeaks);
-      if (!formatCheck.ok) failures.push(`variant ${variant.n} format peaks: ${formatCheck.reason}`);
-      if (formatPeakDeltasOut) formatPeakDeltasOut.push(...collectFormatPeakDeltas(sourcePeaks, data.formatPeaks));
+      formatPeakDeltasOut.push(...collectFormatPeakDeltas(sourcePeaks, data.formatPeaks));
     }
     const loudness = checkLoudnessBand(variant.measure, loudnessOptions);
     if (!loudness.ok) failures.push(`variant ${variant.n} loudness: ${loudness.reason}`);
