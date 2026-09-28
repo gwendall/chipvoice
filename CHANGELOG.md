@@ -304,21 +304,34 @@ GPL/LGPL emulator (decision 41): NEXT-14's first expansion-audio chip
 `chipFor("2a03-vrc6")` and `Chip.create({ chip: "2a03-vrc6" })`, but
 deliberately absent from the studio's `CHIP_IDS` - a sheet before a chip,
 decision 38 - so no project, picker or arranger word can select it yet.
-Measured against Game_Music_Emu's `Nes_Vrc6_Apu` (LGPL, stays in
-`packages/conform`'s harness only) on a new eight-script corpus: 35.7 % of
-cycles match raw, floored by the oracle freezing a disabled pulse's duty
-phase and a disabled sawtooth's accumulator and divider where the
-documents, and this core, reset or zero them instead; the per-run,
-shift-tolerant fraction the board reads is 79.0 % of 105 runs.
-`exportNsf`/`capture-nsf.mjs` now route a capture's VRC6 register writes the
-same way as the 2A03's, through a new indirect, table-driven dispatch (any
-write, 2A03 or VRC6 alike, now resolves through an in-ROM register table
-rather than a fixed `$4000` offset, since VRC6's three separate register
-pages cannot fit a two-page store), and set the NSF header's
-expansion-audio bit; a mixed 2A03/VRC6 round-trip is proven end to end. See
-[docs/chips/vrc6.md](docs/chips/vrc6.md) for the full sheet, the oracle's
-known limits, and what remains (a driver/arranger role, a real test ROM -
-none exists to automate, a second oracle).
+Measured against two independent oracles: Game_Music_Emu's `Nes_Vrc6_Apu`
+(LGPL, stays in `packages/conform`'s harness only) and, added in a second
+round, Mesen 2's own vendored VRC6 audio. The corpus is split so every
+script that avoids both oracles' own known gaps (no disable after the first
+enable, no period at or below 4, no `$9003` writes) gates at a literal
+100 % against both, and every script that hits one of those gaps gates
+exactly against Mesen 2 (which models all three) while Game_Music_Emu
+reports the same script without gating CI. The original eight-script
+corpus, which drives every voice through several enable/disable cycles at
+once, stays on its own no-regression baseline: 38.1 % against
+Game_Music_Emu and 23.6 % against Mesen 2, floored by the oracle-specific
+gaps documented on the sheet; the per-run, shift-tolerant fraction the
+board reads is 79.0 % of 105 runs. The documented pulse-polarity inversion
+("roughly equivalent to the pulse channels of the 2A03, except inverted")
+is now modeled, not just cited: the mixer subtracts the VRC6 term instead
+of adding it. A negative test per exact gate proves each would actually
+catch a regression. `exportNsf`/`capture-nsf.mjs` now route a capture's
+VRC6 register writes the same way as the 2A03's, through a new indirect,
+table-driven dispatch (any write, 2A03 or VRC6 alike, now resolves through
+an in-ROM register table rather than a fixed `$4000` offset, since VRC6's
+three separate register pages cannot fit a two-page store), and set the
+NSF header's expansion-audio bit; a mixed 2A03/VRC6 round-trip is proven
+end to end, and a self-authored VRC6 NSF probe (CC0) now proves the same
+export/playback path exactly through Game_Music_Emu's own `Nsf_Emu`
+player, in `scores/nsf-corpus` and `scores/nsf-export` alongside every
+other real-world 2A03 file. See [docs/chips/vrc6.md](docs/chips/vrc6.md)
+for the full sheet, both oracles' known limits, and what remains (a
+driver/arranger role, a real test ROM - none exists to automate).
 
 ## 0.19.1: Console changes without a dropout
 

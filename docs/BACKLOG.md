@@ -634,7 +634,12 @@ real game music, and a real unit.
   the full duty-generator-active legacy corpus stays on the earlier
   no-regression baseline against both oracles, since the pulse duty
   generator's counting direction is structurally unshiftable once duty
-  varies. No driver or arranger role yet, decision 38.
+  varies. A negative test per exact gate proves each would actually catch a
+  regression. A self-authored VRC6 NSF probe (CC0) closes NEXT-14's own NSF
+  corpora: `native-oracle.py`'s Game_Music_Emu patch now also logs VRC6
+  writes from `Nsf_Emu`, its real NSF player, so the probe gates exactly in
+  both `scores/nsf-corpus` and `scores/nsf-export`, alongside every
+  real-world 2A03 file there. No driver or arranger role yet, decision 38.
   VRC7, FDS, N163, Sunsoft 5B, MMC5 still todo. NEXT-15 AY-3-8910 and
   YM2149, NEXT-16 YM2151 and YM2610, NEXT-17 OPL2 and OPL3; then PC Engine,
   Game Boy Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.

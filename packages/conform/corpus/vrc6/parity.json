@@ -9,10 +9,10 @@
     "vp2",
     "vsaw"
   ],
-  "date": "2026-09-27",
+  "date": "2026-09-28",
   "files": 8,
   "cycles": 6339623,
-  "identical": 2265932,
+  "identical": 2413335,
   "diverging": 8,
   "results": [
     {
@@ -20,7 +20,7 @@
       "source": "src/corpus/generate-vrc6.mjs",
       "writes": 45,
       "cycles": 2249319,
-      "identical": 205126,
+      "identical": 338876,
       "first": {
         "cycle": 17898,
         "voice": 1,
@@ -68,21 +68,21 @@
         },
         {
           "voice": "vsaw",
-          "identical": 491270,
+          "identical": 724164,
           "a": 27791,
           "b": 27790,
-          "exact": 0,
+          "exact": 7976,
           "near": 0,
-          "onlyA": 27791,
-          "onlyB": 27790,
-          "shift": 15,
-          "aligned": 1,
+          "onlyA": 19815,
+          "onlyB": 19814,
+          "shift": 0,
+          "aligned": 7976,
           "runs": {
             "ours": 3,
             "theirs": 3,
             "alignedTimes": 3,
             "alignedValues": 1,
-            "maxShift": 81
+            "maxShift": 35
           }
         }
       ]
@@ -380,12 +380,12 @@
       "source": "src/corpus/generate-vrc6.mjs",
       "writes": 21,
       "cycles": 61391,
-      "identical": 18098,
+      "identical": 18117,
       "first": {
-        "cycle": 17914,
+        "cycle": 18117,
         "voice": 2,
-        "a": 1,
-        "b": 0
+        "a": 0,
+        "b": 1
       },
       "edges": [
         {
@@ -428,21 +428,21 @@
         },
         {
           "voice": "vsaw",
-          "identical": 18098,
+          "identical": 18117,
           "a": 41,
           "b": 40,
-          "exact": 0,
+          "exact": 7,
           "near": 0,
-          "onlyA": 41,
-          "onlyB": 40,
-          "shift": -16,
+          "onlyA": 34,
+          "onlyB": 33,
+          "shift": 0,
           "aligned": 7,
           "runs": {
             "ours": 5,
             "theirs": 5,
             "alignedTimes": 5,
             "alignedValues": 1,
-            "maxShift": 32
+            "maxShift": 16
           }
         }
       ]
@@ -452,12 +452,12 @@
       "source": "src/corpus/generate-vrc6.mjs",
       "writes": 30,
       "cycles": 101178,
-      "identical": 45318,
+      "identical": 49953,
       "first": {
-        "cycle": 29805,
+        "cycle": 29799,
         "voice": 2,
-        "a": 1,
-        "b": 0
+        "a": 0,
+        "b": 1
       },
       "edges": [
         {
@@ -500,21 +500,21 @@
         },
         {
           "voice": "vsaw",
-          "identical": 45318,
+          "identical": 49953,
           "a": 700,
           "b": 704,
           "exact": 0,
           "near": 0,
           "onlyA": 700,
           "onlyB": 704,
-          "shift": -15,
+          "shift": -12,
           "aligned": 139,
           "runs": {
             "ours": 5,
             "theirs": 5,
             "alignedTimes": 5,
             "alignedValues": 1,
-            "maxShift": 39
+            "maxShift": 60
           }
         }
       ]
@@ -524,12 +524,12 @@
       "source": "src/corpus/generate-vrc6.mjs",
       "writes": 3,
       "cycles": 35898,
-      "identical": 26898,
+      "identical": 35897,
       "first": {
-        "cycle": 17899,
+        "cycle": 35897,
         "voice": 2,
-        "a": 1,
-        "b": 0
+        "a": 5,
+        "b": 4
       },
       "edges": [
         {
@@ -572,21 +572,21 @@
         },
         {
           "voice": "vsaw",
-          "identical": 26898,
+          "identical": 35897,
           "a": 9000,
           "b": 8999,
-          "exact": 0,
-          "near": 8999,
+          "exact": 8999,
+          "near": 0,
           "onlyA": 1,
           "onlyB": 0,
-          "shift": -1,
+          "shift": 0,
           "aligned": 8999,
           "runs": {
             "ours": 1,
             "theirs": 1,
             "alignedTimes": 1,
             "alignedValues": 1,
-            "maxShift": 1
+            "maxShift": 0
           }
         }
       ]

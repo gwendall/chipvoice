@@ -110,10 +110,10 @@ export const CHIPS = [
     driver: { reached: 0, voices: 3 },
     voices: ['vp1', 'vp2', 'vsaw'],
     notes: [
-      'The VRC6 is written from the nesdev wiki and Konami\'s own VRC6 documents, compared with Game_Music_Emu\'s Nes_Vrc6_Apu (LGPL, stays in the harness): 35.7 % of cycles match raw across the corpus\'s eight enable/disable-heavy scripts, floored by the oracle freezing a disabled pulse\'s duty phase and a disabled sawtooth\'s accumulator and divider where the documents, and this core, reset or zero them (read from `Nes_Vrc6_Apu.cpp`, not a guess) - the per-run, shift-tolerant fraction this board reads instead is 79.0 % of 105 runs, the same way the 2A03\'s own triangle stays trusted despite a 0 % raw match in some of its logs.',
-      'Analog: unmeasured; the mixing stage is a duplicate of the 2A03\'s own filter math (proven bit-identical to it when the VRC6 side is silent), with the three extra voices\' own gain a documented formula, not an independent measurement.',
+      'The VRC6 is written from the nesdev wiki and Konami\'s own VRC6 documents, compared against two independent oracles: Game_Music_Emu\'s Nes_Vrc6_Apu and, since round 2, Mesen 2\'s own vendored VRC6 audio (both LGPL, stay in the harness). The corpus is split by what each script exercises: `core` scripts gate at a literal 100 % against both oracles; `edge` scripts (disable/re-enable, `$9003`, tiny periods) gate exactly against Mesen 2, which models all three, and report-only against Game_Music_Emu, which does not (read from `Nes_Vrc6_Apu.cpp`, not a guess). The original eight-script corpus stays on its own no-regression baseline: 38.1 % against Game_Music_Emu, 23.6 % against Mesen 2 - the per-run, shift-tolerant fraction this board reads instead is 79.0 % of 105 runs, the same way the 2A03\'s own triangle stays trusted despite a 0 % raw match in some of its logs.',
+      'Analog: unmeasured; the mixing stage is a duplicate of the 2A03\'s own filter math (proven bit-identical to it when the VRC6 side is silent), the documented pulse-polarity inversion modelled in the mixer, and the three extra voices\' own gain a documented formula, not an independent measurement.',
       'Driver: none yet - the studio picker and the arranger do not reach VRC6 (decision 38); NSF export and the conformance harness are its only public paths today.',
-      'Remains: a studio/arranger integration; a real test ROM (none exists to automate - see the sheet); a second oracle (Mesen 2), not attempted this round; a unit\'s line-out.',
+      'Remains: a studio/arranger integration; a real test ROM (none exists to automate - see the sheet); a unit\'s line-out.',
     ],
   },
 ];

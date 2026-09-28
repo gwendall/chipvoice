@@ -17,47 +17,193 @@ replacing any of them. The method behind every section is in
 | | |
 | --- | --- |
 | **Machine** | NES, Famicom (Konami VRC6 cartridges: Akumajou Densetsu / Castlevania III, Madara, Esper Dream 2) |
-| **Status** | **in progress**: measured against Game_Music_Emu's `Nes_Vrc6_Apu` on eight scripts, every one built around several enable/disable cycles; the oracle freezes state across a disable where the documents (and this core) reset or zero it, which floors the raw cycle-for-cycle match at 35.7 % while the per-run, shift-tolerant match the board reads is 79.0 % of 105 runs; NSF export/playback route the chip; no driver reaches it yet |
+| **Status** | **in progress**: measured against two independent oracles, Game_Music_Emu's `Nes_Vrc6_Apu` and, since round 2, Mesen 2's own VRC6 audio; the corpus is split so every script that avoids the oracles' own known gaps (no disable after the first enable, no period at or below 4, no `$9003` writes) gates at a literal 100 % against both, and every script that hits one of those gaps gates exactly against Mesen 2 (which models all three) while Game_Music_Emu reports the same script without gating CI; the original eight-script corpus, which drives every voice through several enable/disable cycles at once, stays on its own no-regression baseline, 38.1 % against Game_Music_Emu and 23.6 % against Mesen 2, while the per-run, shift-tolerant match the board reads is 79.0 % of 105 runs; a self-authored VRC6 NSF probe proves NSF export/playback round-trips through Game_Music_Emu's own `Nsf_Emu` player exactly; no driver reaches it yet |
 | **Core** | written from the nesdev wiki and Konami's own VRC6 documents: the standalone digital chip in `packages/chipvoice/src/chips/nes/vrc6.ts`, the combined `2a03-vrc6` cartridge chip and its mixing stage in `vrc6-core.ts` |
 | **Licence of the core** | MIT, like the rest of the package. Game_Music_Emu's `Nes_Vrc6_Apu`, the oracle, is LGPL and lives in the harness only: decision 41 |
 | **Sheet updated** | 2026-09-28, by hand and by `conform` |
 
 ## Digital parity
 
-Measured by [`conform`](../../packages/conform), the harness, against
-[Game_Music_Emu](../../packages/conform/oracles/game-music-emu)'s
-`Nes_Vrc6_Apu`, on the chip's three voices, over eight scripts in
-[`packages/conform/corpus/vrc6`](../../packages/conform/corpus/vrc6). The
-numbers between the markers are written by the harness (`pnpm --filter
-chipvoice-conform baseline:vrc6`); the reading of them below is a person's. CI
-reruns the corpus and fails if any voice's identical count falls below the
-committed baseline.
+Measured by [`conform`](../../packages/conform), the harness, against two
+independent oracles: [Game_Music_Emu](../../packages/conform/oracles/game-music-emu)'s
+`Nes_Vrc6_Apu`, and, since round 2, [Mesen 2](../../packages/conform/oracles/mesen)'s
+own vendored VRC6 audio. Round 2 split the corpus by what each script
+actually exercises (`generate-vrc6.mjs`'s own comment says why):
+
+- **`core`** ([`packages/conform/corpus/vrc6/core`](../../packages/conform/corpus/vrc6/core)):
+  no disable after the first enable, no period at or below 4, no `$9003`
+  writes - duty table, mode bit, volumes, periods, saw rates including
+  overflow, multi-voice independence. Held to a literal 100 % against
+  **both** oracles: this is the region where the documents, this core and
+  both independent emulations agree exactly, cycle for cycle.
+- **`edge`** ([`packages/conform/corpus/vrc6/edge`](../../packages/conform/corpus/vrc6/edge)):
+  disable/re-enable, `$9003`, tiny periods. Mesen 2 models all three
+  (`$9003`, the sawtooth's disable-zeroes-the-accumulator behaviour, any
+  period at or below 4), so these gate exactly against it too. Game_Music_Emu
+  does not model any of the three ("What the numbers say" below), so against
+  it these scripts are report-only, never gating CI, the documented gap
+  stated as a rule rather than a loosened threshold.
+- The original eight-script corpus (duty-generator-active throughout) stays
+  on its own no-regression baseline against both oracles: the pulse duty
+  generator's counting direction is structurally unshiftable once duty
+  varies (see below), so no per-run shift closes it the way it closes the
+  sawtooth and period scripts.
+
+The numbers between each pair of markers are written by the harness (`pnpm
+--filter chipvoice-conform baseline:vrc6*`, one script per table below); the
+reading of them is a person's. CI reruns every corpus and fails if a `core`
+or `edge`-against-Mesen script's identical count is anything but exact, or if
+the legacy corpus's identical count falls below its committed baseline
+against either oracle. `packages/conform/test/vrc6-gate.mjs` (part of
+`test:unit`, so it runs on every push) proves each of the three exact gates
+would actually catch a regression rather than passing only because nothing
+in the corpus happens to exercise the path a bug would break: it runs the
+same `chip.trace()`/`oracle.trace()`/`compare()` each gate script is built
+from, once on a corpus log's own writes (must not diverge) and once against
+a copy with one write's enable bit flipped (must diverge), for
+`check:vrc6-core`, `check:vrc6-core-mesen` and `check:vrc6-edge-mesen` each.
+
+### Core scripts, against Game_Music_Emu (exact gate)
+
+<!-- core-game-music-emu:begin -->
+Written by `conform` on 2026-09-28, against Game_Music_Emu (Nes_Vrc6_Apu), on vp1, vp2, vsaw.
+
+| | |
+| --- | --- |
+| Oracle | Game_Music_Emu (Nes_Vrc6_Apu) |
+| Corpus | 5 logs, 310840 cycles |
+| Identical cycles | 310840 / 310840 (100.0000 %) |
+| Logs with a divergence | 0 |
+
+| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
+| --- | --- | --- | --- |
+| multi-voice | 100.0000 % | none | vp1 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; vp2 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; vsaw 100.0000 %, 332/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| pulse-levels | 100.0000 % | none | vp1 100.0000 %, 15/0/0; runs 1: 1 on times, 1 on values, shift <= 0; vp2 100.0000 %, 15/0/0; runs 1: 1 on times, 1 on values, shift <= 0; vsaw 100.0000 %, 0/0/0 |
+| saw-periods | 100.0000 % | none | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 100.0000 %, 16/0/0; runs 16: 16 on times, 16 on values, shift <= 0 |
+| saw-rates | 100.0000 % | none | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 100.0000 %, 492/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| saw-worked-example | 100.0000 % | none | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 100.0000 %, 9002/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+<!-- core-game-music-emu:end -->
+
+### Core scripts, against Mesen 2 (exact gate)
+
+<!-- core-mesen:begin -->
+Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio, on sum.
+
+| | |
+| --- | --- |
+| Oracle | Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio |
+| Corpus | 5 logs, 310840 cycles |
+| Identical cycles | 310840 / 310840 (100.0000 %) |
+| Logs with a divergence | 0 |
+
+| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
+| --- | --- | --- | --- |
+| multi-voice | 100.0000 % | none | sum 100.0000 %, 333/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| pulse-levels | 100.0000 % | none | sum 100.0000 %, 30/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| saw-periods | 100.0000 % | none | sum 100.0000 %, 16/0/0; runs 16: 16 on times, 16 on values, shift <= 0 |
+| saw-rates | 100.0000 % | none | sum 100.0000 %, 492/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| saw-worked-example | 100.0000 % | none | sum 100.0000 %, 9002/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+<!-- core-mesen:end -->
+
+### Edge scripts, against Mesen 2 (exact gate)
+
+<!-- edge-mesen:begin -->
+Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio, on sum.
+
+| | |
+| --- | --- |
+| Oracle | Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio |
+| Corpus | 3 logs, 181323 cycles |
+| Identical cycles | 181323 / 181323 (100.0000 %) |
+| Logs with a divergence | 0 |
+
+| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
+| --- | --- | --- | --- |
+| pulse-enable | 100.0000 % | none | sum 100.0000 %, 12/0/0; runs 6: 6 on times, 6 on values, shift <= 0 |
+| register-9003 | 100.0000 % | none | sum 100.0000 %, 1832/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| saw-enable | 100.0000 % | none | sum 100.0000 %, 70/0/0; runs 5: 5 on times, 5 on values, shift <= 0 |
+<!-- edge-mesen:end -->
+
+### Edge scripts, against Game_Music_Emu (report only, not a gate)
+
+<!-- edge-game-music-emu:begin -->
+Written by `conform` on 2026-09-28, against Game_Music_Emu (Nes_Vrc6_Apu), on vp1, vp2, vsaw.
+
+| | |
+| --- | --- |
+| Oracle | Game_Music_Emu (Nes_Vrc6_Apu) |
+| Corpus | 3 logs, 181323 cycles |
+| Identical cycles | 113273 / 181323 (62.4703 %) |
+| Logs with a divergence | 2 |
+
+| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
+| --- | --- | --- | --- |
+| pulse-enable | 100.0000 % | none | vp1 100.0000 %, 12/0/0; runs 6: 6 on times, 6 on values, shift <= 0; vp2 100.0000 %, 0/0/0; vsaw 100.0000 %, 0/0/0 |
+| register-9003 | 45.4332 % | cycle 19231, vsaw: ours 0, oracle 1 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 45.4332 %, 25/4/2219; runs 1: 0 on times, 0 on values, shift <= 0 |
+| saw-enable | 32.5073 % | cycle 18465, vsaw: ours 0, oracle 7 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 32.5073 %, 65/0/14; runs 5: 5 on times, 1 on values, shift <= 42 |
+<!-- edge-game-music-emu:end -->
+
+### Full legacy corpus, against Game_Music_Emu (no-regression baseline)
 
 <!-- parity:begin -->
-Written by `conform` on 2026-09-27, against Game_Music_Emu (Nes_Vrc6_Apu), on vp1, vp2, vsaw.
+Written by `conform` on 2026-09-28, against Game_Music_Emu (Nes_Vrc6_Apu), on vp1, vp2, vsaw.
 
 | | |
 | --- | --- |
 | Oracle | Game_Music_Emu (Nes_Vrc6_Apu) |
 | Corpus | 8 logs, 6339623 cycles |
-| Identical cycles | 2265932 / 6339623 (35.7424 %) |
+| Identical cycles | 2413335 / 6339623 (38.0675 %) |
 | Logs with a divergence | 8 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
-| script-all-three | 9.1195 % | cycle 17898, vp2: ours 0, oracle 9 | vp1 60.9123 %, 0/0/5250; runs 3: 1 on times, 1 on values, shift <= 91; vp2 51.3302 %, 0/0/6940; runs 3: 0 on times, 0 on values, shift <= 0; vsaw 21.8408 %, 0/0/55581 (1 at +15); runs 3: 3 on times, 1 on values, shift <= 81 |
+| script-all-three | 15.0657 % | cycle 17898, vp2: ours 0, oracle 9 | vp1 60.9123 %, 0/0/5250; runs 3: 1 on times, 1 on values, shift <= 91; vp2 51.3302 %, 0/0/6940; runs 3: 0 on times, 0 on values, shift <= 0; vsaw 32.1948 %, 7976/0/39629; runs 3: 3 on times, 1 on values, shift <= 35 |
 | script-duty | 74.8876 % | cycle 37551, vp1: ours 15, oracle 0 | vp1 74.8876 %, 40/0/572; runs 8: 2 on times, 2 on values, shift <= 41; vp2 100.0000 %, 0/0/0; vsaw 100.0000 %, 0/0/0 |
 | script-pulse-both | 52.6977 % | cycle 17898, vp1: ours 0, oracle 10 | vp1 80.0625 %, 0/0/8518; runs 3: 2 on times, 2 on values, shift <= 117; vp2 62.5967 %, 0/0/3608; runs 3: 1 on times, 1 on values, shift <= 23; vsaw 100.0000 %, 0/0/0 |
 | script-pulse-enable | 98.3029 % | cycle 17898, vp1: ours 0, oracle 15 | vp1 98.3029 %, 0/0/28 (2 at -13); runs 6: 4 on times, 4 on values, shift <= 181; vp2 100.0000 %, 0/0/0; vsaw 100.0000 %, 0/0/0 |
 | script-pulse-periods | 41.5736 % | cycle 17898, vp2: ours 0, oracle 12 | vp1 100.0000 %, 0/0/0; vp2 41.5736 %, 2/1/1412; runs 65: 59 on times, 59 on values, shift <= 94309; vsaw 100.0000 %, 0/0/0 |
-| script-saw-enable | 29.4799 % | cycle 17914, vsaw: ours 1, oracle 0 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 29.4799 %, 0/0/81 (7 at -16); runs 5: 5 on times, 1 on values, shift <= 32 |
-| script-saw-rates | 44.7904 % | cycle 29805, vsaw: ours 1, oracle 0 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 44.7904 %, 0/0/1404 (139 at -15); runs 5: 5 on times, 1 on values, shift <= 39 |
-| script-saw-worked-example | 74.9290 % | cycle 17899, vsaw: ours 1, oracle 0 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 74.9290 %, 0/8999/1 (8999 at -1); runs 1: 1 on times, 1 on values, shift <= 1 |
+| script-saw-enable | 29.5108 % | cycle 18117, vsaw: ours 0, oracle 1 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 29.5108 %, 7/0/67; runs 5: 5 on times, 1 on values, shift <= 16 |
+| script-saw-rates | 49.3714 % | cycle 29799, vsaw: ours 0, oracle 1 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 49.3714 %, 0/0/1404 (139 at -12); runs 5: 5 on times, 1 on values, shift <= 60 |
+| script-saw-worked-example | 99.9972 % | cycle 35897, vsaw: ours 5, oracle 4 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 99.9972 %, 8999/0/1; runs 1: 1 on times, 1 on values, shift <= 0 |
 <!-- parity:end -->
 
-**What the numbers say.** The raw headline (35.7 %) undercounts this chip
-specifically: the corpus deliberately drives every voice through several
-enable/disable cycles (`generate-vrc6.mjs`'s own comment says why), and
+### Full legacy corpus, against Mesen 2 (no-regression baseline)
+
+<!-- parity-mesen:begin -->
+Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio, on sum.
+
+| | |
+| --- | --- |
+| Oracle | Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio |
+| Corpus | 8 logs, 6339623 cycles |
+| Identical cycles | 1498272 / 6339623 (23.6335 %) |
+| Logs with a divergence | 8 |
+
+| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
+| --- | --- | --- | --- |
+| script-all-three | 15.9893 % | cycle 17898, sum: ours 0, oracle 300 | sum 15.9893 %, 2261/56/62943; runs 3: 0 on times, 0 on values, shift <= 0 |
+| script-duty | 67.7127 % | cycle 18472, sum: ours 225, oracle 0 | sum 67.7127 %, 0/0/654; runs 8: 1 on times, 1 on values, shift <= 41 |
+| script-pulse-both | 8.2404 % | cycle 17898, sum: ours 0, oracle 240 | sum 8.2404 %, 0/5/12118 (10 at +8); runs 3: 0 on times, 0 on values, shift <= 0 |
+| script-pulse-enable | 95.6817 % | cycle 17898, sum: ours 0, oracle 225 | sum 95.6817 %, 0/0/36; runs 6: 0 on times, 0 on values, shift <= 0 |
+| script-pulse-periods | 41.1701 % | cycle 17898, sum: ours 0, oracle 180 | sum 41.1701 %, 2/1/2544 (749 at -5); runs 65: 61 on times, 61 on values, shift <= 110592 |
+| script-saw-enable | 99.2116 % | cycle 30426, sum: ours 15, oracle 0 | sum 99.2116 %, 14/0/48; runs 5: 5 on times, 5 on values, shift <= 31 |
+| script-saw-rates | 90.8676 % | cycle 29799, sum: ours 0, oracle 15 | sum 90.8676 %, 0/0/1400 (140 at -12); runs 5: 5 on times, 5 on values, shift <= 18 |
+| script-saw-worked-example | 99.9972 % | cycle 35897, sum: ours 75, oracle 60 | sum 99.9972 %, 8999/0/1; runs 1: 1 on times, 1 on values, shift <= 0 |
+<!-- parity-mesen:end -->
+
+**What the numbers say.** Round 2 split the corpus precisely so the legacy
+number would no longer have to carry both kinds of question at once. The
+`core` and `edge` scripts above answer "does this core match the documents,
+independently confirmed by two emulators built by different people from
+different sources": yes, exactly, cycle for cycle, on every script that does
+not hit one of Game_Music_Emu's own three known gaps, and exactly against
+Mesen 2 even on the three that do. The legacy corpus's raw headline (38.1 %
+against Game_Music_Emu, up from 35.7 % once round 2's polarity fix and split
+were in place; 23.6 % against Mesen 2) answers a different question, "what
+happens when a script drives every voice through several enable/disable
+cycles at once," and undercounts this chip specifically because of it: the
+corpus deliberately drives every voice through several enable/disable cycles
+(`generate-vrc6.mjs`'s own comment says why), and
 Game_Music_Emu's `Nes_Vrc6_Apu` - read directly, `gme/Nes_Vrc6_Apu.cpp` in
 the vendored oracle - freezes state across a disable that the documents, and
 this core, do not. A pulse's `run_square` only advances its 16-step phase
@@ -96,6 +242,24 @@ ever sees it, so it contributes no comparable signal either way. All of this
 is written up, with the source lines, in
 [the oracle's own README](../../packages/conform/oracles/game-music-emu/README.md);
 see "Known deviations" below for what it costs this sheet.
+
+Mesen 2 independently confirms all three of Game_Music_Emu's own gaps read
+above from its source rather than re-measured: `Vrc6Pulse::Clock` has no
+period-4-or-under guard, `Vrc6Saw::WriteReg`'s disable path zeroes the
+accumulator exactly as nesdev and this core do, and nothing in its own
+register dispatch drops `$9003`, which is why `edge` and `core` both gate at
+100 % against it (`oracles/mesen-vrc6.mjs`'s own comment has the source
+lines). The two oracles also settle on two different, unrelated
+cycle-offset conventions once corrected for: Game_Music_Emu's sawtooth edges
+land `period + 1` cycles later than chipvoice's own, tracking whichever
+period was active at that edge's own cycle (`saw-worked-example` and
+`saw-rates` each pad their own tail, `tailPad: 5` and `tailPad: 25`, to keep
+that later edge from being clipped by the script's own cutoff); Mesen 2's
+whole trace, pulses and sawtooth alike, sits at one flat, register-independent
+cycle earlier (`CYCLE_OFFSET = -1`), confirmed on a pulse-only log with no
+sawtooth activity at all. Neither is a hardware claim: both are that specific
+driver's own catch-up-then-write timing, read and corrected for once each,
+not re-derived per script.
 
 ## Test ROMs
 
@@ -146,13 +310,19 @@ Unmeasured. `Vrc6MixStage` (`packages/chipvoice/src/chips/nes/vrc6-core.ts`)
 adds the three VRC6 voices to the 2A03's own five before the shared DAC and
 filter math the 2A03 sheet already describes, at a mix gain
 (`VRC6_MIX_UNIT_GAIN`) documented as a formula, not fitted to any measurement.
-The formula test above proves the combined stage is bit-identical to the
-plain 2A03's when the VRC6 side contributes silence, which shows the addition
-introduces no regression to the already-partially-measured 2A03 mixer - it
-does not show the combined, all-eight-voices-active output matches a real
-VRC6 cartridge's own line-out, which no capture here attempts. A real
-cartridge's own capture is the only thing that would close this, the same
-P7-8-shaped gap the 2A03 and the SID both still have.
+Nesdev's own text calls the VRC6's pulses "roughly equivalent to the pulse
+channels of the 2A03 (except inverted)" - a statement about sign, not just
+magnitude - and round 2 modelled that inversion, not just cited it:
+`Vrc6MixStage.add()` subtracts the scaled VRC6 term from the composite sum
+instead of adding it, so a VRC6 pulse at maximum volume pulls the mix the
+opposite way a 2A03 pulse at the same nominal level would. The formula test
+above proves the combined stage is bit-identical to the plain 2A03's when the
+VRC6 side contributes silence, which shows the addition introduces no
+regression to the already-partially-measured 2A03 mixer - it does not show
+the combined, all-eight-voices-active output matches a real VRC6 cartridge's
+own line-out, which no capture here attempts. A real cartridge's own capture
+is the only thing that would close this, the same P7-8-shaped gap the 2A03
+and the SID both still have.
 
 ## Driver coverage
 
@@ -195,10 +365,23 @@ registers as events the same way it already does for the 2A03's; a
 self-authored round-trip proves this end to end in
 `packages/chipvoice/test/nsf.mjs` (mixed 2A03/VRC6 writes exported, then
 replayed and matched frame-for-frame against the original capture, the same
-gate 2A03-only files are held to). No third-party VRC6 NSF was added to
-[`scores/nsf-corpus`](../../scores/nsf-corpus): no VRC6 file this project
-found carries a licence that corpus's own convention requires (CC0, CC-BY,
-public domain, or similarly permissive, with a source URL next to it).
+gate 2A03-only files are held to). No third-party VRC6 NSF this project found
+carries a licence [`scores/nsf-corpus`](../../scores/nsf-corpus)'s own
+convention requires (CC0, CC-BY, public domain, or similarly permissive, with
+a source URL next to it), so round 2 added a self-authored one instead,
+`vrc6-probe` (CC0, `make-vrc6-probe.mjs`, the same fixture-of-last-resort
+convention `scores/psid-corpus/make-fixtures.mjs` already uses for two SID
+probes): a small hand-assembled NSF that declares the VRC6 expansion bit and
+writes all three oscillators every frame. It is played back by Game_Music_Emu's
+own `Nsf_Emu` NSF player, not just the register-level `Nes_Vrc6_Apu` oracle
+the rest of this sheet uses, which meant extending `native-oracle.py`'s patch
+with a second, independent capture point in `gme/Nes_Vrc6_Apu.cpp` (`Nsf_Emu`
+dispatches VRC6 writes there, not through `Nes_Apu.cpp`). The result closes
+every gate `scores/nsf-corpus` and `scores/nsf-export` hold their other files
+to: an exact command-stream match in `nsf-corpus` (2700/2700), and in
+`nsf-export`, an exact command-stream match (2773/2773), an exact frame-write
+match (301/301), and an export loss of 0.0 %, all against the same real NSF
+player every 2A03 file in both corpora is measured against.
 
 ## Known deviations
 
@@ -207,7 +390,9 @@ public domain, or similarly permissive, with a source URL next to it).
 | A pulse's duty phase does not resume from step 15 on re-enable, and does not advance at all while disabled or in "always on" mode | no, the oracle's, not this core's | this core follows nesdev's explicit text ("it will resume from the beginning when E is once again set"); Game_Music_Emu's `run_square` only advances the phase while `volume && !gate && period > 4`, so it freezes and resumes wherever it stopped instead (`gme/Nes_Vrc6_Apu.cpp`) | every corpus script that disables and re-enables a pulse; measured as a per-run shift, not a raw match (see above) |
 | The sawtooth's accumulator does not freeze on disable, and its divider does not stop | no, the oracle's, not this core's | this core follows nesdev's text ("the accumulator is forced to zero"; "clearing E does not reset the frequency divider"); Game_Music_Emu's `run_saw` takes a branch while disabled that touches neither (`gme/Nes_Vrc6_Apu.cpp`) | every corpus script that disables and re-enables the sawtooth |
 | A pulse whose reloaded period is 4 cycles or less never toggles in the oracle | no, a gap in the oracle | Game_Music_Emu's `run_square` only runs its phase-advance loop when `period > 4`; this core keeps advancing at any period | `script-pulse-periods`' own period-0 and period-1 runs |
-| `$9003` (frequency scaling / halt) is implemented from the documents but not cross-checked against the oracle | no, a gap in the oracle, not the core | Game_Music_Emu's own address decode (`reg_count = 3`) drops any write to it before the oracle ever sees it | confidence in the halt bit and the scaling divisor rests on the documents alone, not on independent measurement |
+| `$9003` (frequency scaling / halt) is implemented from the documents but not cross-checked against Game_Music_Emu | no, a gap in that oracle, not the core | Game_Music_Emu's own address decode (`reg_count = 3`) drops any write to it before the oracle ever sees it; Mesen 2 does not drop it, so `core`/`edge` against Mesen 2 do exercise it | confidence in the halt bit and the scaling divisor against Game_Music_Emu rests on the documents alone, not on independent measurement |
+| Game_Music_Emu's sawtooth edges are reported `period + 1` cycles later than chipvoice's own, tracking whichever period was active at that edge's cycle | no, that oracle's own phase convention | `Nes_Vrc6_Apu`'s `phase` runs exactly one firing ahead of chipvoice's `subPhase`, read from `gme/Nes_Vrc6_Apu.cpp` and confirmed on `saw-rates` across three period changes | corrected for in `oracles/game-music-emu.mjs`'s `trace()`; scripts that end on the sawtooth pad their own tail (`tailPad`) to the correct parity so the corrected last edge is not clipped by the script's own cutoff |
+| Mesen 2's whole trace sits at one flat, register-independent cycle earlier than chipvoice's own | no, that driver's own catch-up-then-write timing | confirmed on `core/pulse-levels` (both pulses, mode on, no sawtooth activity): every edge aligns at the same shift, not some other value or none | corrected once, unconditionally, as `CYCLE_OFFSET = -1` in `oracles/mesen-vrc6.mjs` |
 | The three voices' combined mix gain (`VRC6_MIX_UNIT_GAIN`) is a documented formula, not fitted to a measurement | yes, pending a capture | no real VRC6 cartridge line-out has been captured (see "Analog stage") | the analog stage's accuracy when the VRC6 side is not silent |
 
 ## Power-on state
@@ -223,6 +408,13 @@ behaviour once written, not their reset value.
 
 ## History
 
+- 2026-09-28 (NEXT-14, round 2, PR #111): Mesen 2 added as a second,
+  independent oracle; the corpus split into `core` and `edge` with exact
+  gates against both oracles (Game_Music_Emu report-only on `edge`); the
+  documented pulse-polarity inversion modelled, not just cited, in
+  `Vrc6MixStage.add()`; a negative test per exact gate; a self-authored VRC6
+  NSF probe added to `scores/nsf-corpus`/`scores/nsf-export`, played back by
+  Game_Music_Emu's own `Nsf_Emu` player.
 - 2026-09-28 (NEXT-14): the core, the harness and NSF export/playback added
   in one PR. No earlier history: this is VRC6's first sheet.
 
@@ -238,6 +430,10 @@ behaviour once written, not their reset value.
 - Game_Music_Emu's `Nes_Vrc6_Apu` (`Nes_Vrc6_Apu.h`/`.cpp`, pinned revision
   `fe8da4b6d3876d7542c2fb69d94487e19836d678`), read to know what to measure
   and run as the harness's oracle, never ported (decision 41).
+- Mesen 2's own VRC6 audio (`Vrc6Audio.h`/`Vrc6Pulse.h`/`Vrc6Saw.h`, pinned
+  revision `b9fa69ddc6d0a331fb103fdb5eef6904305703c2`, the same commit
+  already pinned for the plain 2A03 oracle), the second, independent oracle
+  round 2 added, read and run the same way, never ported.
 
 ---
 

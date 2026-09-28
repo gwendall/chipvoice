@@ -79,5 +79,15 @@
     "licenceUrl": "https://github.com/pinobatch/pently/blob/master/LICENSE",
     "sha256": "947a290a847679d1ff7ef196376ec9a55755a13109357f61ce607c06e4cbcd49",
     "track": 0
+  },
+  "vrc6-probe": {
+    "file": "vrc6-probe.nsf",
+    "title": "vrc6-probe",
+    "author": "gwendall, chipvoice project",
+    "driver": "hand-assembled (make-vrc6-probe.mjs)",
+    "url": "https://github.com/gwendall/chipvoice/tree/main/scores/nsf-corpus/make-vrc6-probe.mjs",
+    "licence": "CC0",
+    "licenceUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "sha256": "6d228456c393981d7499d16835f4f53e4a60bc3e915353c8696ee9d45a61f674"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27",
+  "generatedAt": "2026-09-28",
   "chips": [
     {
       "id": "2a03",
@@ -543,7 +543,7 @@
             "oracle": "Game_Music_Emu (Nes_Vrc6_Apu)",
             "files": 8,
             "cycles": 6339623,
-            "identical": 2265932,
+            "identical": 2413335,
             "diverging": 8,
             "firstDivergence": {
               "file": "script-all-three",
@@ -551,6 +551,21 @@
               "voice": "vp2",
               "ours": 0,
               "theirs": 9
+            }
+          },
+          {
+            "marker": "parity-mesen",
+            "oracle": "Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio",
+            "files": 8,
+            "cycles": 6339623,
+            "identical": 1498272,
+            "diverging": 8,
+            "firstDivergence": {
+              "file": "script-all-three",
+              "cycle": 17898,
+              "voice": "vp1",
+              "ours": 0,
+              "theirs": 300
             }
           }
         ],
