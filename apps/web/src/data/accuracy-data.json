@@ -558,14 +558,14 @@
             "oracle": "Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio",
             "files": 8,
             "cycles": 6339623,
-            "identical": 1498272,
-            "diverging": 8,
+            "identical": 5732468,
+            "diverging": 4,
             "firstDivergence": {
               "file": "script-all-three",
-              "cycle": 17898,
+              "cycle": 757716,
               "voice": "vp1",
-              "ours": 0,
-              "theirs": 300
+              "ours": 75,
+              "theirs": 0
             }
           }
         ],

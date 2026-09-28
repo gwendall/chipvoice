@@ -198,6 +198,13 @@ jobs:
       # audio, packages/conform/oracles/mesen): same no-regression gate on the
       # full, duty-generator-active corpus as check:vrc6 above.
       - run: pnpm --filter chipvoice-conform check:vrc6-mesen
+      # Round 3: the pulse duty generator's counting direction is not a
+      # baseline question but an algebraic one (docs/chips/vrc6.md's own
+      # "Digital parity" section and the "chipvoice patch" comment in
+      # Vrc6Pulse.h have the mechanism) - so the four flat-corpus scripts that
+      # never touch the sawtooth's own disable/re-enable gap are held exact,
+      # not just no-regression, on top of the baseline above.
+      - run: pnpm --filter chipvoice-conform check:vrc6-flat-mesen
       # Round 2's exact corpus split (docs/chips/vrc6.md's own "Digital
       # parity" section explains why): `core` scripts never disable after
       # their first enable, never touch $9003, and never use a period at or

@@ -17,7 +17,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parent.parent
 EXCLUDED = {'AGENTS.md', 'CLAUDE.md', 'upstream-README.md'}
 NUMBERS = re.compile(r'\d+(?:\.\d+)*')
-BLOCK = re.compile(r'<!-- (status|(?:parity|core|edge)(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus|nsf-export|gbs-export|cpu6510|psid-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
+BLOCK = re.compile(r'<!-- (status|(?:parity|core|edge|flat)(?:-[\w-]+)?|roms|cpu-instrs|mixer|hwcombined|nsf-corpus|gbs-corpus|nsf-export|gbs-export|cpu6510|psid-corpus):begin -->(.*?)<!-- \1:end -->', re.S)
 
 
 def source_files():
@@ -78,7 +78,7 @@ def localized_block(kind, body, templates):
         if not line.strip() or re.fullmatch(r'\|(?:\s*:?-+:?\s*\|)+', line):
             lines.append(line)
             continue
-        if kind == 'parity' or kind.startswith('parity-') or kind.startswith('core-') or kind.startswith('edge-'):
+        if kind == 'parity' or kind.startswith('parity-') or kind.startswith('core-') or kind.startswith('edge-') or kind.startswith('flat-'):
             match = re.fullmatch(r'Written by `conform` on (.+), against (.+), on (.+)\.', line)
             if match:
                 lines.append(f'`conform`による生成：{match[1]}。参照：{match[2]}。比較対象：{match[3]}。')

@@ -70,12 +70,11 @@ const SAW_PERIOD_HIGH = 0xb002;
  * holds, from the log's own writes; `trace()` looks up, for each raw
  * sawtooth entry, the period active at its own cycle and subtracts
  * `period + 1` from it. `Vrc6Apu`'s two pulses get no correction at all:
- * Game_Music_Emu resets their duty phase to its own arbitrary constant on
- * the very first enable (see the oracle's own README, "duty-phase
- * freeze/no-reset"), a different absolute phase, not a shifted copy of the
- * same one - and, separately, chipvoice's own down-counting duty generator
- * is structurally unshiftable against this oracle's up-counting one
- * regardless (see `generate-vrc6.mjs`'s own header comment on `core/`).
+ * unlike the sawtooth's phase, which runs a fixed one firing ahead and so
+ * reduces to a period-dependent constant, Game_Music_Emu's pulse phase never
+ * resets on any register write or disable/re-enable (see the `trusted`
+ * array's own comment below for why that rules out a correction, not just a
+ * shift).
  */
 function sawPeriodSteps(writes) {
   const steps = [];
@@ -105,21 +104,35 @@ export const gameMusicEmu = {
   /**
    * All three voices, because all three are worth measuring - but see the
    * sheet and the oracle's README for what each one's identical-cycle count
-   * actually means here. The sawtooth is trusted closely (it matches the
-   * worked example and every other log to the cycle, aside from a documented
-   * one-cycle frame-phase convention `compare.mjs`'s own shift absorbs, and
-   * the freeze-not-zero disable case the corpus keeps out of the compared
-   * window). The two pulses are not: Game_Music_Emu resets its duty phase to
-   * an arbitrary constant (1) that no register write ever touches, where
-   * this core resumes from step 15 per nesdev's literal "resume from the
-   * beginning" - a permanent, unavoidable absolute-phase mismatch from any
-   * cold enable that no corpus design fixes, so their identical-cycle counts
-   * here are expected to be low. They stay in `trusted` anyway, the same way
-   * `nes-snd-emu`'s own triangle does (that oracle's own README): the
-   * per-voice `identical` count is not the only thing the baseline gates on
-   * - `edges`/`shift`/`runs` (`compare.mjs`) show duty width and period are
-   * still right even when absolute phase is not, and CI still catches a
-   * regression in those.
+   * actually means here. The sawtooth is exact, not just close: `trace()`'s
+   * own `period + 1` correction above (`sawPeriodSteps`/`periodAt`, not
+   * `compare.mjs`'s +-16-cycle shift search, whose window is too narrow for
+   * some of these periods anyway) accounts for `Nes_Vrc6_Apu`'s phase running
+   * exactly one firing ahead of chipvoice's at all times, so every `core` and
+   * `edge` sawtooth script matches to the cycle - see this file's own comment
+   * above `sawPeriodSteps` for the measurement and the derivation. The two
+   * pulses are not corrected, and are not expected to match: Game_Music_Emu's
+   * `phase` (`gme/Nes_Vrc6_Apu.h`) is set once in `reset()` and never again -
+   * no register write, and no disable/re-enable, ever resets it - where this
+   * core's own `step` resets to 15 on every 0-to-1 edge of `enabled`, per
+   * nesdev's literal "resume from the beginning." That is not a phase
+   * convention a correction or a per-run shift can close, the way the
+   * sawtooth's is: a shift assumes the two traces are the same waveform
+   * moved in time, and here they are two different state machines (one
+   * re-anchors on every enable, the other never does), so their absolute
+   * phase after any disable depends on that disable's own length, not a
+   * constant. (Mesen 2's own pulse, `oracles/mesen-vrc6.mjs`'s second
+   * oracle, does re-anchor on every enable, just to a different constant and
+   * counting the other way from this core; see that oracle's own
+   * `Vrc6Pulse.h` for how that specific case is mapped to an exact gate
+   * instead of a shift - a fix that does not transfer here, since
+   * Game_Music_Emu's phase has no reset event for the mapping to anchor to.)
+   * Their identical-cycle counts here are expected to be low, and they stay
+   * in `trusted` anyway, the same way `nes-snd-emu`'s own triangle does (that
+   * oracle's own README): the per-voice `identical` count is not the only
+   * thing the baseline gates on - `edges`/`shift`/`runs` (`compare.mjs`) show
+   * duty width and period are still right even when absolute phase is not,
+   * and CI still catches a regression in those.
    */
   trusted: ['vp1', 'vp2', 'vsaw'],
 

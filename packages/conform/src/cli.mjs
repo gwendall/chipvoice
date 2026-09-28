@@ -24,13 +24,20 @@ import { ChangeStream } from './change-stream.mjs';
  * conform: the harness.
  *
  *   conform <chip> --corpus <dir> --oracle <id> [--voices p1,p2,tri]
- *                  [--only <name>] [--json <file>] [--sheet <file> [--marker <name>]]
+ *                  [--only <name>] [--exclude <name>[,<name>...]] [--json <file>]
+ *                  [--sheet <file> [--marker <name>]]
  *                  [--report] [--dump <voice>] [--baseline <file> [--write-baseline]]
  *
  * Every log in the corpus is run through the chip and through the oracle,
  * and their change streams are compared. One line per log says how many
  * cycles were identical and where the first divergence is, in a form a
  * person can act on without a debugger: the cycle, the voice, both values.
+ * `--exclude` drops any log whose filename contains one of a comma-separated
+ * list of substrings - the other direction of `--only`, for a corpus
+ * directory that mixes scripts an exact gate can hold to 100 % with others
+ * that have a documented, sourced divergence (`check:vrc6-flat-mesen` is the
+ * first use: the same directory as `check:vrc6-mesen`'s own no-regression
+ * baseline, minus the sawtooth-touching scripts that baseline still tracks).
  * `--json` writes the numbers; `--sheet` writes them into the chip's sheet
  * between its parity markers, `<!-- parity:begin -->` for the chip's first
  * oracle and `<!-- <marker>:begin -->` for any other, so a second oracle gets
@@ -79,13 +86,14 @@ const voices = voiceNames.map((n) => {
   return i;
 });
 const only = option('only', null);
+const exclude = (option('exclude', '') ?? '').split(',').filter(Boolean);
 const baselinePath = option('baseline', null);
 if (baselinePath && !flag('write-baseline') && !fs.existsSync(baselinePath)) {
   console.error(`Missing baseline: ${baselinePath}`);
   process.exit(1);
 }
 
-const files = fs.readdirSync(corpusDir).filter((f) => f.endsWith('.log') && (!only || f.includes(only))).sort();
+const files = fs.readdirSync(corpusDir).filter((f) => f.endsWith('.log') && (!only || f.includes(only)) && !exclude.some((e) => f.includes(e))).sort();
 if (files.length === 0) {
   console.error(`no logs in ${corpusDir}`);
   process.exit(2);

@@ -169,15 +169,17 @@ expansion audio, beside the already-vendored Game_Music_Emu
 (`../game-music-emu`). Mesen 2 emulates VRC6 audio too, in
 `Core/NES/Mappers/Audio/{Vrc6Audio,Vrc6Pulse,Vrc6Saw}.h` - not
 `Core/NES/Mappers/Konami/VRC6.h`, which is the mapper/banking class and only
-`#include`s these; the audio classes themselves are what is vendored,
-unchanged, under `vendor/NES/Mappers/Audio/` at the same pinned commit as the
-rest of this oracle, plus `NES/APU/BaseExpansionAudio.{h,cpp}`, the abstract
-base every expansion-audio chip shares. `NesTypes.h`'s `AudioChannel` enum
-already listed `VRC6 = 7` and `NesApu::AddExpansionAudioDelta` already
-forwarded to the mixer - both written for a future ticket that turned out to
-be this one - so the only shim change VRC6 needed was growing
-`NesSoundMixer.h`'s `deltas[]` array from 5 to 8 voices to hold index 7;
-nothing vendored was touched.
+`#include`s these; the audio classes themselves are what is vendored, under
+`vendor/NES/Mappers/Audio/` at the same pinned commit as the rest of this
+oracle, plus `NES/APU/BaseExpansionAudio.{h,cpp}`, the abstract base every
+expansion-audio chip shares. `NesTypes.h`'s `AudioChannel` enum already
+listed `VRC6 = 7` and `NesApu::AddExpansionAudioDelta` already forwarded to
+the mixer - both written for a future ticket that turned out to be this one -
+so the only shim change VRC6 needed was growing `NesSoundMixer.h`'s
+`deltas[]` array from 5 to 8 voices to hold index 7; nothing vendored was
+touched in round 2. Round 3 added the one marked, cited exception:
+`Vrc6Pulse.h`'s `GetVolume()` carries a small chipvoice patch (see below);
+`Vrc6Audio.h` and `Vrc6Saw.h` remain unchanged.
 
 `main-vrc6.cpp` is the second driver ours: it reads a chipvoice VRC6 register
 log the same way `main.cpp` reads a 2A03 one, but clocks `Vrc6Audio` directly
@@ -220,13 +222,57 @@ earlier, narrower version of this correction scoped it to sawtooth-only logs
 before the second measurement showed the scoping was unnecessary.
 
 Every log in `corpus/vrc6/core` and `corpus/vrc6/edge` is 100.0000 % against
-this oracle (`check:vrc6-core-mesen`, `check:vrc6-edge-mesen`); the full,
-duty-generator-active legacy corpus (`corpus/vrc6`) is held to the same
-no-regression baseline convention as Game_Music_Emu (`check:vrc6-mesen`),
-for the same reason `check:vrc6` is: the duty generator's own direction
-mismatch (chipvoice counts down from 15, both oracles count up) is
-structurally unfixable by any per-run shift once duty varies, so a raw
-cycle-for-cycle match on those scripts is not the number that matters.
+this oracle (`check:vrc6-core-mesen`, `check:vrc6-edge-mesen`).
+
+NEXT-14's round 3 went further on the full, duty-generator-active legacy
+corpus (`corpus/vrc6`): `vendor/NES/Mappers/Audio/Vrc6Pulse.h` carries a
+small, marked chipvoice patch on top of Mesen's otherwise-unmodified pulse,
+under a "chipvoice patch (2026-09-28)" comment marking exactly what changed
+and when and citing the mechanism in full, per GPL-3.0 5(a) ("The work must
+carry prominent notices stating that you modified it, and giving a relevant
+date"). The one line it changes is `GetVolume()`'s duty comparison, from
+`_step <= _dutyCycle` to `_step >= (uint8_t)(15 - _dutyCycle)`. The reason:
+Mesen's `_step` counts up (0 to 15, wrapping, reset to 0 on disable);
+chipvoice's own `step` (`vrc6.ts`) counts down (15 to 0, wrapping, reset to
+15 on the disable-to-enable edge); both freeze while disabled and both
+re-anchor at that same edge on every subsequent disable/re-enable, so the
+identity `s' = 15 - s` (chipvoice's counter s', Mesen's s) holds from the
+first edge onward for any sequence of period, duty or enable writes, not
+just for a run with a fixed duty - substituting it into chipvoice's own
+`s' <= dutyCycle` gives exactly the changed line. `docs/chips/vrc6.md`'s "The
+pulse mapping" has the full derivation, why a per-run time shift cannot
+express it (the counter's direction decides which edge of the duty window is
+anchored to the divider's own wrap), and the direct, oracle-against-oracle
+measurement against Game_Music_Emu showing why that oracle's own pulse
+cannot take the same mapping (its `phase` never re-anchors on any
+disable/re-enable, unlike this oracle's `_step`). With that one line, the
+four flat-corpus scripts that disable and re-enable a pulse but never the
+sawtooth (`script-duty`, `script-pulse-both`, `script-pulse-enable`,
+`script-pulse-periods`) gate at a literal 100.0000 % against this oracle too
+(`check:vrc6-flat-mesen`), the same as `core` and `edge`; `check:vrc6-core-
+mesen`/`check:vrc6-edge-mesen` are unaffected (still 100.0000 %), since every
+script there already held duty and period fixed across an enable span, where
+the mapped and the original condition agree.
+
+The other four legacy-corpus scripts (`script-all-three`, `script-saw-
+enable`, `script-saw-rates`, `script-saw-worked-example`) disable and
+re-enable the sawtooth, not just a pulse, and stay on the pre-round-3
+no-regression baseline convention (`check:vrc6-mesen`), for a different,
+genuine reason: `Vrc6Saw::Clock()` gates its whole body, the frequency
+divider included, behind `if(_enabled)`, so the divider pauses entirely while
+disabled and resumes from wherever it stopped, where chipvoice's own
+`Vrc6Saw.clockDivider()` ticks unconditionally every cycle, following
+nesdev's text literally ("clearing E does not reset the frequency divider,
+however"). `docs/chips/vrc6.md`'s "The sawtooth's divider across a disable"
+has the first-divergence cycle for each of the three genuinely affected
+scripts, and shows the fourth (`script-saw-worked-example`, 99.9972 %) to be
+a boundary-clipping artifact of its own fixed cycle count, not a real
+difference. This is the same divider-freeze behaviour `corpus/vrc6/edge/
+saw-enable.log` already sidesteps by construction (its disabled spans are
+exact multiples of the saw's own full divider period, so a paused and a
+continuously-ticking divider reach the same next firing either way), noted
+above; the flat corpus was not built with that constraint, so it is the one
+that exposes it as a measured divergence rather than avoiding it.
 
 ## Build
 

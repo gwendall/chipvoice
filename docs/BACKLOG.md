@@ -632,9 +632,22 @@ real game music, and a real unit.
   models all three, and report-only against Game_Music_Emu, which documents
   its own gaps there (freeze-not-zero on disable, dropping `$9003` silently);
   the full duty-generator-active legacy corpus stays on the earlier
-  no-regression baseline against both oracles, since the pulse duty
-  generator's counting direction is structurally unshiftable once duty
-  varies. A negative test per exact gate proves each would actually catch a
+  no-regression baseline against both oracles. Round 3 (#111) closed most of
+  that gap against Mesen 2 specifically: the pulse duty counters run in
+  opposite directions but both re-anchor at the same edge on every
+  disable/re-enable, so an exact algebraic mapping between them (not a
+  per-run shift) makes `Vrc6Pulse.h`'s own condition match chipvoice's
+  exactly, taking 4 of the 8 legacy scripts to a literal 100 % against Mesen
+  2 (`check:vrc6-flat-mesen`); the other 4, which also disable and re-enable
+  the sawtooth, stay on the no-regression baseline because Mesen's own
+  sawtooth divider pauses entirely while disabled, a genuinely different
+  mechanism the mapping does not reach (one of those 4 is further shown to be
+  a boundary-clipping artifact, not a real divergence). Measured directly
+  against each other, Game_Music_Emu and Mesen 2 do not closely agree with
+  each other on pulse duty phase either, despite both counting up where
+  chipvoice counts down, because only Mesen re-anchors its counter on every
+  disable, which is also why the mapping does not transfer to Game_Music_Emu.
+  A negative test per exact gate proves each would actually catch a
   regression. A self-authored VRC6 NSF probe (CC0) closes NEXT-14's own NSF
   corpora: `native-oracle.py`'s Game_Music_Emu patch now also logs VRC6
   writes from `Nsf_Emu`, its real NSF player, so the probe gates exactly in

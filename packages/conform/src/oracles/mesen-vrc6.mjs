@@ -149,4 +149,4 @@ export const mesenVrc6 = {
  * including `edge/pulse-enable.log`, which an earlier, narrower version of
  * this function deliberately excluded.
  */
-const CYCLE_OFFSET = -1;
+export const CYCLE_OFFSET = -1;
