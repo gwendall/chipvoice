@@ -6,7 +6,7 @@
   <a href="README_ja.md">日本語</a>
 </p>
 
-[gamesounds.ai](https://gamesounds.ai)のサイトとREST API：イベント単位でファイルされたゲーム効果音バンクで、人が閲覧でき、エージェントはアカウント無しで呼び出せる。データモデル、タクソノミー、API、マニフェストのリファレンスは[`docs/GAMESOUNDS.md`](../../docs/GAMESOUNDS.md)を、これがchipvoice.devのページではなくモノレポの2つ目のアプリである理由は[決定48](../../docs/DECISIONS.md)を参照。`packages/gamesounds`は、エージェントが自身のプロジェクトへインストールするCLIとランタイムを保持する。このアプリはそのパッケージ自身のビルドに決して依存しない（型は相対パスでインポートする）ため、`catalog:build`と`next build`は`packages/gamesounds`を先にビルドする必要が一切ない。
+[gamesounds.ai](https://gamesounds.ai)のサイトとREST API：イベント単位でファイルされたゲーム効果音バンクで、人が閲覧でき、エージェントはアカウント無しで呼び出せる。データモデル、タクソノミー、API、マニフェストのリファレンスは[`docs/GAMESOUNDS.md`](../../docs/GAMESOUNDS.md)を、これがchipvoice.devのページではなくモノレポの2つ目のアプリである理由は[決定49](../../docs/DECISIONS.md)を参照。`packages/gamesounds`は、エージェントが自身のプロジェクトへインストールするCLIとランタイムを保持する。このアプリはそのパッケージ自身のビルドに決して依存しない（型は相対パスでインポートする）ため、`catalog:build`と`next build`は`packages/gamesounds`を先にビルドする必要が一切ない。
 
 <a id="running-it-locally"></a>
 ## ローカルでの実行

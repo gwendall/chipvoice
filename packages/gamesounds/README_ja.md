@@ -9,7 +9,7 @@
 イベント単位でファイルされたゲーム効果音バンク：
 [gamesounds.ai](https://gamesounds.ai)のCLIとランタイム。閲覧やダウンロードにアカウントは不要で、すべての音がそれぞれのライセンスをデータとして持つ（フェーズ1は`CC0-1.0`のみを出荷）。完全なデータモデル、タクソノミー、APIリファレンスはメインリポジトリの
 [`docs/GAMESOUNDS.md`](https://github.com/gwendall/chipvoice/blob/main/docs/GAMESOUNDS.md)を、このパッケージが存在する理由は
-[決定48](https://github.com/gwendall/chipvoice/blob/main/docs/DECISIONS.md)を参照。
+[決定49](https://github.com/gwendall/chipvoice/blob/main/docs/DECISIONS.md)を参照。
 
 <a id="the-cli"></a>
 ## CLI

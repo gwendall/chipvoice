@@ -181,7 +181,7 @@ jobs:
   # conformance suites, and vice versa; independent of `build-renderer.mjs`
   # and the chipvoice engine build the `unit`/`browser` jobs need, since
   # apps/sounds imports packages/gamesounds's types by relative path rather
-  # than depending on either package's own build (decision 48).
+  # than depending on either package's own build (decision 49).
   sounds:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -201,6 +201,13 @@ jobs:
       - run: pnpm --filter gamesounds typecheck
       - run: pnpm --filter gamesounds test:unit
       - run: pnpm --filter gamesounds-site typecheck
+      # build-catalog.mjs's encode step shells out to ffmpeg (packages/chipvoice's
+      # own renderSfx does not need it, but trimming/encoding every variant to
+      # .ogg/.mp3/.wav does) - not preinstalled on ubuntu-latest, same gap the
+      # `browser` job's own "Audio publication verifier" step papers over for
+      # apps/web.
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
       # public/f/ (the content-addressed audio) is gitignored; the catalogue
       # build downloads Kenney's source zips (verified by their own recorded
       # SHA-256) and renders the chipvoice-origin sounds. Deterministic given

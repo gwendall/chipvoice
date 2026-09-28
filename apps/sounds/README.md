@@ -9,7 +9,7 @@ The site and REST API for [gamesounds.ai](https://gamesounds.ai): a game
 sound-effects bank filed by event, browsable by a person and callable by an
 agent with no account. See [`docs/GAMESOUNDS.md`](../../docs/GAMESOUNDS.md)
 for the data model, taxonomy, API and manifest reference, and
-[Decision 48](../../docs/DECISIONS.md) for why this is a second app in the
+[Decision 49](../../docs/DECISIONS.md) for why this is a second app in the
 monorepo rather than a page on chipvoice.dev. `packages/gamesounds` holds
 the CLI and the runtime an agent installs into its own project; this app
 never depends on that package's own build (its types are imported by

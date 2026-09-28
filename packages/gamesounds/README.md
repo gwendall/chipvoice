@@ -10,7 +10,7 @@ A game sound-effects bank, filed by event: the CLI and runtime for
 every sound carries its licence (Phase 1 ships `CC0-1.0` only). See
 [`docs/GAMESOUNDS.md`](https://github.com/gwendall/chipvoice/blob/main/docs/GAMESOUNDS.md)
 in the main repository for the full data model, taxonomy and API reference,
-and [Decision 48](https://github.com/gwendall/chipvoice/blob/main/docs/DECISIONS.md)
+and [Decision 49](https://github.com/gwendall/chipvoice/blob/main/docs/DECISIONS.md)
 for why this package exists.
 
 ## The CLI

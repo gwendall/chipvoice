@@ -3,7 +3,7 @@
 
 <p align="center"><a href="GAMESOUNDS.md">English</a> &bull; <a href="GAMESOUNDS_ja.md">日本語</a></p>
 
-パックではなくイベント単位でファイルされたゲーム効果音バンクである：エージェントは`"jump"`や`"combat/hit/heavy"`をライセンス済みでラウドネスの揃った音に解決し、アカウントも鍵も無く、人が先に候補を試聴することもなく、そのまま再生できる。フェーズ1はカタログ、サイト、REST API、CLI、ランタイムライブラリを出荷する。これが（gamesounds.aiを提供する）`apps/sounds`という2つ目のアプリと`gamesounds`という2つ目のパッケージであり、chipvoice.devに追加したページではない理由は[決定48](DECISIONS.md)を、フェーズ1が意図的に含めていないものは[バックログ](BACKLOG.md)を参照。
+パックではなくイベント単位でファイルされたゲーム効果音バンクである：エージェントは`"jump"`や`"combat/hit/heavy"`をライセンス済みでラウドネスの揃った音に解決し、アカウントも鍵も無く、人が先に候補を試聴することもなく、そのまま再生できる。フェーズ1はカタログ、サイト、REST API、CLI、ランタイムライブラリを出荷する。これが（gamesounds.aiを提供する）`apps/sounds`という2つ目のアプリと`gamesounds`という2つ目のパッケージであり、chipvoice.devに追加したページではない理由は[決定49](DECISIONS.md)を、フェーズ1が意図的に含めていないものは[バックログ](BACKLOG.md)を参照。
 
 <a id="the-data-model"></a>
 ## データモデル

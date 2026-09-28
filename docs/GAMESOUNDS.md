@@ -6,7 +6,7 @@ A game sound-effects bank filed by event, not by pack: an agent resolves
 `"jump"` or `"combat/hit/heavy"` to a licensed, loudness-matched sound and
 gets playing, with no account, no key and no person auditioning candidates
 first. Phase 1 ships the catalogue, the site, the REST API, a CLI and a
-runtime library; see [Decision 48](DECISIONS.md) for why it is a second app
+runtime library; see [Decision 49](DECISIONS.md) for why it is a second app
 (`apps/sounds`, gamesounds.ai) and a second package (`gamesounds`), not a
 page added to chipvoice.dev, and [the backlog](BACKLOG.md) for what Phase 1
 deliberately leaves out.
