@@ -58,6 +58,34 @@ jobs:
       - run: pnpm --filter chipvoice-conform test:unit
       - run: pnpm --filter chipvoice-conform accuracy-data:check
 
+  # GS-02: gamesounds' own procedural synthesis engine (packages/sfx-engine).
+  # Zero runtime dependencies and no relation to chipvoice/web-kit/apps/web,
+  # so this is its own job rather than folded into `unit` - it never builds
+  # or waits on anything else in the monorepo. Fast, deterministic checks
+  # only: build, typecheck, unit tests, the committed PCM-hash fixture (53
+  # presets x 3 seeds) and the perf-budget regression check. Deliberately
+  # excludes parity/*.mjs's cross-engine Chromium/Firefox/WebKit determinism
+  # check and self-test - those need real browser engines and are local-only
+  # tooling (see parity/check.mjs's own doc comment and
+  # docs/GAMESOUNDS-ENGINE.md's determinism section), not part of this fast
+  # gate.
+  sfx-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter sfx-engine build
+      - run: pnpm --filter sfx-engine typecheck
+      - run: pnpm --filter sfx-engine test:unit
+      - run: pnpm --filter sfx-engine test:hash-fixture
+      - run: pnpm --filter sfx-engine test:perf-budget
+
   # MIX-14: Node/Chromium/Firefox/WebKit render-hash parity for a fixed set
   # of arrangement excerpts and instrument presets across all five chips.
   # All three desktop engines run here, not only Chromium - Playwright's

@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>sfx-engine render-parity harness</title>
+</head>
+<body>
+<script type="module">
+import { renderRecipe } from '/dist/index.js';
+
+/**
+ * A Playwright-only fixture page, never linked from anything real: renders
+ * fixed sfx-engine recipes inside a real browser engine (Chromium/Firefox/
+ * WebKit) and hashes the resulting PCM, so `browser-render.mjs` can compare
+ * it against Node's own render of the same recipe. Mirrors
+ * scores/render-parity/harness.html's pattern (chipvoice's own cross-engine
+ * determinism harness) - see that file's doc comment for the shape this
+ * follows.
+ *
+ * `selfTestPerturb` is `self-test.mjs`'s hook only: a URL query param of
+ * the form "id:sampleIndex:channel:delta" that corrupts one sample of one
+ * named input's rendered PCM before hashing, proving this harness's
+ * comparison actually fails on a real difference rather than only ever
+ * reporting a match. Nothing in a normal `check.mjs` run ever sets it.
+ */
+function parsePerturb() {
+  const raw = new URLSearchParams(location.search).get('selfTestPerturb');
+  if (!raw) return null;
+  const [id, sampleIndexStr, channel, deltaStr] = raw.split(':');
+  return { id, sampleIndex: Number(sampleIndexStr), channel, delta: Number(deltaStr) };
+}
+const perturb = parsePerturb();
+
+function applyPerturb(id, rendered) {
+  if (!perturb || perturb.id !== id) return rendered;
+  const arr = perturb.channel === 'right' ? rendered.right : rendered.left;
+  arr[perturb.sampleIndex] = arr[perturb.sampleIndex] + perturb.delta;
+  return rendered;
+}
+
+async function pcmSha256(rendered) {
+  const bytes = new Uint8Array(rendered.left.byteLength + rendered.right.byteLength);
+  bytes.set(new Uint8Array(rendered.left.buffer, rendered.left.byteOffset, rendered.left.byteLength), 0);
+  bytes.set(new Uint8Array(rendered.right.buffer, rendered.right.byteOffset, rendered.right.byteLength), rendered.left.byteLength);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** `inputs`: an array of `{ id, recipe }`, exactly `parity/inputs.mjs`'s
+ * `buildInputs()` shape - Playwright's `page.evaluate` hands it over as
+ * plain JSON, no decoding needed (see inputs.mjs's own doc comment for why
+ * a `Recipe` needs no packing). Returns `[{ id, sha256 }]`. */
+window.renderParityRun = async (inputs) => {
+  const results = [];
+  for (const input of inputs) {
+    const rendered = renderRecipe(input.recipe);
+    applyPerturb(input.id, rendered);
+    results.push({ id: input.id, sha256: await pcmSha256(rendered) });
+  }
+  return results;
+};
+
+/** One input's raw PCM (as plain arrays, since Playwright's `evaluate`
+ * return value crosses back out through JSON too), for diagnosing a
+ * mismatch `renderParityRun` already found. */
+window.renderParityRenderOne = async (input) => {
+  const rendered = renderRecipe(input.recipe);
+  applyPerturb(input.id, rendered);
+  return { left: Array.from(rendered.left), right: Array.from(rendered.right), sampleRate: rendered.sampleRate };
+};
+
+window.renderParityReady = true;
+</script>
+</body>
+</html>

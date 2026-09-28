@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gamesounds.ai/schema/sfx-engine-recipe-1.json",
+  "title": "sfx-engine recipe",
+  "description": "A gamesounds sfx-engine recipe: a few hundred bytes of JSON that render to the same PCM everywhere. `model: \"graph\"` is the low-level node graph; any other `model` names a high-level parametric model (see docs/GAMESOUNDS-ENGINE.md and packages/sfx-engine/src/presets/*), which compiles to a graph internally before rendering.",
+  "type": "object",
+  "required": ["engine", "model", "params", "seed", "sampleRate"],
+  "additionalProperties": false,
+  "properties": {
+    "engine": { "const": "sfx-engine@1" },
+    "model": {
+      "type": "string",
+      "description": "\"graph\" for a low-level recipe (params must be a GraphRecipeParams), or a high-level model id such as \"impact\", \"footstep\", \"ui-click\" (see the model registry's own metadata for the full list and each model's own param schema)."
+    },
+    "params": {
+      "type": "object",
+      "description": "For model \"graph\": { duration, nodes, output, pan? } - see graphRecipeParams below. For a named high-level model: that model's own parameters, documented in its metadata (packages/sfx-engine/src/presets/*)."
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295,
+      "description": "A 32-bit unsigned integer. Two recipes that differ only by seed are variants of the same idea."
+    },
+    "sampleRate": {
+      "type": "integer",
+      "enum": [44100, 48000],
+      "default": 48000
+    }
+  },
+  "$defs": {
+    "ref": {
+      "type": "object",
+      "required": ["ref"],
+      "additionalProperties": false,
+      "properties": { "ref": { "type": "string" } },
+      "description": "Patches another node's rendered output into this parameter (control-rate modulation): an envelope into an oscillator's freq, a sweep into a filter's cutoff, and so on."
+    },
+    "modulatableNumber": {
+      "oneOf": [{ "type": "number" }, { "$ref": "#/$defs/ref" }]
+    },
+    "graphRecipeParams": {
+      "type": "object",
+      "required": ["duration", "nodes", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "duration": { "type": "number", "exclusiveMinimum": 0, "description": "Seconds." },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/graphNode" } },
+        "output": { "type": "string", "description": "The node id whose output becomes the recipe's signal." },
+        "pan": { "type": "number", "minimum": -1, "maximum": 1, "default": 0 }
+      }
+    },
+    "graphNode": {
+      "type": "object",
+      "required": ["id", "type", "params"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["const", "oscillator", "noise", "envelope", "sweep", "filter", "shaper", "delay", "reverb", "mix", "multiply", "modal", "phisem", "karplus", "bubble"]
+        },
+        "params": { "type": "object", "description": "Node-type-specific; see docs/GAMESOUNDS-ENGINE.md's node reference." },
+        "inputs": { "type": "array", "items": { "type": "string" }, "description": "Audio-rate signal inputs (not modulation - those go through a params field's {ref})." }
+      }
+    }
+  }
+}
