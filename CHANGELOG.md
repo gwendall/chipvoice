@@ -11,6 +11,36 @@ overview.
 
 ## Unreleased
 
+Progressive preview playback no longer risks an audible stall on a moving
+chip or song handoff (switching mid-playback). The handoff's first
+post-handoff read, the one `ProgressivePlayback`'s internal read-ahead loop
+fires the instant the new group takes over, used to race a fixed 0.75 s
+margin that a rare host stall (a GC pause, scheduler jitter right at the
+handoff instant) could still outrun; the previous release proved a real
+underrun at exactly that threshold. A history-based adaptive margin was
+built and tested first and rejected: it can only react to a source's past
+read latency, never the one read racing it, and still underran at 900 ms of
+injected delay in testing, no better than the fixed constant it would have
+replaced. The fix removes the deadline instead of enlarging it: that first
+block is fetched and cached before the new group goes live, so the
+read-ahead loop's own next step finds it already there. Proven with 0
+underruns at up to 5 full seconds of injected delay in testing, where the
+previous code underran past 750 ms. This only covers that one read:
+consuming the cached block still advances the group's buffered lead before
+the next, genuinely uncached read is issued, so every read after it, in
+steady state, still races a deadline, now about 1.25 s instead of 0.75 s; a
+second, held-out test scenario confirms that later cliff is still there (0
+underruns at 900 ms of injected delay on that second read, 1 underrun at
+1500 ms). Switching chip while playing now takes about 17 to 67 ms longer
+(median, n=7 per chip, interleaved before/after runs on the same machine to
+cancel out unrelated load: 2a03 +17 ms, md +60 ms, snes -7 ms, c64 +67 ms,
+dmg +45 ms), in exchange for no longer cutting out when the new chip's
+first read is slow. Paid only on a genuine cross-chip or cross-song
+handoff, never on first playback or a same-source settings tweak. No
+public API changed. Proven by a new deterministic test,
+`packages/chipvoice/test/progressive-handoff-stall.mjs`, alongside the
+existing progressive-playback and audio-transition test suites, all green.
+
 SNES songs export as `.spc` files: `exportSpc` freezes a song's
 register-write capture into a standard SPC700+S-DSP snapshot that plays in
 any SPC player, on real hardware too, with no chipvoice runtime involved -
