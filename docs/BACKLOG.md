@@ -175,31 +175,58 @@ created the same day.
   caches that exact block (the target's first post-handoff `'ahead'`-lane
   read) synchronously, before the new group goes live and the outgoing one is
   retired, so `pump`'s own first post-handoff read is a cache hit with
-  nothing left to miss. It is skipped (falls through with no added cost) for
-  a same-source reload (a paused seek, a settings tweak) and for first
-  playback, where there is no outgoing group's own read-ahead to race; a lost
-  race for the worker's single-slot `'ahead'` lane (same-source case only) is
-  caught and simply retried. Proven with a new deterministic test,
+  nothing left to miss. This removes the deadline only for that one read:
+  consuming the cached block still advances the group's buffered lead by its
+  own duration (up to half a second) before the next, genuinely uncached
+  `'ahead'` read is issued, so that read, and every one after it in steady
+  state, still races a deadline, just a bigger one, about 1.25 s
+  (`HANDOFF_LEAD`'s 0.75 s plus that half-second block) instead of 0.75 s
+  alone. It is skipped (falls through with no added cost) for a same-source
+  reload (a paused seek, a settings tweak) and for first playback, where
+  there is no outgoing group's own read-ahead to race; a lost race for the
+  worker's single-slot `'ahead'` lane (same-source case only) is caught and
+  simply retried. Proven with a new deterministic test,
   `packages/chipvoice/test/progressive-handoff-stall.mjs`: a real
   `ProgressivePlayback`, a real wall-clock `AudioContext.currentTime`, and a
   real `preview-worker.js` round trip through a `FakeWorker` that delays one
   chosen `'ahead'`-lane reply with a real `setTimeout` (the committed
   equivalent of REV-10's deleted `Worker.prototype.postMessage` patch). It
-  fails on unfixed main at 900 ms of injected delay (1 underrun, confirmed by
-  hand) and passes after the fix at 900 ms and, to show there is no bigger
-  constant to still outrun, at 5000 ms (0 underruns each).
+  fails on unfixed main at 900 ms of injected delay on the first
+  post-handoff read (1 underrun, confirmed by hand) and passes after the fix
+  at 900 ms and, to show that specific read has no deadline left at all, at
+  5000 ms (0 underruns each, the switch itself just takes longer). A fourth
+  scenario delays the *second* post-handoff read instead, to show the new,
+  still-finite cliff is real: 0 underruns at 1000 ms (below the ~1.25 s
+  margin), 1 underrun at 1500 ms (past it); a standalone delay sweep landed
+  the actual threshold at 1200 to 1230 ms, matching the 0.75 s + 0.5 s margin
+  math above.
 
   Cost, measured in a real browser (Playwright Chromium, real Worker
   threads, a production `apps/web` build), `ProjectPlayer.update({chip})`
-  switch latency (click to hear) across all five chips, single-run
-  before/after numbers, each hop a genuine cross-console handoff (2a03, md,
-  snes, c64, dmg in a cycle, no chip skipped): 2a03 254 to 319 ms (+64 ms),
-  dmg 857 to 1304 ms (+447 ms), md 1418 to 1689 ms (+271 ms), snes 183 to
-  265 ms (+82 ms), c64 448 to 504 ms (+56 ms); 0 underruns in both versions
-  under normal, non-delayed conditions on every chip. No extra buffer: the
-  prefetched block is cached through `PreviewSource`'s existing `chunks` LRU
-  (still capped at three seconds of Float32 stereo PCM plus the tiny first
-  block), not a separate allocation.
+  switch latency (click to hear) across all five chips, n=7 independent
+  click-to-hear runs per chip before (origin/main) and after (this fix),
+  interleaved round by round (round 1 before then after, round 2 after then
+  before, and so on) rather than run as two back-to-back blocks, so drift
+  from other processes' CPU load on the machine lands on both phases evenly
+  instead of just one; same machine, server and browser session throughout,
+  each hop a genuine cross-console handoff (2a03, md, snes, c64, dmg in a
+  cycle, no chip skipped). Median before to median after, min-max in
+  parentheses: 2a03 268 ms (249-312) to 286 ms (283-342), +17 ms; md
+  1468 ms (1387-1604) to 1528 ms (1512-1626), +60 ms; snes 193 ms (180-250)
+  to 185 ms (183-249), -7 ms; c64 396 ms (371-655) to 463 ms (460-495),
+  +67 ms; dmg 843 ms (829-982) to 889 ms (867-938), +45 ms. Every median
+  delta stays well under the 300 ms that would need calling out plainly
+  here; 0 underruns in both versions across all 70 switches (35 per
+  chip-phase) under normal, non-delayed conditions on every chip. An
+  earlier single-run, non-interleaved measurement (one 35-switch block per
+  phase, run back to back) had shown much larger and noisier deltas, up to
+  +447 ms on dmg; re-measuring with n=7 and interleaved phases showed that
+  spread was time-varying machine load landing unevenly between the two
+  phases (this machine had other, unrelated builds running concurrently at
+  the time), not a real cost of the fix. No extra buffer: the prefetched
+  block is cached through `PreviewSource`'s existing `chunks` LRU (still
+  capped at three seconds of Float32 stereo PCM plus the tiny first block),
+  not a separate allocation.
 
   Every existing playback test stayed green throughout:
   `test/progressive-playback.mjs` (10/10), `apps/web/test-progressive-long.mjs`
@@ -252,15 +279,20 @@ Work without a ticket takes a NEXT id.
 - done - REV-11 (PR #115): the moving-handoff underrun REV-10 proved sits
   exactly at the fixed 0.75 s `HANDOFF_LEAD` margin is fixed by prefetching
   the handoff's first post-handoff read before the new group goes live,
-  removing the deadline instead of widening it. REV-11's own proposed
-  adaptive margin (`max(HANDOFF_LEAD, 2*lastReadMs)`) was built and measured,
-  not just reasoned about, and still underran at 900 ms, since it can only
-  react to a source's past read latency, never the one read it is racing.
-  `packages/chipvoice/test/progressive-handoff-stall.mjs` fails on unfixed
-  code at 900 ms of injected delay and passes at 900 ms and 5000 ms after the
-  fix (0 underruns each); `test-progressive-long.mjs` and
-  `test-audio-transitions.mjs` stay green. Switch latency (click to hear)
-  rises by 56 to 447 ms across the five chips, paid only on a genuine
+  removing the deadline for that one read instead of widening it; every read
+  after it still races a deadline, now about 1.25 s instead of 0.75 s.
+  REV-11's own proposed adaptive margin (`max(HANDOFF_LEAD, 2*lastReadMs)`)
+  was built and measured, not just reasoned about, and still underran at
+  900 ms, since it can only react to a source's past read latency, never the
+  one read it is racing. `packages/chipvoice/test/progressive-handoff-stall.mjs`
+  fails on unfixed code at 900 ms of injected delay on the first
+  post-handoff read and passes at 900 ms and 5000 ms after the fix on that
+  read (0 underruns each); a fourth scenario confirms the second
+  post-handoff read still has a finite cliff, now at 1000-1500 ms instead of
+  the old 750 ms. `test-progressive-long.mjs` and `test-audio-transitions.mjs`
+  stay green. Switch latency (click to hear), measured n=7 per chip with
+  interleaved before/after runs to cancel out unrelated machine load, rises
+  by a median of -7 to +67 ms across the five chips, paid only on a genuine
   cross-chip handoff, never on first playback or a same-source settings
   tweak.
 
