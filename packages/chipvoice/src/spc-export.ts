@@ -169,6 +169,17 @@ const R_FLG = 0x6c;
 const R_ESA = 0x6d;
 const R_EDL = 0x7d;
 const R_KON = 0x4c;
+/** Echo volume, left/right: the *only* register the echo subsystem's output
+ * ever passes through (see `echo_output` in `sdsp.ts` - the final mix is
+ * `MVOL`-scaled voice output plus `EVOL`-scaled echo read, nothing else
+ * reaches it from the echo side). `EFB` and `EON` only shape what gets
+ * *written* into the echo buffer, which never reaches a listener by itself -
+ * only a later echo *read*, itself always `EVOL`-scaled, could carry it out.
+ * So `EVOLL`/`EVOLR` both zero for a whole capture is, on its own, sufficient
+ * proof that the echo buffer's contents, real or garbage, never affect one
+ * output sample of it - see the size-reclaiming pass below. */
+const R_EVOLL = 0x2c;
+const R_EVOLR = 0x3c;
 /** FLG's echo-disable bit: while set, the DSP's own `echo_write` never
  * touches ARAM (it still *reads* the echo region for the FIR filter's
  * history regardless of this bit, same as real hardware, but a read cannot
@@ -266,6 +277,42 @@ export function exportSpc(
   // a negative wait back down to the loop point.
   const writes = resolveWrites(events).filter((w) => w.cycle < cycles);
 
+  // A capture whose own writes set EVOLL and EVOLR to zero, explicitly, and
+  // never move either off zero again, can never put one nonzero echo sample
+  // in front of a listener from that point on, *by construction of the mix
+  // itself* (see EVOLL/EVOLR's own doc comment above) - regardless of EON,
+  // EFB, ESA, EDL, or what garbage this export ends up overlapping the echo
+  // buffer's own address range with.
+  //
+  // Both must be a real write, not an assumption from silence: the reset
+  // register file's own EVOL bytes are real (SPC_DSP's own documented
+  // power-on values), and *not* zero (confirmed directly against
+  // `initial_regs` above: both land in the 0x90s). A real driver overwrites
+  // them within its first few register writes, long before the CPU has run
+  // far enough to produce a first output sample - measured directly on
+  // this file's own SNES corpus (mario, zelda) at 100.0000% cycle-exact
+  // against both this package's own direct trace and blargg's play-spc, so
+  // whatever that brief reset-byte window does or does not contribute is
+  // identical whether or not this check fires. But a capture that never
+  // mentions EVOLL/EVOLR at all - hand-built, or from any future caller
+  // that does not share the real driver's own write order - would silently
+  // inherit that nonzero reset value for its *entire* run if this check
+  // only watched for a write moving it off zero, never requiring the write
+  // that puts it there in the first place. Requiring both an explicit
+  // zero-write and no write away from zero afterward is what keeps this
+  // check from ever being sound only by omission.
+  let echoNeverAudible = false;
+  {
+    let evolL = 0, evolR = 0, evolLSet = false, evolRSet = false, audible = false;
+    for (const w of writes) {
+      if (w.reg === R_EVOLL) { evolL = w.value & 0xff; evolLSet = true; }
+      else if (w.reg === R_EVOLR) { evolR = w.value & 0xff; evolRSet = true; }
+      else continue;
+      if (evolL !== 0 || evolR !== 0) { audible = true; break; }
+    }
+    echoNeverAudible = evolLSet && evolRSet && !audible;
+  }
+
   // ---- Pass 1: track DIR/ESA/EDL over time, compact the sample directory,
   // and rewrite each SRCN write's value to its compact index in place. ----
   let curDir = resetRegs[R_DIR];
@@ -279,7 +326,13 @@ export function exportSpc(
   // songs never touch) would force a conservative reservation no real song
   // ever needs, since every driver leaves echo disabled until it has set
   // ESA/EDL to their real, intended values (see `driver.ts`'s `powerOn`).
+  // When `echoNeverAudible`, this never records anything at all: the write
+  // stream below forces every emitted FLG write to keep the echo-disable
+  // bit set for the whole capture (and EDL to 0), so no real echo write can
+  // ever happen regardless of ESA/EDL, and the $E000-class reservation this
+  // would otherwise force is dead weight - see the write-remapping below.
   const recordEcho = () => {
+    if (echoNeverAudible) return;
     if (curFlg & FLG_ECHO_DISABLE) return;
     const size = (curEdl & 0x0f) === 0 ? 4 : (curEdl & 0x0f) * 0x800;
     echoFootprints.push({ start: (curEsa & 0xff) * 0x100, size });
@@ -352,6 +405,18 @@ export function exportSpc(
         usedSamples.push({ key, bytes: originalRam.slice(start, (start + length) & 0x1ffff), loopOffset: loopAddr - start, newStart: -1 });
       }
       remapped[i] = { cycle: w.cycle, reg: w.reg, value: index };
+    } else if (echoNeverAudible && w.reg === R_FLG) {
+      // Keep the echo-disable bit set (or set it) on every FLG write this
+      // capture makes, so the real exported player never clears it: with
+      // EVOL provably always zero (`echoNeverAudible`), the only thing that
+      // bit protects here is this export's own reuse of the echo buffer's
+      // address range for real player/sample/stream data, below.
+      remapped[i] = { cycle: w.cycle, reg: w.reg, value: (w.value | FLG_ECHO_DISABLE) & 0xff };
+    } else if (echoNeverAudible && w.reg === R_EDL) {
+      // Dead weight once nothing can ever write through it: 0 is the
+      // smallest declared buffer size, and matches what a fresh capture of
+      // the same dry performance would author from scratch.
+      remapped[i] = { cycle: w.cycle, reg: w.reg, value: 0 };
     } else {
       remapped[i] = w;
     }

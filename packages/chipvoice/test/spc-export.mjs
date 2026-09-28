@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {recordSong, exportSpc, importSpc, SpcExportSizeError} from '../dist/index.js';
+import {readFileSync} from 'node:fs';
+import {recordSong, exportSpc, importSpc, planPerformance, snesChip, SpcExportSizeError} from '../dist/index.js';
 
 /**
  * `exportSpc`, proved against this package's own `importSpc`/SPC700 (the
@@ -110,6 +111,40 @@ function canonicalizeSrcn(writes, dirPage) {
   return out.map((w) => (isSrcn(w.reg) && w.value === -1 ? {...w, value: 0} : w));
 }
 
+const R_FLG = 0x6c;
+const R_EDL = 0x7d;
+const R_EVOLL = 0x2c;
+const R_EVOLR = 0x3c;
+const FLG_ECHO_DISABLE = 0x20;
+
+/** The other compaction `exportSpc` makes (see its own doc comment next to
+ * `R_EVOLL`/`R_EVOLR` in spc-export.ts): a capture whose own writes set
+ * EVOLL and EVOLR to zero, explicitly, and never move either off zero
+ * again has its echo buffer's ARAM footprint reclaimed - every FLG write
+ * gains the echo-disable bit, every EDL write becomes 0. Neither changes
+ * one output sample, since echo is EVOL-scaled and EVOL never leaves zero.
+ * A literal write-for-write comparison has to canonicalize the same way
+ * SRCN already is, or this harmless rewrite reads as a divergence. `SONG`
+ * above plays through the real driver, which does exactly this in dry
+ * space (this package's own default), so the round trip below exercises
+ * it for real, not only the synthetic case check-export.mjs's own copy of
+ * this function also handles. */
+function canonicalizeEcho(writes) {
+  let evolL = 0, evolR = 0, evolLSet = false, evolRSet = false, audible = false;
+  for (const w of writes) {
+    if (w.reg === R_EVOLL) { evolL = w.value & 0xff; evolLSet = true; }
+    else if (w.reg === R_EVOLR) { evolR = w.value & 0xff; evolRSet = true; }
+    else continue;
+    if (evolL !== 0 || evolR !== 0) { audible = true; break; }
+  }
+  if (!(evolLSet && evolRSet && !audible)) return writes;
+  return writes.map((w) => {
+    if (w.reg === R_FLG) return {...w, value: (w.value | FLG_ECHO_DISABLE) & 0xff};
+    if (w.reg === R_EDL) return {...w, value: 0};
+    return w;
+  });
+}
+
 // ---- Round trip: capture -> exportSpc -> importSpc -> our own SPC700. ----
 {
   const capture = recordSong(SONG, {seconds: 3, chip: 'snes'});
@@ -119,7 +154,7 @@ function canonicalizeSrcn(writes, dirPage) {
   const plan = importSpc(file, {seconds: 3});
   const roundTrip = resolveWrites(plan.events.slice(plan.restoreEvents));
   const dirPage = roundTrip.find((w) => w.reg === 0x5d)?.value;
-  const original = canonicalizeSrcn(resolveWrites(capture.events), dirPage);
+  const original = canonicalizeEcho(canonicalizeSrcn(resolveWrites(capture.events), dirPage));
 
   check('every write survives the round trip, none dropped or invented', roundTrip.length === original.length, `${roundTrip.length} of ${original.length}`);
   const n = Math.min(original.length, roundTrip.length);
@@ -171,7 +206,7 @@ function canonicalizeSrcn(writes, dirPage) {
   const plan = importSpc(file, {seconds: 7}); // more than twice the 3s capture
   const roundTrip = resolveWrites(plan.events.slice(plan.restoreEvents));
   const dirPage = roundTrip.find((w) => w.reg === 0x5d)?.value;
-  const original = canonicalizeSrcn(resolveWrites(capture.events), dirPage);
+  const original = canonicalizeEcho(canonicalizeSrcn(resolveWrites(capture.events), dirPage));
 
   check('playback continues well past the first pass instead of stopping', roundTrip.length > original.length, `${roundTrip.length} writes over 7s vs ${original.length} in the first 3s`);
   const secondPass = roundTrip.slice(original.length, original.length + original.length);
@@ -232,6 +267,80 @@ function canonicalizeSrcn(writes, dirPage) {
     error = e;
   }
   check('an echo window over the player/data region throws SpcExportSizeError', error instanceof SpcExportSizeError, error?.message);
+}
+
+// ---- NEXT-24: `mario`'s real arrangement, exported in the default dry
+// space, must fit. The richer factory bank's samples alone pushed its
+// write-stream past the echo buffer's old, fixed $E000 reservation -
+// throwing SpcExportSizeError where the previous, smaller bank fit, a
+// regression, not a tradeoff. `echoNeverAudible` (see its own doc comment
+// next to R_EVOLL/R_EVOLR in spc-export.ts) is what reclaims that
+// reservation once a capture can never make the echo buffer's contents
+// reach a listener, and mario's own dry capture - EVOLL/EVOLR written to 0
+// and never moved off it, same as every dry capture - qualifies. Its round
+// trip must still match the plan it was built from, the same way the
+// synthetic SONG above already does; `canonicalizeEcho` is what keeps that
+// comparison honest once the fix has rewritten FLG/EDL in the export. ----
+{
+  const score = JSON.parse(readFileSync('../../scores/arrangements/mario.json', 'utf8'));
+  const plan = planPerformance(score, snesChip, {allowLoss: true});
+  const cycles = Math.round(plan.seconds * snesChip.spec.clockHz);
+  const loopAtCycle = Math.round(plan.loopStartSeconds * snesChip.spec.clockHz);
+  let file, error;
+  try {
+    file = exportSpc(plan.events, cycles, plan.memory, {title: 'mario', loopAtCycle});
+  } catch (e) {
+    error = e;
+  }
+  check('mario exports in the default dry space without throwing (NEXT-24)', file !== undefined, error?.message);
+
+  const imported = importSpc(file, {seconds: plan.seconds});
+  const roundTrip = resolveWrites(imported.events.slice(imported.restoreEvents));
+  const dirPage = roundTrip.find((w) => w.reg === 0x5d)?.value;
+  const original = canonicalizeEcho(canonicalizeSrcn(resolveWrites(plan.events).filter((w) => w.cycle < cycles), dirPage));
+  check('mario: every write survives the round trip, none dropped or invented', roundTrip.length === original.length, `${roundTrip.length} of ${original.length}`);
+  const n = Math.min(original.length, roundTrip.length);
+  let sequenceOk = true;
+  let maxCycleDiff = 0;
+  for (let i = 0; i < n; i++) {
+    if (original[i].reg !== roundTrip[i].reg || original[i].value !== roundTrip[i].value) { sequenceOk = false; break; }
+    const target = Math.round(original[i].cycle / CYCLES_PER_TICK) * CYCLES_PER_TICK;
+    maxCycleDiff = Math.max(maxCycleDiff, Math.abs(roundTrip[i].cycle - target));
+  }
+  check('mario: same registers and values, in the same order (plays back identical to the direct plan)', sequenceOk);
+  // Same 3-tick bound as the synthetic SONG's own round trip above - see
+  // that check's doc comment for the derivation; a real, longer song does
+  // not change the ceiling, only how often it is approached (see that
+  // comment's own mario/zelda numbers, unaffected by this fix).
+  check('mario: every write lands within 3 ticks of where it was rounded to', maxCycleDiff <= 3 * CYCLES_PER_TICK, `max diff ${maxCycleDiff} cycles (${(maxCycleDiff / CYCLES_PER_TICK).toFixed(2)} ticks)`);
+}
+
+// ---- Negative control, same arrangement: `mario` in "room" space has
+// genuinely audible echo (EVOLL/EVOLR both nonzero - see SPACES.room in
+// chips/snes/driver.ts), so `echoNeverAudible` never fires for it and the
+// old, tighter, echo-reserved ceiling stays in force. Same song, same
+// samples, same everything but the space option - dry fits (just proved
+// above) and room still throws, which is what proves the ceiling was kept
+// because the echo is audible, not because this particular capture merely
+// grew. ----
+{
+  const score = JSON.parse(readFileSync('../../scores/arrangements/mario.json', 'utf8'));
+  const plan = planPerformance(score, snesChip, {allowLoss: true, space: 'room'});
+  const cycles = Math.round(plan.seconds * snesChip.spec.clockHz);
+  const loopAtCycle = Math.round(plan.loopStartSeconds * snesChip.spec.clockHz);
+  let error;
+  try {
+    exportSpc(plan.events, cycles, plan.memory, {title: 'mario (room)', loopAtCycle});
+  } catch (e) {
+    error = e;
+  }
+  check('mario in "room" space (genuinely audible echo) still throws SpcExportSizeError', error instanceof SpcExportSizeError, error?.message);
+  // 57344 ($E000, ESA's own declared page) is the pre-fix ceiling every
+  // song was held to; dry's reclaimed ceiling above is $FFC0 (65472). A
+  // limit at or below the old ceiling is direct evidence the echo window
+  // was kept, not just that this capture happens to be oversized (dry,
+  // built from the identical score, is only 2 bytes smaller and fits).
+  check('the kept ceiling is the old, echo-reserved one, not the reclaimed $FFC0 dry gets', error?.limit <= 57344, `limit ${error?.limit}`);
 }
 
 // ---- The sample directory is compacted: a sample referenced by more than

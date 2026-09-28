@@ -18,6 +18,7 @@ import { ChangeStream } from '../change-stream.mjs';
  *
  *   node src/spc/check-export.mjs [--json <file>] [--sheet <file>] [--report]
  *   node src/spc/check-export.mjs --self-test
+ *   node src/spc/check-export.mjs --space room   # report only; refuses --sheet
  *
  * `--self-test` runs a handful of negative tests (and their positive
  * controls) against synthetic data instead of the real corpus, one set per
@@ -60,6 +61,14 @@ const option = (name, fallback) => {
   return i >= 0 ? args[i + 1] : fallback;
 };
 const flag = (name) => args.includes(`--${name}`);
+/** `--space room` plans and exports the same three arrangements in the
+ * "room" acoustic space instead of the default "dry" (see
+ * `PerformanceOptions.space`) - a report-only override, never the sheet's
+ * own baseline: the published bank exports dry, so the sheet's numbers must
+ * stay about that, but a `SpcExportSizeError`'s bytes-needed/available in
+ * "room" are otherwise only ever hand-guessed, which the numbers-on-sheets
+ * rule (docs/chips/snes.md's own header) exists to prevent. */
+const spaceOption = option('space', undefined);
 
 /** `$F2`/`$F3` pairs resolved to `{cycle, reg, value}` - the same dispatch
  * `check.mjs`'s own copy documents (kept independent for the same reason
@@ -124,6 +133,37 @@ function canonicalizeSrcn(writes, dirPage) {
     return { ...w, value: index };
   });
   return out.map((w) => (isSrcn(w.reg) && w.value === -1 ? { ...w, value: 0 } : w));
+}
+
+const R_FLG = 0x6c;
+const R_EDL = 0x7d;
+const R_EVOLL = 0x2c;
+const R_EVOLR = 0x3c;
+const FLG_ECHO_DISABLE = 0x20;
+
+/** The other compaction `exportSpc` makes (see its own doc comment, next to
+ * `R_EVOLL`/`R_EVOLR`, for the full reasoning): when a capture's own writes
+ * never set EVOLL or EVOLR to anything but zero, the exported file reclaims
+ * the echo buffer's ARAM footprint by forcing every FLG write's
+ * echo-disable bit set and every EDL write to 0 - neither changes one
+ * output sample, since echo is EVOL-scaled and EVOL never leaves zero. A
+ * literal write-for-write comparison has to canonicalize the same way SRCN
+ * already is, or this harmless, audio-preserving rewrite reads as a
+ * divergence. Applied to both sides: a no-op on the already-rewritten
+ * export, and the same rewrite `exportSpc` itself would make on the plan. */
+function canonicalizeEcho(writes) {
+  let evolL = 0, evolR = 0, everAudible = false;
+  for (const w of writes) {
+    if (w.reg === R_EVOLL) evolL = w.value & 0xff;
+    else if (w.reg === R_EVOLR) evolR = w.value & 0xff;
+    if (evolL !== 0 || evolR !== 0) { everAudible = true; break; }
+  }
+  if (everAudible) return writes;
+  return writes.map((w) => {
+    if (w.reg === R_FLG) return { ...w, value: (w.value | FLG_ECHO_DISABLE) & 0xff };
+    if (w.reg === R_EDL) return { ...w, value: 0 };
+    return w;
+  });
 }
 
 function compareWrites(ours, oracle) {
@@ -486,7 +526,7 @@ function measureArenaUsed(file) {
 
 async function checkOne(id) {
   const score = JSON.parse(fs.readFileSync(path.join(ARRANGEMENTS_DIR, `${id}.json`), 'utf8'));
-  const plan = planPerformance(score, snesChip, { allowLoss: true });
+  const plan = planPerformance(score, snesChip, { allowLoss: true, ...(spaceOption ? { space: spaceOption } : {}) });
   const cycles = Math.round(plan.seconds * snesChip.spec.clockHz);
   const loopAtCycle = Math.round(plan.loopStartSeconds * snesChip.spec.clockHz);
 
@@ -521,9 +561,9 @@ async function checkOne(id) {
   // after the plan's own last tick - see its own doc comment); the plan
   // side of this comparison needs the same filter to compare like with
   // like.
-  const importedWrites = resolveWrites(imported.events.slice(imported.restoreEvents));
+  const importedWrites = canonicalizeEcho(resolveWrites(imported.events.slice(imported.restoreEvents)));
   const dirPage = importedWrites.find((w) => w.reg === 0x5d)?.value;
-  const planWrites = canonicalizeSrcn(resolveWrites(plan.events).filter((w) => w.cycle < cycles), dirPage);
+  const planWrites = canonicalizeEcho(canonicalizeSrcn(resolveWrites(plan.events).filter((w) => w.cycle < cycles), dirPage));
   const roundTripWrites = compareWrites(importedWrites, planWrites);
   // The round trip's own timing gate (item 3): how far the file actually
   // places each write from the tick exportSpc rounded it to, measured live
@@ -865,6 +905,9 @@ if (jsonPath) {
   fs.writeFileSync(jsonPath, JSON.stringify(summary, null, 2) + '\n');
 }
 const sheetPath = option('sheet', null);
+if (sheetPath && spaceOption && spaceOption !== 'dry') {
+  throw new Error(`--sheet regenerates docs/chips/snes.md's own dry-mode baseline; --space ${spaceOption} would write numbers for a space the published bank does not export in. Run --space room without --sheet for a report.`);
+}
 if (sheetPath) writeSheet(sheetPath, summary);
 
 process.exit(anyDivergence && !flag('report') ? 1 : 0);
