@@ -4,7 +4,7 @@
 # clock: 1789773
 # cycles: 1034616
 # source: src/corpus/generate-ay8910.mjs
-# notes: Channel A's tone generator alone (noise off on A, B and C fully DAC-silenced at volume 0) through seven periods spanning the 12-bit range, each its own run past the gap - Ayumi's `update_tone` restarts a fresh phase at every reset the same discrete way this core's own `toneCounter` does, so this is gated exact against it; Game_Music_Emu's `Ay_Apu` carries a delta forward from its own reset default instead (decision 47), so this is `--report` only against it.
+# notes: Channel A's tone generator alone (noise off on A, B and C fully DAC-silenced at volume 0) through seven periods spanning the 12-bit range, each its own run past the gap - Ayumi's `update_tone` restarts a fresh phase at every reset the same discrete way this core's own `toneCounter` does, so this is gated exact against it; Game_Music_Emu's `Ay_Apu` carries a delta forward from its own reset default instead (decision 48), so this is `--report` only against it.
 0 0007 3E
 0 0008 0F
 0 0009 00

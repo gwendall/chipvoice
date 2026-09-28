@@ -24,13 +24,14 @@ import {
  *
  * `packages/conform`'s `check:ay8910-core`/`check:ay8910-core-gme`/
  * `check:ay8910-edge` are the register-log comparisons against Ayumi and
- * Game_Music_Emu's `Ay_Apu` (`docs/DECISIONS.md`'s decision 47 records which
+ * Game_Music_Emu's `Ay_Apu` (`docs/DECISIONS.md`'s decision 48 records which
  * oracle is trusted for which feature); this file pins the documented facts
  * a harness run alone would not show as clearly - the mixer's AND-gate
  * convention, the DAC-mode identity, the envelope's 16 shapes, the noise
- * LFSR's Galois-form period, the 5B's own $C000/$E000 port decode including
- * the DDDD-disable latch - and proves the combined chip's own logarithmic
- * mixing math and its seam with the plain 2A03 behave as documented.
+ * LFSR's Fibonacci-form period, the 5B's own $C000/$E000 port decode
+ * including the DDDD-disable latch - and proves the combined chip's own
+ * logarithmic mixing math and its seam with the plain 2A03 behave as
+ * documented.
  */
 let failures = 0;
 const check = (n, ok, extra = '') => {
@@ -179,26 +180,53 @@ check('Ay8910 reports its three voices in order', AY8910_VOICES.join(',') === 'a
 
 // ---------------------------------------------------------- noise LFSR
 
-// Nesdev's own text: "a 17-bit linear feedback shift register with taps at
-// bits 16 and 13" - taken literally (shift right, XOR the bit shifted out
-// into both tapped positions) this is the Galois form `ay8910.ts`'s `tick()`
-// implements; `docs/DECISIONS.md`'s decision 47 records why this and not the
-// Fibonacci form Ayumi uses. This reference recurrence is the same formula,
-// written independently here rather than imported, so this test is a real
-// check against the class and not a tautology against its own source.
-function galoisNoiseShift(lfsr) {
-  const feedback = lfsr & 1;
-  return (lfsr >>> 1) ^ (feedback ? 0x12000 : 0);
+// The reference recurrence is MAME's `noise_rng_tick()`/`noise_output()`
+// (`src/devices/sound/ay8910.h`, licence BSD-3-Clause, Couriersud - cited,
+// not copied: this is a hand-written restatement of the same formula, not
+// an import of MAME source), the one source this project found that claims
+// a hardware check on this generator: "The Random Number Generator of the
+// 8910 is a 17-bit shift register. The input to the shift register is bit0
+// XOR bit3 (bit0 is the output). This was verified on AY-3-8910 and YM2149
+// chips." In code: `m_rng = (m_rng >> 1) | ((BIT(m_rng, 0) ^ BIT(m_rng, 3))
+// << 16); noise_output() { return m_rng & 1; }` - a Fibonacci-form shift
+// register, matched independently by Ayumi's own `update_noise`
+// (`oracles/ayumi/ayumi.c`). `docs/DECISIONS.md`'s decision 48 records that
+// an earlier version of this file instead took nesdev's "taps at bits 16
+// and 13" as a Galois-form construction, which review found unsupported:
+// "taps" is Fibonacci vocabulary, and the only oracle that shared the
+// Galois reading (Game_Music_Emu's `Ay_Apu`) carries no hardware-verified
+// citation for it. This test is a real check against the class, not a
+// tautology against its own source: the formula below is written
+// independently here rather than imported from `ay8910.ts`.
+function fibonacciNoiseShift(lfsr) {
+  const bit0x3 = (lfsr ^ (lfsr >> 3)) & 1;
+  return (lfsr >>> 1) | (bit0x3 << 16);
 }
 
 {
   let lfsr = 1;
   let period = 0;
   do {
-    lfsr = galoisNoiseShift(lfsr);
+    lfsr = fibonacciNoiseShift(lfsr);
     period++;
   } while (lfsr !== 1 && period < 200000);
-  check('the reference Galois recurrence from seed 1 is maximal-length: period 2^17 - 1 = 131071', period === 131071, `period ${period}`);
+  check('the reference Fibonacci recurrence from seed 1 is maximal-length: period 2^17 - 1 = 131071', period === 131071, `period ${period}`);
+}
+
+{
+  // Pins the first 64 output bits of the sequence from seed 1, the exact
+  // numbers MAME's formula produces - not just the period - so a future
+  // change to this generator has to reproduce the documented bit pattern,
+  // not merely a same-length cycle.
+  const expectedFirst64 =
+    '0000000000000000100000000000001001000000000010000010000000100100';
+  let lfsr = 1;
+  let bits = '';
+  for (let k = 0; k < 64; k++) {
+    lfsr = fibonacciNoiseShift(lfsr);
+    bits += (lfsr & 1) ? '1' : '0';
+  }
+  check('the reference Fibonacci sequence matches MAME\'s formula for its first 64 output bits', bits === expectedFirst64.slice(0, 64), bits);
 }
 
 {
@@ -224,11 +252,11 @@ function galoisNoiseShift(lfsr) {
   let matches = true;
   let lfsr = 1;
   for (let k = 0; k < shifts; k++) {
-    lfsr = galoisNoiseShift(lfsr);
+    lfsr = fibonacciNoiseShift(lfsr);
     const expected = (lfsr & 1) ? 31 : 0;
     if (values[2 * k + 1] !== expected) { matches = false; break; }
   }
-  check(`the chip's own noise generator reproduces the reference Galois sequence for its entire ${shifts}-shift period`, matches);
+  check(`the chip's own noise generator reproduces the reference Fibonacci sequence for its entire ${shifts}-shift period`, matches);
   check('the LFSR returns to its seed exactly at the end of one full period, not before', lfsr === 1);
 }
 

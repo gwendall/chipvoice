@@ -15,25 +15,21 @@ import { traceProcess } from '../change-stream.mjs';
  * the same units as `chipAy8910` (`src/chips/ay8910.mjs`) - unlike
  * Game_Music_Emu's `Ay_Apu`, nothing here goes through a DAC curve first.
  *
- * Known limits:
- *
- * - **The noise generator's LFSR does not match this oracle's own tone,
- *   mixer or envelope generators' level of trust.** Ayumi's `update_noise`
- *   (`ayumi.c`) computes its 17-bit LFSR as `(bit0 ^ bit3) -> bit16`
- *   (Fibonacci form). Nesdev's Sunsoft 5B audio page states the real
- *   generator as "a 17-bit linear feedback shift register with taps at
- *   bits 16 and 13", and taken literally that is a Galois-form
- *   construction (XOR the feedback into both tapped bits directly), which
- *   `Ay8910`'s own noise generator (`chips/ay8910.ts`) now implements,
- *   corroborated by Game_Music_Emu's `Ay_Apu` using the identical formula
- *   independently. An exhaustive search found no relabelling of Ayumi's
- *   Fibonacci form that reproduces the Galois form's sequence, so this is
- *   a genuine disagreement between two independent, otherwise-trusted
- *   references, not a bug in either one's engineering - see
- *   `docs/chips/sunsoft5b.md`'s "where oracles disagree". Noise-bearing
- *   corpus is run against this oracle with `--report`, never gated exact;
- *   everything else (tone, mixer/gate, fixed volume, envelope) is gated
- *   exact, since none of those depend on the noise generator.
+ * No known limits: this is the fully-trusted oracle for every generator,
+ * including the noise LFSR. Ayumi's `update_noise` (`ayumi.c`) computes its
+ * 17-bit LFSR as `(bit0 ^ bit3) -> bit16` (Fibonacci form), and `Ay8910`'s
+ * own noise generator (`chips/ay8910.ts`'s `tick()`) now implements the same
+ * construction - MAME's own `noise_rng_tick()` states it was "verified on
+ * AY-3-8910 and YM2149 chips", the one source this project found that
+ * claims a hardware check on this generator, and Ayumi's independent
+ * implementation matches it exactly (`docs/DECISIONS.md`'s decision 48).
+ * An earlier version of `Ay8910` instead read nesdev's "taps at bits 16 and
+ * 13" as a Galois-form construction and disagreed with this oracle's noise
+ * sequence entirely; that reading turned out to be wrong on review, not a
+ * genuine disagreement between two otherwise-trusted references - see
+ * `docs/chips/sunsoft5b.md`'s "where oracles disagree" for the full account.
+ * The entire corpus, including every noise-bearing script, is gated exact
+ * against this oracle now.
  */
 const DIR = path.dirname(fileURLToPath(new URL('../../oracles/ayumi/main.cpp', import.meta.url)));
 const BINARY = path.join(DIR, 'build', 'ayumi-oracle');
@@ -44,7 +40,7 @@ export const ayumi = {
   id: 'ayumi',
   name: 'Ayumi',
   voices: ['a', 'b', 'c'],
-  /** Everything but noise-bearing logs; see the module doc comment above. */
+  /** Every voice, every generator; see the module doc comment above. */
   trusted: ['a', 'b', 'c'],
 
   build() {

@@ -73,6 +73,7 @@
 // ticket writes has no AY/YM distinction of its own.
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 

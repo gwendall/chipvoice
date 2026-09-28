@@ -4,7 +4,7 @@
 # clock: 1789773
 # cycles: 18000
 # source: src/corpus/generate-ay8910.mjs
-# notes: Channel A with its tone generator running AND its envelope enabled together - the realistic combined case a driver would actually use - B and C DAC-silenced. `--report` against both oracles: it inherits Game_Music_Emu's tone-timing offset (decision 47) on top of its amplitude table having no envelope curve, and Ayumi's own tone/envelope generators are independently trusted but this combination is not separately proven exact here, only each half is (`tone-sweep`, `envelope-shapes`).
+# notes: Channel A with its tone generator running AND its envelope enabled together - the realistic combined case a driver would actually use - B and C DAC-silenced. Gated exact against Ayumi: its own tone and envelope generators are each independently trusted (`tone-sweep`, `envelope-shapes`), and this combination measures exact too, no separate correction needed. `--report` only against Game_Music_Emu: it inherits that oracle's tone-timing offset (decision 48) on top of its amplitude table having no envelope curve.
 0 0007 3E
 0 0009 00
 0 000A 00

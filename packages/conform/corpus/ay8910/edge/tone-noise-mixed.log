@@ -4,7 +4,7 @@
 # clock: 1789773
 # cycles: 196978
 # source: src/corpus/generate-ay8910.mjs
-# notes: Channel A with both its tone and noise generators running together (mixer's AND-gate combining them), B and C DAC-silenced - the one combination this ticket's own investigation found breaks length-for-length against Game_Music_Emu even under the tone-only and noise-only offsets' own settle convention (see decision 47), and inherits Ayumi's noise-form disagreement besides, so this is `--report` against both.
+# notes: Channel A with both its tone and noise generators running together (mixer's AND-gate combining them), B and C DAC-silenced - gated exact against Ayumi, which restarts both generators' phases cleanly at each write the same discrete way this core does, noise included (decision 48). It is `--report` only against Game_Music_Emu: the one combination this ticket's own investigation found breaks length-for-length even under the tone-only and noise-only offsets' own settle convention, on top of that oracle's own Galois-form noise LFSR (`oracles/game-music-emu-ay.mjs`'s own "known limits").
 0 0007 36
 0 0008 0F
 0 0009 00

@@ -235,16 +235,17 @@ jobs:
       # DAC mode - the one path with no known disagreement between the two
       # oracles) is held to a literal 100% against both. `edge` (tone, noise
       # and the envelope actually running) is exact against Ayumi on the
-      # four scripts with no known disagreement; the three that exercise the
-      # noise generator are report-only against both oracles, since Ayumi
-      # and Game_Music_Emu use provably different 17-bit LFSR constructions
-      # there (decision 47), and Game_Music_Emu's own tone/noise timing also
-      # carries a phase delta forward from its reset default rather than
-      # restarting cleanly at a write.
+      # full corpus: the noise generator's 17-bit LFSR is the Fibonacci form
+      # (decision 48; MAME's own hardware-verified construction, which
+      # Ayumi shares), not the Galois form an earlier version of this ticket
+      # used. `edge` stays report-only against Game_Music_Emu throughout,
+      # since its own tone/noise timing carries a phase delta forward from
+      # its reset default rather than restarting cleanly at a write, and it
+      # still uses the Galois form for noise, undocumented as hardware-
+      # verified on that point.
       - run: pnpm --filter chipvoice-conform check:ay8910-core
       - run: pnpm --filter chipvoice-conform check:ay8910-core-gme
       - run: pnpm --filter chipvoice-conform check:ay8910-edge
-      - run: pnpm --filter chipvoice-conform check:ay8910-edge-report
       - run: pnpm --filter chipvoice-conform check:ay8910-edge-gme-report
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform check:sameboy

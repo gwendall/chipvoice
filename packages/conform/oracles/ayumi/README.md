@@ -35,44 +35,39 @@ them. The harness builds it with the system C++ compiler on first use, into
 
 ## Known limits of this oracle
 
-- **The noise generator's 17-bit LFSR is a different, provably
-  non-equivalent construction from this core's own.** Ayumi's
-  `update_noise` computes one new bit, `bit0 ^ bit3`, and inserts it at bit
-  16 - a Fibonacci-form LFSR. Nesdev's Sunsoft 5B audio page states the real
-  generator only as "a 17-bit linear feedback shift register with taps at
-  bits 16 and 13," and taken literally - XOR the shifted-out bit into both
-  tapped positions directly - that is a Galois-form construction instead,
-  which `Ay8910`'s own noise generator now implements
-  (`packages/chipvoice/src/chips/ay8910.ts`'s `tick()`), corroborated by
-  Game_Music_Emu's independently-written `Ay_Apu` using the identical
-  Galois formula. `docs/DECISIONS.md`'s decision 47 records the exhaustive
-  search this project ran (every insertion bit, every XOR tap, every output
-  bit) that found no relabelling of Ayumi's form reproducing the Galois
-  form's sequence - two real, independent references, genuinely
-  disagreeing, not a bug in either one's own engineering. Any corpus script
-  whose gate depends on the noise generator (`corpus/ay8910/edge/noise-sweep.log`,
-  `tone-noise-mixed.log`, and two of `gate-toggle.log`'s four runs) is
-  `--report` only against this oracle, never gated exact.
-- **Tone, mixer/gate, fixed volume and the envelope generator have no known
-  disagreement and are gated exact.** Ayumi's `update_tone` restarts a
-  fresh phase at every register write's next reload the same discrete,
-  counter-vs-threshold way `Ay8910`'s own `toneCounter` does (no
-  delta-carry complexity to reconcile, unlike Game_Music_Emu's `Ay_Apu` -
-  see `oracles/game-music-emu-ay.mjs`'s own "known limits"), and the
-  envelope table (`ayumi.c`'s `Envelopes[16][2]`/`reset_segment`) was
-  cross-checked against `Ay8910`'s own `ENVELOPE_SHAPES` table before either
-  was trusted (`ay8910.ts`'s own class doc comment) - `corpus/ay8910/core`
-  (DAC-mode only) and the tone/envelope logs in `corpus/ay8910/edge` all
-  measure 100% identical against this oracle with no settling and no
-  constant shift needed.
+None found. This is the fully-trusted oracle for every generator on this
+chip, including the noise LFSR. Ayumi's `update_noise` computes one new
+bit, `bit0 ^ bit3`, and inserts it at bit 16 - a Fibonacci-form LFSR -
+matching MAME's own `noise_rng_tick()` (`src/devices/sound/ay8910.h`,
+licence BSD-3-Clause, Couriersud), the one source this project found that
+states this construction was "verified on AY-3-8910 and YM2149 chips."
+`Ay8910`'s own noise generator (`packages/chipvoice/src/chips/ay8910.ts`'s
+`tick()`) now implements the same construction. `docs/DECISIONS.md`'s
+decision 48 records that an earlier version of this ticket instead read
+nesdev's "taps at bits 16 and 13" as a Galois-form construction (XOR the
+shifted-out bit into both tapped positions directly) and, on review, that
+reading was wrong: "taps" is Fibonacci vocabulary, and the only source that
+shared the Galois reading (Game_Music_Emu's `Ay_Apu`) carries no
+hardware-verified citation for it. Tone, mixer/gate, fixed volume, the
+envelope generator and now the noise generator all measure 100% identical
+against this oracle with no settling and no constant shift needed - Ayumi's
+`update_tone` restarts a fresh phase at every register write's next reload
+the same discrete, counter-vs-threshold way `Ay8910`'s own `toneCounter`
+does (no delta-carry complexity to reconcile, unlike Game_Music_Emu's
+`Ay_Apu` - see `oracles/game-music-emu-ay.mjs`'s own "known limits"), and
+the envelope table (`ayumi.c`'s `Envelopes[16][2]`/`reset_segment`) was
+cross-checked against `Ay8910`'s own `ENVELOPE_SHAPES` table before either
+was trusted (`ay8910.ts`'s own class doc comment).
 
 ## A second oracle
 
 Game_Music_Emu's `Ay_Apu` (`oracles/game-music-emu-ay.mjs`,
 `oracles/game-music-emu/README.md`'s own "AY-3-8910/YM2149 (`Ay_Apu`)"
-section) is the other oracle for this core. The two are trusted for
-different, non-overlapping features rather than one simply outranking the
-other everywhere - `docs/DECISIONS.md`'s decision 47 is the record of which
-is which and why, written specifically so a later ticket (an MSX AY-3-8910
-host, or the YM2203/2608's SSG half - both named as future hosts in
-`ay8910.ts`'s own class doc comment) does not have to re-derive it.
+section) is the other oracle for this core. It corroborates `core` (DAC
+mode, gated exact against both), but is report-only on `edge`: its own
+noise LFSR is the Galois form, undocumented as hardware-verified, and its
+own tone/noise timing carries a settle-dependent offset -
+`docs/DECISIONS.md`'s decision 48 is the record of both, written
+specifically so a later ticket (an MSX AY-3-8910 host, or the YM2203/2608's
+SSG half - both named as future hosts in `ay8910.ts`'s own class doc
+comment) does not have to re-derive it.

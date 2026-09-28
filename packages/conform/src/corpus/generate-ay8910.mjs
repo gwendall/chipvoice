@@ -14,7 +14,7 @@ import { formatLog } from '../log.mjs';
  * `packages/chipvoice/test/sunsoft5b.mjs`), and every log's clock is the
  * NES's own 1789773 Hz, since the only host this ticket adds rides that bus.
  *
- * `docs/DECISIONS.md`'s decision 47 records why the corpus below is split
+ * `docs/DECISIONS.md`'s decision 48 records why the corpus below is split
  * into `core/` and `edge/` on a stricter line than VRC6's own duty/period
  * split: `core/` is DAC-mode only (every channel's mixer bits 0-2 AND 3-5
  * both set, tone and noise generators both bypassed - `Ay8910.outputs`'s own
@@ -22,10 +22,13 @@ import { formatLog } from '../log.mjs';
  * channel's output is its volume register alone, sampled once a prescaled
  * tick), the one category measured exact and with no settling against both
  * oracles with zero offset. `edge/` is everything with a tone or noise
- * generator actually running - gated exact against Ayumi where it has no
- * known disagreement, `--report` everywhere the oracle's own timing model or
- * the AY_AMP_TABLE.map (`chips/ay8910.mjs`'s own comment) makes an exact
- * claim meaningless rather than false.
+ * generator actually running - gated exact against Ayumi on the full corpus
+ * (decision 48 resolved the one disagreement that used to carve three
+ * noise-touching scripts out of that gate: this core's noise LFSR now uses
+ * the same Fibonacci-form construction Ayumi does), `--report` everywhere
+ * the second oracle's own timing model or the AY_AMP_TABLE.map
+ * (`chips/ay8910.mjs`'s own comment) makes an exact claim meaningless rather
+ * than false.
  */
 const CLOCK = 1789773;
 const OUT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'corpus', 'ay8910');
@@ -99,8 +102,8 @@ function scriptLog({ name, notes, writes }) {
  * settling: `mixer` is written `DAC_ALL` once per script and never touched
  * again, so every channel's gate is `1` for the log's whole duration and its
  * output is its own volume register, sampled every prescaled tick - nothing
- * here depends on the tone divider's phase, the noise LFSR's form (Galois
- * vs Fibonacci, decision 47), or either oracle's own timing model.
+ * here depends on the tone divider's phase, the noise LFSR's form (Fibonacci,
+ * decision 48), or either oracle's own timing model.
  */
 const CORE_SCRIPTS = [
   {
@@ -185,12 +188,18 @@ const CORE_SCRIPTS = [
 
 /**
  * `edge/` - a tone or noise generator actually runs. Gated exact against
- * Ayumi except where noted; `--report` against Game_Music_Emu's `Ay_Apu`
- * throughout (decision 47: its own tone/noise timing carries a settle-
- * dependent offset this ticket declined to bake in as a correction, and its
+ * Ayumi on the whole corpus, including the three scripts that exercise the
+ * noise generator: decision 48 found this core's own LFSR construction was
+ * the wrong one (Galois, not Fibonacci), fixed it, and Ayumi's own
+ * Fibonacci-form `update_noise` (`oracles/ayumi/ayumi.c`) now agrees exactly.
+ * `--report` against Game_Music_Emu's `Ay_Apu` throughout instead of gated:
+ * that oracle's own tone/noise timing carries a settle-dependent offset this
+ * ticket declined to bake in as a correction (decision 48), it still uses
+ * the Galois form for noise (undocumented as hardware-verified on that
+ * point, unlike the Fibonacci form - see `ay8910.ts`'s `tick()`), and its
  * amplitude-table comparison - `chips/ay8910.mjs`'s `ay8910-gme-amp` - has
  * no envelope curve at all, so an envelope-bearing script's numbers against
- * it are expected to be poor; that is recorded, not hidden).
+ * it are expected to be poor; that is recorded, not hidden.
  */
 const CORE_OUT = path.join(OUT, 'core');
 const EDGE_OUT = path.join(OUT, 'edge');
@@ -198,7 +207,7 @@ const EDGE_OUT = path.join(OUT, 'edge');
 const EDGE_SCRIPTS = [
   {
     name: 'tone-sweep',
-    notes: "Channel A's tone generator alone (noise off on A, B and C fully DAC-silenced at volume 0) through seven periods spanning the 12-bit range, each its own run past the gap - Ayumi's `update_tone` restarts a fresh phase at every reset the same discrete way this core's own `toneCounter` does, so this is gated exact against it; Game_Music_Emu's `Ay_Apu` carries a delta forward from its own reset default instead (decision 47), so this is `--report` only against it.",
+    notes: "Channel A's tone generator alone (noise off on A, B and C fully DAC-silenced at volume 0) through seven periods spanning the 12-bit range, each its own run past the gap - Ayumi's `update_tone` restarts a fresh phase at every reset the same discrete way this core's own `toneCounter` does, so this is gated exact against it; Game_Music_Emu's `Ay_Apu` carries a delta forward from its own reset default instead (decision 48), so this is `--report` only against it.",
     writes: (() => {
       const w = writer();
       w.write(REG.mixer, mixer({ toneA: true }));
@@ -214,7 +223,7 @@ const EDGE_SCRIPTS = [
   },
   {
     name: 'noise-sweep',
-    notes: "Channel A's noise generator alone (tone off on A, B and C fully DAC-silenced) through ten periods, including the small values (1-3) where the 17-bit LFSR's Galois-vs-Fibonacci choice (decision 47) is most visible cycle to cycle. Ayumi's own noise generator uses the Fibonacci form and disagrees with this core's Galois form by construction (`oracles/ayumi.mjs`'s own \"known limits\"), so noise-bearing logs are `--report` against BOTH oracles, never gated exact against either - there is no oracle here trusted for this one generator.",
+    notes: "Channel A's noise generator alone (tone off on A, B and C fully DAC-silenced) through ten periods, including the small values (1-3) where the 17-bit LFSR's exact bit sequence is most visible cycle to cycle. This core's own LFSR is now the Fibonacci form (decision 48), matching Ayumi's `update_noise` exactly, so this is gated exact against it; Game_Music_Emu's `Ay_Apu` still uses the Galois form (`oracles/game-music-emu-ay.mjs`'s own \"known limits\") and disagrees by construction, so this stays `--report` only against it.",
     writes: (() => {
       const w = writer();
       w.write(REG.mixer, mixer({ noiseA: true }));
@@ -230,7 +239,7 @@ const EDGE_SCRIPTS = [
   },
   {
     name: 'tone-noise-mixed',
-    notes: "Channel A with both its tone and noise generators running together (mixer's AND-gate combining them), B and C DAC-silenced - the one combination this ticket's own investigation found breaks length-for-length against Game_Music_Emu even under the tone-only and noise-only offsets' own settle convention (see decision 47), and inherits Ayumi's noise-form disagreement besides, so this is `--report` against both.",
+    notes: "Channel A with both its tone and noise generators running together (mixer's AND-gate combining them), B and C DAC-silenced - gated exact against Ayumi, which restarts both generators' phases cleanly at each write the same discrete way this core does, noise included (decision 48). It is `--report` only against Game_Music_Emu: the one combination this ticket's own investigation found breaks length-for-length even under the tone-only and noise-only offsets' own settle convention, on top of that oracle's own Galois-form noise LFSR (`oracles/game-music-emu-ay.mjs`'s own \"known limits\").",
     writes: (() => {
       const w = writer();
       w.write(REG.mixer, mixer({ toneA: true, noiseA: true }));
@@ -307,7 +316,7 @@ const EDGE_SCRIPTS = [
   },
   {
     name: 'envelope-and-tone',
-    notes: "Channel A with its tone generator running AND its envelope enabled together - the realistic combined case a driver would actually use - B and C DAC-silenced. `--report` against both oracles: it inherits Game_Music_Emu's tone-timing offset (decision 47) on top of its amplitude table having no envelope curve, and Ayumi's own tone/envelope generators are independently trusted but this combination is not separately proven exact here, only each half is (`tone-sweep`, `envelope-shapes`).",
+    notes: "Channel A with its tone generator running AND its envelope enabled together - the realistic combined case a driver would actually use - B and C DAC-silenced. Gated exact against Ayumi: its own tone and envelope generators are each independently trusted (`tone-sweep`, `envelope-shapes`), and this combination measures exact too, no separate correction needed. `--report` only against Game_Music_Emu: it inherits that oracle's tone-timing offset (decision 48) on top of its amplitude table having no envelope curve.",
     writes: (() => {
       const w = writer();
       w.write(REG.mixer, mixer({ toneA: true }));

@@ -610,26 +610,11 @@
             "firstDivergence": null
           },
           {
-            "marker": "parity-edge-ayumi-report",
+            "marker": "parity-edge-ayumi",
             "oracle": "Ayumi",
             "files": 7,
             "cycles": 1893115,
-            "identical": 1797970,
-            "diverging": 3,
-            "firstDivergence": {
-              "file": "gate-toggle",
-              "cycle": 71590,
-              "voice": "a",
-              "ours": 0,
-              "theirs": 27
-            }
-          },
-          {
-            "marker": "parity-edge-ayumi",
-            "oracle": "Ayumi",
-            "files": 4,
-            "cycles": 1493880,
-            "identical": 1493880,
+            "identical": 1893115,
             "diverging": 0,
             "firstDivergence": null
           },
@@ -638,7 +623,7 @@
             "oracle": "Game_Music_Emu (Ay_Apu)",
             "files": 7,
             "cycles": 1893115,
-            "identical": 1402887,
+            "identical": 1407646,
             "diverging": 7,
             "firstDivergence": {
               "file": "envelope-and-tone",

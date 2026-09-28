@@ -23,9 +23,10 @@ import { ChangeStream } from '../src/change-stream.mjs';
  * the corrupted one. There is no `check:ay8910-flat-*`-style mutated-oracle
  * test here: unlike VRC6's pulse duty (`Vrc6Pulse.h`'s "chipvoice patch"),
  * nothing in either oracle here was patched to match this core - decision
- * 47 exists precisely because that patching was rejected as an option for
- * the noise LFSR disagreement, so there is no convention-mapping line to
- * prove the gate depends on.
+ * 48 exists precisely because that patching was rejected as an option when
+ * this core's own noise LFSR construction turned out to be the one that
+ * needed fixing, not either oracle, so there is no convention-mapping line
+ * to prove the gate depends on.
  */
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 

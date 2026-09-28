@@ -20,7 +20,7 @@ driver. The method behind every section is in
 | | |
 | --- | --- |
 | **Machine** | NES, Famicom (Sunsoft 5B mapper - nesdev: "this audio hardware was only used in one game," Gimmick!) |
-| **Status** | **in progress**: measured against two independent oracles, Peter Sovietov's Ayumi and Game_Music_Emu's `Ay_Apu`, neither ported (decision 41). `core` (DAC-mode-only, both generators bypassed on every channel) gates at a literal 100 % against both. `edge` (tone, noise and the envelope actually running) gates exactly against Ayumi wherever it has no known disagreement (tone, mixer/gate, fixed volume, the envelope), and is report-only against Ayumi and against Game_Music_Emu wherever the corpus exercises the noise generator (decision 47: a genuine, independently-corroborated disagreement between the two oracles' own 17-bit LFSR construction) or either oracle's own documented timing quirks. No driver or arranger reaches it yet |
+| **Status** | **in progress**: measured against two independent oracles, Peter Sovietov's Ayumi and Game_Music_Emu's `Ay_Apu`, neither ported (decision 41). `core` (DAC-mode-only, both generators bypassed on every channel) gates at a literal 100 % against both. `edge` (tone, noise and the envelope actually running) gates exactly against Ayumi on the full corpus, and is report-only against Game_Music_Emu, whose own tone/noise timing carries a settle-dependent offset (see "Known deviations"). The noise generator's 17-bit LFSR is the Fibonacci form (decision 48): MAME's own hardware-verified construction, which Ayumi shares and this core now implements, after an earlier version of this ticket wrongly took nesdev's "taps at bits 16 and 13" as the Galois form Game_Music_Emu happens to use instead. No driver or arranger reaches it yet |
 | **Core** | written from nesdev's "Sunsoft 5B audio" page and General Instrument's AY-3-8910/8912/8913 datasheet: the standalone digital chip in `packages/chipvoice/src/chips/ay8910.ts`, the Sunsoft 5B's two-port shim in `chips/nes/sunsoft5b.ts`, the combined `2a03-sunsoft5b` cartridge chip and its mixing stage in `chips/nes/sunsoft5b-core.ts` |
 | **Licence of the core** | MIT, like the rest of the package. Both oracles live in the harness only, never ported (decision 41): Ayumi is MIT; Game_Music_Emu's `Ay_Apu` is LGPL, the same vendored tree the VRC6 and 2A03 sheets already use |
 | **Sheet updated** | 2026-09-28, by hand and by `conform` |
@@ -42,13 +42,15 @@ line than VRC6's own:
   region with no known disagreement of any kind.
 - **`edge`** ([`packages/conform/corpus/ay8910/edge`](../../packages/conform/corpus/ay8910/edge)):
   tone, noise and the envelope actually running. Gated exactly against Ayumi
-  on the four scripts with no known disagreement (tone sweeps, envelope
-  periods and shapes, envelope-and-tone together); `--report` only against
-  Ayumi on the three that exercise the noise generator
-  (`noise-sweep`, `tone-noise-mixed`, `gate-toggle`), and `--report` only
-  against Game_Music_Emu on every `edge` script, since that oracle's own
-  tone/noise timing carries a phase delta forward from its own reset default
-  rather than restarting cleanly at a write (see "Known deviations" below).
+  on the full seven-script corpus, noise-bearing scripts included: decision
+  48 found this core's own noise LFSR construction was the wrong one
+  (Galois, not Fibonacci), fixed it, and Ayumi's own Fibonacci-form
+  `update_noise` now agrees exactly, with no settling needed anywhere in
+  `edge`. `--report` only against Game_Music_Emu on every `edge` script
+  instead of gated, for two reasons: that oracle's own tone/noise timing
+  carries a phase delta forward from its own reset default rather than
+  restarting cleanly at a write, and its own noise LFSR is still the Galois
+  form, undocumented as hardware-verified (see "Known deviations" below).
 
 The numbers between each pair of markers are written by the harness (`pnpm
 --filter chipvoice-conform baseline:ay8910-*`, one script per table below);
@@ -105,7 +107,7 @@ Written by `conform` on 2026-09-28, against Game_Music_Emu (Ay_Apu), on a, b, c.
 | mixer-upper-bits | 100.0000 % | none | a 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 <!-- core-game-music-emu-ay:end -->
 
-### Edge scripts, against Ayumi (exact gate on 4 of 7)
+### Edge scripts, against Ayumi (exact gate, full corpus)
 
 <!-- edge-ayumi:begin -->
 Written by `conform` on 2026-09-28, against Ayumi, on a, b, c.
@@ -113,8 +115,8 @@ Written by `conform` on 2026-09-28, against Ayumi, on a, b, c.
 | | |
 | --- | --- |
 | Oracle | Ayumi |
-| Corpus | 4 logs, 1493880 cycles |
-| Identical cycles | 1493880 / 1493880 (100.0000 %) |
+| Corpus | 7 logs, 1893115 cycles |
+| Identical cycles | 1893115 / 1893115 (100.0000 %) |
 | Logs with a divergence | 0 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
@@ -122,31 +124,11 @@ Written by `conform` on 2026-09-28, against Ayumi, on a, b, c.
 | envelope-and-tone | 100.0000 % | none | a 100.0000 %, 102/0/0; runs 1: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 | envelope-periods | 100.0000 % | none | a 100.0000 %, 353/0/0; runs 4: 4 on times, 4 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 | envelope-shapes | 100.0000 % | none | a 100.0000 %, 682/0/0; runs 1: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| gate-toggle | 100.0000 % | none | a 100.0000 %, 126/0/0; runs 2: 2 on times, 2 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| noise-sweep | 100.0000 % | none | a 100.0000 %, 221/0/0; runs 2: 2 on times, 2 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
+| tone-noise-mixed | 100.0000 % | none | a 100.0000 %, 424/0/0; runs 5: 5 on times, 5 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 | tone-sweep | 100.0000 % | none | a 100.0000 %, 659/0/0; runs 49: 49 on times, 49 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 <!-- edge-ayumi:end -->
-
-### Edge scripts, against Ayumi, full corpus (report only)
-
-<!-- edge-ayumi-report:begin -->
-Written by `conform` on 2026-09-28, against Ayumi, on a, b, c.
-
-| | |
-| --- | --- |
-| Oracle | Ayumi |
-| Corpus | 7 logs, 1893115 cycles |
-| Identical cycles | 1797970 / 1893115 (94.9742 %) |
-| Logs with a divergence | 3 |
-
-| Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
-| --- | --- | --- | --- |
-| envelope-and-tone | 100.0000 % | none | a 100.0000 %, 102/0/0; runs 1: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-| envelope-periods | 100.0000 % | none | a 100.0000 %, 353/0/0; runs 4: 4 on times, 4 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-| envelope-shapes | 100.0000 % | none | a 100.0000 %, 682/0/0; runs 1: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-| gate-toggle | 88.1126 % | cycle 71590, a: ours 0, oracle 27 | a 88.1126 %, 74/0/96; runs 2: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-| noise-sweep | 53.7517 % | cycle 447, a: ours 31, oracle 0 | a 53.7517 %, 85/0/278; runs 2: 0 on times, 0 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-| tone-noise-mixed | 77.3132 % | cycle 4607, a: ours 31, oracle 0 | a 77.3132 %, 150/0/518; runs 5: 2 on times, 2 on values, shift <= 5984; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-| tone-sweep | 100.0000 % | none | a 100.0000 %, 659/0/0; runs 49: 49 on times, 49 on values, shift <= 0; b 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0; c 100.0000 %, 1/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
-<!-- edge-ayumi-report:end -->
 
 ### Edge scripts, against Game_Music_Emu, full corpus (report only)
 
@@ -157,7 +139,7 @@ Written by `conform` on 2026-09-28, against Game_Music_Emu (Ay_Apu), on a, b, c.
 | --- | --- |
 | Oracle | Game_Music_Emu (Ay_Apu) |
 | Corpus | 7 logs, 1893115 cycles |
-| Identical cycles | 1402887 / 1893115 (74.1047 %) |
+| Identical cycles | 1407646 / 1893115 (74.3561 %) |
 | Logs with a divergence | 7 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
@@ -165,50 +147,52 @@ Written by `conform` on 2026-09-28, against Game_Music_Emu (Ay_Apu), on a, b, c.
 | envelope-and-tone | 53.3333 % | cycle 1264, a: ours 0, oracle 32 | a 53.3333 %, 0/0/58; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
 | envelope-periods | 11.2215 % | cycle 32, a: ours 0, oracle 2 | a 11.2215 %, 0/0/170; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
 | envelope-shapes | 49.6954 % | cycle 0, a: ours 0, oracle 255 | a 49.6954 %, 0/0/391; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
-| gate-toggle | 84.3705 % | cycle 36464, a: ours 128, oracle 0 | a 84.3705 %, 1/0/216 (37 at +15); runs 2: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
-| noise-sweep | 49.1206 % | cycle 0, a: ours 255, oracle 0 | a 49.1206 %, 0/3/447 (3 at -1); runs 2: 0 on times, 0 on values, shift <= 0; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
-| tone-noise-mixed | 76.9233 % | cycle 624, a: ours 0, oracle 255 | a 76.9233 %, 0/56/681 (56 at -1); runs 5: 0 on times, 0 on values, shift <= 0; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
+| gate-toggle | 83.3951 % | cycle 36464, a: ours 128, oracle 0 | a 83.3951 %, 1/0/224 (37 at +15); runs 2: 1 on times, 1 on values, shift <= 0; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
+| noise-sweep | 58.3828 % | cycle 0, a: ours 255, oracle 0 | a 58.3828 %, 0/11/425 (11 at -1); runs 2: 0 on times, 0 on values, shift <= 0; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
+| tone-noise-mixed | 76.3456 % | cycle 624, a: ours 0, oracle 255 | a 76.3456 %, 0/61/701 (61 at -1); runs 5: 0 on times, 0 on values, shift <= 0; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
 | tone-sweep | 98.6995 % | cycle 0, a: ours 0, oracle 127 | a 98.6995 %, 0/0/758 (97 at +15); runs 49: 47 on times, 47 on values, shift <= 32015; b 100.0000 %, 0/0/0; c 100.0000 %, 0/0/0 |
 <!-- edge-game-music-emu-ay-report:end -->
 
-**Where the two oracles disagree, and why neither one wins outright.**
-Decision 47 is the full record; in short: nesdev's own text for the noise
-generator is "a 17-bit linear feedback shift register with taps at bits 16
-and 13," and nothing more specific. Taken literally - the shifted-out bit
-XORed directly into both tapped positions - that is a Galois-form
-construction, which is what `Ay8910.tick()` implements, corroborated
-independently by Game_Music_Emu's `Ay_Apu`
-(`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`), read from its source and
-confirmed maximal-length (period 131071 = 2^17-1 from seed 1) before being
-adopted here. Ayumi's own `update_noise` computes a different bit,
-`bit0 ^ bit3`, inserted at bit 16 - a Fibonacci-form LFSR. An exhaustive
-search (every insertion bit 13-16, every XOR tap 1-16, every output bit
-0-16) found no relabelling of Ayumi's form that reproduces the Galois form's
-own bit-0 sequence: the two are genuinely different 17-bit LFSRs, not two
-descriptions of the same one, and this project's own review lesson - never
-patch an oracle to adopt the core's behaviour and call it a convention
-mapping - is exactly why no correction is baked into either oracle driver to
-paper over this. Ayumi stays the trusted oracle for tone, the mixer/gate
-logic, fixed volume and the envelope generator, where it has no known
-disagreement and needs no settling; Game_Music_Emu's `Ay_Apu` independently
-corroborates the noise LFSR's own construction (source-read, not measured
-exact, since its own tone/noise timing has an unrelated quirk of its own -
-next paragraph) and is the second oracle for the DAC-mode `core` corpus. The
-two are trusted for different, non-overlapping features, not one simply
-outranking the other everywhere.
+**Where Game_Music_Emu is the outlier, and why.** Decision 48 is the full
+record; in short: nesdev's own text for the noise generator is "a 17-bit
+linear feedback shift register with taps at bits 16 and 13," and nothing
+more specific. An earlier version of this ticket took that literally - the
+shifted-out bit XORed directly into both tapped positions, a Galois-form
+construction - and wrote `Ay8910.tick()` to it, taking Game_Music_Emu's
+`Ay_Apu` (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`, independently
+written, confirmed maximal-length: period 131071 = 2^17-1 from seed 1) as
+corroboration of that reading. On review, that corroboration turned out to
+be weaker than it looked: nothing found anywhere established that either
+the literal reading or Game_Music_Emu's own formula had ever been checked
+against real AY-3-8910/YM2149 hardware. MAME's `noise_rng_tick()`
+(`src/devices/sound/ay8910.h`, licence BSD-3-Clause, Couriersud) settles
+it: "The Random Number Generator of the 8910 is a 17-bit shift register.
+The input to the shift register is bit0 XOR bit3 (bit0 is the output).
+This was verified on AY-3-8910 and YM2149 chips." That is the Fibonacci
+form - `m_rng = (m_rng >> 1) | ((BIT(m_rng, 0) ^ BIT(m_rng, 3)) << 16)`,
+output `m_rng & 1` - exactly Ayumi's own `update_noise` construction
+(`bit0 ^ bit3` inserted at bit 16). "Taps" is itself Fibonacci-shift-register
+vocabulary, so nesdev's own wording never actually supported the Galois
+reading the way the earlier version assumed. `Ay8910.tick()` now implements
+the Fibonacci form, matching Ayumi exactly, with no settling needed anywhere
+in `edge`, noise included. Game_Music_Emu's `Ay_Apu` still implements the
+Galois form; nothing found documents it as hardware-verified, so it is not
+trusted for this generator - noise-bearing `edge` scripts stay `--report`
+only against it, on top of the timing quirk below.
 
 Separately, Game_Music_Emu's `Ay_Apu` carries its own documented timing
-quirk, unrelated to the LFSR disagreement: "changes to envelope and noise
+quirk, unrelated to the LFSR question: "changes to envelope and noise
 periods are delayed until next reload" is the oracle's own listed
 inaccuracy, and this project's own measurement confirms a tone-only sweep
 settles to a constant **+15-cycle** offset and a noise-only sweep to a
 constant **-1/+1-cycle** offset from a fresh reset, but not to any constant
 offset once both interact or a period is rewritten mid-stream - exactly the
-kind of settle-dependent correction the review lesson above rules out baking
-into `oracles/game-music-emu-ay.mjs`'s `trace()`. Every `edge` script is
-`--report` only against this oracle for that reason; only `core`
-(DAC mode, where neither generator's timing is ever sampled) gates exact
-against it.
+kind of settle-dependent correction this project's own review lesson (never
+patch an oracle to adopt the core's behaviour and call it a convention
+mapping) rules out baking into `oracles/game-music-emu-ay.mjs`'s `trace()`.
+Every `edge` script is `--report` only against this oracle for that reason;
+only `core` (DAC mode, where neither generator's timing is ever sampled)
+gates exact against it.
 
 ## Test ROMs
 
@@ -231,7 +215,7 @@ Sunsoft 5B or the AY-3-8910/YM2149 generally.
 | Voice order is `a`, `b`, `c`; a DAC-mode channel (tone and noise both disabled) outputs its raw fixed volume as `2V + 1` for every one of the 16 volume levels, never 0 | pass |
 | A non-DAC, tone-driven channel with the volume register at 0 is silent throughout | pass |
 | The mixer is a per-channel AND gate: a tone-only channel alternates between silent and its level on the tone bit; a tone-and-noise channel's gate matches the AND of the two independently-measured tone-only and noise-only gates | pass |
-| The 17-bit noise LFSR has a maximal-length period of exactly 131071 (2^17-1) from seed 1, matching a standalone reference recurrence of the same Galois-form feedback | pass |
+| The 17-bit noise LFSR has a maximal-length period of exactly 131071 (2^17-1) from seed 1, matching a standalone reference recurrence of the same Fibonacci-form feedback; the first 64 output bits match MAME's `noise_rng_tick()` formula exactly | pass |
 | Envelope shape 0 (`down, holdBottom`) ramps once from 31 to 0 and then holds at 0 for the rest of the run | pass |
 | Envelope shape 8 (`down, down`, the "continue" sawtooth) repeats: multiple runs of both 31 and 0 appear across the sampled window | pass |
 | Envelope shape 14 (`up, down`, the classic triangle) alternates: multiple runs of both 0 and 31 appear, starting from 0 | pass |
@@ -348,7 +332,7 @@ this probe's row now shares with every other file there.
 
 | What | Deliberate | Why | Affects |
 | --- | --- | --- | --- |
-| The noise generator's 17-bit LFSR uses a Galois-form feedback (`taps at bits 16 and 13` read as two literal XOR points), where Ayumi's own generator uses a different, provably non-equivalent Fibonacci-form construction | no, that oracle's own construction, not this core's | nesdev's text ("a 17-bit linear feedback shift register with taps at bits 16 and 13") supports the literal Galois reading this core takes; Game_Music_Emu's independently-written `Ay_Apu` uses the identical Galois formula, corroborating it; an exhaustive search found no relabelling of Ayumi's Fibonacci form that reproduces the Galois form's sequence (decision 47) | every corpus script that exercises the noise generator, against Ayumi only (`noise-sweep`, `tone-noise-mixed`, two of `gate-toggle`'s four states); no effect against Game_Music_Emu, which agrees |
+| Game_Music_Emu's `Ay_Apu` uses a Galois-form noise LFSR feedback (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`), where this core and Ayumi both use the Fibonacci form MAME's `noise_rng_tick()` documents as hardware-verified | no, that oracle's own construction, not this core's | an earlier version of this ticket read nesdev's "taps at bits 16 and 13" literally as the Galois form and adopted it, taking `Ay_Apu`'s agreement as corroboration; on review, MAME's `noise_rng_tick()` (`src/devices/sound/ay8910.h`) states the Fibonacci form was "verified on AY-3-8910 and YM2149 chips," which `Ay_Apu`'s Galois form is not documented as anywhere - decision 48 is the full record, including why "taps" is itself Fibonacci vocabulary | every noise-bearing corpus script, against Game_Music_Emu only (`--report`, never gated); no effect against Ayumi, which this core now matches exactly, noise included |
 | Game_Music_Emu's `Ay_Apu` carries a tone/noise phase delta forward from its own reset default instead of restarting cleanly at a period-register write | no, a documented inaccuracy in that oracle | `Ay_Apu.cpp`'s own "Emulation inaccuracies" comment lists this; measured here as a constant +15-cycle offset (tone-only, after a settle write) and a constant -1/+1-cycle offset (noise-only), not constant once both interact or a period is rewritten mid-stream, which is why no settle-dependent correction is baked into the oracle driver (this project's own review lesson: never patch an oracle to match the core and call it a convention) | every `edge` script against Game_Music_Emu is `--report` only, never gated exact; `core` (DAC mode, no generator ever sampled) is unaffected |
 | Game_Music_Emu's own source also lists "changes to envelope and noise periods are delayed until next reload" as a known inaccuracy | no, a documented inaccuracy in that oracle | confirmed here empirically: a mid-stream noise-period rewrite after an initial settle breaks the constant-offset property a fresh noise-only run otherwise has | same as above |
 | The amplitude-table comparison (`ay8910-gme-amp`/`check:ay8910-*-gme*`) has no envelope curve: `AY_AMP_TABLE` only covers the 16 fixed-volume levels | no, a gap in that comparison's own reach | `Ay_Apu`'s raw pre-table index is private state with no public accessor, so `main-ay.cpp` reads the amplitude byte after its own 16-entry table is already applied; a log with the envelope bit set is still accepted but is not a meaningful comparison against this oracle | confidence in the envelope generator rests on Ayumi (which does expose its own raw index) and the documents, not on Game_Music_Emu |
@@ -381,23 +365,33 @@ register once before its first note" inference the VRC6 sheet's own
 
 ## History
 
-- 2026-09-28 (NEXT-15, PR TBD): the standalone `Ay8910` core, the Sunsoft
+- 2026-09-28 (NEXT-15, PR #117): the standalone `Ay8910` core, the Sunsoft
   5B's two-port shim, the combined `2a03-sunsoft5b` cartridge chip and its
   mixing stage, added in one PR. Two independent oracles: Ayumi (Peter
   Sovietov, MIT) and Game_Music_Emu's `Ay_Apu` (the same vendored LGPL tree
   the VRC6 and 2A03 sheets already use). The corpus split into `core`
   (DAC-mode only, exact against both oracles) and `edge` (tone/noise/envelope
-  running, exact against Ayumi wherever it has no known disagreement, report
-  only elsewhere). The noise generator's 17-bit LFSR resolved to a Galois-form
-  construction, independently corroborated by Game_Music_Emu and provably
-  non-equivalent to Ayumi's own Fibonacci-form generator (decision 47) - the
-  first time two of this project's own oracles have been found to disagree
-  with each other, not just with the core, on a specific feature, rather than
-  one being trusted over the other for the whole chip. A negative test per
-  exact gate proves each would actually catch a regression. A self-authored
-  Sunsoft 5B NSF probe (CC0) closes this ticket's own NSF corpora. No driver
-  or arranger role yet, decision 38. This is the Sunsoft 5B's, and the
-  AY-3-8910/YM2149 core's, first sheet.
+  running). The noise generator's 17-bit LFSR went through two readings
+  before landing on a sourced one: the first pass wrote it as the Fibonacci
+  form Ayumi uses without checking that against nesdev's "taps at bits 16
+  and 13" wording; review found that assumption unchecked and rewrote it to
+  the literal Galois reading instead, corroborated (it seemed) by
+  Game_Music_Emu's independently-written `Ay_Apu`, which uses the same
+  formula; a second review round found that corroboration undocumented as
+  hardware-verified anywhere, and MAME's own `noise_rng_tick()`
+  (`src/devices/sound/ay8910.h`) stating the Fibonacci form was "verified on
+  AY-3-8910 and YM2149 chips" settled it back to Fibonacci, matching Ayumi
+  exactly (decision 48). `edge` now gates exactly against Ayumi on the full
+  seven-script corpus, noise included, and is report-only against
+  Game_Music_Emu throughout (its own Galois-form LFSR, undocumented as
+  hardware-verified, plus its own unrelated settle-dependent timing offset).
+  A negative test per exact gate proves each would actually catch a
+  regression, including one pinning the LFSR's first 64 output bits against
+  MAME's own formula. A self-authored Sunsoft 5B NSF probe (CC0) closes this
+  ticket's own NSF corpora, unaffected by the LFSR correction (both corpora
+  compare only register-write command streams). No driver or arranger role
+  yet, decision 38. This is the Sunsoft 5B's, and the AY-3-8910/YM2149
+  core's, first sheet.
 
 ## Sources
 
@@ -415,6 +409,11 @@ register once before its first note" inference the VRC6 sheet's own
   and pinned revision `fe8da4b6d3876d7542c2fb69d94487e19836d678` already
   pinned for the VRC6 and 2A03 oracles), the second, independent oracle, read
   and run the same way, never ported.
+- MAME's `ay8910.h` (`src/devices/sound/ay8910.h`, licence BSD-3-Clause,
+  Couriersud) - cited, not vendored, for its `noise_rng_tick()`'s own
+  comment on the noise LFSR's feedback taps, the one source found stating
+  that construction was verified on real AY-3-8910/YM2149 hardware
+  (decision 48).
 
 ---
 

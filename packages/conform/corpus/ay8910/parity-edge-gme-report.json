@@ -12,7 +12,7 @@
   "date": "2026-09-28",
   "files": 7,
   "cycles": 1893115,
-  "identical": 1402887,
+  "identical": 1407646,
   "diverging": 7,
   "results": [
     {
@@ -236,7 +236,7 @@
       "source": "src/corpus/generate-ay8910.mjs",
       "writes": 10,
       "cycles": 125385,
-      "identical": 105788,
+      "identical": 104565,
       "first": {
         "cycle": 36464,
         "voice": 0,
@@ -246,12 +246,12 @@
       "edges": [
         {
           "voice": "a",
-          "identical": 105788,
-          "a": 118,
+          "identical": 104565,
+          "a": 126,
           "b": 100,
           "exact": 1,
           "near": 0,
-          "onlyA": 117,
+          "onlyA": 125,
           "onlyB": 99,
           "shift": 15,
           "aligned": 37,
@@ -308,7 +308,7 @@
       "source": "src/corpus/generate-ay8910.mjs",
       "writes": 14,
       "cycles": 76872,
-      "identical": 37760,
+      "identical": 44880,
       "first": {
         "cycle": 0,
         "voice": 0,
@@ -318,15 +318,15 @@
       "edges": [
         {
           "voice": "a",
-          "identical": 37760,
-          "a": 227,
+          "identical": 44880,
+          "a": 221,
           "b": 226,
           "exact": 0,
-          "near": 3,
-          "onlyA": 224,
-          "onlyB": 223,
+          "near": 11,
+          "onlyA": 210,
+          "onlyB": 215,
           "shift": -1,
-          "aligned": 3,
+          "aligned": 11,
           "runs": {
             "ours": 2,
             "theirs": 2,
@@ -380,7 +380,7 @@
       "source": "src/corpus/generate-ay8910.mjs",
       "writes": 13,
       "cycles": 196978,
-      "identical": 151522,
+      "identical": 150384,
       "first": {
         "cycle": 624,
         "voice": 0,
@@ -390,15 +390,15 @@
       "edges": [
         {
           "voice": "a",
-          "identical": 151522,
-          "a": 394,
+          "identical": 150384,
+          "a": 424,
           "b": 399,
           "exact": 0,
-          "near": 56,
-          "onlyA": 338,
-          "onlyB": 343,
+          "near": 61,
+          "onlyA": 363,
+          "onlyB": 338,
           "shift": -1,
-          "aligned": 56,
+          "aligned": 61,
           "runs": {
             "ours": 5,
             "theirs": 6,

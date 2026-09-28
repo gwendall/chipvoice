@@ -4,7 +4,7 @@
 # clock: 1789773
 # cycles: 76872
 # source: src/corpus/generate-ay8910.mjs
-# notes: Channel A's noise generator alone (tone off on A, B and C fully DAC-silenced) through ten periods, including the small values (1-3) where the 17-bit LFSR's Galois-vs-Fibonacci choice (decision 47) is most visible cycle to cycle. Ayumi's own noise generator uses the Fibonacci form and disagrees with this core's Galois form by construction (`oracles/ayumi.mjs`'s own "known limits"), so noise-bearing logs are `--report` against BOTH oracles, never gated exact against either - there is no oracle here trusted for this one generator.
+# notes: Channel A's noise generator alone (tone off on A, B and C fully DAC-silenced) through ten periods, including the small values (1-3) where the 17-bit LFSR's exact bit sequence is most visible cycle to cycle. This core's own LFSR is now the Fibonacci form (decision 48), matching Ayumi's `update_noise` exactly, so this is gated exact against it; Game_Music_Emu's `Ay_Apu` still uses the Galois form (`oracles/game-music-emu-ay.mjs`'s own "known limits") and disagrees by construction, so this stays `--report` only against it.
 0 0007 37
 0 0008 0F
 0 0009 00

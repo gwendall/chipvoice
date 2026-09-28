@@ -274,35 +274,45 @@ export class Ay8910 implements DigitalChip {
     this.noiseCounter++;
     if (this.noiseCounter >= 2 * this.noisePeriod) {
       this.noiseCounter = 0;
-      // 17-bit LFSR, "taps at bits 16 and 13" (nesdev, verbatim - the page
-      // gives no pseudocode beyond that sentence). Taken literally, a shift
-      // register with taps at two absolute bit positions is the Galois
-      // form: shift right, and where the bit just shifted out was 1, XOR
-      // the feedback into both tapped bits directly (`0x12000` =
-      // `1<<16 | 1<<13`) - not a single computed bit inserted at the top,
-      // which is what an earlier version of this line did (`(bit0 ^ bit3)`
-      // fed into bit 16 alone, a Fibonacci-form construction this ticket
-      // first wrote assuming it was an equivalent restatement of the same
-      // two tap positions). It is not: an exhaustive search over every
-      // single-tap Fibonacci form (every insertion bit 13-16, every XOR tap
-      // 1-16, every output bit 0-16) found none that reproduces this
-      // formula's bit-0 sequence, so the two are different 17-bit LFSRs,
-      // not two descriptions of one. This form is also independently
-      // corroborated: it is exactly Game_Music_Emu's `Ay_Apu`
-      // (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`,
-      // `oracles/game-music-emu/gme/Ay_Apu.cpp`), confirmed maximal-length
-      // (period 131071 = 2^17-1 from seed 1) before being adopted here.
+      // 17-bit LFSR, Fibonacci form: the new top bit is bit0 XOR bit3 of the
+      // *current* register, inserted at bit 16 after a one-place right
+      // shift; the output is bit0 of the *new* register (i.e. the old bit1).
+      // This is MAME's own `noise_rng_tick()`/`noise_output()`
+      // (`src/devices/sound/ay8910.h`, licence BSD-3-Clause, Couriersud;
+      // cited and independently re-derived here, never copied):
+      //   m_rng = (m_rng >> 1) | ((BIT(m_rng, 0) ^ BIT(m_rng, 3)) << 16);
+      //   noise_output() { return m_rng & 1; }
+      // MAME's own comment on that function states it plainly: "The Random
+      // Number Generator of the 8910 is a 17-bit shift register. The input
+      // to the shift register is bit0 XOR bit3 (bit0 is the output). This
+      // was verified on AY-3-8910 and YM2149 chips" - the one source here
+      // that claims a hardware check on this specific point. It is also
+      // exactly Ayumi's construction (`oracles/ayumi/ayumi.c`,
+      // `update_noise`: `bit0x3 = (noise ^ (noise >> 3)) & 1; noise =
+      // (noise >> 1) | (bit0x3 << 16); return noise & 1;`), independently
+      // corroborating it, and confirmed maximal-length (period 131071 =
+      // 2^17-1 from seed 1) before being adopted here.
       //
-      // Ayumi (`oracles/ayumi/ayumi.c`, `update_noise`) uses the same
-      // Fibonacci `(bit0 ^ bit3) -> bit16` form this class used to; its
-      // noise sequence disagrees with this one and with Game_Music_Emu's
-      // from the very first LFSR shift (both are seeded to 1, matching
-      // nesdev's undocumented reset seed as before - see the `noiseLfsr`
-      // field comment). `docs/chips/sunsoft5b.md`'s "where oracles
-      // disagree" section and `oracles/ayumi`'s own "known limits" record
-      // this: Ayumi is not gated exact on any noise-bearing corpus.
-      const feedback = this.noiseLfsr & 1;
-      this.noiseLfsr = (this.noiseLfsr >> 1) ^ (feedback ? 0x12000 : 0);
+      // An earlier version of this file read nesdev's "taps at bits 16 and
+      // 13" as a Galois-form shift register instead (shift right, and where
+      // the bit just shifted out was 1, XOR the feedback into both tapped
+      // bits at once, `0x12000` = `1<<16 | 1<<13`) and, on review, that
+      // reading was wrong: "taps" is Fibonacci vocabulary, nesdev gives no
+      // pseudocode to settle it either way, and the Galois form has no
+      // source here claiming a hardware check - only Game_Music_Emu's own
+      // `Ay_Apu` (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`,
+      // `oracles/game-music-emu/gme/Ay_Apu.cpp`) happens to share it, which
+      // is one undocumented emulator against one hardware-verified one. That
+      // is why this project's own two oracles disagreed with each other on
+      // this generator (`docs/DECISIONS.md`'s decision 48) - not a
+      // tolerance question, a wrong construction on this side. See
+      // `docs/chips/sunsoft5b.md`'s "Where the two oracles disagree" for the
+      // full account, including that Game_Music_Emu's own noise sequence is
+      // therefore report-only against this core, not gated exact - it is
+      // not this generator's Galois form that was wrong to reject, it is
+      // that this core used to share it for the wrong reason.
+      const bit0x3 = (this.noiseLfsr ^ (this.noiseLfsr >> 3)) & 1;
+      this.noiseLfsr = (this.noiseLfsr >> 1) | (bit0x3 << 16);
     }
     this.envCounter++;
     if (this.envCounter >= this.envPeriod) {

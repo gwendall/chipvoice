@@ -983,15 +983,17 @@ real game music, and a real unit.
   line: `core` (every channel's mixer bits disable both generators, DAC
   mode) gates at a literal 100 % against both oracles; `edge` (tone, noise
   and the envelope actually running) gates exactly against Ayumi on the
-  four scripts with no known disagreement, and is report-only elsewhere
-  (94.9742 % identical cycles against Ayumi over the full `edge` corpus,
-  74.1047 % against Game_Music_Emu). The two oracles' own noise generators
-  use provably different 17-bit LFSR constructions (Galois vs Fibonacci
-  feedback, decision 47) - the first time this project's two oracles for one
-  chip have disagreed with each other on a specific feature rather than one
-  being trusted over the other for the whole chip; documented, not patched
-  away (the standing review lesson from NEXT-14: never patch an oracle to
-  adopt the core's behaviour and call it a convention mapping). NSF export
+  full seven-script corpus (100.0000 % identical cycles), and is
+  report-only against Game_Music_Emu (74.3561 %). The noise generator's
+  17-bit LFSR is the Fibonacci form (decision 48): MAME's own
+  hardware-verified construction, which Ayumi shares and this core now
+  implements, after an earlier version of this ticket wrongly took
+  nesdev's "taps at bits 16 and 13" as the Galois form Game_Music_Emu
+  happens to use instead - the first time this project found one of its
+  own oracles right and the core wrong on a specific feature, caught and
+  reversed on review, not patched away (the standing review lesson from
+  NEXT-14: never patch an oracle to adopt the core's behaviour and call it
+  a convention mapping). NSF export
   routes the 5B's two ports the same indirect-store way VRC6's writes
   already needed; a self-authored probe (CC0, `sunsoft5b-probe`,
   `make-sunsoft5b-probe.mjs`) closes NEXT-15's own NSF corpora the same way

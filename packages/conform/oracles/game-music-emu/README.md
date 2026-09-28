@@ -126,7 +126,7 @@ clock (see the header's own comment).
 
 ### Known limits of this oracle, specific to `Ay_Apu`
 
-`docs/DECISIONS.md`'s decision 47 is the full record; in short, read
+`docs/DECISIONS.md`'s decision 48 is the full record; in short, read
 directly from `gme/Ay_Apu.cpp`'s own "Emulation inaccuracies" comment and
 confirmed here by instrumenting a debug copy of `run_until` directly, cycle
 numbers included:
@@ -163,9 +163,13 @@ numbers included:
   neighbours) is still accepted by `chips/ay8910.mjs`'s wrapper but is not a
   meaningful comparison against this oracle, and no `core` script relies on
   one being.
-- **Noise-bearing logs inherit the same Galois-vs-Fibonacci LFSR disagreement
-  Ayumi has**, independently confirmed here rather than merely assumed:
-  `Ay_Apu`'s own noise formula (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`)
-  is the identical Galois construction `Ay8910`'s own noise generator now
-  uses, one of the two independent corroborations decision 47 records for
-  writing the core that way in the first place.
+- **Noise-bearing logs disagree with `Ay8910`'s own noise generator for a
+  different reason than the timing offset above.** `Ay_Apu`'s own noise
+  formula (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`) is a Galois-form
+  17-bit LFSR; `Ay8910`'s own noise generator uses the Fibonacci form
+  instead (`chips/ay8910.ts`'s `tick()`), matching MAME's own
+  hardware-verified construction and Ayumi's independent implementation of
+  it (decision 48). This oracle's Galois formula is not documented as
+  hardware-verified anywhere this project found, so it is not trusted for
+  this generator: noise-bearing logs stay `--report` only against it, same
+  as every other `edge` log, for this reason on top of the timing offset.

@@ -55,6 +55,26 @@ export const gameMusicEmuAy = {
    *   run against this oracle with `--report`, never gated exact.
    * - **The reported value is a DAC-curved byte, not chipvoice's raw
    *   digital index.** See this oracle's own module doc comment above.
+   * - **The noise generator's 17-bit LFSR is the Galois form**
+   *   (`(uMinus(lfsr & 1) & 0x12000) ^ (lfsr >> 1)`, `Ay_Apu.cpp`), not the
+   *   Fibonacci form `Ay8910`'s own noise generator implements
+   *   (`chips/ay8910.ts`'s `tick()`, `docs/DECISIONS.md`'s decision 48).
+   *   Nothing here documents this construction as hardware-verified, unlike
+   *   MAME's own formula (the source `Ay8910` and Ayumi both now follow), so
+   *   this oracle is not trusted for the noise generator: every noise-
+   *   bearing script is run against it with `--report`, never gated exact.
+   * - **Tone/noise timing carries a phase delta forward from this oracle's
+   *   own reset default** rather than restarting cleanly at a period-
+   *   register write, and its own source separately lists "changes to
+   *   envelope and noise periods are delayed until next reload" as a known
+   *   inaccuracy. Measured here as a constant +15-cycle offset (tone-only,
+   *   after a settle write) and a constant -1/+1-cycle offset (noise-only),
+   *   not constant once both interact or a period is rewritten mid-stream -
+   *   this project's own review lesson (never patch an oracle to match the
+   *   core and call it a convention) is why no settle-dependent correction
+   *   is baked into `trace()` below. Every `edge` script is `--report` only
+   *   against this oracle for that reason; `core` (DAC mode, no generator's
+   *   timing ever sampled) is unaffected and stays gated exact.
    */
   trusted: ['a', 'b', 'c'],
 
