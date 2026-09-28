@@ -10,7 +10,7 @@ gamesounds.ai 独自の効果音プロシージャル合成エンジンです。
 オフラインで動作する float64 の DSP がレシピとシードを PCM にレンダリング
 します。サードパーティの音声、録音サンプル、外部生成 API は一切使いません -
 このパッケージが存在する理由は
-[Decision 51](../../docs/DECISIONS.md) を参照してください。全体のアーキテク
+[Decision 52](../../docs/DECISIONS.md) を参照してください。全体のアーキテク
 チャ、レシピ形式、モデル/パラメータのリファレンス、決定論性の保証、品質の
 根拠(とその限界)は
 [`docs/GAMESOUNDS-ENGINE.md`](../../docs/GAMESOUNDS-ENGINE.md) にあります。

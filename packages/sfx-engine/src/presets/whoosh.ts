@@ -79,13 +79,14 @@ const metadata: ModelMetadata = {
   description: 'Air-movement sounds: filtered noise whose bandpass centre frequency sweeps over time, amplitude-shaped. sword/punch/cloth are a single swell; fast-pass-by sweeps up then down with amplitude peaking in the middle (an approach-then-recede).',
   params: {
     kind: { type: 'enum', enumValues: ['sword', 'punch', 'fast-pass-by', 'cloth'], description: 'The gesture this whoosh is for.', default: 'sword' },
-    intensity: { type: 'number', min: 0, max: 1, default: 0.6, description: 'Higher = shorter and sharper (a faster swing/pass reads as a shorter, tighter whoosh).' },
+    intensity: { type: 'number', min: 0, max: 1, default: 0.6, description: 'Higher = shorter and sharper (a faster swing/pass reads as a shorter, tighter whoosh).', seedJitter: 'Independently of intensity\'s own effect, the resolved duration (every kind\'s duration formula above) is additionally jittered +-8% per seed, so repeated whooshes of the same kind/intensity vary subtly in length.' },
   },
   examples: [
     { name: 'sword swing', description: 'A quick sword swing through the air.', params: { kind: 'sword' }, seed: 1 },
     { name: 'car pass-by', description: 'A fast object passing close by.', params: { kind: 'fast-pass-by' }, seed: 1 },
     { name: 'cloth flutter', description: 'A cloak or cloth swinging softly.', params: { kind: 'cloth' }, seed: 1 },
   ],
+  seedJitterLabels: ['whoosh-speed'],
 };
 
 export const whooshModel: SfxModel = { metadata, compile };

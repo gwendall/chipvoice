@@ -1,0 +1,11 @@
+# Pinned dependency versions for eval/clap_eval.py, exactly as installed
+# in the venv this eval was last run against (see clap_eval.py's own doc
+# comment for the setup/run commands). laion_clap pulls in torchlibrosa,
+# torchvision and transformers transitively; those are not pinned here
+# individually since they are not imported directly by clap_eval.py, but
+# the exact versions resolved in the venv this was run against were
+# torchlibrosa==0.1.0, torchvision==0.29.0, transformers==5.17.0.
+numpy==1.26.4
+scipy==1.17.1
+torch==2.14.0
+laion_clap==1.1.7

@@ -9,7 +9,7 @@
 effect synthesizer. It has zero runtime dependencies, ships as plain
 TypeScript built to ESM (`dist`), and does not touch `apps/sounds`,
 `packages/gamesounds` or `packages/chipvoice` - see
-[Decision 51](DECISIONS.md). A sound here is a recipe (JSON: which model,
+[Decision 52](DECISIONS.md). A sound here is a recipe (JSON: which model,
 its params, a seed, a sample rate) plus that seed, and the same recipe
 renders to bit-identical PCM everywhere it runs.
 
@@ -174,6 +174,47 @@ jittered +-6% around the "heavy" default from the seed.
 | `magic` | magic | Layered oscillators, delay, algorithmic reverb |
 | `pickup` | pickup | Layered short tonal blips, ADSR-shaped |
 
+### Continuous params
+
+`impact`, `ui` and `whoosh` shipped with continuous params from the start
+(`size`, `baseFreq`, `intensity`); `scifi`, `magic`, `pickup`, `footstep`
+and `explosion` originally exposed only enums/booleans (`kind`, `weight`,
+`debris`). Each of those five now also takes 2-4 continuous params, each
+mapped onto a real compile-time knob (never a cosmetic label):
+
+| Model | New params | What they scale |
+| --- | --- | --- |
+| `scifi` | `pitch` (semitones, -12..12), `duration` (x, 0.4..2.5), `brightness` (0..1) | Every base frequency/sweep endpoint; every branch's base duration; a post-cue lowpass (below 1) |
+| `magic` | `pitch`, `duration`, `brightness` (same ranges as `scifi`) | Every gesture tone and sparkle centre frequency; every kind's base duration; a post-cue lowpass |
+| `pickup` | `pitch`, `duration`, `brightness` (same ranges) | Every base frequency (for `key`, inversely via `models/modal.ts`'s `size`, since `key` has no direct frequency knob); every kind's base duration; a post-cue lowpass |
+| `footstep` | `intensity` (0..1, continuous `weight`), `pitch` (semitones, -12..12) | Every quantity that used to switch on `weight` (size/strength/energy/duration); modal `size` for concrete/wood/metal only - documented as inert on gravel/snow/grass/water-puddle, since `models/phisem.ts` has no frequency-override input and grass/water-puddle are unpitched noise |
+| `explosion` | `distance` (0..1, continuous "distant"), `debrisAmount` (0..1, continuous `debris`), `duration` (x, 0.4..2.5) | The reverb size/damping/mix, the post-reverb muffle cutoff and the duration bonus together; the debris layer's particle count and mix gain together; the boom/thump/debris base duration |
+
+Every new param's default reproduces its model's pre-existing named-preset
+renders bit-for-bit: `presets/helpers.ts`'s `lerpExact(lo, hi, t)` returns
+`lo`/`hi` directly (no floating-point arithmetic at all) at `t<=0`/`t>=1`
+rather than computing `lo + (hi-lo)*t`, which IEEE-754 does not guarantee
+exact at the boundary, and `semitoneMultiplier(0) === 1` exactly (both
+`0/12` and `2**0` are IEEE-754-exact). `pnpm --filter sfx-engine
+test:hash-fixture` confirms this directly: all 159 hashes (53 presets x 3
+seeds) are unchanged by this work.
+
+Every `seededRange` jitter each of these five models' `compile()` calls
+(directly, or indirectly through `sparkleLayer`) is declared on
+`ModelMetadata.seedJitterLabels` and mechanically checked by
+`test/seed-jitter-coverage.test.mjs`, which compiles every preset and every
+model's metadata `examples`, instruments `seededRange`, and fails if any
+captured label is not covered by a declared prefix (or if a declared prefix
+is never actually used). The human-readable "which quantity, by how much"
+side of the same jitters lives on each param's `seedJitter` prose.
+`test/continuous-params.test.mjs` renders every new param at its declared
+min/default/max, asserts the engine's own signal-sanity checks pass at each
+point, and asserts one directional metric moves the documented way between
+min and max (zero-crossing rate for `pitch`/`brightness`, render length for
+`duration`/`intensity`/`distance`, and 100-400ms-window energy for
+`debrisAmount`) - plus a negative test proving that directional assertion
+would actually fail on a param wired to nothing.
+
 ### The fifty three named presets
 
 Depth over breadth, per the brief: 53 named presets across the 8 required
@@ -211,6 +252,46 @@ with a windowed-sinc interpolator). `loudness/normalize.ts` then gains every
 render so its momentary loudness reaches at most -18 LUFS and its true peak
 reaches at most -1 dBTP, with the peak cap winning whenever the two targets
 disagree.
+
+### EBU Tech 3341 minimum requirements tests
+
+`test/loudness.test.mjs` implements EBU Tech 3341 v4 (Geneva, November
+2023), Table 1's minimum-requirements test cases 1-5 and 15-19, cited by
+case number and expected value directly from that table:
+
+- **Cases 1-2** (loudness): a steady 1kHz tone at -23.0 and -33.0 dBFS,
+  momentary and integrated loudness pinned to the table's expected values.
+- **Cases 3-5** (loudness): signals built to exercise the two-stage
+  (absolute + relative) gate, integrated loudness pinned.
+- **Cases 15-19** (true peak): a 0.5/1.41-full-scale tone at fs/4, fs/6 and
+  fs/8 with various inter-sample phase offsets, each tapered with the
+  10ms fade-in/fade-out the table's own case 15 text specifies (an
+  unfaded, abruptly-truncated fixture was found during development to
+  produce a spurious peak-interpolator edge artifact unrelated to the
+  filter's real accuracy - this was caught by probing before it was
+  ever committed as a test), true peak pinned to the table's
+  +0.2/-0.4 dB tolerance.
+- Cases 6 (multichannel), 7-8 (authentic programme material), 9-14
+  (short-term-only, this module does not expose an S measurement) and
+  20-23 (a stricter transient-reconstruction test beyond what this
+  engine's approximate true-peak filter claims) are out of scope and
+  documented as such in the test file.
+
+Table 1's cases are stereo; this engine is mono, so each expected value is
+the table's stereo figure shifted by exactly `-10*log10(2) = -3.0103` LU,
+the exact loudness two bit-identical channels at BS.1770 weight 1.0
+contribute over one channel alone (a consequence of the summation in the
+standard's own formula, not an empirical fudge - true peak needs no shift,
+since BS.1770 Annex 2 takes the max across channels, not a power sum). The
+previous non-standard "~-3.0 LUFS +-0.3" full-scale smoke test was replaced
+with the same case-1-derived shift, analytically pinned to
+`-3.0103 +-0.1` LU rather than a rounded folklore value. Two negative
+tests (reimplementing the meter with K-weighting bypassed, and separately
+with the relative gate dropped, both test-local-only and never exported by
+the real package) prove the K-weighting and relative-gate stages are
+actually exercised: bypassing K-weighting misses case 1 by 0.691 LU,
+dropping the relative gate misses case 3 by 1.155 LU, both far outside the
+0.1 LU tolerance.
 
 ### Cross check against ffmpeg
 
@@ -256,80 +337,154 @@ the `630k-audioset-best.pt` non-fusion checkpoint - both the code and the
 checkpoint are CC0-1.0, confirmed from the repository's own `LICENSE`, from
 `pip show laion_clap`'s `License` field, and from the checkpoint's own host,
 https://huggingface.co/lukewys/laion_clap, so local use is unrestricted), in
-a Python venv under `.artifacts/` (gitignored).
+a Python venv under `.artifacts/` (gitignored). The eval script itself is
+tracked at `eval/clap_eval.py`, with pinned dependency versions in
+`eval/requirements.txt`:
+
+```
+python3 -m venv packages/sfx-engine/.artifacts/venv
+packages/sfx-engine/.artifacts/venv/bin/pip install \
+  numpy==1.26.4 scipy==1.17.1 torch==2.14.0 laion_clap==1.1.7
+
+# from packages/sfx-engine/
+node scripts/build-clap-audio.mjs
+.artifacts/venv/bin/python3 eval/clap_eval.py
+```
 
 `eval/prompts.json` is a fixed set of 53 plain-English sound descriptions,
 one per preset, written once before any of this ran and never edited
 afterward - presets were not tuned against these prompts, so there is no
 held-out second prompt set (nothing was iterated against this eval).
-`scripts/build-clap-audio.mjs` renders two 48 kHz mono WAV sets: `real`
-(every preset, normally) and `degraded` (the same preset's compiled graph
-put through `scripts/clap-degrade-graph.mjs`, which removes every `filter`/
-`shaper`/`delay`/`reverb` node, flattens every `envelope`/`sweep` node to a
-constant, and replaces every physically-informed generator - `modal`,
-`phisem`, `karplus`, `bubble` - with plain white noise, leaving only raw
-oscillators/noise/constants wired the same way). `.artifacts/clap_eval.py`
-embeds all 53 prompts and both audio sets, and reports text-to-audio
-retrieval accuracy (top-1/top-5: is the correct audio the most similar, or
-in the 5 most similar) under three conditions:
+`scripts/build-clap-audio.mjs` renders two 48 kHz mono WAV sets at each of
+4 seeds (`SEEDS = [1, 2, 3, 4]`, not just each preset's own reference seed):
+`real` (every preset, normally) and `degraded` (the same preset/seed's
+compiled graph put through `scripts/clap-degrade-graph.mjs`, which removes
+every `filter`/`shaper`/`delay`/`reverb` node, flattens every `envelope`/
+`sweep` node to a constant, and replaces every physically-informed
+generator - `modal`, `phisem`, `karplus`, `bubble` - with plain white noise,
+leaving only raw oscillators/noise/constants wired the same way).
+`eval/clap_eval.py` embeds all 53 prompts and both audio sets, and for each
+seed runs a separate 53-prompt vs 53-audio retrieval (an item's correct
+match is always among that same seed's 53 candidates, never mixed across
+seeds), then pools the resulting per-(item, seed) hit/miss outcomes into 212
+trials per condition for the statistics below - four independent renders
+per prompt instead of one, so the significance tests have real statistical
+power.
 
 | Condition | What it measures |
 | --- | --- |
 | `real` | The number this ticket reports as the CLAP result |
-| `shuffled labels` | The same audio and prompts, graded against a shuffled (derangement) pairing, averaged over 20 random derangements - a sanity check on the retrieval methodology itself, expected at chance level |
+| `shuffled labels` | The same audio and prompts, graded against a shuffled (derangement) pairing, averaged over 5 random derangements per seed (20 total) - a sanity check on the retrieval methodology itself, expected at chance level |
 | `degraded engine` | The same prompts against the degraded audio set - must score clearly worse than `real`, or the metric is not measuring anything |
 
 **Numbers (from `.artifacts/clap-report.json`, laion_clap
-`630k-audioset-best.pt`, non-fusion):**
+`630k-audioset-best.pt`, non-fusion, pooled across 4 seeds, 212 trials per
+condition):**
 
 | Condition | top-1 | top-5 |
 | --- | --- | --- |
-| `real` | 9.4% (5/53) | 37.7% (20/53) |
-| `shuffled labels` | 2.0% (theoretical chance 1.9%) | 9.2% (theoretical chance 9.4%) |
-| `degraded engine` | 1.9% (1/53) | 26.4% (14/53) |
+| `real` | 10.4% (22/212) | 37.7% (80/212) |
+| `shuffled labels` | 1.4% (theoretical chance 1.9%) | 8.9% (theoretical chance 9.4%) |
+| `degraded engine` | 4.7% (10/212) | 21.7% (46/212) |
 
-Both controls pass: shuffled-label top-1 (2.0%) is clearly worse than
-`real`'s (9.4%), matching the theoretical chance rate for 53 candidates
-(1.9%), so the retrieval methodology itself is sound rather than biased
-toward a "correct" answer; degraded-engine top-1 (1.9%) is clearly worse
-than `real`'s too, and lands at almost exactly chance, so stripping filters/
-envelopes/physically-informed generators really does destroy what the model
-was recognizing. `real`'s numbers can therefore be read as evidence, not
-just a number: a general-purpose text-audio model, never tuned against these
-prompts, ranks the correct sound in its top 5 out of 53 candidates better
-than a third of the time from a one-line English description alone, a large
-margin above both controls.
+**Pre-declared statistical tests (alpha 0.05, exact tests - replacing the
+arbitrary ratio thresholds an earlier version of this eval used):** an
+exact binomial test (`scipy.stats.binomtest`) of each condition's pooled
+hit count against the theoretical chance rate (1/53 for top-1, 5/53 for
+top-5), one-sided for `real` and `degraded` (do they beat chance), two-sided
+for `shuffled` (the point of that control is to *not* reject chance); and an
+exact paired sign test (McNemar's exact test) of `real` against `degraded`
+on the 212 paired per-(item, seed) outcomes, one-sided (`real` beats
+`degraded`).
 
-Per-family confusion (`real` condition, top-1 predictions; rows are the
-prompt's actual family, columns are the family of the preset CLAP ranked
-most similar):
+| Test | top-1 p-value | top-5 p-value |
+| --- | --- | --- |
+| `real` vs chance (greater) | 1.61e-10 (significant) | 1.40e-28 (significant) |
+| `degraded` vs chance (greater) | 0.00752 (significant) | 7.38e-08 (significant) |
+| `shuffled` vs chance (two-sided) | 0.309 (not significant) | 0.563 (not significant) |
+| `real` vs `degraded`, paired sign test (real greater) | 0.0251 (significant) | 0.00062 (significant) |
+
+Read plainly: `real` beats chance decisively at both top-1 and top-5,
+`shuffled` does not differ from chance in either direction (the retrieval
+methodology itself is sound, not biased toward a "correct" answer), and
+`real` beats `degraded` significantly at both top-1 and top-5, so stripping
+filters/envelopes/physically-informed generators does measurably destroy
+what the model was recognizing. `real`'s numbers can therefore be read as
+evidence, not just a number: a general-purpose text-audio model, never
+tuned against these prompts, ranks the correct sound in its top 5 out of 53
+candidates over a third of the time (37.7%) from a one-line English
+description alone, well above chance (9.4%) and significantly above the
+degraded control (21.7%).
+
+The one honest wrinkle: `degraded` also beats chance significantly, at both
+top-1 (p=0.00752) and top-5 (p=7.38e-08) - raw noise wired through the same
+graph shape still carries some retrievable signal (duration, coarse
+spectral tilt, the rhythm of onsets), it is not literally at chance. That is
+a real, reportable finding, not a failure of the control: the pre-declared
+test that matters for this eval's purpose is `real` vs `degraded` directly,
+and that test is significant at both top-1 and top-5.
+
+Per-family confusion (`real` condition, top-1 predictions, pooled over 4
+seeds; rows are the prompt's actual family, columns are the family of the
+preset CLAP ranked most similar; each row sums to that family's preset
+count times 4 seeds):
 
 | Actual \ Predicted | ui | impact | footstep | whoosh | explosion | scifi | magic | pickup |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ui | 2 | 3 | 2 | 0 | 0 | 1 | 0 | 1 |
-| impact | 2 | 8 | 0 | 0 | 0 | 2 | 0 | 0 |
-| footstep | 0 | 4 | 3 | 0 | 0 | 0 | 0 | 0 |
-| whoosh | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 |
-| explosion | 0 | 1 | 0 | 0 | 0 | 1 | 1 | 0 |
-| scifi | 1 | 1 | 0 | 4 | 0 | 2 | 0 | 0 |
-| magic | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 4 |
-| pickup | 1 | 1 | 2 | 0 | 0 | 0 | 0 | 1 |
+| ui | 8 | 13 | 6 | 0 | 0 | 7 | 0 | 2 |
+| impact | 8 | 32 | 0 | 0 | 0 | 8 | 0 | 0 |
+| footstep | 0 | 16 | 11 | 1 | 0 | 0 | 0 | 0 |
+| whoosh | 0 | 0 | 0 | 16 | 0 | 0 | 0 | 0 |
+| explosion | 0 | 5 | 0 | 0 | 1 | 2 | 4 | 0 |
+| scifi | 4 | 4 | 0 | 16 | 0 | 8 | 0 | 0 |
+| magic | 5 | 2 | 0 | 0 | 0 | 0 | 0 | 13 |
+| pickup | 4 | 6 | 6 | 0 | 0 | 0 | 0 | 4 |
 
-Read honestly: `whoosh` (4/4) and `impact` (8/12) are where CLAP's top-1
-guess lands on the right family most reliably. `magic` is the weakest
-diagonal (0/5) - its top-1 guess is `pickup` 4 times out of 5, which is a
-plausible confusion (both are short, bright, tonal blips) rather than a
-random failure, and is consistent with `magic` and `pickup` sharing the
-same underlying build block (layered short tones shaped with an ADSR
-envelope). `footstep` is confused with `impact` more than it is correctly
-identified (4 vs 3), again a plausible pair (both are short transient
-collision sounds) rather than a sign the retrieval is broken - the controls
-above already rule that out.
+That matrix's diagonal is a looser metric than the headline numbers above:
+"did CLAP's top-1 guess land in the right family at all", even when it
+missed the exact preset. The metric that actually backs the headline `real`
+top-1 rate is the stricter one, exact preset per family:
 
-If the two controls above did not score clearly worse than `real`, this
-section would say so plainly instead of quoting the number as evidence of
-quality; both did, so the numbers above stand as evidence - see "Limits of
-this evidence" below for what they do not cover.
+| Family | Exact top-1 hits / trials | Rate |
+| --- | --- | --- |
+| ui | 0/36 | 0% |
+| impact | 8/48 | 16.7% |
+| footstep | 2/28 | 7.1% |
+| whoosh | 7/16 | 43.8% |
+| explosion | 1/12 | 8.3% |
+| scifi | 4/32 | 12.5% |
+| magic | 0/20 | 0% |
+| pickup | 0/20 | 0% |
+
+Read honestly: on this stricter exact-preset metric, `whoosh` is the
+strongest family by far (7/16, 43.8%), followed by `impact` (8/48, 16.7%)
+and `scifi` (4/32, 12.5%); `ui`, `magic`, and `pickup` are all exactly zero
+(0/36, 0/20, 0/20), and `footstep` (2/28, 7.1%) and `explosion` (1/12, 8.3%)
+are barely above zero. The looser family-diagonal reading in the confusion
+matrix above is more forgiving - CLAP's top-1 guess lands in the right
+family 66.7% of the time for `impact`, 39.3% for `footstep`, and 100% for
+`whoosh` even when it misses the exact preset - but three families (`magic`
+at 0/20, `pickup` at 4/20, `explosion` at 1/12) are weak on both readings.
+`magic`'s top-1 guess is `pickup` 13 times out of 20, a plausible confusion
+rather than a random failure (both are short, bright, tonal blips built
+from the same layered-tone-plus-ADSR-envelope block), and `footstep` is
+guessed as `impact` more than half the time (16/28), another plausible pair
+(both are short transient collision sounds) rather than a sign the
+retrieval itself is broken - the `shuffled` control above already rules
+that out.
+
+An earlier, single-seed, pre-statistical pass over this same eval had
+informally cited figures like "explosion 0/3" and "pickup 1/5" for the
+family-diagonal reading above. Those were single-seed spot-checks (12x and
+20x fewer trials than the pooled numbers here) taken before this eval had
+pinned dependency versions, a tracked script path, or pre-declared
+statistical tests; they are superseded by the pooled, statistically tested
+results in this section, not reconciled against them.
+
+If the pre-declared tests above had not shown `real` beating both `shuffled`
+and `degraded`, this section would say so plainly instead of quoting the
+numbers as evidence of quality; they did, so the numbers above stand as
+evidence - see "Limits of this evidence" below for what they do not cover.
 
 ### Best of N helper
 
@@ -409,7 +564,7 @@ collects them:
 ## Testing and CI
 
 ```bash
-pnpm --filter sfx-engine test:unit          # node --test over test/*.test.mjs, 133 cases
+pnpm --filter sfx-engine test:unit          # node --test over test/*.test.mjs, 166 cases
 pnpm --filter sfx-engine test:hash-fixture  # 53 presets x 3 seeds vs a committed SHA-256 fixture
 pnpm --filter sfx-engine test:perf-budget   # every preset vs a committed timing baseline, 3x regression gate
 ```

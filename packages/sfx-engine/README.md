@@ -8,7 +8,7 @@
 gamesounds.ai's own procedural sound-effect synthesis engine: deterministic,
 offline, float64 DSP that renders a recipe plus a seed to PCM. No third-party
 audio, no recorded samples, no external generation API - see
-[Decision 51](../../docs/DECISIONS.md) for why this package exists. Full
+[Decision 52](../../docs/DECISIONS.md) for why this package exists. Full
 architecture, the recipe format, the model/param reference, the determinism
 guarantee and the quality evidence (and its limits) are in
 [`docs/GAMESOUNDS-ENGINE.md`](../../docs/GAMESOUNDS-ENGINE.md); this file is

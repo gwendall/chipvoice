@@ -7,10 +7,19 @@
  * to a single channel with weight 1.0, so it is left out rather than
  * built and never exercised.
  *
- * `test/loudness.test.mjs` checks this against EBU Tech 3341's reference
- * test signals (sine tones at stated levels/frequencies with published
- * expected LUFS) within a stated tolerance; `scripts/ffmpeg-loudness-check.mjs`
- * cross-checks every rendered preset against ffmpeg's own `ebur128` filter.
+ * `test/loudness.test.mjs` implements EBU Tech 3341 v4 (Geneva, November
+ * 2023), Table 1's minimum-requirements test cases 1-5 (case numbers and
+ * expected values cited verbatim from that table) - cases 1 and 2 pin
+ * momentary and integrated loudness for a steady 1kHz tone at -23.0 and
+ * -33.0 dBFS, cases 3-5 pin integrated loudness for signals designed to
+ * exercise the two-stage gate. Table 1's cases are stereo; this engine is
+ * mono, so each expected value is the table's stereo figure shifted by the
+ * exact -10*log10(2) = -3.0103 LU that two identical channels at weight 1.0
+ * contribute over one (see the test file's own comment). Two negative tests
+ * prove the K-weighting and relative-gate stages are actually exercised by
+ * reimplementing each with that one stage skipped and showing the case then
+ * misses its tolerance. `scripts/ffmpeg-loudness-check.mjs` cross-checks
+ * every rendered preset against ffmpeg's own `ebur128` filter.
  */
 import { log10, pow } from '../dsp/math.js';
 import { kWeight } from './kweight.js';

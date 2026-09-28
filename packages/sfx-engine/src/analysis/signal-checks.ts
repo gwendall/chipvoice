@@ -97,6 +97,27 @@ export function countDiscontinuities(signal: Float64Array, jumpThreshold = 0.3):
   return count;
 }
 
+/** Zero crossings per second: how many times the signal's sign flips
+ * (>=0 to <0 or vice versa), divided by the signal's duration in seconds.
+ * A cheap, standard proxy for a tonal signal's dominant pitch (a sine at
+ * f Hz crosses zero 2f times/sec) - used by
+ * `test/continuous-params.test.mjs` as the directional metric for every
+ * new `pitch` param: raising pitch must raise a render's zero-crossing
+ * rate. Not meaningful for pure noise (crossings track the noise's own
+ * spectral content, not a "pitch" it doesn't have), so it is only asserted
+ * on the oscillator/modal-driven models and surfaces `pitch` actually
+ * reaches. Returns 0 for a signal shorter than 2 samples. */
+export function zeroCrossingRate(signal: Float64Array, sampleRate: number): number {
+  if (signal.length < 2) return 0;
+  let crossings = 0;
+  for (let i = 1; i < signal.length; i++) {
+    const prevNonNegative = signal[i - 1] >= 0;
+    const curNonNegative = signal[i] >= 0;
+    if (prevNonNegative !== curNonNegative) crossings++;
+  }
+  return crossings / (signal.length / sampleRate);
+}
+
 export interface SignalCheckReport {
   clipping: boolean;
   silent: boolean;

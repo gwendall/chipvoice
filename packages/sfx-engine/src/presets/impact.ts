@@ -55,6 +55,7 @@ const metadata: ModelMetadata = {
     { name: 'glass tap', description: 'A light tap on glass.', params: { material: 'glass', weight: 'light' }, seed: 1 },
     { name: 'body punch', description: 'A heavy punch landing.', params: { material: 'body', weight: 'heavy' }, seed: 1 },
   ],
+  seedJitterLabels: ['impact-size'],
 };
 
 export const impactModel: SfxModel = { metadata, compile };

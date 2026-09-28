@@ -109,7 +109,7 @@ const metadata: ModelMetadata = {
   description: 'Short interface sounds: click, hover/tick, confirm, cancel/back, error, toggle on/off, notification, text blip. Synthetic, oscillator-based - no physical object being modelled.',
   params: {
     kind: { type: 'enum', enumValues: ['click', 'hover', 'confirm', 'cancel', 'error', 'toggle-on', 'toggle-off', 'notification', 'text-blip'], description: 'Which UI event this sound is for.', default: 'click' },
-    baseFreq: { type: 'number', unit: 'Hz', min: 100, max: 4000, description: 'Overrides the kind\'s default base pitch. Omit to use a sensible per-kind default.', seedJitter: 'The resolved base pitch (default or override) is always jittered +-2% per seed, so repeated presses of the same event vary subtly rather than sounding machine-identical.' },
+    baseFreq: { type: 'number', unit: 'Hz', min: 100, max: 4000, description: 'Overrides the kind\'s default base pitch. Omit to use a sensible per-kind default.', seedJitter: 'When omitted (the per-kind default is used), the resolved base pitch is jittered +-2% per seed, so repeated presses of the same event vary subtly rather than sounding machine-identical. An explicit baseFreq is used exactly as given, with no jitter.' },
   },
   examples: [
     { name: 'menu click', description: 'A crisp, neutral button press.', params: { kind: 'click' }, seed: 1 },
@@ -117,6 +117,7 @@ const metadata: ModelMetadata = {
     { name: 'error buzz', description: 'A dissonant, slightly crushed error tone.', params: { kind: 'error' }, seed: 1 },
     { name: 'gentle notification', description: 'A three-note ascending notification chime.', params: { kind: 'notification' }, seed: 1 },
   ],
+  seedJitterLabels: ['ui-pitch'],
 };
 
 export const uiModel: SfxModel = { metadata, compile };

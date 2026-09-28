@@ -164,8 +164,74 @@ export function sparkleLayer(
  * metadata documents which params use this and by how much
  * (`ModelParamMeta.seedJitter`).
  */
+// Test-only instrumentation: `test/seed-jitter-coverage.test.mjs` installs a
+// listener here (via `__setSeedJitterListener`) to observe every label
+// `seededRange` is called with while compiling every preset and every
+// model's metadata examples, then checks each against that model's
+// `ModelMetadata.seedJitterLabels`. `null` (the default, and the only state
+// any non-test caller ever sees) costs one `if` per call and does nothing.
+let seedJitterListener: ((label: string) => void) | null = null;
+
+/** Test-only. Installs (or, with `null`, removes) a listener called with
+ * every label passed to `seededRange`. Never used outside
+ * `test/seed-jitter-coverage.test.mjs`. */
+export function __setSeedJitterListener(listener: ((label: string) => void) | null): void {
+  seedJitterListener = listener;
+}
+
 export function seededRange(seed: number, label: string, min: number, max: number): number {
+  if (seedJitterListener) seedJitterListener(label);
   return createPrng(deriveSeed(seed, label)).range(min, max);
+}
+
+/**
+ * Linear interpolation that is bit-exact at both ends: `t <= 0` returns
+ * `lo` itself (no arithmetic), `t >= 1` returns `hi` itself, and only a
+ * genuinely intermediate `t` computes `lo + (hi - lo) * t`. Plain
+ * `lo + (hi - lo) * t` is not guaranteed bit-exact at `t = 0` or `t = 1`
+ * under IEEE-754 (subtraction/addition rounding), which matters here: a
+ * continuous param's default must reproduce an existing named preset's
+ * render byte-for-byte (this package's hash fixture checks exactly that),
+ * and several models' defaults sit at one of this function's two ends
+ * (e.g. footstep's `intensity` default is derived from the old `weight`
+ * enum, landing on exactly 0 or exactly 1).
+ */
+export function lerpExact(lo: number, hi: number, t: number): number {
+  if (t <= 0) return lo;
+  if (t >= 1) return hi;
+  return lo + (hi - lo) * t;
+}
+
+/** `2 ** (semitones / 12)`: multiply a frequency (or anything that scales
+ * like one, e.g. modal.ts's inverse-scaling `size`) by this to transpose it
+ * by `semitones`. Exactly `1` at `semitones = 0` (`0/12` is exact, `2**0`
+ * is exact), so a model that multiplies its existing base-frequency
+ * literals by this stays bit-exact at the `pitch` param's default. */
+export function semitoneMultiplier(semitones: number): number {
+  return Math.pow(2, semitones / 12);
+}
+
+/**
+ * Applies a `brightness` (0..1) continuous param as a one-pole lowpass on
+ * `output`, ONLY when `brightness < 1` (at exactly `1`, the default, no
+ * node is inserted at all - the identity case is "skip the filter
+ * entirely", not "insert a filter with an inaudibly-high cutoff", so a
+ * model using this stays bit-exact at `brightness = 1`). Cutoff is
+ * `lerpExact(300, 18000, brightness)`: fully dark (a muffled, underwater
+ * quality) at `0`, the model's own natural (unfiltered) brightness at `1`.
+ * Returns the (possibly new) output node id; appends any new node to
+ * `nodes`. */
+export function applyBrightness(
+  idGen: () => string,
+  nodes: GraphNode[],
+  output: string,
+  brightness: number,
+): string {
+  if (brightness >= 1) return output;
+  const cutoff = lerpExact(300, 18000, Math.max(0, brightness));
+  const filteredId = idGen();
+  nodes.push(onePoleNode(filteredId, output, 'lowpass', cutoff));
+  return filteredId;
 }
 
 /** A noise burst shaped by an envelope - the building block behind most

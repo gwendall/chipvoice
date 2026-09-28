@@ -46,6 +46,20 @@ export interface ModelMetadata {
   params: Record<string, ModelParamMeta>;
   /** 2-4 named, ready-to-render examples spanning the model's range. */
   examples: ModelExample[];
+  /**
+   * The exact set of `seededRange` label prefixes this model's `compile()`
+   * is allowed to use, machine-checked by
+   * `test/seed-jitter-coverage.test.mjs` (which compiles every preset and
+   * every one of `examples` above, instruments `seededRange` and fails if
+   * any captured label does not start with one of these prefixes). A prefix
+   * rather than an exact label so one entry can cover a dynamically-indexed
+   * family of labels (e.g. `sparkleLayer`'s `${label}-t${i}` grain labels).
+   * Human-readable "which quantity, by how much" prose for each jitter
+   * still lives on the relevant `ModelParamMeta.seedJitter` above (or, for a
+   * jitter with no single owning param, in this model's own file comment) -
+   * this field is the mechanical enforcement half, not a replacement for it.
+   */
+  seedJitterLabels?: readonly string[];
 }
 
 export interface SfxModel {

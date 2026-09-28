@@ -22,6 +22,7 @@ export {
   runSignalChecks, scoreReport,
   hasClipping, isSilent, onsetSampleIndex, onsetWithinMs,
   dcOffset, hasNoDcOffset, endsAtZero, isFinitePcm, countDiscontinuities,
+  zeroCrossingRate,
   type SignalCheckReport,
 } from './analysis/signal-checks.js';
 
