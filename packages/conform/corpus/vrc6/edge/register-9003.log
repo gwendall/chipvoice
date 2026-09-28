@@ -1,0 +1,15 @@
+# chipvoice register log v1
+# name: register-9003
+# chip: vrc6
+# clock: 1789773
+# cycles: 45502
+# source: src/corpus/generate-vrc6.mjs
+# notes: $9003's halt bit and both frequency-shift bits, on the sawtooth only (see this file's own header comment for why the pulses' duty generator stays out of every edge script): halt freezes `Vrc6Audio::ClockAudio`'s three `Clock()` calls in Mesen and `clockCPU`'s three `clockDivider` calls in chipvoice identically, so nothing moves in either engine while it is set; the 16x and 256x shifts just rescale the divider's own reload value the same way in both (`periodReg >> shift`), taking effect at the next reload exactly like a plain rate/period change. Game_Music_Emu drops every write here (`reg_count == 3`) and keeps running unshifted forever - reported, not gated, against it.
+17898 B000 0C
+17898 B001 1E
+17898 B002 80
+19200 9003 01
+22200 9003 00
+23502 9003 02
+25502 9003 04
+27502 9003 00

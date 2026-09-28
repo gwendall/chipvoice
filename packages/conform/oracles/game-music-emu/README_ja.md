@@ -30,4 +30,4 @@ Shay Green（blargg）のGame_Music_Emu、`Nes_Vrc6_Apu`（Nes_Snd_Emu 0.1.8の�
 <a id="a-second-oracle"></a>
 ## 2つ目の参照実装
 
-Mesen 2もVRC6をエミュレートします（自身のソース内`Core/NES/Mappers/Konami/Vrc6*.cpp`）。素の2A03向けにMesenが既にそうしている（`oracles/mesen`）のと同じように、2つ目の独立した参照実装として検討しましたが、このチケットでは着手していません：Mesen 2はC#で、既存の`oracles/mesen`ラッパーはその.NETビルドを、これのようなネイティブC++ビルドよりはるかに大きな統合を通して動かしており、NEXT-14自身のスコープが求めるものに対して不釣り合いです。[BACKLOG.md](../../../../docs/BACKLOG_ja.md)に未着手の作業として記録してあり、Mesen自身のソースに見つかった技術的な理由で見送ったわけではありません。
+Mesen 2もVRC6をエミュレートします（自身のソース内`Core/NES/Mappers/Audio/Vrc6*.h` - 実際のMesenはC#ではなくC++です。本チケットの以前の一巡ではここを取り違えており、それが本コード同梱を不釣り合いだと読ませていました）。NEXT-14の2巡目で、素の2A03向けにMesenが既にそうしている（`oracles/mesen`）のと同じように、2つ目の独立した参照実装として追加しました：`oracles/mesen/vendor/NES/Mappers/Audio/`配下に無変更で同梱し、`oracles/mesen/main-vrc6.cpp`で駆動し、`oracles/mesen-vrc6.mjs`でラップしています。これが何であるか、この参照実装には検証できないもの（`$9003`、鋸歯状波の無効化時アキュムレーターゼロ化の挙動、4サイクル以下の周期）、そして測定済みのサイクルオフセット規約については、[`oracles/mesen/README.md`](../mesen/README_ja.md)自身の「VRC6音源（NEXT-14）」の節を参照してください。

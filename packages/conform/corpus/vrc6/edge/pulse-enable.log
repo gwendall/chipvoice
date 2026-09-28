@@ -1,0 +1,32 @@
+# chipvoice register log v1
+# name: pulse-enable
+# chip: vrc6
+# clock: 1789773
+# cycles: 71783
+# source: src/corpus/generate-vrc6.mjs
+# notes: Pulse 1, mode bit set (so the duty generator, excluded from any exact claim - see this file's own header comment - is never in play), disabled and re-enabled six times: proves the E bit alone gates output to and from zero exactly, on both oracles, since `output()`/`GetVolume()` return 0 on `!enabled` unconditionally of the mode bit in chipvoice, Game_Music_Emu and Mesen alike.
+17898 9000 8D
+17898 9001 32
+17898 9002 80
+18698 9001 32
+18698 9002 00
+24698 9001 32
+24698 9002 80
+25535 9001 32
+25535 9002 00
+31588 9001 32
+31588 9002 80
+32462 9001 32
+32462 9002 00
+38568 9001 32
+38568 9002 80
+39479 9001 32
+39479 9002 00
+45638 9001 32
+45638 9002 80
+46586 9001 32
+46586 9002 00
+52798 9001 32
+52798 9002 80
+53783 9001 32
+53783 9002 00

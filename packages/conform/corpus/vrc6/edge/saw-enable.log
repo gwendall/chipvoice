@@ -1,0 +1,28 @@
+# chipvoice register log v1
+# name: saw-enable
+# chip: vrc6
+# clock: 1789773
+# cycles: 64038
+# source: src/corpus/generate-vrc6.mjs
+# notes: The sawtooth disabled and re-enabled five times at a fixed period (20), each disable span an exact multiple of the divider's own full period (2 * 21 = 42 cycles) - see this file's own header comment for why that specific choice, not an arbitrary gap, is what makes chipvoice's continuously-ticking divider (nesdev: disabling the saw "does not reset the frequency divider") and Mesen's frozen one (an undocumented difference from that same text) land on the same phase at every re-enable.
+17898 B000 08
+17898 B001 14
+17898 B002 80
+18486 B001 14
+18486 B002 00
+24786 B001 14
+24786 B002 80
+25374 B001 14
+25374 B002 00
+31674 B001 14
+31674 B002 80
+32262 B001 14
+32262 B002 00
+38562 B001 14
+38562 B002 80
+39150 B001 14
+39150 B002 00
+45450 B001 14
+45450 B002 80
+46038 B001 14
+46038 B002 00

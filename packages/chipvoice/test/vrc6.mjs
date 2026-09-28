@@ -375,6 +375,35 @@ check('isVrc6Addr recognises every VRC6 register and nothing outside those block
 }
 
 {
+  // Nesdev: "At maximum volume, the pulse channels of the VRC6 are roughly
+  // equivalent to the pulse channels of the 2A03 (except inverted)."
+  // `VRC6_MIX_UNIT_GAIN` is derived so a VRC6 pulse at raw 15 contributes
+  // exactly `mixPulses(15, 0)` in magnitude (see vrc6-core.ts's comment); if
+  // `add()` also applies the sign nesdev describes, its pre-filter running
+  // sum for the VRC6 side alone must be the exact negative of the 2A03 side
+  // alone's. Read straight off `sum` (a plain field once compiled, `private`
+  // being TypeScript-only) rather than through `end()`, whose high-pass
+  // stage would otherwise decay a constant level toward 0 across calls and
+  // hide the sign this test is checking.
+  const sampleRate = 44100;
+  const nesOnly = new Vrc6MixStage(sampleRate, [90, 440], 14000, 2.9);
+  nesOnly.begin();
+  nesOnly.add(15, 0, 0, 0, 0, 0, 0, 0);
+  const nesSum = nesOnly.sum;
+
+  const vrc6Only = new Vrc6MixStage(sampleRate, [90, 440], 14000, 2.9);
+  vrc6Only.begin();
+  vrc6Only.add(0, 0, 0, 0, 0, 15, 0, 0);
+  const vrc6Sum = vrc6Only.sum;
+
+  check(
+    'a VRC6 pulse at maximum volume pulls the mix the opposite way a 2A03 pulse at the same nominal level does (nesdev: "except inverted")',
+    nesSum > 0 && vrc6Sum < 0 && Math.abs(nesSum + vrc6Sum) < 1e-12,
+    `2A03 alone ${nesSum}, VRC6 alone ${vrc6Sum}`,
+  );
+}
+
+{
   const core = new Vrc6NesCore(44100);
   core.schedule([
     { at: 0, addr: 0x4015, value: 0x0f },

@@ -162,6 +162,72 @@ itself starts a trace from.
   first carries the identical value, just shifted; only a log that restarts
   the channel from a cold buffer (`script-dmc` in the corpus) shows it.
 
+## VRC6 audio (NEXT-14)
+
+NEXT-14's round 2 asked for a second, independent oracle for Konami's VRC6
+expansion audio, beside the already-vendored Game_Music_Emu
+(`../game-music-emu`). Mesen 2 emulates VRC6 audio too, in
+`Core/NES/Mappers/Audio/{Vrc6Audio,Vrc6Pulse,Vrc6Saw}.h` - not
+`Core/NES/Mappers/Konami/VRC6.h`, which is the mapper/banking class and only
+`#include`s these; the audio classes themselves are what is vendored,
+unchanged, under `vendor/NES/Mappers/Audio/` at the same pinned commit as the
+rest of this oracle, plus `NES/APU/BaseExpansionAudio.{h,cpp}`, the abstract
+base every expansion-audio chip shares. `NesTypes.h`'s `AudioChannel` enum
+already listed `VRC6 = 7` and `NesApu::AddExpansionAudioDelta` already
+forwarded to the mixer - both written for a future ticket that turned out to
+be this one - so the only shim change VRC6 needed was growing
+`NesSoundMixer.h`'s `deltas[]` array from 5 to 8 voices to hold index 7;
+nothing vendored was touched.
+
+`main-vrc6.cpp` is the second driver ours: it reads a chipvoice VRC6 register
+log the same way `main.cpp` reads a 2A03 one, but clocks `Vrc6Audio` directly
+through its own `Clock()` rather than through `NesApu::ProcessCpuClock()`
+(irrelevant to a cartridge-mapper chip), and prints every change of the
+mixer's one VRC6 line as `<cycle> 0 <value>`. There is only one voice, not
+three: real Mesen's own `Vrc6Audio::ClockAudio` sums both pulses and the
+sawtooth into one `outputLevel` before ever calling
+`AddExpansionAudioDelta` - it does not expose them separately, so this oracle
+cannot be compared voice by voice the way Game_Music_Emu's can.
+`oracles/mesen-vrc6.mjs` compensates on the chipvoice side (`vrc6-combined`
+in `chips/vrc6.mjs`'s `chipVrc6Combined`): chipvoice's own three voices,
+summed and scaled by 15 the same way, so both sides of the comparison are the
+same single quantity.
+
+Mesen is the independent check of exactly what Game_Music_Emu's own
+`Nes_Vrc6_Apu` cannot check (see this oracle's - and `../game-music-emu`'s -
+own "known limits"): `Vrc6Pulse::Clock` has no period-4-or-under guard,
+`Vrc6Saw::WriteReg`'s disable path explicitly zeroes the accumulator
+(matching nesdev and this core; Game_Music_Emu's own `run_saw` freezes it
+instead), and `$9003` reaches this oracle directly, unlike Game_Music_Emu's
+own dispatch, which drops it. `Vrc6Saw::Clock()` does gate its own timer on
+`_enabled` - an undocumented deviation from nesdev's text ("clearing E does
+not reset the frequency divider") this core does not follow - so the corpus's
+own disable/re-enable script (`corpus/vrc6/edge/saw-enable.log`) is written
+to keep every disabled span an exact multiple of the saw's own full divider
+period, which sidesteps this specific difference rather than measuring it as
+a divergence.
+
+One offset applies to every entry this oracle reports, sawtooth or pulse
+alike: a flat `-1` cycle, from the same "catch the emulated CPU up to a
+write's cycle using the OLD register state, then apply the write" convention
+`main-vrc6.cpp` shares with `main.cpp` and with real Mesen calling
+`WriteRegister` mid-frame after `ProcessCpuClock` has already run for that
+cycle. Measured on `corpus/vrc6/core/saw-worked-example.log` (8999/8999
+edges align at shift -1) and independently on `corpus/vrc6/core/
+pulse-levels.log` (30/30 edges, no sawtooth activity at all, same shift) -
+see `oracles/mesen-vrc6.mjs`'s own comment for the full derivation and why an
+earlier, narrower version of this correction scoped it to sawtooth-only logs
+before the second measurement showed the scoping was unnecessary.
+
+Every log in `corpus/vrc6/core` and `corpus/vrc6/edge` is 100.0000 % against
+this oracle (`check:vrc6-core-mesen`, `check:vrc6-edge-mesen`); the full,
+duty-generator-active legacy corpus (`corpus/vrc6`) is held to the same
+no-regression baseline convention as Game_Music_Emu (`check:vrc6-mesen`),
+for the same reason `check:vrc6` is: the duty generator's own direction
+mismatch (chipvoice counts down from 15, both oracles count up) is
+structurally unfixable by any per-run shift once duty varies, so a raw
+cycle-for-cycle match on those scripts is not the number that matters.
+
 ## Build
 
 Needs a C++17 compiler and nothing else: no extra system packages, no

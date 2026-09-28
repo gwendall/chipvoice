@@ -53,6 +53,19 @@ Mesen 2のNES APU（`Core/NES/APU/`）をネイティブビルドし、`nes-snd-
 - **reloadと同じサイクルの書込。** `WriteRam`は書込を適用する前に、全チャンネルを書込自身のサイクルまで進めます。そのため矩形波のタイマーがreloadするサイクルに落ちた周期の書込は、そのreloadに反映されません。chipvoiceとNes_Snd_Emuは先に適用します。これが書込のサイクルについてのハーネスの取り決めです。コーパスでは2回（`song-studio`のpulse 2、`song-golden`のpulse 1）で、それぞれ曲の残り全体に一定の位相差を残します。このシムはchipvoiceの順序を採ると他の全てが1サイクルずれます。ここのパルスタイマーは固定のAPUサイクルの偶奇ではなく、最初の周期書込が残した位置から2P+1サイクルを数えるため、このコーパスで位相がchipvoiceと揃うのは、まさにreloadが先だからです。
 - **DMCの最初のバイト、そして冷えたバッファーからの再始動全て。** CPUストールを一切模倣しないため、この参照のDMCは最初のサンプルバイトをchipvoice自身から54サイクルずらして再生します。これは`nes-snd-emu`参照がすでに示す大きさと同じですが、原因は別です（そちらは電源投入時のビット数がnesdevと食い違い、この参照はそうではありません）。最初以降の各段は同じ値をずらしただけで運びます。冷えたバッファーからチャンネルを再始動するログ（コーパスの`script-dmc`）だけがこれを示します。
 
+<a id="vrc6-audio-next-14"></a>
+## VRC6音源（NEXT-14）
+
+NEXT-14の2巡目で、Konamiの拡張音源VRC6向けに、すでに同梱済みのGame_Music_Emu（`../game-music-emu`）と並ぶ、2つ目の独立した参照実装が求められました。Mesen 2もVRC6音源をエミュレートしています。場所は`Core/NES/Mappers/Audio/{Vrc6Audio,Vrc6Pulse,Vrc6Saw}.h`です - `Core/NES/Mappers/Konami/VRC6.h`ではありません。そちらはマッパー／バンク切り替えクラスで、これらを`#include`しているだけです。音源クラス自体は無変更のまま、この参照実装の他の部分と同じ固定コミットで`vendor/NES/Mappers/Audio/`配下に同梱し、加えて拡張音源チップが共有する抽象基底`NES/APU/BaseExpansionAudio.{h,cpp}`も同梱しています。`NesTypes.h`の`AudioChannel`列挙型はすでに`VRC6 = 7`を挙げており、`NesApu::AddExpansionAudioDelta`もすでにミキサーへ転送していました - どちらも将来のチケット向けに書かれていて、それが今回のチケットだったわけです。そのためシムの変更は`NesSoundMixer.h`の`deltas[]`配列をインデックス7を持てるよう5声から8声に広げただけで済み、同梱コード自体には一切手を入れていません。
+
+`main-vrc6.cpp`が2つ目のドライバーで、こちらのコードです。chipvoiceのVRC6レジスターログを`main.cpp`が2A03のログを読むのと同じ方法で読みますが、`Vrc6Audio`は`NesApu::ProcessCpuClock()`（カートリッジのマッパーチップには無関係）ではなく、自身の`Clock()`で直接刻みます。そして、ミキサーの1本のVRC6ラインの変化を毎回`<cycle> 0 <value>`として出力します。声が1本しかないのは、実際のMesenの`Vrc6Audio::ClockAudio`が両パルスと鋸歯状波を1つの`outputLevel`へ合計してから初めて`AddExpansionAudioDelta`を呼ぶためです - 3声を別々には公開しないため、この参照実装はGame_Music_Emuのように声ごとには比較できません。`oracles/mesen-vrc6.mjs`はchipvoice側で埋め合わせます（`chips/vrc6.mjs`の`chipVrc6Combined`、つまり`vrc6-combined`）：chipvoice自身の3声を同じように合計して15倍することで、比較の両辺が同じ1つの量になります。
+
+Mesenは、Game_Music_Emu自身の`Nes_Vrc6_Apu`には検証できないもの（この参照実装と`../game-music-emu`自身の「既知の限界」を参照）を検証する独立した手段です：`Vrc6Pulse::Clock`には4サイクル以下の周期を除外するガードがなく、`Vrc6Saw::WriteReg`の無効化パスはアキュムレーターを明示的にゼロ化します（nesdevと本コアに一致；Game_Music_Emu自身の`run_saw`はそこを凍結するだけです）、そして`$9003`はこの参照実装に直接届きます（Game_Music_Emu自身のディスパッチはこれを落とします）。一方で`Vrc6Saw::Clock()`は自身のタイマーを`_enabled`でゲートしています - nesdevの文章（「Eをクリアしても周波数分周器はリセットされない」）からの、本コアが従っていない未文書の相違です - そのためコーパス自身の無効化・再有効化スクリプト（`corpus/vrc6/edge/saw-enable.log`）は、無効化区間を鋸歯状波自身の全分周期のちょうど整数倍に保つよう書かれており、この特定の相違を相違として測定する代わりに回避しています。
+
+この参照実装が報告するあらゆるエントリーには、鋸歯状波でもパルスでも同じ1つのオフセットが掛かっています：一定の-1サイクルで、`main-vrc6.cpp`が`main.cpp`と共有し、実際のMesenが`ProcessCpuClock`がそのサイクル分すでに進んだ後で`WriteRegister`をフレーム途中に呼ぶのに合わせている、「書込のサイクルまで古いレジスター状態でエミュレートしたCPUを追いつかせてから、書込を適用する」という同じ規約から来ています。`corpus/vrc6/core/saw-worked-example.log`で測定し（8999/8999エッジがシフト-1で一致）、`corpus/vrc6/core/pulse-levels.log`（鋸歯状波の動きが全くない、30/30エッジが同じシフト）で独立に確認済みです - この補正の完全な導出と、より早い、鋸歯状波専用に絞った版がなぜ2回目の測定の後で不要と分かったのかは、`oracles/mesen-vrc6.mjs`自身のコメントを参照してください。
+
+`corpus/vrc6/core`と`corpus/vrc6/edge`の全ログが、この参照実装に対して100.0000%です（`check:vrc6-core-mesen`、`check:vrc6-edge-mesen`）。デューティジェネレーターが動く旧来の全コーパス（`corpus/vrc6`）は、Game_Music_Emuと同じ回帰なし基準の慣習で保持しています（`check:vrc6-mesen`）。理由も`check:vrc6`と同じです：デューティジェネレーター自体の向きの不一致（本コアは15から数え下ろし、両参照実装とも数え上げ）は、デューティが変化する限りどんな区間ごとのシフトでも構造的に直せないため、これらのスクリプトでの生のサイクル一致は重要な数値ではありません。
+
 <a id="build"></a>
 ## ビルド
 

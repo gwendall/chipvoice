@@ -622,12 +622,19 @@ real game music, and a real unit.
 **Step 5. New systems, one at a time, under decision 38's guards.**
 
 - doing - NEXT-14 NES expansion audio: VRC6 done (core from the nesdev wiki
-  and Konami's own documents, harness against Game_Music_Emu's `Nes_Vrc6_Apu`,
-  NSF export/playback, sheet at [docs/chips/vrc6.md](chips/vrc6.md) - 35.7 %
-  raw digital parity, 79.0 % of 105 runs aligned once each gets its own
-  shift, floored by the oracle's own freeze-on-disable behaviour, not this
-  core's; a second oracle, Mesen 2, considered and not attempted this round,
-  see the oracle's own README; no driver or arranger role yet, decision 38).
+  and Konami's own documents, harness against two independent oracles -
+  Game_Music_Emu's `Nes_Vrc6_Apu` and Mesen 2's own vendored VRC6 audio - NSF
+  export/playback, the mixing stage's documented inversion modelled, sheet at
+  [docs/chips/vrc6.md](chips/vrc6.md). Round 2 (this PR) split the corpus into
+  `core` scripts (no disable after first enable, no `$9003`, no period at or
+  below 4) held to a literal 100 % against both oracles, and `edge` scripts
+  (disable/re-enable, `$9003`, tiny periods) held exactly to Mesen, which
+  models all three, and report-only against Game_Music_Emu, which documents
+  its own gaps there (freeze-not-zero on disable, dropping `$9003` silently);
+  the full duty-generator-active legacy corpus stays on the earlier
+  no-regression baseline against both oracles, since the pulse duty
+  generator's counting direction is structurally unshiftable once duty
+  varies. No driver or arranger role yet, decision 38.
   VRC7, FDS, N163, Sunsoft 5B, MMC5 still todo. NEXT-15 AY-3-8910 and
   YM2149, NEXT-16 YM2151 and YM2610, NEXT-17 OPL2 and OPL3; then PC Engine,
   Game Boy Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.

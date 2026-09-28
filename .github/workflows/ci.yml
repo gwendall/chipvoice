@@ -194,6 +194,23 @@ jobs:
       # packages/conform/oracles/game-music-emu (not the nsf-corpus/gbs-corpus
       # oracle cached below, a different build directory at the same pin).
       - run: pnpm --filter chipvoice-conform check:vrc6
+      # Round 2's second, independent oracle (Mesen 2's own vendored VRC6
+      # audio, packages/conform/oracles/mesen): same no-regression gate on the
+      # full, duty-generator-active corpus as check:vrc6 above.
+      - run: pnpm --filter chipvoice-conform check:vrc6-mesen
+      # Round 2's exact corpus split (docs/chips/vrc6.md's own "Digital
+      # parity" section explains why): `core` scripts never disable after
+      # their first enable, never touch $9003, and never use a period at or
+      # below 4 - the one path both oracles model identically to this core -
+      # so both are held to a literal 100%, not a baseline. `edge` scripts
+      # (disable/re-enable, $9003, tiny periods) are exact only against
+      # Mesen, which models all three; Game_Music_Emu's own documented gaps
+      # there (freeze-not-zero on disable, dropping $9003 silently) make an
+      # exact gate against it meaningless, so that pairing is report-only.
+      - run: pnpm --filter chipvoice-conform check:vrc6-core
+      - run: pnpm --filter chipvoice-conform check:vrc6-core-mesen
+      - run: pnpm --filter chipvoice-conform check:vrc6-edge-mesen
+      - run: pnpm --filter chipvoice-conform check:vrc6-edge-report
       - run: pnpm --filter chipvoice-conform check:dmg
       - run: pnpm --filter chipvoice-conform check:sameboy
       - run: pnpm --filter chipvoice-conform roms:dmg

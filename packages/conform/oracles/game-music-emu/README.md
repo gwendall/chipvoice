@@ -85,11 +85,14 @@ voice's phase sits at, or for `$9003` at all.
 
 ## A second oracle
 
-Mesen 2 also emulates the VRC6 (`Core/NES/Mappers/Konami/Vrc6*.cpp` in its
-own source). It was considered as a second, independent oracle the way
-Mesen already is for the plain 2A03 (`oracles/mesen`), but not attempted for
-this ticket: Mesen 2 is C#, and the existing `oracles/mesen` wrapper here
-drives its .NET build through a much larger integration than a native C++
-build like this one, disproportionate to what NEXT-14's own scope asks for.
-Recorded as open work in [BACKLOG.md](../../../../docs/BACKLOG.md), not
-attempted or declined for a technical reason found in Mesen's own source.
+Mesen 2 also emulates the VRC6 (`Core/NES/Mappers/Audio/Vrc6*.h` in its own
+source - real Mesen is C++, not C#; an earlier pass at this ticket had that
+backwards, which is what read as disproportionate to vendor). NEXT-14's
+round 2 added it as a second, independent oracle beside this one, the same
+way Mesen already is for the plain 2A03 (`oracles/mesen`): vendored
+unchanged under `oracles/mesen/vendor/NES/Mappers/Audio/`, driven by
+`oracles/mesen/main-vrc6.cpp`, wrapped by `oracles/mesen-vrc6.mjs`. See
+[`oracles/mesen/README.md`](../mesen/README.md)'s own "VRC6 audio (NEXT-14)"
+section for what it is, what it checks that this oracle cannot ($9003, the
+sawtooth's disable-zeroes-the-accumulator behaviour, any period at or below
+4 cycles), and its own measured cycle-offset convention.

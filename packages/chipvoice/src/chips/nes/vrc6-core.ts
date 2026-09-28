@@ -165,11 +165,15 @@ export class Vrc6NesDigital implements DigitalChip {
  * pulse channels of the VRC6 are roughly equivalent to the pulse channels
  * of the 2A03 (except inverted)." This core turns that into a number by
  * requiring one VRC6 pulse channel alone, at maximum volume (raw 15, the
- * other two VRC6 voices silent), to contribute the same amount a single
+ * other two VRC6 voices silent), to contribute the same magnitude a single
  * 2A03 pulse at maximum volume does through the 2A03's own documented DAC
  * curve: `mixPulses(15, 0) = 95.88 / (8128 / 15 + 100)`. Nesdev also says
  * the VRC6's DAC, unlike the 2A03's, is linear, so the same per-unit gain
- * is used across the whole 0-61 raw range rather than curved.
+ * is used across the whole 0-61 raw range rather than curved. "Except
+ * inverted" is modelled too, not just cited: `Vrc6MixStage.add()` below
+ * subtracts the VRC6 term from the composite sum instead of adding it, so a
+ * VRC6 pulse at maximum volume pulls the mix the opposite way a 2A03 pulse
+ * at the same nominal level would.
  *
  * `mixPulses(15, 0)` is about 0.1494; divided by 15 raw units gives this
  * constant, about 0.00996 per unit. This is derived only from nesdev's own
@@ -228,11 +232,17 @@ export class Vrc6MixStage {
     this.count = 0;
   }
 
-  /** The 2A03's five voices through its own DAC curves, plus the VRC6's raw linear sum, scaled by `VRC6_MIX_UNIT_GAIN`. */
+  /**
+   * The 2A03's five voices through its own DAC curves, plus the VRC6's raw
+   * linear sum, scaled by `VRC6_MIX_UNIT_GAIN` and subtracted rather than
+   * added: nesdev's "roughly equivalent to the pulse channels of the 2A03
+   * (except inverted)" is a statement about sign, not just magnitude, and
+   * this is the one place that sign is applied.
+   */
   add(p1: number, p2: number, triangle: number, noise: number, dmc: number, vp1: number, vp2: number, vsaw: number) {
     const nesSum = mixPulsesLocal(p1, p2) + mixTndLocal(triangle, noise, dmc);
     const vrc6Sum = (vp1 + vp2 + vsaw) * VRC6_MIX_UNIT_GAIN;
-    this.sum += nesSum + vrc6Sum;
+    this.sum += nesSum - vrc6Sum;
     this.count++;
   }
 
