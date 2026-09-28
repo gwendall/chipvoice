@@ -81,7 +81,6 @@ try {
     "test-live-playback.mjs",
     "test-latest-worker.mjs",
     "test-playback-races.mjs",
-    "test-audio-range.mjs",
     "test-progressive-browser.mjs",
     "test-progressive-long.mjs",
     "test-lab-publication.mjs",

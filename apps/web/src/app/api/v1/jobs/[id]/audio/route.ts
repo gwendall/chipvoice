@@ -1,4 +1,4 @@
-import {audioRange, audioStream} from "@/lib/audio-range";
+import {audioRange, audioStream} from "web-kit/audio";
 import { projectViewer } from "@/lib/auth";
 import { projectRoute } from "@/lib/project-http";
 import { getProjectJob } from "@/lib/project-jobs";

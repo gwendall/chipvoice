@@ -8,7 +8,7 @@ import {
   shapeScore,
   loopSeconds,
 } from "chipvoice";
-import { encodeMp3 } from "./mp3";
+import { encodeMp3 } from "web-kit/audio";
 try {
   let last = 0;
   if (workerData.wav) {

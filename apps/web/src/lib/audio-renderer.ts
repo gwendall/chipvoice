@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Score } from 'chipvoice';
-import type { Tags } from './id3';
-import { createRenderCache } from './render-cache';
+import type { Tags } from 'web-kit/audio';
+import { createRenderCache } from 'web-kit/audio';
 
 export interface AudioJob { score: Score; seconds: number; format: 'mp3' | 'wav'; tags: Tags }
 const workerPath = join(process.cwd(), 'generated', 'audio-render.cjs');

@@ -5,25 +5,11 @@ async function module(path) {
   const output = await build({ entryPoints:[path], bundle:true, platform:'node', format:'esm', write:false, logLevel:'silent' });
   return import(`data:text/javascript;base64,${Buffer.from(output.outputFiles[0].text).toString('base64')}`);
 }
-const { createRenderCache, RenderBusy } = await module('src/lib/render-cache.ts');
-let time = 0, calls = 0, complete;
-const cache = createRenderCache({maxBytes:6,maxEntries:2,ttl:10,now:()=>time});
-const first = cache('a', () => { calls++; return new Promise(resolve=>{complete=resolve;}); });
-const second = cache('a', () => { throw new Error('must share the first render'); });
-await assert.rejects(cache('b',async()=>new Uint8Array(2)),RenderBusy);
-complete(new Uint8Array([1,2,3]));
-const [a,b] = await Promise.all([first,second]); assert.equal(a,b); assert.equal(calls,1);
-assert.equal(await cache('a',()=>{throw new Error('cache miss');}),a);
-await cache('b',async()=>new Uint8Array([4,5,6]));
-await cache('c',async()=>new Uint8Array([7,8,9]));
-let rebuilt = false; await cache('a',async()=>{rebuilt=true;return new Uint8Array(3);}); assert.ok(rebuilt);
-time = 20;
-rebuilt = false; await cache('a',async()=>{rebuilt=true;return new Uint8Array(3);}); assert.ok(rebuilt);
-await assert.rejects(cache('failure',async()=>{throw new Error('worker failed');}),/worker failed/);
-assert.ok(await cache('after-failure',async()=>new Uint8Array(1)));
-let oversized = 0;
-for (let i=0;i<2;i++) await cache('oversized',async()=>{oversized++;return new Uint8Array(7);});
-assert.equal(oversized,2);
+// createRenderCache's own dedup/admission/eviction behavior is web-kit's,
+// covered by packages/web-kit/test/audio.test.mjs. This script only proves
+// audio-renderer.ts's own glue: hashing the built renderer into the cache
+// key, admitting through the caller-supplied gate, and matching a real
+// worker's WAV output.
 const { renderAudio } = await module('src/lib/audio-renderer.ts');
 const score = {chip:'snes',bpm:144,order:[0],patterns:[{lead:'C4 . E4 .',bass:'C2 . . .',chord:'C3 . . .',perc:'K . H .',chordShape:[[0,4,7]]}]};
 let admitted=0, finished=false;
@@ -33,4 +19,4 @@ const same=renderAudio({score,seconds:.25,format:'wav',tags:{}},()=>{admitted++;
 const asset=await pending; assert.equal(await same,asset); assert.equal(admitted,1);
 assert.deepEqual(asset.bytes,toWav(renderSong(arrange(score),{seconds:.25,stereo:true})));
 assert.match(asset.etag,/^"[0-9a-f]{64}"$/);
-console.log('PASS render deduplication, admission, byte/entry/age limits, failure recovery and real worker WAV parity');
+console.log('PASS render admission, dedup keyed by the built renderer, and real worker WAV parity');

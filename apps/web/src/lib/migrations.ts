@@ -1,23 +1,16 @@
 import { createHash } from "node:crypto";
 import type { Client, Transaction } from "@libsql/client";
-import { hashKey, newId } from "./crypto";
+import { hashKey, newId } from "web-kit/crypto";
+import { addColumns, migrate as sharedMigrate, type Migration } from "web-kit/db";
 
-async function addColumns(
-  tx: Transaction,
-  table: string,
-  definitions: Record<string, string>,
-) {
-  const present = new Set(
-    (await tx.execute(`pragma table_info(${table})`)).rows.map((row) =>
-      String(row.name),
-    ),
-  );
-  for (const [name, type] of Object.entries(definitions))
-    if (!present.has(name))
-      await tx.execute(`alter table ${table} add column ${name} ${type}`);
-}
-
-const migrations = [
+/**
+ * Chipvoice's own migration history and table shapes. `addColumns`/`migrate`
+ * themselves live in web-kit/db (decision 47); this array is what makes
+ * them chipvoice's, and it never moves: applied migrations are tracked by
+ * name, so renaming or reordering an already-applied entry here is
+ * unsupported by design (see web-kit/db's `migrate`).
+ */
+export const migrations: Migration[] = [
   {
     name: "baseline",
     async up(tx: Transaction) {
@@ -288,34 +281,7 @@ const migrations = [
   },
 ];
 
-/** Version markers and schema/data changes commit together. No broad ALTER
- * catch: a permission, syntax or connection error aborts and remains visible. */
-export async function migrate(client: Client) {
-  const tx = await client.transaction("write");
-  try {
-    await tx.execute(
-      `create table if not exists schema_migrations (version integer primary key, name text not null, applied_at integer not null)`,
-    );
-    const applied = (
-      await tx.execute(`select version from schema_migrations order by version`)
-    ).rows.map((row) => Number(row.version));
-    if (
-      applied.some((version, i) => version !== i + 1) ||
-      applied.length > migrations.length
-    )
-      throw new Error("Unsupported database migration history.");
-    for (let i = applied.length; i < migrations.length; i++) {
-      await migrations[i].up(tx);
-      await tx.execute({
-        sql: `insert into schema_migrations values (?,?,?)`,
-        args: [i + 1, migrations[i].name, Date.now()],
-      });
-    }
-    await tx.commit();
-  } catch (error) {
-    await tx.rollback();
-    throw error;
-  } finally {
-    tx.close();
-  }
-}
+/** `web-kit/db`'s `migrate` bound to chipvoice's own migration history, for
+ * callers (and test-foundations.mjs) that migrate a connection directly
+ * rather than through `createDb`'s own lazy migration. */
+export const migrate = (client: Client) => sharedMigrate(client, migrations);

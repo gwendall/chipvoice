@@ -8,7 +8,7 @@ import { compositionServer } from "./test/composition-server.mjs";
 // every paid call below until the test spends it on purpose.
 const server = await compositionServer({ access: "invite", budgetUsd: 50 });
 Object.assign(process.env, server.env);
-await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from './src/lib/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
+await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from 'web-kit/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
 const api = await import("./generated/test-generation.mjs");
 const out = "../../.artifacts/prompt-composition";
 await mkdir(out, { recursive: true });

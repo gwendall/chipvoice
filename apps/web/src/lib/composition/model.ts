@@ -1,5 +1,5 @@
 import { ProjectHttpError } from "../projects";
-import { readSSE } from "../sse";
+import { readSSE } from "web-kit/sse";
 
 export type ModelProgress = { outputCharacters: number };
 

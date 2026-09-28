@@ -5,7 +5,7 @@ import { Button } from "@/ui/components";
 import { RangeControl } from "@/ui/RangeControl";
 import { SignInForm } from "@/auth/SignInForm";
 import { useSession } from "@/auth/useSession";
-import { readSSE } from "@/lib/sse";
+import { readSSE } from "web-kit/sse";
 import type { Profile } from "@/lib/projects";
 const savedDraft = "chipvoice-prompt-draft";
 const savedJob = "chipvoice-prompt-job", savedRequest = "chipvoice-prompt-request";

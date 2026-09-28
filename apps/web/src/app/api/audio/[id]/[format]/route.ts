@@ -3,9 +3,8 @@ import { RenderQuery, SongId } from "@/lib/schema";
 import { find, SITE, toLibrarySong } from "@/lib/songs";
 import { hasDatabase } from "@/lib/db";
 import { renderAudio } from "@/lib/audio-renderer";
-import { RenderBusy } from "@/lib/render-cache";
+import { RenderBusy, contentDisposition } from "web-kit/audio";
 import { allow, clientKey } from "@/lib/limit";
-import { contentDisposition } from "@/lib/id3";
 
 export const runtime = "nodejs";
 // Cycle-level rendering is CPU-bound; allow the runtime to finish long exports.
@@ -52,7 +51,7 @@ export async function GET(
       seconds, format,
       tags: {
         title: song.title ?? `chipvoice ${song.id}`, artist: song.author ?? "chipvoice", album: "chipvoice",
-        year: new Date(song.createdAt).getUTCFullYear().toString(),
+        year: new Date(song.createdAt).getUTCFullYear().toString(), genre: "Chiptune",
         comment: `Written on an emulated ${song.chip} sound chip. ${SITE}/s/${song.id}`, url: `${SITE}/s/${song.id}`,
       },
     }, () => {
@@ -63,7 +62,7 @@ export async function GET(
     if (!await find(id)) return json({ error: "not_found" }, 404);
     const headers = {
       "Content-Type": format === "wav" ? "audio/wav" : "audio/mpeg", "Cache-Control": "public, no-cache",
-      ETag: asset.etag, "Content-Disposition": contentDisposition(song.title, id, format), "X-Render-Ms": String(asset.milliseconds),
+      ETag: asset.etag, "Content-Disposition": contentDisposition(song.title, id, format, "chipvoice"), "X-Render-Ms": String(asset.milliseconds),
     };
     const tags = request.headers.get("if-none-match")?.split(",").map(tag => tag.trim().replace(/^W\//, ""));
     if (tags?.some(tag => tag === "*" || tag === asset.etag)) return new Response(null, { status: 304, headers });

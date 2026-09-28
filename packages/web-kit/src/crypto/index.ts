@@ -23,8 +23,10 @@ export async function hashKey(key: string): Promise<string> {
  * Eight characters of base62, minus the glyphs that look like each other.
  *
  * These end up read aloud, typed from a screenshot and pasted into chat, so
- * `l`, `I`, `O` and `1` being distinguishable is worth more than the handful of
- * extra combinations they would add.
+ * lowercase `l`, uppercase `I` and uppercase `O` being distinguishable from
+ * digit `1`, digit `0` and each other is worth more than the handful of
+ * extra combinations they would add. Digit `1` itself stays in the alphabet:
+ * see `ALPHABET` above.
  */
 export function newId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(8));
