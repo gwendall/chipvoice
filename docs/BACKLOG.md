@@ -155,7 +155,7 @@ created the same day.
   margin fix needs `packages/chipvoice/src/playback/ProgressivePlayback.ts`,
   out of scope for this non-engine ticket. See REV-11 for the proposed fix.
 
-- done - REV-11 (this PR, engine, `packages/chipvoice/src/playback/ProgressivePlayback.ts`):
+- done - REV-11 (PR #115, engine, `packages/chipvoice/src/playback/ProgressivePlayback.ts`):
   the adaptive margin this ticket originally proposed (`max(HANDOFF_LEAD,
   2*lastReadMs)`) was built and measured, not just reasoned about, and
   rejected: `lastReadMs` is timed from the source's *previous* read (the
@@ -249,7 +249,7 @@ Work without a ticket takes a NEXT id.
   real hardware's read-only registers do, a P2-1 finding, not fixed here.
   Fixed since by P2-1 (#86): all fourteen pass.
   `envrate` matches Dag Lem's real-hardware-verified rate table exactly.
-- done - REV-11 (this PR): the moving-handoff underrun REV-10 proved sits
+- done - REV-11 (PR #115): the moving-handoff underrun REV-10 proved sits
   exactly at the fixed 0.75 s `HANDOFF_LEAD` margin is fixed by prefetching
   the handoff's first post-handoff read before the new group goes live,
   removing the deadline instead of widening it. REV-11's own proposed
