@@ -2060,3 +2060,106 @@ render-parity.
 outside it is required to adopt it. It is the sound-generation option
 gamesounds.ai's app can call into going forward, alongside whatever it
 already has.
+
+## 54. gamesounds' generated sounds ship mono, leveled on their own actual shipped bytes; sfx-engine's presets are filed by what they model, never forced to fill a style (2026-09-29)
+
+GS-03 wires `packages/sfx-engine` (decision 52) into the gamesounds.ai
+catalogue: `apps/sounds/catalog/generated-recipes.mjs` maps all 53 named
+presets to a taxonomy category, a style and tags, rendered at the
+catalogue's own 44.1 kHz through the same trim/level/encode/measure
+pipeline the chipvoice half already uses, 4 seed-ladder variants per
+preset. Two things had to be decided that were left open (or assumed
+incorrectly) when decision 52 shipped.
+
+**Channel layout: mono, catalogue-wide, decided by measurement, not by
+following the suggested default.** Decision 52's own writeup, and
+`docs/BACKLOG.md`'s GS-03 tracking bullet, both assumed the existing
+catalogue ships stereo ("the shipped stereo 44.1 kHz channel layout").
+Direct inspection of `apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes`
+(`channels = right ? 2 : 1`) shows this was never true: chipvoice's own
+`renderSfx` is never called with `stereo: true` anywhere in the catalogue
+build, so every existing chipvoice-origin sound already ships mono. Rather
+than introduce the catalogue's first stereo files to match a documented
+assumption that did not hold, generated sounds ship mono too, for
+consistency with the actual, not aspirationally documented, existing
+convention. This also sidesteps the loudness trap in the direction it
+actually runs: sfx-engine's `loudness/normalize.ts` meters and gains a
+render as mono *before* `panToStereo` runs
+(`packages/sfx-engine/src/render/renderRecipe.ts`), so its own
+self-reported `RenderedSound.loudness` describes the pre-pan signal, not
+the post-pan channel a caller receives - at every preset's `pan: 0`,
+equal-power pan law gives `left = right = mono * cos(pi/4)`, about
+-3.0103 dB quieter than the engine's own figure. Trusting that figure
+instead of re-measuring the actual shipped bytes would have silently
+under-leveled every generated variant by about 3 dB. `build-catalog.mjs`'s
+`renderGeneratedVariants` never does this: it takes `RenderedSound.left`
+as the shipped signal (valid exactly because `left === right` at `pan: 0`)
+and runs it through the catalogue's own `levelToConvention`, which
+re-measures whatever bytes it is actually given, regardless of what any
+engine claims about them.
+`apps/sounds/test/generated-loudness.test.mjs` proves both directions on
+real, independently-measured bytes: the correct path passes
+`checkOneCeilingBinds`, and shipping the engine's own pre-pan self-report
+as the recorded measure fails it.
+
+**Style: what a preset actually models, never a forced fit.** `impact`,
+`footstep`, `whoosh` and `explosion` presets model real-world physics
+(struck materials, walked surfaces, air movement, a blast) and are filed
+`realistic`; `scifi` presets are synthetic sound design and stay `scifi`;
+`magic` presets are spell/cast content and are filed `fantasy`; `ui`
+presets are short oscillator-only blips and are filed `minimal-ui`.
+`pickup` is the one family judged per preset rather than by a blanket
+rule: `pickup.ts`'s own header calls its warm, tuned-oscillator arpeggios
+(`coin`, `gem`, `powerup`, `level-up`) deliberately "not an 8-bit
+square-wave cliche", so those are filed `cartoon`; `key`, the one
+physically-informed preset in the family (a struck-metal modal jingle), is
+filed `realistic` instead, honestly, alongside the material-impact
+families it shares its synthesis technique with. Nothing is forced into
+`cartoon`, `horror` or `cozy` just to give an otherwise-empty style facet a
+sound: an empty facet stays empty and honest, rather than mislabelled.
+`apps/sounds/catalog/generated-recipes.mjs`'s own header carries this same
+reasoning line by line, next to the map it explains; `docs/GAMESOUNDS.md`'s
+"Generated sounds" section is the canonical summary.
+
+**Guards.** Every generated variant runs through the same `checkSound`
+every chipvoice variant does, including a new `checkGeneratedVariantCount`
+(same 3-minimum floor as `checkChipvoiceVariantCount`, gated on
+`origin === "generated"` so neither rule can silently apply to the other's
+sounds by accident). A preset whose variants fail, whose style judgment
+cannot be made honestly, or that simply sounds wrong is named and excluded
+with a reason in `build-catalog.mjs`'s `EXCLUDED_PRESETS` map, rather than
+shipped anyway or forced into a facet it does not belong in; this ticket's
+own build needed no exclusions. Tuning a preset's own sound is explicitly
+out of scope here - sfx-engine's committed hash fixture (decision 52) is
+not touched by this ticket, and a preset that needs tuning gets excluded,
+not silently shipped worse than it should be. `POST /api/v1/resolve`
+reaches a generated sound through an ordinary, origin-blind style match;
+existing `8bit`/`16bit`/no-style resolution is unchanged, both by
+construction (every generated sound's id is
+`${category-slug}-${style}-${preset}`, and every style a generated sound
+can carry starts with a letter, sorting after chipvoice's digit-starting
+`8bit`/`16bit` under the tie-break's `localeCompare`) and by a test
+(`apps/sounds/test/resolve-generated.test.mjs`) run against the real,
+built catalogue.
+
+**What changes.** `apps/sounds/catalog/generated-recipes.mjs` (new),
+`scripts/build-catalog.mjs` (renders and merges the generated half),
+`scripts/lib/checks.mjs` (`checkGeneratedVariantCount`),
+`packages/gamesounds/src/types.ts` (`Origin`'s doc comment no longer says
+"not built in this phase"; `Variant` gains an optional `recipe`, one per
+generated variant), `src/lib/openapi.ts` (the same, reflected in
+`/openapi.json`/`/llms.txt`/`/skill.md`/`/.well-known/mcp.json`, all
+derived from it), and the sound detail page (states plainly whether a
+sound was made by chip emulation or by sfx-engine, and which model).
+`packages/gamesounds`'s CLI and runtime needed no code change - a sound's
+origin is opaque to both, they only ever handle a resolved
+`Sound`/`Variant` - only new test coverage. CI's `sounds` job now builds
+`packages/sfx-engine` before `catalog:build`, the same way it already
+builds `packages/chipvoice` and `packages/web-kit` first, for the same
+reason (`build-catalog.mjs` imports its built `dist/` directly).
+`apps/sounds/vercel.json`'s `ignoreCommand` is unchanged: the site's own
+`src/` never imports `packages/sfx-engine` (only the build-time
+`scripts/build-catalog.mjs` does), and Vercel's `buildCommand` never runs
+`catalog:build` - it serves the already-committed `generated/catalog.json`
+- so a change to `packages/sfx-engine` cannot affect what Vercel builds or
+serves.

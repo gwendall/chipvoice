@@ -26,7 +26,11 @@ choose another). Every downloaded file's hash is verified against the
 server's own content-addressed store before the command exits. Safe to run
 again: a file already on disk is not re-downloaded, and a later run adds to
 `sounds.json` rather than replacing it. `gamesounds add --help` prints the
-full flag list (`--style`, `--api`, `--out`).
+full flag list (`--style`, `--api`, `--out`). `--style` reaches every facet
+the catalogue carries, not just the retro `8bit`/`16bit` chip sounds -
+`--style realistic`, `scifi`, `fantasy` and `minimal-ui` resolve to
+gamesounds' own procedurally generated sounds (`origin: "generated"`,
+`packages/sfx-engine`) the exact same way.
 
 ## The runtime
 
@@ -76,6 +80,13 @@ npm run typecheck
 npm run test:unit    # node --test over test/*.mjs, a fake AudioContext
 node test-cli.mjs    # the CLI against a real local gamesounds.ai server
 ```
+
+`test-cli.mjs` covers `add --style realistic` end to end (resolves a
+generated-origin sound, downloads it, verifies its SHA-256) alongside the
+original chipvoice acceptance example - the CLI and runtime here needed no
+code change for GS-03 (a sound's origin is opaque to both; they only ever
+handle a resolved `Sound`/`Variant`, never chipvoice's or sfx-engine's own
+recipe types), only the additional test.
 
 `bin/gamesounds.mjs` ships as plain ESM, unbuilt (no dependency on `dist/`),
 so it runs with no build step; `dist/` is only what `import "gamesounds"`

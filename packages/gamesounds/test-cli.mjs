@@ -246,6 +246,37 @@ try {
       await rm(syncDir, { recursive: true, force: true });
     }
   }
+
+  // A non-retro style (GS-03): the sfx-engine-generated half of the
+  // catalogue is reachable through the exact same CLI path as any
+  // chipvoice sound - add, verify, download - and the resolved sound is
+  // genuinely origin: "generated", not a chipvoice sound that merely
+  // happens to carry a matching style label.
+  {
+    const generatedDir = await mkdtemp(join(tmpdir(), "gamesounds-cli-generated-"));
+    try {
+      const generatedRun = await run(process.execPath, [CLI, "add", "combat/hit", "--style", "realistic", "--api", API, "--dir", generatedDir, "--json"]);
+      const generatedResult = JSON.parse(generatedRun.stdout);
+      assert.equal(generatedResult.events, 1, `expected 1 event written, got: ${generatedRun.stdout}`);
+
+      const generatedManifest = JSON.parse(await readFile(join(generatedDir, "sounds.json"), "utf8"));
+      assertValidManifest(generatedManifest, "add --style realistic (generated)");
+      const soundId = generatedManifest.events["combat/hit"].sound;
+
+      const soundResponse = await fetch(`${API}/api/v1/sounds/${soundId}`);
+      assert.equal(soundResponse.status, 200);
+      const { sound } = await soundResponse.json();
+      assert.equal(sound.origin, "generated", `--style realistic must resolve a generated-origin sound, got ${JSON.stringify({ id: sound.id, origin: sound.origin, style: sound.style })}`);
+      assert.equal(sound.style, "realistic");
+
+      const generatedPaths = [...generatedManifest.events["combat/hit"].files, ...(generatedManifest.events["combat/hit"].fallback ?? [])];
+      await assertPathsHashCorrectly(generatedPaths, "add --style realistic (generated)");
+
+      console.log(`PASS: gamesounds add combat/hit --style realistic resolves a generated-origin sound (${soundId}) and downloads SHA-256-verified files`);
+    } finally {
+      await rm(generatedDir, { recursive: true, force: true });
+    }
+  }
 } finally {
   await rm(dir, { recursive: true, force: true });
 }

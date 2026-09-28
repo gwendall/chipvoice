@@ -11,6 +11,7 @@ import {
   checkLoudnessBand,
   checkOneCeilingBinds,
   checkChipvoiceVariantCount,
+  checkGeneratedVariantCount,
   checkSound,
   LOUDNESS_CEILING_EPSILON_LU,
   PEAK_EPSILON_DB,
@@ -133,12 +134,17 @@ function sha256Hex(bytes) {
   // checkSound orchestrates: feed it a sound broken in two independent ways
   // (bad license, bad loudness on its one variant) and confirm both
   // failures are reported, not just the first.
+  const clean = { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP };
   const badSound = {
     license: "CC0-1.0",
     attribution: "should not be here",
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": isolates this test from the variant-count check below
-    variants: [{ n: 1, sha256: "badloud", measure: { lufs: -5, peakDb: -10 } }], // over the LUFS ceiling, independent of the license failure above
+    origin: "generated", // meets the 3-variant floor below, isolating this test from checkGeneratedVariantCount
+    variants: [
+      { n: 1, sha256: "badloud", measure: { lufs: -5, peakDb: -10 } }, // over the LUFS ceiling, independent of the license failure above
+      { n: 2, sha256: "clean2", measure: clean },
+      { n: 3, sha256: "clean3", measure: clean },
+    ],
   };
   const failures = checkSound(badSound, {}, sha256Hex);
   assert.ok(failures.some((f) => f.startsWith("license:")), "checkSound must surface the license failure");
@@ -157,10 +163,11 @@ function sha256Hex(bytes) {
     license: "CC0-1.0",
     attribution: null,
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": isolates this test from the variant-count check below
+    origin: "generated", // meets the 3-variant floor below, isolating this test from checkGeneratedVariantCount
     variants: [
       { n: 1, sha256: "clean1", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
       { n: 2, sha256: "broken2", measure: { lufs: -3, peakDb: -2 } },
+      { n: 3, sha256: "clean3", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
     ],
   };
   const failures = checkSound(sound, {}, sha256Hex);
@@ -180,12 +187,51 @@ function sha256Hex(bytes) {
   const enough = { origin: "chipvoice", variants: [{ n: 1 }, { n: 2 }, { n: 3 }] };
   assert.equal(checkChipvoiceVariantCount(enough).ok, true, "3 variants meets the minimum");
 
-  // A non-chipvoice origin (the procedural engine, GS-02, reserved as
-  // "generated") is not held to this floor by this check - it would define
-  // its own rule when it exists, not inherit chipvoice's by accident.
+  // A non-chipvoice origin (generated, GS-03) is not held to this floor by
+  // this check - checkGeneratedVariantCount (below) defines its own rule
+  // instead of inheriting chipvoice's by accident.
   const generatedWithOne = { origin: "generated", variants: [{ n: 1 }] };
   assert.equal(checkChipvoiceVariantCount(generatedWithOne).ok, true, "a non-chipvoice origin is not held to the chipvoice minimum");
   console.log("PASS checkChipvoiceVariantCount only binds chipvoice-origin sounds");
+}
+
+{
+  // checkGeneratedVariantCount: the generated-origin analogue (GS-03). A
+  // generated sound is rendered from a seed ladder, not sourced, so it has
+  // the same lack of excuse for fewer than the minimum.
+  const tooFew = { origin: "generated", variants: [{ n: 1 }, { n: 2 }] };
+  const result = checkGeneratedVariantCount(tooFew);
+  assert.equal(result.ok, false, "a generated sound with 2 variants must fail the 3-variant minimum");
+  console.log("PASS checkGeneratedVariantCount fails a generated sound with fewer than 3 variants");
+
+  const enough = { origin: "generated", variants: [{ n: 1 }, { n: 2 }, { n: 3 }] };
+  assert.equal(checkGeneratedVariantCount(enough).ok, true, "3 variants meets the minimum");
+
+  // A chipvoice-origin sound is not held to this floor by this check - it
+  // has its own (checkChipvoiceVariantCount, above).
+  const chipvoiceWithOne = { origin: "chipvoice", variants: [{ n: 1 }] };
+  assert.equal(checkGeneratedVariantCount(chipvoiceWithOne).ok, true, "a non-generated origin is not held to the generated minimum");
+  console.log("PASS checkGeneratedVariantCount only binds generated-origin sounds");
+}
+
+{
+  // checkSound wires checkGeneratedVariantCount in too, under the same
+  // "variant count:" label chipvoice's own failure uses (GS-03's rule is
+  // meant to read as the same rule applied to the other origin, not a
+  // different kind of failure).
+  const tooFewGenerated = {
+    license: "CC0-1.0",
+    attribution: null,
+    source: { name: "gamesounds sfx-engine", url: "https://gamesounds.ai", author: "Gwendall Esnault" },
+    origin: "generated",
+    variants: [
+      { n: 1, sha256: "a", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+      { n: 2, sha256: "b", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+    ],
+  };
+  const failures = checkSound(tooFewGenerated, {}, sha256Hex);
+  assert.ok(failures.some((f) => f.startsWith("variant count:")), "checkSound must surface a generated sound's variant-count failure");
+  console.log("PASS checkSound refuses a generated sound with fewer than 3 variants, with a negative test proving it");
 }
 
 {
@@ -259,8 +305,12 @@ function sha256Hex(bytes) {
     license: "CC0-1.0",
     attribution: null,
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": isolates this test from the variant-count check
-    variants: [{ n: 1, sha256: "neitherbinds", measure: { lufs: -30, peakDb: -10 } }],
+    origin: "generated", // meets the 3-variant floor below, isolating this test from checkGeneratedVariantCount
+    variants: [
+      { n: 1, sha256: "neitherbinds", measure: { lufs: -30, peakDb: -10 } },
+      { n: 2, sha256: "clean2", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+      { n: 3, sha256: "clean3", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+    ],
   };
   const failures = checkSound(brokenSound, {}, sha256Hex);
   assert.ok(!failures.some((f) => f.startsWith("variant 1 loudness:")), "the two static ceilings alone must not fire on this variant");
@@ -305,12 +355,17 @@ function sha256Hex(bytes) {
 }
 
 {
+  const goodMeasure = { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP };
   const goodSound = {
     license: "CC0-1.0",
     attribution: null,
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": a 1-variant sound is otherwise clean, this only isolates it from the variant-count floor
-    variants: [{ n: 1, sha256: "good1", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } }],
+    origin: "generated",
+    variants: [
+      { n: 1, sha256: "good1", measure: goodMeasure },
+      { n: 2, sha256: "good2", measure: goodMeasure },
+      { n: 3, sha256: "good3", measure: goodMeasure },
+    ],
   };
   const failures = checkSound(goodSound, {}, sha256Hex);
   assert.deepEqual(failures, [], "a genuinely clean sound must report no failures (sanity check)");

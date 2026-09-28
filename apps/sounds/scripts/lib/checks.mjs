@@ -142,6 +142,23 @@ export function checkChipvoiceVariantCount(sound, { min = 3 } = {}) {
   return { ok: true };
 }
 
+/**
+ * The generated-origin analogue of checkChipvoiceVariantCount (GS-03): a
+ * generated sound is rendered from a seed ladder, not sourced, so it has the
+ * same lack of excuse to ship fewer than the minimum - see
+ * catalog/generated-recipes.mjs's own header for why a plain seed ladder is
+ * expected to reach VARIANTS_PER_GROUP (4) for every preset. The floor here
+ * matches chipvoice's own (3) on purpose: "the same survival rule as the
+ * chipvoice half" (the brief's own words), not a coincidence of both
+ * starting from the same constant.
+ */
+export function checkGeneratedVariantCount(sound, { min = 3 } = {}) {
+  if (sound.origin !== "generated") return { ok: true };
+  const count = sound.variants?.length ?? 0;
+  if (count < min) return { ok: false, reason: `generated sound has ${count} variant(s), fewer than the required ${min}` };
+  return { ok: true };
+}
+
 /** Runs every per-sound check and returns the failures, if any. Used by the
  * build (to refuse a bad sound) and by the negative tests (to prove each
  * check fires on the input built to break it).
@@ -163,6 +180,8 @@ export function checkSound(sound, variantData, sha256Hex, loudnessOptions = {}) 
   if (!license.ok) failures.push(`license: ${license.reason}`);
   const variantCount = checkChipvoiceVariantCount(sound);
   if (!variantCount.ok) failures.push(`variant count: ${variantCount.reason}`);
+  const generatedVariantCount = checkGeneratedVariantCount(sound);
+  if (!generatedVariantCount.ok) failures.push(`variant count: ${generatedVariantCount.reason}`);
   for (const variant of sound.variants ?? []) {
     const data = variantData?.[variant.sha256];
     if (data?.bytes) {

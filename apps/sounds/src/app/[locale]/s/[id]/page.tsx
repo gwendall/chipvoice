@@ -27,6 +27,11 @@ export default async function SoundPage({ params }: { params: Promise<{ id: stri
         <span className="badge">{sound.license}</span>
         <span className="badge">{sound.origin}</span>
       </div>
+      <p className="muted" style={{ fontSize: "0.9em" }}>
+        {sound.origin === "generated"
+          ? `Made by gamesounds' own procedural engine (sfx-engine, ${sound.source.pack} model), not a chip and not a third-party sample.`
+          : `Made by real chip emulation (chipvoice, ${sound.source.pack} chip), not a sample and not a generative model.`}
+      </p>
 
       <div className="card" style={{ marginTop: 24 }}>
         <div className="row">

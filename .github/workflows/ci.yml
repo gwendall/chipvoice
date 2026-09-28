@@ -210,11 +210,11 @@ jobs:
   # chipvoice engine build the `unit`/`browser` jobs need, since apps/sounds
   # imports packages/gamesounds's types by relative path rather than
   # depending on either package's own build (decision 49). gamesounds is our
-  # own sound bank - every sound is rendered by chipvoice itself, no
-  # third-party sounds and no external generation API (decision 50) - so
-  # this job has no source to distrust and nothing to download: the whole
-  # catalogue is rebuilt from committed recipes and checked for determinism
-  # below, not just a subset.
+  # own sound bank - every sound is rendered by chipvoice or by our own
+  # sfx-engine (GS-03), no third-party sounds and no external generation API
+  # (decision 50) - so this job has no source to distrust and nothing to
+  # download: the whole catalogue is rebuilt from committed recipes and
+  # checked for determinism below, not just a subset.
   sounds:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -234,6 +234,10 @@ jobs:
       # apps/sounds imports web-kit/*, resolved against its built dist/;
       # same reason, build it explicitly too.
       - run: pnpm --filter web-kit build
+      # build-catalog.mjs also imports packages/sfx-engine's own built
+      # dist/index.js directly (renderRecipe, recipeForPreset, getPreset -
+      # GS-03's generated half of the catalogue); same reason, same fix.
+      - run: pnpm --filter sfx-engine build
       - run: pnpm --filter gamesounds typecheck
       - run: pnpm --filter gamesounds test:unit
       - run: pnpm --filter gamesounds-site typecheck

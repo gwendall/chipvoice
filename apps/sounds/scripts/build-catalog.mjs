@@ -20,6 +20,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { chipvoiceGroups, VARIANTS_PER_GROUP } from "../catalog/chipvoice-recipes.mjs";
+import { generatedGroups, VARIANTS_PER_GROUP as GENERATED_VARIANTS_PER_GROUP } from "../catalog/generated-recipes.mjs";
 import {
   decodeToRender,
   trimToZeroCrossing,
@@ -28,8 +29,15 @@ import {
   computePeaks,
   sha256Hex,
   toWavBytes,
+  peakOf,
 } from "./lib/audio.mjs";
 import { checkSound } from "./lib/checks.mjs";
+
+// Presets excluded from the generated half, with why - see this file's
+// buildGenerated(). Empty for now: every preset that reaches the build
+// passes checkSound; if one is added here later, name it, quote the actual
+// failure/judgment, and say what the engine (a separate ticket) would need.
+const EXCLUDED_PRESETS = {};
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -157,6 +165,105 @@ function assembleSound({ id, category, style, tags, title, description, license,
   };
 }
 
+/**
+ * Honest, per-preset description: the preset's own one-line summary (from
+ * sfx-engine's own PRESETS registry, not re-typed here so it can never drift
+ * from the engine's own words), then how it was made, naming the actual
+ * synthesis technique (catalog/generated-recipes.mjs's own `technique`
+ * field) and this preset's own defining param values - never "made by AI"
+ * or any third-party/black-box language, since there is no such thing here
+ * (docs/DECISIONS.md, decision 50).
+ */
+function describeGenerated(entry, presetDescription, params) {
+  const values = Object.values(params).filter((v) => typeof v === "string" || typeof v === "number");
+  const paramText = values.length ? `, ${values.join(", ")}` : "";
+  return `${presetDescription} Synthesized by gamesounds' own procedural engine (sfx-engine, ${entry.technique}${paramText}).`;
+}
+
+/**
+ * The generated-origin analogue of renderGroupVariants: renders one preset's
+ * seed ladder (catalog/generated-recipes.mjs's `generatedGroups`) in order
+ * and keeps the first VARIANTS_PER_GROUP takes that are audible and
+ * byte-distinct, exactly like the chipvoice half.
+ *
+ * sfx-engine's own `renderRecipe` already normalizes loudness and pans to
+ * stereo internally, but to its OWN convention, measured on the pre-pan mono
+ * signal (packages/sfx-engine/src/render/renderRecipe.ts) - that internal
+ * figure is never trusted here. The catalogue ships this half mono, same as
+ * the chipvoice half (measured directly against the committed catalog.json:
+ * every one of its 880 existing variants is mono - packages/chipvoice's own
+ * renderSfx is never called with `stereo: true` - so "stereo dual-mono like
+ * the rest of the catalogue" would in fact be the one inconsistent choice).
+ * At pan 0 (every preset's only pan value), sfx-engine's equal-power pan law
+ * makes `left` and `right` identical and loudness-equivalent to a true mono
+ * signal, so `left` alone is taken as this variant's raw PCM and run through
+ * the SAME trim/level/encode/measure pipeline as chipvoice - `levelToConvention`
+ * re-measures whatever bytes it is actually given, so it is correct
+ * regardless of what convention produced them. See
+ * test/generated-loudness.test.mjs for the test proving this (and the
+ * negative case: trusting the engine's own pre-pan mono figure instead of
+ * re-measuring the actual shipped bytes).
+ */
+function renderGeneratedVariants(candidates, renderRecipeFn, variantChecks) {
+  const variants = [];
+  const seen = new Set();
+  let dropped = 0;
+  for (const candidate of candidates) {
+    if (variants.length >= GENERATED_VARIANTS_PER_GROUP) break;
+    const rendered = renderRecipeFn(candidate.recipe);
+    const left = Float32Array.from(rendered.left);
+    const render = { sampleRate: rendered.sampleRate, left, right: null, seconds: rendered.durationSeconds, peak: peakOf(left, null) };
+    const { variant, checkData } = processVariant(render, variants.length + 1);
+    if (checkData.peakLinear === 0 || seen.has(variant.sha256)) { dropped++; continue; }
+    seen.add(variant.sha256);
+    // Recorded per variant (not just at Sound level) since each variant's
+    // seed differs - anyone can re-render this exact take bit-exactly from
+    // its own recipe (packages/gamesounds/src/types.ts's Variant.recipe).
+    variant.recipe = candidate.recipe;
+    variants.push(variant);
+    variantChecks[variant.sha256] = checkData;
+  }
+  renderGeneratedVariants.dropped = (renderGeneratedVariants.dropped ?? 0) + dropped;
+  return variants;
+}
+
+/**
+ * Renders every generated-origin sound (catalog/generated-recipes.mjs's
+ * GENERATED_MAP): sfx-engine's own presets, seeded per variant, run through
+ * the shared trim/level/encode/measure pipeline. Excludes and reports (never
+ * silently drops) a preset named in EXCLUDED_PRESETS or one whose seed
+ * ladder yields no surviving variant at all.
+ */
+async function buildGenerated(variantChecks) {
+  const sfxEngineDist = join(root, "..", "..", "packages", "sfx-engine", "dist", "index.js");
+  const { renderRecipe, recipeForPreset, getPreset } = await import(sfxEngineDist);
+  const groups = generatedGroups(recipeForPreset);
+  const sounds = [];
+  const excluded = [];
+  const usedIds = new Set();
+  for (const { entry, candidates } of groups) {
+    if (EXCLUDED_PRESETS[entry.preset]) {
+      excluded.push({ preset: entry.preset, reason: EXCLUDED_PRESETS[entry.preset] });
+      continue;
+    }
+    const variants = renderGeneratedVariants(candidates, renderRecipe, variantChecks);
+    if (variants.length === 0) {
+      excluded.push({ preset: entry.preset, reason: "no seed in its ladder rendered an audible, byte-distinct take" });
+      continue;
+    }
+    const preset = getPreset(entry.preset);
+    const id = uniqueId(`${slugify(entry.category)}-${entry.style}-${entry.preset}`, usedIds);
+    sounds.push(assembleSound({
+      id, category: entry.category, style: entry.style, tags: entry.tags, title: entry.title,
+      description: describeGenerated(entry, preset.description, preset.params),
+      license: "CC0-1.0", attribution: null,
+      source: { name: "gamesounds sfx-engine", url: "https://gamesounds.ai", author: "Gwendall Esnault (https://gwendall.com)", pack: preset.model },
+      origin: "generated", recipe: variants[0].recipe, variantResults: variants,
+    }));
+  }
+  return { sounds, excluded };
+}
+
 async function buildChipvoice(variantChecks) {
   const chipvoiceDist = join(root, "..", "..", "packages", "chipvoice", "dist", "index.js");
   const { instrumentsFor, renderSfx } = await import(chipvoiceDist);
@@ -184,7 +291,12 @@ async function main() {
   // one map is simpler than threading a per-sound one through assembleSound
   // just for this.
   const variantChecks = {};
-  const { sounds } = await buildChipvoice(variantChecks);
+  const { sounds: chipvoiceSounds } = await buildChipvoice(variantChecks);
+
+  log("building the generated (sfx-engine) catalogue (GS-03; no network, no external sources)");
+  const { sounds: generatedSounds, excluded } = await buildGenerated(variantChecks);
+  for (const { preset, reason } of excluded) log(`excluded generated preset "${preset}": ${reason}`);
+  const sounds = [...chipvoiceSounds, ...generatedSounds];
 
   log(
     `loudness gate: every variant must reach at least one of its two ceilings (momentary LUFS at most -18, true peak at most -1 dBTP, within 0.2 dB rounding slack) - see checkOneCeilingBinds in scripts/lib/checks.mjs`,
@@ -205,7 +317,7 @@ async function main() {
 
   const taxonomy = JSON.parse(readFileSync(taxonomyPath, "utf8"));
   const catalog = {
-    $comment: "Generated by scripts/build-catalog.mjs. Do not hand-edit; change catalog/taxonomy.json or catalog/chipvoice-recipes.mjs and rebuild.",
+    $comment: "Generated by scripts/build-catalog.mjs. Do not hand-edit; change catalog/taxonomy.json, catalog/chipvoice-recipes.mjs or catalog/generated-recipes.mjs and rebuild.",
     generatedAt: new Date().toISOString().slice(0, 10),
     categories: taxonomy.categories,
     sounds,
@@ -227,7 +339,13 @@ async function main() {
   log(`by origin: ${JSON.stringify(byOrigin)}`);
   log(`by style: ${JSON.stringify(byStyle)}`);
   if (renderGroupVariants.dropped) {
-    log(`dropped ${renderGroupVariants.dropped} rejected candidate(s) (silent or byte-identical to an already-kept take) - see renderGroupVariants in this file`);
+    log(`dropped ${renderGroupVariants.dropped} rejected chipvoice candidate(s) (silent or byte-identical to an already-kept take) - see renderGroupVariants in this file`);
+  }
+  if (renderGeneratedVariants.dropped) {
+    log(`dropped ${renderGeneratedVariants.dropped} rejected generated candidate(s) (silent or byte-identical to an already-kept take) - see renderGeneratedVariants in this file`);
+  }
+  if (excluded.length) {
+    log(`excluded ${excluded.length} generated preset(s) entirely - see the "excluded generated preset" lines above`);
   }
 }
 
