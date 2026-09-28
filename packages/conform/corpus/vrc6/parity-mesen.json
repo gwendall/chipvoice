@@ -10,8 +10,8 @@
   "date": "2026-09-28",
   "files": 8,
   "cycles": 6339623,
-  "identical": 5732468,
-  "diverging": 4,
+  "identical": 5732469,
+  "diverging": 3,
   "results": [
     {
       "name": "script-all-three",
@@ -236,25 +236,20 @@
       "source": "src/corpus/generate-vrc6.mjs",
       "writes": 3,
       "cycles": 35898,
-      "identical": 35897,
-      "first": {
-        "cycle": 35897,
-        "voice": 0,
-        "a": 75,
-        "b": 60
-      },
+      "identical": 35898,
+      "first": null,
       "edges": [
         {
           "voice": "sum",
-          "identical": 35897,
+          "identical": 35898,
           "a": 9000,
-          "b": 8999,
-          "exact": 8999,
+          "b": 9000,
+          "exact": 9000,
           "near": 0,
-          "onlyA": 1,
+          "onlyA": 0,
           "onlyB": 0,
           "shift": 0,
-          "aligned": 8999,
+          "aligned": 9000,
           "runs": {
             "ours": 1,
             "theirs": 1,

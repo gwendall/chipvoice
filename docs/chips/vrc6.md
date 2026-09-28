@@ -17,7 +17,7 @@ replacing any of them. The method behind every section is in
 | | |
 | --- | --- |
 | **Machine** | NES, Famicom (Konami VRC6 cartridges: Akumajou Densetsu / Castlevania III, Madara, Esper Dream 2) |
-| **Status** | **in progress**: measured against two independent oracles, Game_Music_Emu's `Nes_Vrc6_Apu` and, since round 2, Mesen 2's own VRC6 audio; the corpus is split so every script that avoids the oracles' own known gaps (no disable after the first enable, no period at or below 4, no `$9003` writes) gates at a literal 100 % against both, and every script that hits one of those gaps gates exactly against Mesen 2 (which models all three) while Game_Music_Emu reports the same script without gating CI; round 3 found the pulse duty generator's own counting-direction mismatch against Mesen 2 is an exact, algebraic mapping, not a baseline question, so the four flat-corpus scripts that never touch the sawtooth's own disable/re-enable gap now gate at a literal 100 % against Mesen 2 too (`check:vrc6-flat-mesen`); the remaining four, all of which do touch that gap, stay on the original eight-script corpus's no-regression baseline, 38.1 % against Game_Music_Emu (unchanged) and now 90.4 % against Mesen 2 (up from 23.6 %), while the per-run, shift-tolerant match the board reads is 79.0 % of 105 runs; a self-authored VRC6 NSF probe proves NSF export/playback round-trips through Game_Music_Emu's own `Nsf_Emu` player exactly; no driver reaches it yet |
+| **Status** | **in progress**: measured against two independent oracles, Game_Music_Emu's `Nes_Vrc6_Apu` and, since round 2, Mesen 2's own VRC6 audio; the corpus is split so every script that avoids the oracles' own known gaps (no disable after the first enable, no period at or below 4, no `$9003` writes) gates at a literal 100 % against both, and every script that hits one of those gaps gates exactly against Mesen 2 (which models all three) while Game_Music_Emu reports the same script without gating CI; round 3 patched Mesen 2's pulse to adopt this core's own nesdev-literal duty-phase reading (a one-line algebraic mapping, not a time shift), so the four flat-corpus scripts that disable and re-enable a pulse but never the sawtooth gate at a literal 100 % against Mesen 2 too (`check:vrc6-flat-mesen`) - round 4: that gate is independent evidence for divider cadence, step timing, disable/enable behaviour and levels, but not for duty-phase polarity itself, since the patch is what makes Mesen agree on phase, and whose phase convention is hardware-correct remains open ("The pulse mapping" below); round 4 also found and fixed two harness bugs that had clipped one script's last edge, so a fifth script (`script-saw-worked-example`) now gates exactly too; the remaining three, which disable and re-enable the sawtooth, stay on the original eight-script corpus's no-regression baseline, 38.1 % against Game_Music_Emu (unchanged) and 90.4 % against Mesen 2; the per-run, shift-tolerant match the board reads is 79.0 % of 105 runs; a self-authored VRC6 NSF probe proves NSF export/playback round-trips through Game_Music_Emu's own `Nsf_Emu` player exactly; no driver reaches it yet |
 | **Core** | written from the nesdev wiki and Konami's own VRC6 documents: the standalone digital chip in `packages/chipvoice/src/chips/nes/vrc6.ts`, the combined `2a03-vrc6` cartridge chip and its mixing stage in `vrc6-core.ts` |
 | **Licence of the core** | MIT, like the rest of the package. Game_Music_Emu's `Nes_Vrc6_Apu`, the oracle, is LGPL and lives in the harness only: decision 41 |
 | **Sheet updated** | 2026-09-28, by hand and by `conform` |
@@ -50,15 +50,22 @@ actually exercises (`generate-vrc6.mjs`'s own comment says why):
     `script-pulse-periods`) disable and re-enable pulses but never touch the
     sawtooth while it is disabled. Round 3 found the pulse mismatch there is
     not a phase convention any shift could close, but an exact algebraic
-    mapping - see "The pulse mapping" below - so these four now gate at a
-    literal 100 % against Mesen 2 (`check:vrc6-flat-mesen`), the same as
-    `core` and `edge`.
-  - The other four (`script-all-three`, `script-saw-enable`,
-    `script-saw-rates`, `script-saw-worked-example`) disable and re-enable
-    the sawtooth, where Mesen 2's own divider stops counting entirely while
-    disabled - see "The sawtooth's divider across a disable" below - a
-    genuinely different mechanism the mapping does not reach. These four stay
-    on the original no-regression baseline, against both oracles.
+    mapping between the two counters - see "The pulse mapping" below for the
+    derivation, and round 4's correction to what this actually proves - so
+    these four now gate at a literal 100 % against Mesen 2
+    (`check:vrc6-flat-mesen`), the same as `core` and `edge`.
+  - A fifth (`script-saw-worked-example`) never disables the sawtooth either,
+    but sat at 99.9972 % for an unrelated reason: two separate harness bugs
+    (one in this oracle's own driver, one in Game_Music_Emu's) that both
+    clipped its very last edge. Round 4 found and fixed both, so this script
+    also now gates at a literal 100 % against Mesen 2 - see "The sawtooth's
+    divider across a disable" below for the mechanism.
+  - The other three (`script-all-three`, `script-saw-enable`,
+    `script-saw-rates`) disable and re-enable the sawtooth, where Mesen 2's
+    own divider stops counting entirely while disabled - see "The sawtooth's
+    divider across a disable" below - a genuine behavioural difference the
+    mapping does not reach and the harness fix does not touch. These three
+    stay on the original no-regression baseline, against both oracles.
 
 The numbers between each pair of markers are written by the harness (`pnpm
 --filter chipvoice-conform baseline:vrc6*`, one script per table below); the
@@ -159,11 +166,16 @@ Written by `conform` on 2026-09-28, against Game_Music_Emu (Nes_Vrc6_Apu), on vp
 
 ### Flat corpus, pulse scripts against Mesen 2 (exact gate)
 
-The four flat-corpus scripts that disable and re-enable a pulse but never the
-sawtooth: `check:vrc6-flat-mesen` runs the same directory as `check:vrc6-mesen`
-below, `--exclude`-ing the four that do touch the sawtooth's own disable/
-re-enable gap (those four stay on `parity-mesen`'s no-regression baseline).
-See "The pulse mapping" below for why these four can be held exact.
+Five of the flat corpus's eight scripts: the four that disable and re-enable a
+pulse but never the sawtooth, plus `script-saw-worked-example` (never disables
+the sawtooth either, and gates exactly once round 4's harness fix stopped it
+clipping its own last edge - see "The sawtooth's divider across a disable"
+below). `check:vrc6-flat-mesen` runs the same directory as `check:vrc6-mesen`
+below, `--exclude`-ing the three that do touch the sawtooth's own disable/
+re-enable gap (those three stay on `parity-mesen`'s no-regression baseline).
+See "The pulse mapping" below for what this gate does, and does not, prove
+about the four pulse scripts; "The sawtooth's divider across a disable" for
+`script-saw-worked-example`'s own story.
 
 <!-- flat-mesen:begin -->
 Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio, on sum.
@@ -171,8 +183,8 @@ Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 
 | | |
 | --- | --- |
 | Oracle | Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio |
-| Corpus | 4 logs, 3891837 cycles |
-| Identical cycles | 3891837 / 3891837 (100.0000 %) |
+| Corpus | 5 logs, 3927735 cycles |
+| Identical cycles | 3927735 / 3927735 (100.0000 %) |
 | Logs with a divergence | 0 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
@@ -181,6 +193,7 @@ Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 
 | script-pulse-both | 100.0000 % | none | sum 100.0000 %, 6060/0/0; runs 3: 3 on times, 3 on values, shift <= 0 |
 | script-pulse-enable | 100.0000 % | none | sum 100.0000 %, 12/0/0; runs 6: 6 on times, 6 on values, shift <= 0 |
 | script-pulse-periods | 100.0000 % | none | sum 100.0000 %, 1268/0/0; runs 65: 65 on times, 65 on values, shift <= 0 |
+| script-saw-worked-example | 100.0000 % | none | sum 100.0000 %, 9000/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 <!-- flat-mesen:end -->
 
 ### Full legacy corpus, against Game_Music_Emu (no-regression baseline)
@@ -192,8 +205,8 @@ Written by `conform` on 2026-09-28, against Game_Music_Emu (Nes_Vrc6_Apu), on vp
 | --- | --- |
 | Oracle | Game_Music_Emu (Nes_Vrc6_Apu) |
 | Corpus | 8 logs, 6339623 cycles |
-| Identical cycles | 2413335 / 6339623 (38.0675 %) |
-| Logs with a divergence | 8 |
+| Identical cycles | 2413336 / 6339623 (38.0675 %) |
+| Logs with a divergence | 7 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
@@ -204,7 +217,7 @@ Written by `conform` on 2026-09-28, against Game_Music_Emu (Nes_Vrc6_Apu), on vp
 | script-pulse-periods | 41.5736 % | cycle 17898, vp2: ours 0, oracle 12 | vp1 100.0000 %, 0/0/0; vp2 41.5736 %, 2/1/1412; runs 65: 59 on times, 59 on values, shift <= 94309; vsaw 100.0000 %, 0/0/0 |
 | script-saw-enable | 29.5108 % | cycle 18117, vsaw: ours 0, oracle 1 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 29.5108 %, 7/0/67; runs 5: 5 on times, 1 on values, shift <= 16 |
 | script-saw-rates | 49.3714 % | cycle 29799, vsaw: ours 0, oracle 1 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 49.3714 %, 0/0/1404 (139 at -12); runs 5: 5 on times, 1 on values, shift <= 60 |
-| script-saw-worked-example | 99.9972 % | cycle 35897, vsaw: ours 5, oracle 4 | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 99.9972 %, 8999/0/1; runs 1: 1 on times, 1 on values, shift <= 0 |
+| script-saw-worked-example | 100.0000 % | none | vp1 100.0000 %, 0/0/0; vp2 100.0000 %, 0/0/0; vsaw 100.0000 %, 9000/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 <!-- parity:end -->
 
 ### Full legacy corpus, against Mesen 2 (no-regression baseline)
@@ -216,8 +229,8 @@ Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 
 | --- | --- |
 | Oracle | Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio |
 | Corpus | 8 logs, 6339623 cycles |
-| Identical cycles | 5732468 / 6339623 (90.4229 %) |
-| Logs with a divergence | 4 |
+| Identical cycles | 5732469 / 6339623 (90.4229 %) |
+| Logs with a divergence | 3 |
 
 | Log | Identical | First divergence | Per voice: identical; edges exact / near / unmatched; best constant shift; runs aligned under a shift of their own |
 | --- | --- | --- | --- |
@@ -228,7 +241,7 @@ Written by `conform` on 2026-09-28, against Mesen 2 (b9fa69d, 2026-06-04), VRC6 
 | script-pulse-periods | 100.0000 % | none | sum 100.0000 %, 1268/0/0; runs 65: 65 on times, 65 on values, shift <= 0 |
 | script-saw-enable | 99.2116 % | cycle 30426, sum: ours 15, oracle 0 | sum 99.2116 %, 14/0/48; runs 5: 5 on times, 5 on values, shift <= 31 |
 | script-saw-rates | 90.8676 % | cycle 29799, sum: ours 0, oracle 15 | sum 90.8676 %, 0/0/1400 (140 at -12); runs 5: 5 on times, 5 on values, shift <= 18 |
-| script-saw-worked-example | 99.9972 % | cycle 35897, sum: ours 75, oracle 60 | sum 99.9972 %, 8999/0/1; runs 1: 1 on times, 1 on values, shift <= 0 |
+| script-saw-worked-example | 100.0000 % | none | sum 100.0000 %, 9000/0/0; runs 1: 1 on times, 1 on values, shift <= 0 |
 <!-- parity-mesen:end -->
 
 **What the numbers say.** Round 2 split the corpus precisely so the legacy
@@ -237,17 +250,21 @@ number would no longer have to carry both kinds of question at once. The
 independently confirmed by two emulators built by different people from
 different sources": yes, exactly, cycle for cycle, on every script that does
 not hit one of Game_Music_Emu's own three known gaps, and exactly against
-Mesen 2 even on the three that do, and now, since round 3, exactly against
-Mesen 2 on four of the legacy corpus's own eight scripts too (see "Flat
-corpus" above and "The pulse mapping" below). The legacy corpus's raw
-headline (38.1 % against Game_Music_Emu, up from 35.7 % once round 2's
-polarity fix and split were in place; 90.4 % against Mesen 2, up from 23.6 %
-once round 3's pulse mapping was in place) answers a different question,
-"what happens when a script drives every voice through several enable/
-disable cycles at once," and still undercounts this chip against
-Game_Music_Emu specifically because of it, and, on the four still-diverging
-scripts, against Mesen 2's own sawtooth as well ("The sawtooth's divider
-across a disable" below): the corpus deliberately drives every voice through
+Mesen 2 even on the three that do, and now, since round 3 (pulse mapping) and
+round 4 (a harness fix), exactly against Mesen 2 on five of the legacy
+corpus's own eight scripts too (see "Flat corpus" above) - though on duty
+phase specifically, four of those five are exact only because Mesen 2 was
+patched to read phase chipvoice's way, not because two independent
+implementations were found to agree ("The pulse mapping" below has what the
+gate does and does not show). The legacy corpus's raw headline (38.1 %
+against Game_Music_Emu, up from 35.7 % once round 2's polarity fix and split
+were in place; 90.4 % against Mesen 2, up from 23.6 % once round 3's pulse
+mapping was in place) answers a different question, "what happens when a
+script drives every voice through several enable/disable cycles at once," and
+still undercounts this chip against Game_Music_Emu specifically because of
+it, and, on the three still-diverging scripts, against Mesen 2's own
+sawtooth as well ("The sawtooth's divider across a disable" below): the
+corpus deliberately drives every voice through
 several enable/disable cycles (`generate-vrc6.mjs`'s own comment says why),
 and
 Game_Music_Emu's `Nes_Vrc6_Apu` - read directly, `gme/Nes_Vrc6_Apu.cpp` in
@@ -328,18 +345,75 @@ with the derivation above quoted in a comment there, is exact: every voice on
 every cycle of all four flat-corpus scripts that disable and re-enable a
 pulse but not the sawtooth (`script-duty`, `script-pulse-both`,
 `script-pulse-enable`, `script-pulse-periods`, "Flat corpus, pulse scripts
-against Mesen 2" above), and `core`/`edge` are unaffected (still 100 %): every
-script there already held duty and period fixed across an enable span, where
-the mapped and the original condition agree.
+against Mesen 2" above).
 
-A single constant time shift cannot express this mapping, which is why
-`compare.mjs`'s own shift search (used for the sawtooth, above) never closed
-it: the counter's direction decides which edge of the duty window is anchored
-to the divider's own wrap - an up-counter anchors the rising edge there, a
-down-counter the falling edge - so shifting a whole trace in time moves both
-edges of the duty window together, where only one needs to move. The mapping
-above moves the right one, because it comes from the counters' own reset
-invariant, not from fitting one trace to another.
+**Round 4's correction: what this mapping, and the gate it enables, actually
+prove.** The paragraph above is the derivation and it is correct, but earlier
+wording in this file, in `Vrc6Pulse.h`'s own comment and in
+`oracles/mesen/README.md` overclaimed what it settles, and one of the reasons
+given for `core`/`edge`'s own immunity was wrong. Both are corrected here.
+
+This is not a neutral relabelling between two conventions that were always
+going to agree - it changes Mesen's *observable* output. Unpatched, `s <=
+_dutyCycle` with s reset to 0 on enable means a pulse here is **HIGH for the
+first D+1 steps after an enable, then low**. Game_Music_Emu's own pulse
+(below) starts its equivalent counter at 1 from power-on and is high-first
+too. This core is **low-first**: LOW for the first 15-D steps, then at volume
+for D+1, because s' is reset to 15 and the condition is `s' <= dutyCycle` -
+nesdev's own text, read literally ("takes 16 steps, counting down from 15 to
+0. When the current step is less than or equal to the given duty cycle D, the
+channel volume V is output, otherwise 0," quoted in full in `vrc6.ts`'s own
+doc comment). The patch above makes *Mesen* low-first too. It makes Mesen
+adopt this core's own nesdev-literal reading - it is not a reading Mesen or
+Game_Music_Emu held on their own before the patch, and not a mechanical
+consequence of the s' = 15 - s identity being "true" in some convention-free
+sense; the identity just describes how to make two opposite-direction
+counters agree once you decide which one gets to keep its own phase.
+
+Consequence for `check:vrc6-flat-mesen`'s 100 %: on duty-phase polarity
+alone, it is **not independent evidence**, because the patch is precisely
+what forces the two sides to agree on phase - a real disagreement there
+would be invisible to this gate by construction. What the gate **does**
+remain independent evidence for, unaffected by the patch, is everything the
+patch does not touch: the divider's own cadence (how often the step counter
+advances), step timing relative to the period register, freezing while
+disabled, re-anchoring at each enable edge, and the output levels themselves
+- all still read from, and compared against, Mesen's own independent
+implementation of those.
+
+Whose duty-phase reading is correct is genuinely undetermined: this core
+follows nesdev's text; both Mesen 2 and Game_Music_Emu, unpatched, disagree
+with that reading (and, per the direct oracle-against-oracle measurement
+below, with each other); no real VRC6 cartridge has been captured to check
+any of the three against hardware. Settling it may mean flipping this core's
+own convention, or dropping this patch and accepting the no-regression
+baseline for the pulse too - see [BACKLOG.md](../BACKLOG.md)'s NEXT-14 entry
+for the capture that would decide between them.
+
+The false claim being corrected here: this file used to say
+`check:vrc6-core-mesen`/`check:vrc6-edge-mesen` are unaffected by the patch
+"since every script there already held duty and period fixed across an
+enable span, where the mapped and the original condition agree." That is
+wrong on its own terms - a fixed duty does not make two opposite-direction
+counters phase-agree; s' = 15 - s already accounts for any fixed duty, and
+still describes two different phases unless the counters are reconciled by
+the patch. The real reason those two gates are unaffected has nothing to do
+with duty phase: every `$9000`/`$A000` write in `corpus/vrc6/core/*.log` and
+`corpus/vrc6/edge/pulse-enable.log` sets bit 7 (M, "ignore duty" mode) - this
+corpus's own values include `89`, `85`, every byte from `80` to `BB`, and
+`8D`, all with bit 7 set - which bypasses the duty generator entirely on both
+sides (`_ignoreDuty`/`mode`, both return the flat volume unconditionally,
+never consulting the step counter at all). Before round 3, no exact gate
+against Mesen exercised the duty generator at all; `check:vrc6-flat-mesen` is
+the first one that does, and everything above is what it is, and is not,
+evidence of.
+
+A single constant time shift cannot express the s'/s mapping itself, which is
+why `compare.mjs`'s own shift search (used for the sawtooth, above) never
+closed it: the counter's direction decides which edge of the duty window is
+anchored to the divider's own wrap - an up-counter anchors the rising edge
+there, a down-counter the falling edge - so shifting a whole trace in time
+moves both edges of the duty window together, where only one needs to move.
 
 Game_Music_Emu's own pulse (`gme/Nes_Vrc6_Apu.cpp`) also counts up - `phase`
 increments, wraps at 16, and the channel reads high while `phase < duty + 1`,
@@ -375,7 +449,7 @@ any disable.
 
 ### The sawtooth's divider across a disable
 
-The four flat-corpus scripts still on the no-regression baseline against
+The three flat-corpus scripts still on the no-regression baseline against
 Mesen 2 all disable and re-enable the sawtooth, and all diverge for the same,
 single, sourced reason: Mesen's `Vrc6Saw::Clock()` (`Vrc6Saw.h`) gates its
 entire body - the frequency-divider timer as well as the step and the
@@ -403,14 +477,45 @@ corpus was not built with that constraint, so it exposes the difference:
   cycle 757716, eleven cycles after a saw re-enable at cycle 757705
   (`$B002 = $80` in the log) - the same freeze-then-resume mechanism, not a
   new one.
-- `script-saw-worked-example`: 99.9972 % identical, first divergence at cycle
-  35897 - the log's own next-to-last cycle (`# cycles: 35898`), with no
-  cycles afterward for a real edge to land inside the compared window. This
-  script never disables the sawtooth at all, and its own `edges` count
-  (8999/9000 exact, one unmatched) shows every edge but the very last landing
-  on the same cycle in both traces: a boundary artifact of the fixed cycle
-  count, not the disable mechanism above, and unrelated to the two other
-  scripts' cause.
+
+`script-saw-worked-example` never disables the sawtooth at all, so it cannot
+hit the mechanism above, but it used to sit at 99.9972 % identical against
+Mesen 2 regardless, first divergence at cycle 35897 - the log's own
+next-to-last cycle (`# cycles: 35898`), with its `edges` count (8999/9000
+exact, one unmatched) showing every edge but the very last landing on the
+same cycle in both traces. Round 3 called this "a boundary-clipping artifact
+of its own fixed cycle count" without identifying the mechanism; round 4
+did, and it turned out to be two separate, genuine harness bugs, one per
+oracle, that happened to both clip exactly this script's last edge because
+its cycle count (unlike its padded `core/saw-worked-example.log` twin, five
+cycles longer) sits exactly on it:
+- **Mesen** (`oracles/mesen/main-vrc6.cpp`): the manual per-cycle clock loop
+  does produce the boundary transition, but the delta-filter line that
+  decided which deltas to keep, `if (amp != before && (long) time < cycles)`,
+  used a strict `<` that discards a delta timestamped exactly at `cycles` -
+  precisely how the mixer timestamps a delta produced by the very last
+  clocked tick, since its own cycle counter is already one past that tick by
+  the time the delta is recorded. Fixed by widening to `<=`.
+- **Game_Music_Emu** (`oracles/game-music-emu/main.cpp`): its batched
+  `apu.end_frame(cycles)` call does not internally produce the boundary
+  transition at all within that budget - measured directly, `end_frame(cycles)`
+  alone never emits a delta at `cycles - 1`, not even one the filter above
+  would then discard; `Blip_Buffer`'s own frame boundary needs one more cycle
+  of clocking past the requested budget to flush a change landing that close
+  to it. Fixed by calling `apu.end_frame(cycles + 1)` for the headroom, while
+  keeping that file's own delta filter capped at the original `cycles` (not
+  `cycles + 1`), so nothing past the true requested window is ever admitted.
+Both fixes are verified to bring this script to 100.0000 % against both
+oracles (now in the "Flat corpus" and "Full legacy corpus" tables above), and
+verified harmless everywhere else: the same `< cycles` → `<= cycles` idiom
+appears in three more oracle drivers unrelated to VRC6
+(`oracles/mesen/main.cpp`, `oracles/nes-snd-emu/main.cpp`,
+`oracles/gb-snd-emu/main.cpp`), widened for consistency; `compare.mjs`'s own
+comparison loop never consults a change timestamped `>= cycles` in the first
+place, so the wider filter is a no-op there unless a downstream cycle shift
+pulls such a change back inside the window, which none of those three drivers
+do - confirmed by byte-identical `2a03`, `2a03-vgm` and `dmg`/`dmg-vgm`
+baseline files before and after.
 
 None of this is a documented hardware reset value either side claims to know;
 like the pulse's own reset-to-0-versus-reset-to-15 difference above, it is
@@ -545,6 +650,7 @@ player every 2A03 file in both corpora is measured against.
 | --- | --- | --- | --- |
 | A pulse's duty phase does not resume from step 15 on re-enable, and does not advance at all while disabled or in "always on" mode, against Game_Music_Emu | no, that oracle's, not this core's | this core follows nesdev's explicit text ("it will resume from the beginning when E is once again set"); Game_Music_Emu's `run_square` only advances the phase while `volume && !gate && period > 4`, and never resets `phase` on any register write or disable/re-enable (`gme/Nes_Vrc6_Apu.h`/`.cpp`), so it freezes and resumes wherever it stopped instead; Mesen 2's own `_step` does reset on every disable (to 0, not 15), so its own version of this row is mapped to an exact gate instead (`Vrc6Pulse.h`'s "chipvoice patch" comment; "The pulse mapping" above) | every corpus script that disables and re-enables a pulse, against Game_Music_Emu; measured as a per-run shift, not a raw match (see above); no longer affects Mesen 2 |
 | Game_Music_Emu and Mesen 2 do not closely agree with each other on pulse duty phase either, despite both counting the duty step up where this core counts it down | no, each oracle's own choice, not this core's | both count up (nesdev's text describes counting down, which this core follows literally), but only Mesen re-anchors its counter on every disable; Game_Music_Emu's phase never resets, so the two independent oracles diverge from each other on most cycles of a script that disables and re-enables a pulse, measured directly oracle against oracle: `script-duty` 92.8250 %, `script-pulse-both` 32.4362 %, `script-pulse-periods` 49.1166 % identical (against an unmapped Mesen build; see "The pulse mapping" above) | explains why the mapping above closes the gap against Mesen 2 but cannot be extended to Game_Music_Emu; no effect on this core's own gates, which measure each oracle separately |
+| Pulse duty phase after enable: this core outputs the low part first (LOW for the first 15-D steps, then volume for D+1), where upstream Mesen 2 and Game_Music_Emu both output the high part first (volume for D+1 steps, then low) | undetermined - hardware unverified | this core follows nesdev's text literally ("counting down from 15 to 0... when the current step is less than or equal to the given duty cycle D, the channel volume V is output, otherwise 0"); upstream Mesen 2 resets its step counter to 0, not 15, on every enable, and Game_Music_Emu's own `phase` starts at 1 from power-on and is never reset to a value consistent with this core's reading either; no real VRC6 cartridge has been captured to settle which reading is hardware-correct (`Vrc6Pulse.h`'s "chipvoice patch" comment; "The pulse mapping" above) | phase only - duty width, divider period and output level are all unchanged either way; `check:vrc6-flat-mesen`'s 100 % is not independent evidence on this specific question, since `Vrc6Pulse.h`'s patch is what makes Mesen adopt this core's own reading rather than an agreement found between two unmodified implementations; a real-hardware capture that would settle it is tracked in [BACKLOG.md](../BACKLOG.md) |
 | The sawtooth's accumulator does not freeze on disable, and its divider does not stop, against Game_Music_Emu | no, that oracle's, not this core's | this core follows nesdev's text ("the accumulator is forced to zero"; "clearing E does not reset the frequency divider"); Game_Music_Emu's `run_saw` takes a branch while disabled that touches neither (`gme/Nes_Vrc6_Apu.cpp`) | every corpus script that disables and re-enables the sawtooth, against Game_Music_Emu |
 | Mesen 2's sawtooth frequency divider pauses entirely while disabled and resumes from wherever it stopped, rather than continuing to tick | no, that emulator's own choice | this core ticks the divider unconditionally every cycle, per nesdev's text ("clearing E does not reset the frequency divider, however"); Mesen 2's `Vrc6Saw::Clock()` gates its whole body, divider included, behind `if(_enabled)` (`Vrc6Saw.h`) | `script-saw-enable`, `script-saw-rates`, `script-all-three` against Mesen 2 ("The sawtooth's divider across a disable" above); not exercised by `edge/saw-enable.log`, whose disabled spans are exact multiples of the saw's own full divider period, so both conventions land on the same next firing there |
 | A pulse whose reloaded period is 4 cycles or less never toggles in the oracle | no, a gap in the oracle | Game_Music_Emu's `run_square` only runs its phase-advance loop when `period > 4`; this core keeps advancing at any period | `script-pulse-periods`' own period-0 and period-1 runs |
@@ -566,6 +672,25 @@ behaviour once written, not their reset value.
 
 ## History
 
+- 2026-09-28 (NEXT-14, round 4, PR #111): corrected round 3's overclaim about
+  `Vrc6Pulse.h`'s patch and `check:vrc6-flat-mesen`: the patch changes
+  Mesen's observable duty-phase output (makes it adopt this core's own
+  nesdev-literal, low-first reading) rather than relabelling a convention
+  both sides already shared, so the gate is independent evidence for
+  everything the patch does not touch, but not for duty-phase polarity
+  itself, which remains undetermined against real hardware (new "Known
+  deviations" row; a hardware-capture item added to BACKLOG.md); corrected a
+  second, separate false claim that `core`/`edge` stay exact because "every
+  script there already held duty and period fixed," which is algebraically
+  wrong - the real reason is that every write in those scripts sets the
+  duty-bypass mode bit; found and fixed two independent harness bugs (an
+  off-by-one delta filter in this oracle's driver, an under-clocked
+  `end_frame` call in Game_Music_Emu's) that had both clipped
+  `script-saw-worked-example`'s last edge, bringing it to a literal 100 %
+  against both oracles and into `check:vrc6-flat-mesen`'s exact set; added a
+  second oracle-mutation negative test proving the upstream, fully unmapped
+  pulse condition also diverges from chipvoice, alongside the existing
+  reversed-inequality one.
 - 2026-09-28 (NEXT-14, round 3, PR #111): the pulse duty generator's
   counting-direction mismatch against Mesen 2 resolved to an exact gate, not
   a no-regression baseline, through an algebraic mapping between the two

@@ -83,7 +83,18 @@ int main()
 		fprintf( stderr, "no `# cycles:` header before the first write\n" );
 		return 1;
 	}
-	apu.end_frame( cycles );
+	// `cycles + 1`, not `cycles`: distinct from (and in addition to) the
+	// `<=` fix on this file's own delta filter below. Measured directly
+	// (`corpus/vrc6/script-saw-worked-example.log`, whose last real edge
+	// sits exactly on the requested cycle budget): `end_frame(cycles)`
+	// alone never produces a delta timestamped at `cycles - 1` at all, not
+	// even one this filter then discards - Blip_Buffer's frame boundary
+	// needs one more cycle of clocking past the requested budget to flush a
+	// change landing that close to it. `end_frame(cycles + 1)` supplies
+	// exactly that one cycle of headroom; the filter below still caps what
+	// is kept at `time <= cycles` (the ORIGINAL budget, not `cycles + 1`),
+	// so nothing past the true requested window is ever admitted.
+	apu.end_frame( cycles + 1 );
 
 	std::vector<Change> changes;
 	for ( int v = 0; v < Nes_Vrc6_Apu::osc_count; v++ )
@@ -96,7 +107,14 @@ int main()
 			long before_ = amp;
 			while ( i < deltas.size() && deltas [i].time == time )
 				amp += deltas [i++].delta;
-			if ( amp != before_ && time < cycles )
+			// `<=`, not `<`: a delta landing exactly on this log's own
+			// `cycles` bound is one past the last tick's 0-based index, not
+			// beyond it - see `oracles/mesen/main-vrc6.cpp`'s own copy of
+			// this comment for the full mechanism and why widening it here
+			// is safe (it only ever matters to a voice a later shift, like
+			// this oracle's own sawtooth correction, pulls back inside
+			// `compare.mjs`'s `< cycles` window).
+			if ( amp != before_ && time <= cycles )
 			{
 				Change c = { time, v, (int) amp };
 				changes.push_back( c );

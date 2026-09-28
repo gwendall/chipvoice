@@ -144,3 +144,67 @@ for (const gate of GATES) {
     fs.rmSync(scratchRoot, { recursive: true, force: true });
   }
 }
+
+/**
+ * Third negative test for `check:vrc6-flat-mesen`, added in round 4: the
+ * same shadow-include build as the reversed-inequality test just above, but
+ * shadowing `Vrc6Pulse.h` with the UPSTREAM, fully unmapped line -
+ * `_step <= _dutyCycle`, Mesen's own condition before the chipvoice patch,
+ * with no `15 -` substitution at all - and asserting it too diverges from
+ * chipvoice on the flat pulse corpus.
+ *
+ * This is the round 4 correction made executable: round 3's docs claimed
+ * `check:vrc6-core-mesen`/`check:vrc6-edge-mesen` stay exact "since every
+ * script there already held duty and period fixed across an enable span,
+ * where the mapped and unmapped conditions agree" - which is false (a fixed
+ * duty does not make two opposite-direction counters phase-agree; see
+ * `Vrc6Pulse.h`'s and this oracle's README's round 4 wording for the real
+ * reason, the corpus's own bit-7 "ignore duty" writes). This test proves the
+ * positive claim the mapping actually supports: on a script that DOES
+ * exercise the duty generator (`script-duty.log`, no bit 7 set), the
+ * upstream unmapped line diverges from chipvoice and the patched line does
+ * not - so the patch, not some incidental property of the corpus, is what
+ * `check:vrc6-flat-mesen` depends on.
+ */
+{
+  const MESEN_DIR = path.join(ROOT, 'oracles/mesen');
+  const MESEN_SOURCES = [
+    'main-vrc6.cpp',
+    'vendor/NES/APU/NesApu.cpp',
+    'vendor/NES/APU/DeltaModulationChannel.cpp',
+    'vendor/NES/APU/BaseExpansionAudio.cpp',
+    'shim/NES/NesCpu.cpp',
+  ];
+
+  const realHeader = fs.readFileSync(path.join(MESEN_DIR, 'vendor/NES/Mappers/Audio/Vrc6Pulse.h'), 'utf8');
+  const mappedLine = 'return _step >= (uint8_t)(15 - _dutyCycle) ? _volume : 0;';
+  assert.ok(realHeader.includes(mappedLine), 'expected the live Vrc6Pulse.h to still carry the mapped condition this test mutates');
+  const upstreamLine = 'return _step <= _dutyCycle ? _volume : 0;';
+  const upstreamHeader = realHeader.replace(mappedLine, upstreamLine);
+
+  const scratchRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vrc6-upstream-mapping-'));
+  try {
+    const shadowDir = path.join(scratchRoot, 'NES/Mappers/Audio');
+    fs.mkdirSync(shadowDir, { recursive: true });
+    fs.writeFileSync(path.join(shadowDir, 'Vrc6Pulse.h'), upstreamHeader);
+
+    const upstreamBinary = path.join(scratchRoot, 'mesen-vrc6-upstream');
+    const built = spawnSync('c++', ['-O2', '-std=c++17', '-w', `-I${scratchRoot}`, '-Ishim', '-Ivendor', '-o', upstreamBinary, ...MESEN_SOURCES], {
+      cwd: MESEN_DIR,
+      encoding: 'utf8',
+    });
+    assert.equal(built.status, 0, `building the upstream-unmapped oracle failed:\n${built.stderr}`);
+
+    const log = parseLog(fs.readFileSync(path.join(ROOT, 'corpus/vrc6/script-duty.log'), 'utf8'));
+    const input = formatLog({ chip: 'vrc6', clock: 1789773, cycles: log.cycles }, log.writes);
+    const upstreamStream = ChangeStream.from(await traceProcess(upstreamBinary, [], input));
+    for (let i = 0; i < upstreamStream.length; i++) upstreamStream.cycle[i] += CYCLE_OFFSET;
+    const ours = ChangeStream.from(await chipVrc6Combined.trace(log.writes, log.cycles, log.memory));
+    const result = compare(ours, upstreamStream, { cycles: log.cycles, voices: [0] });
+    assert.notEqual(result.first, null, 'check:vrc6-flat-mesen: the upstream unmapped pulse condition must diverge from chipvoice');
+
+    console.log('ok - check:vrc6-flat-mesen: the upstream unmapped pulse condition (_step <= _dutyCycle) diverges from chipvoice');
+  } finally {
+    fs.rmSync(scratchRoot, { recursive: true, force: true });
+  }
+}

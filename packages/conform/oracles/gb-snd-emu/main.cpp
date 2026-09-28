@@ -92,7 +92,9 @@ int main()
 			while ( i < deltas.size() && deltas [i].time == time )
 				amp += deltas [i++].delta;
 			int next = dac_value( v, amp );
-			if ( next != value && time < cycles )
+			// `<=`, not `<` - see `oracles/mesen/main-vrc6.cpp`'s own copy of
+			// this comment for the mechanism and why widening it is safe.
+			if ( next != value && time <= cycles )
 			{
 				value = next;
 				Change c = { time, v, value };

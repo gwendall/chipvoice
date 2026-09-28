@@ -167,7 +167,32 @@ int main()
 		long before = amp;
 		while (i < deltas.size() && deltas[i].cycle == time)
 			amp += deltas[i++].delta;
-		if (amp != before && (long) time < cycles)
+		// `<=`, not `<`: `main-vrc6.cpp`'s own final clock loop, just above,
+		// clocks exactly `cycles` ticks, ending with `globalCycle == cycles`,
+		// and the mixer timestamps a delta produced by that very last tick
+		// with `_currentCycle`'s value AFTER `ProcessCpuClock()` has already
+		// advanced it for that tick - i.e. `cycles` itself, one past the
+		// tick's own 0-based index. A log whose very last register change
+		// lands exactly there (`corpus/vrc6/script-saw-worked-example.log`
+		// is the corpus case that hits it) had that one change silently
+		// dropped by a strict `<` here, in BOTH this oracle's driver and
+		// Game_Music_Emu's own (`oracles/game-music-emu/main.cpp`) - not a
+		// VRC6-specific bug, the same off-by-one this project's own comment
+		// two lines above already half-diagnoses ("changes near the end of a
+		// log could be dropped"), just one cycle short of catching it. Safe
+		// for every chip this idiom is shared with (`git grep -n
+		// 'time < cycles'` under `oracles/`): `compare.mjs` only ever
+		// consults a change whose cycle is strictly less than the log's own
+		// `cycles` bound, so admitting one at exactly `cycles` here changes
+		// nothing unless some later step in the pipeline shifts it down into
+		// that window - which happens only for this oracle's own unconditional
+		// `CYCLE_OFFSET` and Game_Music_Emu's per-cycle sawtooth correction
+		// (`oracles/game-music-emu.mjs`); every other consumer of this same
+		// filter (`oracles/mesen/main.cpp`, `oracles/gb-snd-emu/main.cpp`,
+		// `oracles/nes-snd-emu/main.cpp`) applies no such shift, so widening
+		// their own copies of this filter the same way is a no-op there,
+		// confirmed by running every 2A03/GB baseline unchanged after doing so.
+		if (amp != before && (long) time <= cycles)
 			changes.push_back({ (long) time, (int) amp });
 	}
 

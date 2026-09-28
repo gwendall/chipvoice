@@ -167,7 +167,9 @@ int main()
 			long before_ = amp;
 			while (i < deltas.size() && deltas[i].cycle == time)
 				amp += deltas[i++].delta;
-			if (amp != before_ && (long) time < cycles)
+			// `<=`, not `<` - see `main-vrc6.cpp`'s own copy of this comment
+			// for the mechanism and why widening it is safe.
+			if (amp != before_ && (long) time <= cycles)
 			{
 				Change c = { (long) time, v, (int) amp };
 				changes.push_back(c);
