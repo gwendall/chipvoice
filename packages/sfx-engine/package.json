@@ -1,0 +1,43 @@
+{
+  "name": "sfx-engine",
+  "version": "0.1.0",
+  "description": "gamesounds' own procedural synthesis engine: deterministic, offline, float64 DSP that renders a recipe plus a seed to PCM. No third-party audio, no external generation API.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "schema",
+    "README.md",
+    "README_ja.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "node scripts/run-unit-tests.mjs",
+    "test:hash-fixture": "node scripts/hash-fixture.mjs --check",
+    "hash-fixture:write": "node scripts/hash-fixture.mjs --write",
+    "test:perf-budget": "node scripts/perf-budget.mjs --check",
+    "perf-budget:write": "node scripts/perf-budget.mjs --write",
+    "parity:check": "node parity/check.mjs",
+    "parity:self-test": "node parity/self-test.mjs",
+    "loudness:ffmpeg-check": "node scripts/ffmpeg-loudness-check.mjs",
+    "listen": "node scripts/build-listening-report.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "playwright": "^1.62.1",
+    "typescript": "^5.7.0"
+  }
+}

@@ -2018,3 +2018,45 @@ READMEs), `packages/conform/src/oracles/nuked-opm.mjs` and `ymfm.mjs`,
 `packages/conform/package.json`. No driver, arranger or studio picker
 change; the YM2610 is explicitly not part of this change and is tracked as
 its own ticket.
+
+## 52. gamesounds makes its own sounds: a deterministic procedural engine, recipes plus seeds, no third-party audio or external generator (2026-09-28)
+
+`packages/sfx-engine` is a new, private, zero-runtime-dependency workspace
+package: gamesounds.ai's own offline sound effect synthesizer. A sound is a
+recipe (JSON: model, params, seed, sample rate) plus that seed, rendered to
+PCM by DSP built from scratch in this repository - oscillators, noise,
+envelopes, filters, delay, algorithmic reverb, waveshaping, and four
+physically-informed models (modal synthesis, PhISEM, Karplus-Strong, a
+bubble model), each an independent implementation of a published algorithm
+or paper, never a port of an existing codebase. 53 named presets cover the
+UI, impact, footstep, whoosh, explosion, sci-fi, magic and pickup taxonomy
+families; every render is dedicated to the public domain (CC0-1.0) by
+construction, since nothing recorded or third-party ever enters it. Full
+detail is in [GAMESOUNDS-ENGINE.md](GAMESOUNDS-ENGINE.md).
+
+**Why.** gamesounds.ai's product needs sound effects it can ship, remix and
+regenerate without a licensing question attached to any one of them, and
+without depending on a third-party generation API's availability, pricing
+or output license. A recipe plus a seed is also reproducible and
+inspectable in a way a generated-and-cached audio file is not: the same
+JSON renders to bit-identical PCM in Node, Chromium, Firefox and WebKit
+(`parity/`, local-only, matching chipvoice's own render-parity pattern), so
+a sound is fully described by a few hundred bytes of JSON, not by a binary
+blob with no record of how it was made.
+
+**Guards.** Determinism is enforced structurally, not by convention: every
+transcendental function the DSP core needs is implemented in `dsp/math.ts`
+from `+`, `-`, `*` and `/` only, since ECMA-262 leaves `Math.sin`/`cos`/
+`exp`/`log`/`pow`/`tanh` implementation-approximated across engines. A
+committed SHA-256 hash fixture (53 presets x 3 seeds) and a committed
+render-time baseline (3x regression budget) both run in the `sfx-engine` CI
+job; the cross-engine parity check, an ffmpeg loudness cross-check, a
+self-contained listening report and a CLAP-based semantic eval are
+local-only tooling, the same split chipvoice already uses for its own
+render-parity.
+
+**What changes.** `packages/sfx-engine` is additive: it does not touch
+`apps/sounds`, `packages/gamesounds` or `packages/chipvoice`, and nothing
+outside it is required to adopt it. It is the sound-generation option
+gamesounds.ai's app can call into going forward, alongside whatever it
+already has.
