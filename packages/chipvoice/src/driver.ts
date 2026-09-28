@@ -187,7 +187,7 @@ export class APU implements NoteSink {
   constructor(ctx: AudioContext, chip: ChipDefinition = nesChip, private readonly options: ChipCreateOptions = {}) {
     this.ctx = ctx;
     this.chip = chip;
-    this.encoder = chip.driver();
+    this.encoder = chip.driver(options);
     this.noiseVoices = new Set(chip.spec.voices.filter((v) => v.notes === "period").map((v) => v.id));
   }
 
@@ -245,7 +245,7 @@ export class APU implements NoteSink {
   reset() {
     this.music.clear();
     this.interruptions.clear();
-    this.encoder = this.chip.driver();
+    this.encoder = this.chip.driver(this.options);
     this.queue.length = 0;
     this.resetCore();
     this.powerOn();
@@ -408,7 +408,7 @@ export class APU implements NoteSink {
       if (remaining[0].at >= interruption.until) continue;
       this.writeFrames(channel, remaining.filter(f => f.at < interruption.from), channel, false);
       remaining = this.tail(remaining, interruption.until);
-      this.encoder = this.chip.driver();
+      this.encoder = this.chip.driver(this.options);
     }
     this.writeFrames(channel, remaining);
   }
@@ -431,16 +431,16 @@ export class APU implements NoteSink {
     const now = this.cycleAt(this.ctx.currentTime);
     const preceding = (this.interruptions.get(channel) ?? []).filter(i => i.until > now && i.from < from).map(i => ({ ...i, until: Math.min(i.until, from) }));
     this.interruptions.set(channel, [...preceding, { from, until }]);
-    this.encoder = this.chip.driver();
+    this.encoder = this.chip.driver(this.options);
     this.writeFrames(channel, this.frames(channel, opts), `fx:${channel}`);
     // Re-encode full register state at release, not just the differences the
     // old note would have written assuming it still owned the voice.
     const notes = (this.music.get(channel) ?? []).filter(n => n[n.length - 1].at + this.cycleAt(FRAME_TIME) > from);
     for (const frames of notes.sort((a, b) => a[0].at - b[0].at)) {
-      this.encoder = this.chip.driver();
+      this.encoder = this.chip.driver(this.options);
       this.writeFrames(channel, this.tail(frames, until));
     }
-    this.encoder = this.chip.driver();
+    this.encoder = this.chip.driver(this.options);
     this.flush();
   }
 
@@ -453,7 +453,7 @@ export class APU implements NoteSink {
     if (!this.ready) return;
     const cycle = this.cycleAt(at ?? this.ctx.currentTime);
     this.cancel(channel, cycle);
-    this.encoder = this.chip.driver();
+    this.encoder = this.chip.driver(this.options);
     this.music.set(channel, (this.music.get(channel) ?? []).map(n => Object.assign(n.filter(f => f.at < cycle), { end: Math.min(n.end ?? cycle, cycle) })).filter(n => n.length > 0));
     const taken = (this.interruptions.get(channel) ?? []).some(i => cycle >= i.from && cycle < i.until);
     if (!taken) this.silence(channel, cycle);
@@ -501,9 +501,9 @@ export class OfflineDriver extends APU implements NoteSink {
   private readonly core: ChipCore;
   private pending: (RegisterEvent & { owner?: string })[] = [];
 
-  constructor(core: ChipCore, chip: ChipDefinition = nesChip, currentTime: () => number = () => 0) {
+  constructor(core: ChipCore, chip: ChipDefinition = nesChip, currentTime: () => number = () => 0, options: ChipCreateOptions = {}) {
     // The host owns the offline clock; expiry follows rendered time.
-    super({ get currentTime() { return currentTime(); } } as AudioContext, chip);
+    super({ get currentTime() { return currentTime(); } } as AudioContext, chip, options);
     this.core = core;
     this.ready = true;
     this.powerOn();

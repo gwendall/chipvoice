@@ -308,6 +308,17 @@ export interface ChipCreateOptions {
    * Ignored by a chip whose clock does not vary. Defaults to the chip's own.
    */
   clockHz?: number;
+  /**
+   * Which acoustic space a chip's driver renders into, for the few chips
+   * whose hardware has one and whose portable `Song` says nothing about it
+   * (the S-DSP echo is chip-wide state, not a per-note or per-role choice,
+   * so it lives here rather than on an `Instrument`). The SNES driver
+   * accepts `"dry"` (default, matches its behavior before this option
+   * existed: EON/EVOL/EFB all zero) and `"room"` (a moderate authored echo;
+   * see `docs/chips/snes.md` and decision 53 in `docs/DECISIONS.md`).
+   * A chip with no echo/reverb hardware ignores this.
+   */
+  space?: string;
 }
 
 export interface ChipDefinition {
@@ -317,7 +328,7 @@ export interface ChipDefinition {
   /** Builds the digital chip alone, for a harness. */
   digital(options?: ChipCreateOptions): DigitalChip;
   /** Builds the chip's own driver. */
-  driver(): ChipDriver;
+  driver(options?: ChipCreateOptions): ChipDriver;
   /** The worklet source, ready to be handed to `addModule` as a blob. */
   workletSource: string;
   /** The processor name the worklet registers. */
