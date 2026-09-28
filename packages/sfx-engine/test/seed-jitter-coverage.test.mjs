@@ -81,35 +81,19 @@ function labelsOf(calls) {
   return new Set(calls.map((c) => c.label));
 }
 
-test("isLabelCovered: the coverage predicate correctly flags an undeclared label (negative test, proves the check itself isn't vacuous)", () => {
-  const declared = [{ label: "laser-pitch" }, { label: "zap-mod" }];
-  assert.equal(isLabelCovered("laser-pitch", declared), true, "an exact declared label must be covered");
-  assert.equal(isLabelCovered("zap-mod", declared), true);
-  assert.equal(isLabelCovered("cast-sparkle-t3", [{ label: "cast-sparkle-t" }]), true, "a dynamically-indexed grain label must match its declared prefix");
-  assert.equal(isLabelCovered("totally-undeclared-jitter", declared), false, "an undeclared label must NOT be reported as covered");
-  assert.equal(isLabelCovered("laser-pitch-extra", [{ label: "laser-pitch-exact-only" }]), false, "startsWith is directional: a longer label isn't covered by a longer declared prefix it doesn't start with");
-});
-
-test("a captured call whose range differs from its declared entry is flagged as a mismatch (negative test, proves the exact-match check isn't vacuous)", () => {
-  const declared = [{ label: "laser-pitch", affects: "test", min: -0.08, max: 0.08 }];
-  const entry = findDeclaredEntry("laser-pitch", declared);
-  assert.ok(entry, "the synthetic label must resolve to the synthetic declared entry");
-  const expected = expectedBounds(entry, 1);
-
-  const drifted = { min: -0.1, max: 0.1 }; // code drifted to +-10% but metadata still says +-8%
-  const drifted_mismatches = drifted.min !== expected.min || drifted.max !== expected.max;
-  assert.equal(drifted_mismatches, true, "a call whose min/max differ from its declared entry must be flagged");
-
-  const matching = { min: -0.08, max: 0.08 };
-  const matching_matches = matching.min === expected.min && matching.max === expected.max;
-  assert.equal(matching_matches, true, "a call whose min/max exactly equal its declared entry must NOT be flagged");
-});
-
-test("every seededRange call's (label, min, max) matches a declared seedJitter entry's prefix and exact bounds", () => {
-  const captured = captureAllJitterCalls();
+/**
+ * The real "does every captured call match a declared entry" check,
+ * factored out of the test body so the negative test below can exercise
+ * this exact function against synthetic input, instead of re-deriving its
+ * own copy of the min/max comparison (which would only prove that `!==`
+ * works, not that this check catches a real declaration/behavior drift).
+ * `capturedByModel`/`declaredByModel` are both `{ modelId -> Array<...> }`;
+ * returns an array of problem strings, empty when everything matches.
+ */
+function findJitterProblems(capturedByModel, declaredByModel) {
   const problems = [];
-  for (const [modelId, calls] of Object.entries(captured)) {
-    const declared = MODELS[modelId].metadata.seedJitter ?? [];
+  for (const [modelId, calls] of Object.entries(capturedByModel)) {
+    const declared = declaredByModel[modelId] ?? [];
     for (const call of calls) {
       const entry = findDeclaredEntry(call.label, declared);
       if (!entry) {
@@ -119,6 +103,79 @@ test("every seededRange call's (label, min, max) matches a declared seedJitter e
       const expected = expectedBounds(entry, call.duration);
       if (call.min !== expected.min || call.max !== expected.max) {
         problems.push(`model "${modelId}": label "${call.label}" called with [${call.min}, ${call.max}] but declared entry "${entry.label}" expects [${expected.min}, ${expected.max}] (duration ${call.duration})`);
+      }
+    }
+  }
+  return problems;
+}
+
+test("isLabelCovered: the coverage predicate correctly flags an undeclared label (negative test, proves the check itself isn't vacuous)", () => {
+  const declared = [{ label: "laser-pitch" }, { label: "zap-mod" }];
+  assert.equal(isLabelCovered("laser-pitch", declared), true, "an exact declared label must be covered");
+  assert.equal(isLabelCovered("zap-mod", declared), true);
+  assert.equal(isLabelCovered("cast-sparkle-t3", [{ label: "cast-sparkle-t" }]), true, "a dynamically-indexed grain label must match its declared prefix");
+  assert.equal(isLabelCovered("totally-undeclared-jitter", declared), false, "an undeclared label must NOT be reported as covered");
+  assert.equal(isLabelCovered("laser-pitch-extra", [{ label: "laser-pitch-exact-only" }]), false, "startsWith is directional: a longer label isn't covered by a longer declared prefix it doesn't start with");
+});
+
+test("findJitterProblems flags a drifted range, an undeclared label, and a drifted -t duration-scaled range, but not a clean input (negative test, proves the real check - the same function the coverage test below calls - isn't vacuous)", () => {
+  // A drifted range: declared +-0.08, called +-0.10 -> exactly one problem.
+  {
+    const declared = { m: [{ label: "laser-pitch", affects: "test", min: -0.08, max: 0.08 }] };
+    const captured = { m: [{ label: "laser-pitch", min: -0.1, max: 0.1, duration: 1 }] };
+    const problems = findJitterProblems(captured, declared);
+    assert.equal(problems.length, 1, "a drifted range must produce exactly one problem");
+    assert.match(problems[0], /laser-pitch/);
+  }
+
+  // An undeclared label -> exactly one problem.
+  {
+    const declared = { m: [{ label: "laser-pitch", affects: "test", min: -0.08, max: 0.08 }] };
+    const captured = { m: [{ label: "totally-undeclared", min: -0.1, max: 0.1, duration: 1 }] };
+    const problems = findJitterProblems(captured, declared);
+    assert.equal(problems.length, 1, "an undeclared label must produce exactly one problem");
+    assert.match(problems[0], /not covered by any declared/);
+  }
+
+  // A `-t` entry's declared bounds are a fraction of duration: a call whose
+  // bounds equal that fraction times the render's own duration must pass;
+  // one that drifted from it must fail.
+  {
+    const declared = { m: [{ label: "cast-sparkle-t", affects: "test", min: 0, max: 0.8 }] };
+    const matchingCall = { m: [{ label: "cast-sparkle-t0", min: 0, max: 0.8 * 2.5, duration: 2.5 }] };
+    const driftedCall = { m: [{ label: "cast-sparkle-t0", min: 0, max: 0.9 * 2.5, duration: 2.5 }] };
+    assert.deepEqual(findJitterProblems(matchingCall, declared), [], "a call whose bounds exactly equal the declared fraction times duration must NOT be flagged");
+    const problems = findJitterProblems(driftedCall, declared);
+    assert.equal(problems.length, 1, "a call whose bounds do not match the duration-scaled declaration must be flagged");
+  }
+
+  // A clean input with no mismatches -> zero problems.
+  {
+    const declared = { m: [{ label: "laser-pitch", affects: "test", min: -0.08, max: 0.08 }] };
+    const captured = { m: [{ label: "laser-pitch", min: -0.08, max: 0.08, duration: 1 }] };
+    assert.deepEqual(findJitterProblems(captured, declared), [], "matching calls must produce zero problems");
+  }
+});
+
+test("every seededRange call's (label, min, max) matches a declared seedJitter entry's prefix and exact bounds", () => {
+  const captured = captureAllJitterCalls();
+  const declaredByModel = Object.fromEntries(
+    Object.keys(captured).map((modelId) => [modelId, MODELS[modelId].metadata.seedJitter ?? []]),
+  );
+  const problems = findJitterProblems(captured, declaredByModel);
+  assert.deepEqual(problems, [], problems.join("\n"));
+});
+
+test("no model declares a seedJitter label that is a prefix of another of its own declared labels (ambiguity guard: findDeclaredEntry's Array.prototype.find takes the FIRST matching prefix, so two declared labels in a prefix relationship would resolve by declaration order, not by which is actually correct)", () => {
+  const problems = [];
+  for (const [modelId, model] of Object.entries(MODELS)) {
+    const declared = model.metadata.seedJitter ?? [];
+    for (const a of declared) {
+      for (const b of declared) {
+        if (a === b) continue;
+        if (b.label !== a.label && b.label.startsWith(a.label)) {
+          problems.push(`model "${modelId}": declared label "${a.label}" is a prefix of declared label "${b.label}" - a captured call for "${b.label}" would ambiguously resolve to whichever entry comes first in the array`);
+        }
       }
     }
   }

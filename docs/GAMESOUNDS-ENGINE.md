@@ -470,53 +470,84 @@ independent trials (an earlier version of this eval did exactly that)
 understates every p-value below. `real` and `degraded` vs chance use an
 exact permutation (randomization) test: `NUM_PERMUTATION_REPS = 10000` reps,
 RNG seed `PERMUTATION_RNG_SEED = 20260929` (both in `eval/clap_eval.py`),
-each rep independently permutes the prompt<->audio correspondence within
-each seed and sums top-k hits across all 4 seeds, building an empirical
-null distribution for that pooled total - chosen over the alternative
-considered (a per-preset "hit in >= k of 4 seeds" binomial against the exact
-chance rate for that threshold event) because it uses the real embedding
-geometry directly rather than an assumed per-trial chance rate, needs no
-independence assumption between a preset's seeds at all, and does not throw
-away the 0-4 hit count's magnitude the way binarizing "hit in >= k of 4"
-would. `real` vs `degraded` uses a paired exact sign test over the 53
-presets' (hits_real - hits_degraded) out of 4 seeds, ties dropped,
-one-sided. `shuffled` keeps its original pooled two-sided binomial test (a
-sanity check that the retrieval methodology itself is unbiased, not a claim
-this eval leans on).
+each rep draws ONE permutation of the prompt<->audio correspondence and
+applies that SAME permutation to all 4 seeds, summing top-k hits across
+them into an empirical null distribution for that pooled total. The
+permutation is shared across a preset's seeds, not redrawn per seed,
+because the preset - not the (item, seed) trial - is the exchangeable unit
+under the null: a preset's 4 seed-renders are correlated in the real data
+(a seed only jitters a recipe a few percent), so the null must correlate
+them the same way, or it is narrower than the true null and every p-value
+is anti-conservative (an earlier version of this eval drew an independent
+permutation per seed, which has exactly this bug). A self-check in the
+script, `_self_check_permutation_clustering()`, proves the fix holds: with
+synthetic embeddings where a preset's 4 seeds are identical, the
+shared-permutation null's std comes out at exactly 4x a single seed's std,
+not ~2x (what independent per-seed permutations would give, since that
+sums 4 near-independent draws rather than 4 copies of one draw). Chosen
+over the alternative considered (a per-preset "hit in >= k of 4 seeds"
+binomial against the exact chance rate for that threshold event) because it
+uses the real embedding geometry directly rather than an assumed per-trial
+chance rate, needs no independence assumption between a preset's seeds at
+all, and does not throw away the 0-4 hit count's magnitude the way
+binarizing "hit in >= k of 4" would. `real` vs `degraded` uses a paired
+exact sign test over the 53 presets' (hits_real - hits_degraded) out of 4
+seeds, ties dropped, one-sided. `shuffled` is not one of these preset-level
+tests: it stays a pooled, two-sided sanity check on whether the retrieval
+methodology itself is unbiased toward the true pairing (not a claim this
+eval leans on), so it is reported as a descriptive rate only (in the
+"Numbers" table above), not in the significance table below.
 
 | Test | top-1 p-value | top-5 p-value |
 | --- | --- | --- |
 | `real` vs chance (permutation, greater) | <0.0001 (significant) | <0.0001 (significant) |
-| `degraded` vs chance (permutation, greater) | 0.0066 (significant) | <0.0001 (significant) |
-| `shuffled` vs chance (pooled, two-sided) | 0.309 (not significant) | 0.563 (not significant) |
+| `degraded` vs chance (permutation, greater) | 0.0585 (not significant) | 0.0004 (significant) |
 | `real` vs `degraded`, preset-level paired sign test (real greater) | 0.395 (not significant) | 0.055 (not significant) |
 
-The pooled-212-trial binomial/sign-test p-values an earlier version of this
-section reported (real vs chance top-1 p=1.61e-10; real-vs-degraded paired
-sign test top-1 p=0.0251, top-5 p=0.00062, both "significant") assumed 212
-independent Bernoulli trials. They are dropped here as invalid under the
-seed clustering described above, not reconciled against the numbers below;
-`.artifacts/clap-report.json` still computes them, labeled
-`*_pooled_212_DESCRIPTIVE_ONLY`, as descriptive rates only.
+The pooled-trial binomial p-values below assume independent trials, which
+the seed clustering above rules out, so they are dropped as significance
+tests and kept only as descriptive rates in
+`.artifacts/clap-report.json`, labeled `*_pooled_212_DESCRIPTIVE_ONLY` (real
+vs chance top-1 p=1.61e-10, top-5 p=1.40e-28; degraded vs chance top-1
+p=0.0075, top-5 p=7.38e-08 - all far more extreme than the correct
+preset-level numbers above, exactly the anti-conservative pattern
+non-independence produces) and `shuffled_vs_chance_pooled_DESCRIPTIVE_ONLY`
+(53 presets x 4 seeds x 5 derangements = 1060 trials, two-sided: top-1
+p=0.309, top-5 p=0.563). An earlier, pre-preset-level version of this
+section had also reported a pooled-212 real-vs-degraded paired sign test
+(top-1 p=0.0251, top-5 p=0.00062, both "significant"); that number is
+dropped as invalid under the same clustering, not reconciled against the
+numbers above.
 
-Read plainly, and without re-framing: `real` and `degraded` both beat chance
-decisively at both top-1 and top-5 - even a stripped-down, noise-based
-render still carries some retrievable signal (duration, coarse spectral
-tilt, the rhythm of onsets), it is not literally at chance. But at the
-preset level, with only 53 independent units, `real` does **not** beat
-`degraded` at a statistically significant level: the preset-level paired
-sign test gives top-1 p=0.395 (8 of 53 presets where `real` scored higher,
-6 where `degraded` did, 39 ties) and top-5 p=0.055 (21 vs 11, 21 ties) -
-close, but on the wrong side of alpha=0.05. This is a real weakening from
-the previous (invalid, pooled-212) analysis, which had reported this exact
-comparison as significant at both top-1 and top-5; the honest reading is
-that this eval, at 53 presets, does not have enough statistical power to
-confirm that filters/envelopes/physically-informed generators measurably
-improve CLAP-recognizability over the degraded control, even though
-`real`'s descriptive numbers (37.7% top-5 vs 21.7% for `degraded`) point
-that way. Seeding more renders of the same 53 presets would not fix this -
-seeds are exactly the correlated, non-independent axis causing the problem;
-more presets would.
+Read plainly, and without re-framing: `real` beats chance decisively at
+both top-1 and top-5 - this engine's audio is genuinely retrievable by a
+general-purpose text-audio model, not just superficially different from
+noise. `degraded` also beats chance at top-5 (p=0.0004) but, once the
+permutation null correctly accounts for seed clustering, no longer beats
+chance at top-1 (p=0.0585, just past alpha=0.05): a stripped-down,
+noise-based render still carries enough duration/coarse-spectral-tilt/
+onset-rhythm signal to be recognizable in the top 5, but not reliably as
+the single best match. This is a change from what an earlier pass of this
+eval reported here (top-1 p=0.0066, "significant") - that number came from
+a bug in the permutation test itself (an independent permutation was drawn
+per seed instead of one shared per replicate across a preset's 4 seeds),
+which made the null narrower than the true clustered null and every
+p-value in this row anti-conservative; the self-check above exists because
+of that bug. At the preset level, with only 53 independent units, `real`
+does **not** beat `degraded` at a statistically significant level either:
+the preset-level paired sign test gives top-1 p=0.395 (8 of 53 presets
+where `real` scored higher, 6 where `degraded` did, 39 ties) and top-5
+p=0.055 (21 vs 11, 21 ties) - close, but on the wrong side of alpha=0.05.
+This is a real weakening from the earlier, pre-preset-level (invalid,
+pooled-212) analysis, which had reported this exact comparison as
+significant at both top-1 and top-5; the honest reading is that this eval,
+at 53 presets, does not have enough statistical power to confirm that
+filters/envelopes/physically-informed generators measurably improve
+CLAP-recognizability over the degraded control, even though `real`'s
+descriptive numbers (37.7% top-5 vs 21.7% for `degraded`) point that way.
+Seeding more renders of the same 53 presets would not fix this - seeds are
+exactly the correlated, non-independent axis causing the problem; more
+presets would.
 
 Per-family confusion (`real` condition, top-1 predictions, pooled over 4
 seeds; rows are the prompt's actual family, columns are the family of the
@@ -579,10 +610,15 @@ If the pre-declared tests above had not shown `real` beating chance, or had
 shown `shuffled` behaving as anything but chance, this section would say so
 plainly instead of quoting the numbers as evidence of quality. They did not
 show that; they did show `real`-vs-`degraded` losing significance once
-seed-clustering is accounted for, and that is reported plainly above rather
-than smoothed over - `real`'s numbers stand as evidence of beating chance,
-not (yet, at this sample size) as evidence of beating the degraded control.
-See "Limits of this evidence" below for what they do not cover.
+seed-clustering is accounted for, and, once the permutation null was
+corrected to actually share one permutation per replicate across a
+preset's 4 seeds instead of drawing one independently per seed, `degraded`
+itself losing significance vs chance at top-1 (p=0.0585, was p=0.0066
+under the bugged, anti-conservative null) - both are reported plainly above
+rather than smoothed over. `real`'s numbers stand as evidence of beating
+chance at both top-1 and top-5; not (yet, at this sample size) as evidence
+of beating the degraded control. See "Limits of this evidence" below for
+what they do not cover.
 
 ### Best of N helper
 

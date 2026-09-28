@@ -61,26 +61,40 @@ but only as descriptive rates, explicitly not as significance tests.
 Pre-declared statistical tests (not tuned post hoc to make anything pass):
   - real-vs-chance and degraded-vs-chance: an exact permutation
     (randomization) test at the preset level. For `NUM_PERMUTATION_REPS`
-    (10000) reps, independently permute the prompt<->audio correspondence
-    WITHIN each seed (the real embeddings are untouched - only which prompt
-    is graded against which audio changes) and sum top-k hits across all 4
-    seeds, building an empirical null distribution for that pooled total;
-    p = (1 + count(null >= observed)) / (reps + 1), one-sided. Chosen over
-    the alternative considered (a per-preset "hit in >= j of 4 seeds"
-    binomial against the exact chance rate for that threshold event) because
-    it uses the real embedding geometry directly rather than an assumed
-    per-trial chance rate, needs no independence assumption between a
-    preset's seeds at all (each replicate carries the exact same cross-seed
-    correlation structure the observed statistic has), and does not throw
-    away the 0-4 hit count's magnitude the way binarizing "hit in >= j of 4"
-    would. RNG: `numpy.random.default_rng(PERMUTATION_RNG_SEED)`,
-    `PERMUTATION_RNG_SEED` fixed below so a run is exactly reproducible.
+    (10000) reps, draw ONE permutation of the prompt<->audio correspondence
+    per replicate and apply that SAME permutation to every seed (the real
+    embeddings are untouched - only which prompt is graded against which
+    audio changes), then sum top-k hits across all 4 seeds, building an
+    empirical null distribution for that pooled total; p = (1 + count(null
+    >= observed)) / (reps + 1), one-sided. The permutation is shared across
+    a preset's seeds, not redrawn per seed, because the preset - not the
+    individual (item, seed) trial - is the exchangeable unit under the
+    null: a preset's 4 seed-renders are correlated in the real data (a seed
+    only jitters a recipe a few percent), so the null must correlate them
+    the same way, or it is narrower than the true null and every p-value
+    below is anti-conservative. `_self_check_permutation_clustering()`
+    (below) proves this holds: with synthetic embeddings where a preset's 4
+    seeds are identical, the shared-permutation null's std is exactly 4x a
+    single seed's std, not ~2x (the value independent per-seed permutations
+    would give, since that treats the 4 seeds as independent draws and sums
+    them). Chosen over the alternative considered (a per-preset "hit in >= j
+    of 4 seeds" binomial against the exact chance rate for that threshold
+    event) because it uses the real embedding geometry directly rather than
+    an assumed per-trial chance rate, and does not throw away the 0-4 hit
+    count's magnitude the way binarizing "hit in >= j of 4" would. RNG:
+    `numpy.random.default_rng(PERMUTATION_RNG_SEED)`, `PERMUTATION_RNG_SEED`
+    fixed below so a run is exactly reproducible.
   - real-vs-degraded: a paired exact sign test over the 53 presets, on each
     preset's (hits_real - hits_degraded) out of 4 seeds; ties (diff = 0)
     dropped; one-sided ("real" beats "degraded"); alpha 0.05. This is
     McNemar's exact test applied at the preset level (the discordant-pairs
     binomial), the same construction the previous pooled-212 version used,
     just with presets instead of raw trials as the paired unit.
+  - shuffled-vs-chance is NOT part of these preset-level tests: it stays a
+    pooled, two-sided sanity check (is the retrieval methodology itself
+    unbiased toward the true pairing?), reported as a descriptive rate only,
+    for the same clustering reason as the pooled-212 real/degraded figures
+    below - see `shuffled_vs_chance_pooled_DESCRIPTIVE_ONLY`.
 
 Also reports a family x family confusion matrix for the `real` condition's
 top-1 predictions (8x8, families from eval/families.json, one row per
@@ -278,24 +292,35 @@ PERMUTATION_RNG_SEED = 20260929  # today's date at the time this test was writte
 NUM_PERMUTATION_REPS = 10000
 
 
+def _permutation_null_totals(text_embed_, embed_by_seed, seeds, k, num_reps, rng):
+    """Null-generation core shared by `permutation_test_vs_chance` and its
+    self-check below. For each of `num_reps` replicates, draw ONE
+    permutation of the prompt<->audio correspondence and apply that SAME
+    permutation to every seed in `seeds`, summing top-k hits across those
+    seeds. Drawing one permutation per replicate (not one per seed) is what
+    makes the preset, not the individual (item, seed) trial, the
+    exchangeable unit under the null - see the module docstring."""
+    n = text_embed_.shape[0]
+    null_totals = np.empty(num_reps, dtype=np.int64)
+    for r in range(num_reps):
+        perm = rng.permutation(n)
+        total = 0
+        for seed in seeds:
+            hits, _ = topk_hits(text_embed_, embed_by_seed[seed], perm)
+            total += sum(hits[k])
+        null_totals[r] = total
+    return null_totals
+
+
 def permutation_test_vs_chance(embed_by_seed, observed_hits_total, k, num_reps, rng):
     """Exact-by-construction permutation/randomization test for "is this
     condition's pooled retrieval accuracy above chance", valid regardless of
-    how correlated a preset's SEEDS renders are with each other: per rep,
-    independently permute the prompt<->audio correspondence WITHIN each seed
-    (the real embeddings are untouched - only which prompt is graded against
-    which audio changes) and sum top-k hits across all SEEDS, building a
-    null distribution of that pooled total over `num_reps` reps. See this
-    file's module docstring for why this was chosen over the "hit in >= j of
-    4 seeds" binomial alternative."""
-    null_totals = np.empty(num_reps, dtype=np.int64)
-    for r in range(num_reps):
-        total = 0
-        for seed in SEEDS:
-            perm = rng.permutation(N)
-            hits, _ = topk_hits(text_embed, embed_by_seed[seed], perm)
-            total += sum(hits[k])
-        null_totals[r] = total
+    how correlated a preset's SEEDS renders are with each other: the null is
+    built from `_permutation_null_totals`, one shared permutation per
+    replicate across all of SEEDS, over `num_reps` reps. See this file's
+    module docstring for why this was chosen over the "hit in >= j of 4
+    seeds" binomial alternative."""
+    null_totals = _permutation_null_totals(text_embed, embed_by_seed, SEEDS, k, num_reps, rng)
     p = (1 + int(np.sum(null_totals >= observed_hits_total))) / (num_reps + 1)
     return {
         "observed_hits": observed_hits_total, "trials": N * len(SEEDS),
@@ -304,6 +329,65 @@ def permutation_test_vs_chance(embed_by_seed, observed_hits_total, k, num_reps, 
         "p_value": float(p), "alternative": "greater (one-sided)",
         "significant_at_0.05": bool(p < ALPHA),
     }
+
+
+def _self_check_permutation_clustering():
+    """Proves `_permutation_null_totals` actually preserves cross-seed
+    clustering rather than treating a preset's SEEDS as independent draws
+    (the bug fixed in GS-02's third review: the permutation used to be
+    redrawn inside the seed loop, which is anti-conservative under the
+    clustering this whole preset-level rewrite exists to correct for).
+
+    Builds tiny synthetic embeddings where a preset's SEEDS renders are
+    IDENTICAL (not just correlated). Two null distributions are then drawn
+    from the exact same permutation sequence (two `default_rng` instances
+    seeded identically, so `_permutation_null_totals` draws the identical
+    per-replicate permutation for both calls): one summed across all of
+    SEEDS, one using only the first seed. Because the audio embeddings are
+    identical across seeds and the permutation is identical per replicate,
+    every seed contributes the exact same hit count within a replicate, so
+    the SEEDS-summed null must equal exactly `len(SEEDS)` times the
+    single-seed null, replicate for replicate - and therefore
+    std(SEEDS-summed) must equal exactly `len(SEEDS)` times std(single-seed),
+    not `sqrt(len(SEEDS))` times it (~2x for 4 seeds), which is what
+    independent per-seed permutations would give instead, since that sums
+    `len(SEEDS)` near-independent draws rather than `len(SEEDS)` copies of
+    one draw."""
+    check_seed = 12345
+    n_synth, dim, reps = 24, 32, 2000
+    gen = np.random.default_rng(0)
+    text_synth = gen.standard_normal((n_synth, dim))
+    text_synth /= np.linalg.norm(text_synth, axis=1, keepdims=True)
+    audio_synth = gen.standard_normal((n_synth, dim))
+    audio_synth /= np.linalg.norm(audio_synth, axis=1, keepdims=True)
+    identical_by_seed = {seed: audio_synth for seed in SEEDS}
+
+    multi_seed_null = _permutation_null_totals(
+        text_synth, identical_by_seed, SEEDS, 1, reps, np.random.default_rng(check_seed)
+    )
+    single_seed_null = _permutation_null_totals(
+        text_synth, identical_by_seed, SEEDS[:1], 1, reps, np.random.default_rng(check_seed)
+    )
+
+    assert np.array_equal(multi_seed_null, len(SEEDS) * single_seed_null), (
+        "with identical embeddings across seeds and the same permutation "
+        "draws, the SEEDS-summed null must equal exactly len(SEEDS) times "
+        "the single-seed null replicate-for-replicate - it does not, so "
+        "_permutation_null_totals is no longer sharing one permutation per "
+        "replicate across seeds"
+    )
+    std_single = single_seed_null.std()
+    assert std_single > 0, "self-check's synthetic null has zero variance - raise reps or n_synth"
+    ratio = multi_seed_null.std() / std_single
+    assert abs(ratio - len(SEEDS)) < 1e-6, (
+        f"clustered-null std ratio should be exactly {len(SEEDS)} (one shared "
+        f"permutation per replicate), not ~{len(SEEDS) ** 0.5:.1f} (independent "
+        f"per-seed permutations); got {ratio}"
+    )
+    print(f"Self-check: clustered-null std ratio (4 identical seeds vs 1) = {ratio:.4f} (expected exactly 4.0000, not ~2.0) - OK")
+
+
+_self_check_permutation_clustering()
 
 
 perm_rng = np.random.default_rng(PERMUTATION_RNG_SEED)
@@ -324,15 +408,22 @@ preset_level_tests = {
 
 stats = {
     "preset_level_tests": preset_level_tests,
-    "pooled_212_trials_NOTE": (
-        "The conditions below pool 53 presets x 4 seeds = 212 (item, seed) "
-        "trials. A preset's 4 seed-renders differ only by a few-percent "
-        "seed jitter, so they are highly correlated, not independent "
-        "Bernoulli draws - these binomial/sign-test p-values assume iid "
+    "pooled_trials_NOTE": (
+        "The conditions below pool several non-independent renders per "
+        "preset into a single binomial test: real/degraded pool 53 presets "
+        "x 4 seeds = 212 (item, seed) trials, and shuffled pools 53 presets "
+        "x 4 seeds x 5 derangements = 1060 trials. A preset's 4 seed-renders "
+        "differ only by a few-percent seed jitter, so they are correlated, "
+        "not independent Bernoulli draws (shuffled's 5 derangements per "
+        "seed add a second layer of non-independence, since they reuse that "
+        "seed's own audio embeddings) - these binomial p-values assume iid "
         "trials and are NOT valid significance tests under that clustering. "
         "Kept only as descriptive rates; see 'preset_level_tests' above for "
-        "the actual pre-declared significance tests (53 presets, not 212 "
-        "trials, as the unit of analysis)."
+        "the actual pre-declared, preset-level significance tests. shuffled "
+        "has no preset-level counterpart here: it is a sanity check on "
+        "whether the retrieval methodology itself is unbiased toward the "
+        "true pairing, not a claim this eval leans on, so it stays a "
+        "descriptive, pooled, two-sided check only."
     ),
     "real_vs_chance_pooled_212_DESCRIPTIVE_ONLY": {
         "top1": exact_binomial_vs_chance(real_hits1, 1 / N, "greater"),
@@ -342,7 +433,7 @@ stats = {
         "top1": exact_binomial_vs_chance(degraded_hits1, 1 / N, "greater"),
         "top5": exact_binomial_vs_chance(degraded_hits5, 5 / N, "greater"),
     },
-    "shuffled_vs_chance_two_sided": {
+    "shuffled_vs_chance_pooled_DESCRIPTIVE_ONLY": {
         "top1": exact_binomial_vs_chance(shuffled_hits1, 1 / N, "two-sided"),
         "top5": exact_binomial_vs_chance(shuffled_hits5, 5 / N, "two-sided"),
     },
