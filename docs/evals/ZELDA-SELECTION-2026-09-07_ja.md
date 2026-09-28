@@ -1,5 +1,5 @@
-<a id="zelda-overworld-selection-regression--2026-09-07"></a>
-# Zelda Overworld の選曲回帰 — 2026-09-07
+<a id="zelda-overworld-selection-regression---2026-09-07"></a>
+# Zelda Overworld の選曲回帰 - 2026-09-07
 
 <p align="center">
   <a href="ZELDA-SELECTION-2026-09-07.md">English</a> &bull;

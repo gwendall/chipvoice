@@ -1,4 +1,4 @@
-# Zelda Overworld selection regression — 2026-09-07
+# Zelda Overworld selection regression - 2026-09-07
 
 <p align="center">
   <a href="ZELDA-SELECTION-2026-09-07.md">English</a> &bull;
@@ -15,7 +15,7 @@ The user's report was correct; this was our source-selection error.
 The pinned NES NSF's Overworld is displayed track 3 (zero-based 2). Its source
 hash remains `ebd279307c158b9561c254e55eaf683c3ea65736d1303144ed56ff89a92a0364`.
 The capture now includes its intro and one complete 1,920-frame loop:
-38.1705 seconds total, loop starting at 6.2231 seconds (frames 373–2293).
+38.1705 seconds total, loop starting at 6.2231 seconds (frames 373-2293).
 The portable observation contains 592 notes across the four original voices.
 
 ## Identity before parity
@@ -56,7 +56,7 @@ native source's musical identity, the evaluated recording's hash, the 0:38
 transport duration, and actual audible A/B output. Desktop/mobile screenshots
 and video accompany the browser run. The first 12 seconds of native/reference
 spectrograms were also inspected at unchanged source timing. Both recordings
-have the opening lead peak at 465.7 Hz (0.1–0.45 s FFT, about B-flat 4); this
+have the opening lead peak at 465.7 Hz (0.1-0.45 s FFT, about B-flat 4); this
 spot check supplements, rather than replaces, the phrase and full-command gates.
 
 Local evidence lives in `.artifacts/zelda-selection/` (red/green check logs,

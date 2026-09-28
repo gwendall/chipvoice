@@ -1,5 +1,5 @@
-<a id="creator-journey-qualification--2026-09-08"></a>
-# 作成者フローの検証 — 2026-09-08
+<a id="creator-journey-qualification---2026-09-08"></a>
+# 作成者フローの検証 - 2026-09-08
 
 <p align="center"><a href="CREATOR-JOURNEY-2026-09-08.md">English</a> &bull; <a href="CREATOR-JOURNEY-2026-09-08_ja.md">日本語</a></p>
 

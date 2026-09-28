@@ -8,7 +8,7 @@ Chipvoice accepts a complete arrangement, not just a melody. Use a versioned `Mu
 
 ## Deliver the requested song
 
-For a simple “create me a song” request, choose a musical direction and suitable target, compose original material, and deliver complete audio. An unspecified song can reasonably start around 45–90 seconds with a developed motif, contrasting sections and an intentional ending. This is a starting point, not a minimum: honour requested loops, jingles, styles and durations. Do not pad a fragment with identical repetitions or impose the example's six-part instrumentation.
+For a simple “create me a song” request, choose a musical direction and suitable target, compose original material, and deliver complete audio. An unspecified song can reasonably start around 45-90 seconds with a developed motif, contrasting sections and an intentional ending. This is a starting point, not a minimum: honour requested loops, jingles, styles and durations. Do not pad a fragment with identical repetitions or impose the example's six-part instrumentation.
 
 Creation and chat delivery need no account when local rendering is available. Attach the full WAV, or an MP3 encoded with an available tool. The served skill includes [render-project.mjs](examples/render-project.mjs), a helper that renders your own `project.json` to `song.wav` and measures the complete signal. It neither composes nor publishes. A filesystem path on the agent's server is not a downloadable attachment for a remote chat user.
 

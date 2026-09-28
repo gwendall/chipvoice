@@ -6,7 +6,7 @@
 </p>
 
 
-## Prompt-to-song creation — proposed
+## Prompt-to-song creation - proposed
 
 [Generative composition](GENERATIVE-COMPOSITION.md) uses existing editable songs and hosting, with an OpenAI adapter, prompt UI, public creator/origin credit and a one-command agent client. A real local Astra trial passed; deployment evidence belongs to [PR #50](https://github.com/gwendall/chipvoice/pull/50). Broader musical qualification, repairs and console variants follow as needed. The SDK remains independent of model providers.
 

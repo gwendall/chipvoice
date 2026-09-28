@@ -1,4 +1,4 @@
-# Scheduling design and qualification — 2026-09-06
+# Scheduling design and qualification - 2026-09-06
 
 <p align="center">
   <a href="SCHEDULING-2026-09-06.md">English</a> &bull;

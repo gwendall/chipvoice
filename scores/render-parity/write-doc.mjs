@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -66,12 +66,28 @@ function diagnosisSectionJa(report, engineNames) {
   return lines;
 }
 
+// One row per person who opened /lab/render-parity on a real device and read
+// every row. Kept as data next to this script, not in the docs, so a fresh
+// `render-parity:sheet` run carries the record forward instead of erasing it.
+const DEVICE_JA = { desktop: 'デスクトップ' };
+
+function manualChecksTable(checks, ja) {
+  if (checks.length === 0) return ja ? 'まだ記録はありません。' : 'None recorded yet.';
+  const header = ja ? '| 日付 | デプロイ | ブラウザ | 端末 | 結果 |' : '| Date | Deployment | Browser | Device | Result |';
+  const rows = checks.map(c => {
+    const result = c.matched === c.inputs ? (ja ? `${c.inputs}件すべて一致` : `all ${c.inputs} match`) : (ja ? `${c.inputs}件中${c.inputs - c.matched}件不一致` : `${c.inputs - c.matched}/${c.inputs} mismatch`);
+    return `| ${c.date} | \`${c.revision.slice(0, 7)}\` | ${c.browser} | ${ja ? DEVICE_JA[c.device] ?? c.device : c.device} | ${result} |`;
+  });
+  return [header, '| --- | --- | --- | --- | --- |', ...rows].join('\n');
+}
+
 /** Writes `docs/RENDER-PARITY.md` and its Japanese mirror from a `compareEngines` report. */
 export async function writeRenderParityDocs(report, { revision, createdAt, webUrl }) {
   const engineNames = ['chromium', 'firefox', 'webkit'];
   const totalMismatches = engineNames.reduce((sum, name) => { const e = report.engines[name]; return sum + (e?.installed ? e.rows.filter(r => !r.match).length : 0); }, 0);
   const diagnosis = diagnosisSection(report, engineNames);
   const diagnosisJa = diagnosisSectionJa(report, engineNames);
+  const manualChecks = JSON.parse(await readFile(resolve(import.meta.dirname, 'manual-checks.json'), 'utf8'));
 
   const en = `# Render parity
 
@@ -118,6 +134,10 @@ Playwright's WebKit is the closest automatable stand-in for Safari available in 
 - **Physical phones**, whose audio path (a real DAC, a real browser build tied to that OS version) nothing in this repository can stand in for.
 
 Open **${webUrl}** on the device to check. It fetches the same fixed inputs this sheet uses (a shorter excerpt of each, so the page stays light), renders them in that browser with the same \`renderPerformance\` call, and shows each input's hash next to the Node reference used to build the page - a match or a mismatch per input, no setup beyond opening the page. It takes about a minute: open the link, wait for every row to finish, and note whether every row matches. A mismatch is worth reporting with the device, OS and browser version shown on the page.
+
+Checked by hand so far (recorded in \`scores/render-parity/manual-checks.json\`, which this sheet renders; add a row there, not here). The page's Node reference is rebuilt with the engine, so a check stands for the deployment it names:
+
+${manualChecksTable(manualChecks, false)}
 
 <a id="what-runs-in-ci"></a>
 
@@ -172,6 +192,10 @@ PlaywrightのWebKitはCIやワークステーションで自動化できる中�
 - **実機のスマートフォン**。その音声経路（実際のDAC、そのOSバージョンに紐づく実際のブラウザビルド）はこのリポジトリの何によっても代替できません。
 
 確認するには、その端末で **${webUrl}** を開いてください。このシートと同じ固定入力セット（ページを軽く保つため、それぞれ短く切り出したもの）を取得し、同じブラウザで同じ\`renderPerformance\`呼び出しを使ってレンダーし、ページを構築したNodeの参照値の横に各入力のハッシュを表示します。入力ごとに一致・不一致が分かり、ページを開く以外の準備は不要です。所要時間は約1分です。リンクを開き、すべての行が終わるのを待ち、すべての行が一致するか確認してください。不一致があれば、ページに表示される端末・OS・ブラウザのバージョンとともに報告する価値があります。
+
+これまでの手動確認（\`scores/render-parity/manual-checks.json\`に記録し、このシートが表示します。行はここではなくそちらに追加してください）。ページのNode参照値はエンジンとともに再構築されるため、各確認は記載したデプロイについてのものです。
+
+${manualChecksTable(manualChecks, true)}
 
 <a id="what-runs-in-ci"></a>
 

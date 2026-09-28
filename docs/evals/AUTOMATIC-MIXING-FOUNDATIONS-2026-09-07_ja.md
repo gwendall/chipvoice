@@ -1,5 +1,5 @@
-<a id="automatic-mixing-foundations--2026-09-07"></a>
-# 自動ミックスの基礎 — 2026-09-07
+<a id="automatic-mixing-foundations---2026-09-07"></a>
+# 自動ミックスの基礎 - 2026-09-07
 
 <p align="center"><a href="AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07.md">English</a> &bull; <a href="AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07_ja.md">日本語</a></p>
 

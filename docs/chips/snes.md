@@ -302,7 +302,7 @@ is divided across its notes; pitched chord voices have moderate stereo spread.
 
 | Voice | Exercised | Not exercised |
 | --- | --- | --- |
-| v0, v1, v2, v4–v7 | original BRR attacks and separate sustain loops, per-family hardware ADSR, pitch and stereo volume per frame, key-on, note off as a fast GAIN decrease, echo; legacy periodic waveforms also available | GAIN's other modes, pitch modulation, hardware noise |
+| v0, v1, v2, v4 to v7 | original BRR attacks and separate sustain loops, per-family hardware ADSR, pitch and stereo volume per frame, key-on, note off as a fast GAIN decrease, echo; legacy periodic waveforms also available | GAIN's other modes, pitch modulation, hardware noise |
 | v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame; the kit's hats routed to the DSP's own noise through `NON`, at the one clock `FLG`'s very first power-on write sets | a held drum note's noise clock changed mid-note (the corpus scripts this; the kit does not) |
 | the echo | on for the pitched voices: 48 ms, feedback `$38`, the low-pass FIR most games used, enabled once the power-on buffer has wrapped | other FIRs, other delays |
 

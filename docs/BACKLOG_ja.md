@@ -115,14 +115,14 @@
 - done - P2-4: パッケージのREADMEは5つの仕様書すべてにリンクし、スキルは各ターゲットの仕様書にリンクします。`test-agent-guide.mjs`が確かめます。
 - done - NEXT-02: `.github/workflows/e2e.yml`は本番デプロイが成功するたびに本番e2eを実行し、その書き込みはシークレット`CHIPVOICE_E2E_KEY`を通じて専用テストアカウント`e2e@chipvoice.dev`のものになります。キーを使った最初の実行は、匿名書き込みの警告なしに通過しました。
 - done - NEXT-03: `test-creation-browser.mjs`が失敗したのはロードアベレージ70のときだけで、原因はPlaywrightの既定の30秒待機でした。すべての待機にテストの準備時間と同じ2分を与えます。エディター自体は、ページのCPUを6倍遅くしてもテンポ変更の間Pauseを表示し続けました。
-- done - P7-7: 最小限の6510・VIC-IIラスタ行・CIA1（`src/roms/c64.mjs`）でVICEの`testprogs/SID`から14本を実行します。KERNALなしで判定を出せるものを選び、13本が成功、CIでも実行します（`roms:c64`）。`busvalue`は失敗します。OSC3またはENV3の読み出しが実機のように内部バスラッチを更新しないためで、P2-1の知見として残し、ここでは直しません。`envrate`はDag Lemの実機検証済みレート表と完全に一致しました。
+- done - P7-7: 最小限の6510・VIC-IIラスタ行・CIA1（`src/roms/c64.mjs`）でVICEの`testprogs/SID`から14本を実行します。KERNALなしで判定を出せるものを選び、13本が成功、CIでも実行します（`roms:c64`）。`busvalue`は失敗します。OSC3またはENV3の読み出しが実機のように内部バスラッチを更新しないためで、P2-1の知見として残し、ここでは直しません。その後P2-1（#86）で修正し、14本全てが成功します。`envrate`はDag Lemの実機検証済みレート表と完全に一致しました。
 
 **ステップ1. 5つのチップを証明する。** 仕様書は、独立したオラクル、実機向けに書かれたテストROM、実際のゲーム音楽、実機という4つの段階それぞれに数値があるときに完成です。
 
 - オラクルとROMの段階: P1-13、P1-14、P2-1、P3-4、P7-11。
 - done - P5-8: PR #85。MAMEの`sn76496.cpp`を`segapsg_device`として構成し、メガドライブのPSG向け第2の参照実装にしました（`packages/conform/oracles/sn76496`）。白色ノイズLFSRの57337シフト周期をMAME側でも直接確認し、`sn76489.ts`との3件の実際の相違（周期0または1のトーン、リロード前のチャンネルの極性、tone 3のノイズレート）を診断し、シートに記録しました。
 - done - P2-1：このステップの参照実装が見つけた相違は、全て資料から修正するか、特定して記載しました。第1段階（#86）：Mesenに対する2A03の相違を全て特定しました。1つはシム側（サイクルカウントの偶奇が逆の`$4017`遅延を選んでいた）で、修正して`song-e2e`のpulse 2が100%に。残りはMesenのsweepの電源投入状態、書込かタイマーのtickでしか出力を更新しないこと、reloadと同じサイクルの書込で、それぞれコアの試作ビルドで確かめてシートに記載しました。SIDはOSC3／ENV3の読み出しをデータバスに残すように（`busvalue`成功、14本中14本）。Game Boyの矩形波は無音から始めると最初のデューティの1段までデジタルのゼロを出します（Pan Docs、SameBoyも同じ）。第2段階：SameBoyに対するGame Boy（P3-4）。ノイズのノートが丸ごと欠けていたのは、コーパスがM-cycleの間に書き込んでいたためで、そうするCPUはありません。コーパスをM-cycle単位で書くようにし、SameBoyとの一致率は88.15%から94.82%に。シートの差異には2つの読み方を未解決として残します。トリガー時にノイズのクロックがどこにあるか（gbdev wikiとPan Docsが食い違い、実機が決める、P3-5）と、4または8サイクルの矩形波のトリガー遅延で、そのうちPan Docsのタイマー下位2ビット分は最大3サイクルを解消します（P3-7、後述）。ゾンビの複合ケースは実機で非決定的です。MAMEに対するPSGの3つの相違（P5-8）は既にシートに差異の行として記載済みで、資料と矛盾するものはなく、変更はありません。
-- done - P3-7: 本PR。ch1とch2のトリガーで周波数タイマーの下位2ビットをゼロにせず保持するようにしました（Pan Docsの「Obscure Behavior」）。SameBoyが示す残りの遅れの説明を資料だけで追加調査しましたが（GBEDGにはAPUのページがありません）、サイクル数を示す資料は見つからず、下位2ビットのみ実装し、残りは既知の差異として残します（4または8サイクルだったものが、今は最大5サイクル）。SameBoyに対しては`script-lengths`と`script-sweep`のch1の一致数が上昇（コーパス全体で1973サイクル）、このルールを実装していないGb_Snd_Emuに対しては同じ2本のログがわずかに後退（159サイクル）、弱いオラクルとしては想定どおりの方向です。goldenが動いたため、較正と編曲評価を通しました。
+- done - P3-7: PR #89。ch1とch2のトリガーで周波数タイマーの下位2ビットをゼロにせず保持するようにしました（Pan Docsの「Obscure Behavior」）。SameBoyが示す残りの遅れの説明を資料だけで追加調査しましたが（GBEDGにはAPUのページがありません）、サイクル数を示す資料は見つからず、下位2ビットのみ実装し、残りは既知の差異として残します（4または8サイクルだったものが、今は最大5サイクル）。SameBoyに対しては`script-lengths`と`script-sweep`のch1の一致数が上昇（コーパス全体で1973サイクル）、このルールを実装していないGb_Snd_Emuに対しては同じ2本のログがわずかに後退（159サイクル）、弱いオラクルとしては想定どおりの方向です。goldenが動いたため、較正と編曲評価を通しました。
 - done - NEXT-04: [docs/HARDWARE-EVIDENCE_ja.md](HARDWARE-EVIDENCE_ja.md)が、5チップすべてについて既に存在する実機の公開録音・測定値をカタログ化しました。掲載前に各出典を開いて検証済みです（decision 38の無償証拠優先の順序）。「測定一つ」スクリプトの条件を満たした候補は1つだけで、C64の組み合わせ波形を実機6581 R4AR（`libsidplayfp/combined-waveforms`）と比較するものです。`pnpm --filter chipvoice-conform evidence:c64:sheet`で採点し、4つの組み合わせにわたり82.0〜94.1%のバイト一致率となり、[docs/chips/c64.md](chips/c64.md#combined-waveforms-against-a-real-6581)へ書き込みました。アナログ段については何も確定しません（DAC手前の波形ジェネレーターです）が、デジタルモデルが以前は持っていなかった独立したハードウェアによる確認が1つ得られました。他のどのチップにも、正確に既知で再現可能な入力を持つ候補はありませんでした。NESは既にblarggの`apu_mixer`を持っています。取得スクリプト`packages/conform/src/evidence/fetch.mjs`（`evidence:fetch`）は、ライセンスの許す範囲でgitignore対象の`.artifacts/hardware-evidence/`へダウンロードし、`packages/conform/src/evidence/manifest.json`のコミット済みSHA-256で検証します。
 - 実機の段階: まずP2-3で、購入した1台のNESで録音環境を検証します。その後、録音や実機が用意でき次第P3-5、P5-9、P6-8、P7-8を進めます。NEXT-04は、`filter.cc`のオペアンプ伝達曲線表（名前付きの6581と8580）をレジスタログ不要なアナログ測定への道として見つけました。P7-10は8580の分を両端点だけ読み取り済みで、両端点の間の曲線の形と6581自身のキンクはP7-8に残ります。またP5-9の最有力候補としてMDFourierを見つけましたが、実機入手ではなくテストROMの正確なレジスタ列を見つけられていない点でつかえています。P2-3のbenchはソフトウェア側は準備完了（committedなtest ROM、render、compare、CIのsynthetic self-test）。買うべき実機とinterface、capture当日の手順は[HARDWARE-BENCH_ja.md](HARDWARE-BENCH_ja.md)を参照。実機はまだ未購入・未実施です。
 
@@ -163,7 +163,7 @@
   参照してください。
 - done - NEXT-09: PSID/RSIDの再生（`importPsid`/`renderPsid`）。HVSC自身のファイル形式文書だけから組み立て、GPLコードの移植はありません（決定41）。ゼロから書いた6510（`Cpu6510`）が文書化済みの命令すべてと安定した非公式命令を実装し、あえて実装しない7個の不安定命令と12個のJAM命令は、CPU内部の未文書化な状態を当て推量するのではなく、名前で拒否します（`IllegalOpcodeError`、kindは`"unstable"`または`"jam"`）。PAL/NTSCのクロックと6581/8580モデルのヘッダーフラグを尊重し、マルチSIDファイル、RSID+BASICファイル、MUSプレーヤー形式は名前で拒否します。適合性確認は、出荷または移植されたGPLコードを一切含まない3本柱に基づきます：手書きのユニットテスト群（`test/cpu6510.mjs`と`test/psid-import.mjs`にまたがる117個のチェック - 文書化済み命令すべてのサイクル数とフラグ、6502.orgの実例に基づくdecimalモードのADC/SBC、安定した非公式命令すべて、不安定/JAM命令すべての名前による拒否、ヘッダー解析、そしてend-to-endのレンダー）。Klaus DormannとBruce Clark自身の6502機能テストとdecimalテストを、非公開の適合性確認ツール（`packages/conform`、`check:6510`、CI）としてベンダリングしたもの。そして新たな独立オラクル、libsidplayfp - ピン留めしたリビジョンでクローン・ビルドしgitignore対象のローカルartifacts（`scores/psid-corpus`）に置き、ベンダリングはしません。このユニットテスト群を書く過程で、opcodeマトリクスのデコードにあった実際のディスパッチバグ（異なるアドレッシングモードを衝突させていた4ビットマスク）を見つけました。小さいテストセットでは見つからなかったはずです。オラクルが、INIT自身の呼び出し規約を実測で確定させました：`A`（曲番号、0始まり）と`P`（PHP前の0x24）は、libsidplayfp自身の参照ドライバーと厳密に一致します。`X`と`Y`は一致せず、いまや単に未確認なのではなく、本当に未定義であることが確認されています。同じオラクルが、既に修正済みの実在する適合性の欠落も発見しました：`Cpu6510`のリードモディファイライト命令には、実機のNMOS 6502が変更後の値を書き込む前に必ず行うダミー書き込みが欠けていました。隠さず明示する既知の割り切り：自前の実機キャプチャコーパスがないこと、実機のライン単位VIC-IIに対する小さな実測のフレームごとサイクル揺らぎ（コーパス比較器自身の許容範囲に十分収まる）。`docs/chips/c64_ja.md#psidrsid-playback`を参照。
 - todo フォローアップ - NEXT-09のCIA駆動フィクスチャに残るPLAYフェーズのサイクル偏差（`gt2-sanction-cia.sid`／`gt2-consultant-alt-cia.sid`、最大128サイクル。`docs/chips/c64_ja.md`の「既知の限界」を参照）は、仕組みとしては境界も分かり完全に理解済みだが、まだ解消できておらず、試した実験の結果自体もまだ完全には理解できていない。試したこと：libsidplayfp自身の`cold:`ドライバーの儀式は、INIT前の`$D418=$0F`書き込みに毎回同じ絶対サイクル（167873、曲によらず一定、6フィクスチャすべてで確認済み。このコーパスがすでに設定している`SidConfig::powerOnDelay = 0`のもとで）で到達する - これは推測ではなく実測であり、その瞬間の実際のラスター位相（167873 mod 19656 = PALのラスター行168、その行の41サイクル目）が、この環境自身の既定値（INIT時点で`rasterCycle = 0`、`psid-import.ts`の`setupVic()`）とは異なることを示す。`rasterCycle`を0ではなくその実測値に固定すると、CIA駆動の2フィクスチャは大きく改善する（PLAYフェーズの最大サイクル偏差が128から47〜48へ）が、`gt2-dojo.sid`と`gt2-hyperspace-alt.sid`という、他の点では今日でも内容とサイクル位置がよく一致しているVBI駆動の2フィクスチャに、同程度の新たな偏差（コーパスのシート自身の「PLAYサイクル偏差」列がいま示す3と5サイクルから、約45〜47サイクルへ）が生じる。自作の2つのプローブフィクスチャ（`convention-probe.sid`、`frame-rate-probe.sid`）はどちらの場合でも影響を受けない。ここに謎がある：1つの内部一貫したラスターモデルで、オラクル自身の実測位相を使えば、6フィクスチャすべてが少なくとも今日と同程度に一致するはずで、ある組の精度を別の組の精度と引き換えにするはずはない - つまり、この環境自身のVBI／ラスタータイミングのどこかが、すでに「間違った」（既定の、ゼロの）位相を、まだ理解されていない形で補償しており、位相だけを変えるとその補償を取り除くのではなく表面化させているように見える。元に戻し、出荷はしていない（`rasterCycle = 0`が既定のまま）。黙って捨てるのではなく、次に取り組む人のためにここに記録する。
-- done - P6-9：`exportSpc`（NEXT-08のCPUにより着手可能に）は、SNESの
+- done - P6-9：PR #107。`exportSpc`（NEXT-08のCPUにより着手可能に）は、SNESの
   キャプチャを、自前の小さなSPC700プレイヤー
   （`packages/chipvoice/src/chips/snes/spc-player.ts`、AnomieのSPC700文書と
   fullsnesから手組みし、コミット済みのTSソースから他の全チップの資産と
@@ -190,7 +190,7 @@
   パッケージ（`exportSpc`、`SpcExportSizeError`）とstudio（`snes`の曲で
   VGMの隣にSPCダウンロードボタン）の両方から到達できます。
   `docs/chips/snes_ja.md#spc出力`と決定46を参照してください。
-- done - NEXT-10のNSF半分（このPR）：`exportNsf`は2A03のキャプチャを、自前
+- done - NEXT-10のNSF半分（PR #106）：`exportNsf`は2A03のキャプチャを、自前
   の小さな手組み6502プレイヤー（`Asm6502`、`packages/chipvoice/src/nsf.ts`）
   を積んだ標準NSF v1ファイルに変換します。コミット済みソースから再現でき、
   不透明なブロブにはなりません。PLAYは60Hz呼び出しごとに、バンク切り替え
@@ -230,7 +230,7 @@
   `docs/chips/2a03_ja.md#nsf出力`、`pnpm nsf-export:sheet`。
   パッケージ（`exportNsf`、`NsfExportError`）とstudio（`2a03`の曲でVGMの隣に
   NSFダウンロードボタン）の両方から到達できます。
-- done - NEXT-10のGBS半分（後のPR）：`exportGbs`はDMGのキャプチャを、自前
+- done - NEXT-10のGBS半分（PR #108）：`exportGbs`はDMGのキャプチャを、自前
   の小さな手組みSM83プレイヤー（`AsmSm83`、`packages/chipvoice/src/gbs.ts`）
   を積んだ標準GBS v1ファイルに変換します。コミット済みソースから再現でき、
   不透明なブロブにはなりません。PLAYはVBlankフレーム単位（70224 T-サイクル、
@@ -281,8 +281,8 @@
 
 **ステップ4. 後になっても、別の場所でも同じバイト列。**
 
-- done - NEXT-11: 本PR。決定43。`songs`、`projects`、`project_jobs`はそれぞれ、行を書いた時点で動いていた`PROJECT_ENGINE_VERSION`を記録します。レンダーは常にサーバーのいまのエンジンを使い、ジョブは自分自身のバージョンを記録するので、レンディションの`engineVersion`は公開作品のものと食い違うことがあります(両方をAPIと公開ページの両方に表示し、食い違うときは「chipvoice x.y.zで公開、chipvoice a.b.cでレンダー」)。本PR以前に書かれた行は推測せず`null`のままです。`/s/{id}`は変わらず、今デプロイされているエンジンでその都度再検証します（決定21が明記した制限で、AUD-2の後続）。
-- done - MIX-14: 本PR。`pnpm render-parity:sheet`は22個の固定入力セット
+- done - NEXT-11: PR #97。決定43。`songs`、`projects`、`project_jobs`はそれぞれ、行を書いた時点で動いていた`PROJECT_ENGINE_VERSION`を記録します。レンダーは常にサーバーのいまのエンジンを使い、ジョブは自分自身のバージョンを記録するので、レンディションの`engineVersion`は公開作品のものと食い違うことがあります(両方をAPIと公開ページの両方に表示し、食い違うときは「chipvoice x.y.zで公開、chipvoice a.b.cでレンダー」)。PR #97以前に書かれた行は推測せず`null`のままです。`/s/{id}`は変わらず、今デプロイされているエンジンでその都度再検証します（決定21が明記した制限で、AUD-2の後続）。
+- done - MIX-14: PR #110。`pnpm render-parity:sheet`は22個の固定入力セット
   (mario/zelda/sonicのVGMネイティブな4チップ - 2A03、DMG、MD、SNES -
   それぞれの6秒抜粋12個、加えてチップごとに保持したleadとkickのプリセット
   各1個、C64を含む)を、Node、Chromium、Firefox、WebKit(WebKitはPlaywrightで
@@ -304,9 +304,13 @@
   1分でできる人手の確認として残ります。`/lab/render-parity`が開いたブラ
   ウザーで同じ固定セットをレンダーし、Nodeの参照値との一致・不一致を表示
   します。`packages/chipvoice/src`は変更していません。
+  人手の確認は2026-09-28にデプロイ`6da5ac1`で完了しました。デスクトップの
+  Chrome、MacのSafari、iPhone 16 ProのSafariのいずれでも22件すべてが一致し、
+  `scores/render-parity/manual-checks.json`に記録してシートに表示しています。
+  MIX-14は完了です。
 - done - NEXT-12: `/accuracy`と`/ja/accuracy`は5つのチップすべてについて、デジタル一致度（オラクルごと、加えてc64の実機6581との複合波形比較）、テストROM、アナログ段、ドライバの網羅率を示します。`packages/conform/src/accuracy-data.mjs`が`status.mjs`が仕様書に書き込むのと同じ集計から`apps/web/src/data/accuracy-data.json`を生成するため、数値を手で入力することはありません。このファイルが仕様書とずれるとCIが失敗します。
 - done - NEXT-13: 編曲の`report.json`は`evaluate.mjs`から到達できるエンジンのモジュール（109個中43個）だけをハッシュするため、再生だけの変更で`pnpm arrangements:eval`全体をやり直す必要はなくなりました。
-- done - NEXT-23: 本PR。ミキシング校正のハッシュも同じ考え方で絞り込みました。`scores/mixing/provenance.mjs`の`calibrationEngineHash()`は、以前は`chips/**`配下の全`.js`と名前を指定した3個のモジュール(合計37ファイル、プローブ用の音色や測定コード自体は含まない)をハッシュしていたため、校正が実行しないチップのファイル形式プレイヤー、たとえば`.spc`再生用のSPC700コア(#101)のようなものが、ハッシュを動かし、他のPRがマージされるたびにあらゆる進行中のエンジンPRへ全校正のやり直しを強いていました。いまは`scores/mixing/calibrate.mjs`が実際に到達するモジュール(77個中39個)だけをハッシュします。到達判定はNEXT-13が`evaluate.mjs`のために使うのと同じ方法で、`scores/arrangements/engine.mjs`の`engineModules(entry)`として共有されています。これに測定方法を表す`MIX_PROFILE_VERSION`を加えます。`mix-profiles.js`は名前で明示的に除外します(`calibrate.mjs`自身が生成する出力であり、現時点では到達可能なものの中にこれを読み込むものはないため、この除外は今のところ何も取り除いていない安全策です)。`mix-calibration.js`自体がハッシュ対象のモジュール集合に入ったことで、`calibrateMixInstrument.toString()`/`mixInstrumentSignature.toString()`の項は不要になったため削除しました(ファイル全体のバイト列が両関数をすでに覆っています)。`check-calibration.mjs`は、モジュール一覧が各チップのコアとドライバ、`performance-palette.js`、`mix-calibration.js`に到達すること、そして`chips/**`配下にあって何からも読み込まれないファイルがハッシュを動かさないことを検証します。測定済みのプロファイルは変わりません(`profileSha256`と`src/mix-profiles.ts`は以前と同一で、`engineSha256`だけが変わります)。
+- done - NEXT-23: PR #104。ミキシング校正のハッシュも同じ考え方で絞り込みました。`scores/mixing/provenance.mjs`の`calibrationEngineHash()`は、以前は`chips/**`配下の全`.js`と名前を指定した3個のモジュール(合計37ファイル、プローブ用の音色や測定コード自体は含まない)をハッシュしていたため、校正が実行しないチップのファイル形式プレイヤー、たとえば`.spc`再生用のSPC700コア(#101)のようなものが、ハッシュを動かし、他のPRがマージされるたびにあらゆる進行中のエンジンPRへ全校正のやり直しを強いていました。いまは`scores/mixing/calibrate.mjs`が実際に到達するモジュール(77個中39個)だけをハッシュします。到達判定はNEXT-13が`evaluate.mjs`のために使うのと同じ方法で、`scores/arrangements/engine.mjs`の`engineModules(entry)`として共有されています。これに測定方法を表す`MIX_PROFILE_VERSION`を加えます。`mix-profiles.js`は名前で明示的に除外します(`calibrate.mjs`自身が生成する出力であり、現時点では到達可能なものの中にこれを読み込むものはないため、この除外は今のところ何も取り除いていない安全策です)。`mix-calibration.js`自体がハッシュ対象のモジュール集合に入ったことで、`calibrateMixInstrument.toString()`/`mixInstrumentSignature.toString()`の項は不要になったため削除しました(ファイル全体のバイト列が両関数をすでに覆っています)。`check-calibration.mjs`は、モジュール一覧が各チップのコアとドライバ、`performance-palette.js`、`mix-calibration.js`に到達すること、そして`chips/**`配下にあって何からも読み込まれないファイルがハッシュを動かさないことを検証します。測定済みのプロファイルは変わりません(`profileSha256`と`src/mix-profiles.ts`は以前と同一で、`engineSha256`だけが変わります)。
 
 **ステップ5. 決定38の条件のもとで、新しいシステムを1つずつ。**
 
@@ -342,20 +346,20 @@
 - P8-9とP8-14。todo - NEXT-22: 利用規約、生成した曲の権利、プロンプトのプライバシー。
 - GEN-13: クローズドベータを行い、その計測から価格を決めます。ベータの招待制と予算はサーバーが守るようになりました（決定42）。人を招待することと計測が残ります。
 
-<a id="generative-composition--specification-2026-09-08"></a>
-## 生成による作曲 — 仕様（2026-09-08）
+<a id="generative-composition---specification-2026-09-08"></a>
+## 生成による作曲 - 仕様（2026-09-08）
 
 [生成計画](GENERATIVE-COMPOSITION_ja.md)は通常の曲ホスティングを再利用します。OpenAIアダプター、非公開・公開作成、作者情報、由来を保持するリミックス、再レンダー不要の公開範囲変更、プロンプトUI、取得可能なエージェントクライアントを実装しました（GEN-02、GEN-06〜10）。ローカルの実Astra試行で全音声を生成しました。[作成者の一連評価](evals/CREATOR-JOURNEY-2026-09-08_ja.md)は発見からMP3取得、対応UIまで扱います。広い音楽ベンチマーク、全曲診断、修正は後続です。
 
-<a id="creation-and-api-review--implementation"></a>
-## 制作・APIレビュー — 実装
+<a id="creation-and-api-review---implementation"></a>
+## 制作・APIレビュー - 実装
 
 [元のレビュー](CREATION-API-REVIEW-2026-09-07_ja.md) は CREATE-01〜11 の履歴仕様です。[実装ガイド](CREATION_ja.md) はバージョン付き SDK、完全な制作画面、分離されたジェネレーター、固定公開・音声、プロフィール、ローカル下書き一覧、検索、お気に入りを説明します。CREATE-01〜11 は実装・ローカル検証済みで、本番ビルドのブラウザー試験も含みます。リリースCIは該当プルリクエストとバージョンタグで実行します。公開プロフィール ID からピクセルアバターをローカル生成し、原文・コメントは英語、UIと資料は日本語も維持します。
 
 既存の音質・ハードウェア受け入れ検証は別です。本番規模の永続スケジューラー、モデレーション運用、実端末の試聴、複数アカウント不正対策は、保証済みとせず制約として明示します。
 
-<a id="general-automatic-mixing--priority-plan-2026-09-07"></a>
-## 汎用自動ミックス — 優先計画（2026-09-07）
+<a id="general-automatic-mixing---priority-plan-2026-09-07"></a>
+## 汎用自動ミックス - 優先計画（2026-09-07）
 
 今後のリリースと機能でも、音の正しさと汎用移植を優先します。**MIX-01〜MIX-18** の自動実装・検証は、API・コーパスの明示した制約内で **0.16.1** として提供済みです（[PR #40](https://github.com/gwendall/chipvoice/pull/40)、[公開ワークフロー修正 #41](https://github.com/gwendall/chipvoice/pull/41)）。MIX-12 の人間による試聴は未完了です。MIX-14 は Node・Chromium・Firefox・WebKit のレンダーハッシュ照合を自動化し(22件中22件がバイト単位で一致、不一致ゼロ。[レンダー一致性](RENDER-PARITY_ja.md))、残るのは実機スマートフォンと実Safariでの1分の人手確認だけになりました([`/lab/render-parity`](https://chipvoice.dev/lab/render-parity))。本番ファイルと実際の npm 利用側を検証し、[リリース証拠](https://github.com/gwendall/chipvoice/releases/tag/v0.16.1)に最終結果を記録します。
 依存関係と合格条件は[自動ミックス](AUTOMATIC-MIXING_ja.md)にあります。テスト曲は共通ポリシーの校正と
@@ -366,24 +370,24 @@
 
 状態：`todo`（未着手）、`doing`（作業中）、`done`（完了）、`dropped`（理由付き中止）。既存表の`implemented`は実装済み、`partial`は一部完了です。履歴の状態は当時のまま残します。
 
-<a id="midi-import-feedback--2026-09-06"></a>
+<a id="midi-import-feedback---2026-09-06"></a>
 0.16.2 のコールドレビュー修正は[追跡評価](evals/AUTOMATIC-MIXING-COLD-REVIEW-2026-09-07_ja.md)に記録します。SNES の共通ヘッドルーム、無音の割り当て、共有資源、MIDI の役割確認、音響基準を改善しました。0.16.1 の結果は過去の証拠で、新しいエンジンの認証ではありません。
 
-## MIDIインポートの表示 — 2026-09-06
+## MIDIインポートの表示 - 2026-09-06
 
-- done — `fix/midi-import-feedback`（0.15.1）：準備段階、sample比の進捗／経過時間、明示fallback付き旧MIDI文字decode、channelラベル、実音までの長時間MIDI E2Eを実装。利用者のlocal Musha Aleste MIDIで再現し、source bytesはlocalに保持。
+- done - `fix/midi-import-feedback`（0.15.1）：準備段階、sample比の進捗／経過時間、明示fallback付き旧MIDI文字decode、channelラベル、実音までの長時間MIDI E2Eを実装。利用者のlocal Musha Aleste MIDIで再現し、source bytesはlocalに保持。
 
-<a id="unified-playground-and-transport--2026-09-06"></a>
-## 統合プレイグラウンドと再生操作 — 2026-09-06
+<a id="unified-playground-and-transport---2026-09-06"></a>
+## 統合プレイグラウンドと再生操作 - 2026-09-06
 
 - 実装／検証済み：[仕様](UNIFIED-PLAYGROUND_ja.md)。`/`で完全編曲を既定にし旧URLを転送。全曲pause／seek／restart、loop／end、output-clock cursor、段階的composerが原典、import、draft、共有を保持。browser／audio評価と2軸review成功。[証拠と画像](evals/UNIFIED-PLAYGROUND-2026-09-06_ja.md)。
 
-<a id="complete-arrangements--2026-09-06"></a>
-## 完全アレンジ — 2026-09-06
+<a id="complete-arrangements---2026-09-06"></a>
+## 完全アレンジ - 2026-09-06
 
-- done — `feat/complete-arrangements`（0.15.0）：exact-tick多声音MIDI、音符別損失報告付き決定的interval allocation、native Mario抽出／独立GME比較、Zelda／Sonic全MIDI、公開deck、local worker render。[評価とレビュー](evals/COMPLETE-ARRANGEMENTS-2026-09-06_ja.md)にatomic bus、SNES有音高8voice、有限MIDI表現、正確な参照binding、公開検査を記録。
-- ネイティブ再生は done — Zelda と Sonic は元のチップコマンドを保持し、独立したエミュレーター参照で比較します。移植版の音色・表情は近似で、ネイティブコマンドの一致が移植の認証になるわけではありません。
-- todo — pan、modulation／aftertouch、SysEx bankなどMIDI表現adapterと独立review済み参照。eventは保持し未対応を明示する。
+- done - `feat/complete-arrangements`（0.15.0）：exact-tick多声音MIDI、音符別損失報告付き決定的interval allocation、native Mario抽出／独立GME比較、Zelda／Sonic全MIDI、公開deck、local worker render。[評価とレビュー](evals/COMPLETE-ARRANGEMENTS-2026-09-06_ja.md)にatomic bus、SNES有音高8voice、有限MIDI表現、正確な参照binding、公開検査を記録。
+- ネイティブ再生は done - Zelda と Sonic は元のチップコマンドを保持し、独立したエミュレーター参照で比較します。移植版の音色・表情は近似で、ネイティブコマンドの一致が移植の認証になるわけではありません。
+- todo - pan、modulation／aftertouch、SysEx bankなどMIDI表現adapterと独立review済み参照。eventは保持し未対応を明示する。
 
 <a id="phase-1-the-bench"></a>
 ## フェーズ1. ベンチ
@@ -426,7 +430,7 @@
 | P3-4 | 強い参照：register log駆動SameBoy、またはSM83上のGBSから実曲log | done | PR #83。SameBoyのDMG-B `apu.c`を第二参照として同梱（`packages/conform/oracles/sameboy`）。`main.c`の不要な`qsort`が同一サイクルの書き込み間の順序をgccとclangで異なる形に崩し、同一のソースをコンパイラ間で非決定的にしていた駆動系のバグを発見・修正。修正後に残った、より狭い2つの実在差分はその後P2-1で決着（矩形波トリガー直後の最初のデューティエッジの遅れ、ノイズのコールドスタートが1ノート分丸ごと遅れる点）。ゾンビモードの複合ケースの差分は未解決のまま |
 | P3-5 | 既知scriptでDMG line-out測定 | todo | P2-3同様、実機が必要。NEXT-04はシートの仮モデルと一致するパブリックドメインの式（gbdev Pan Docs）とダイ解析を見つけましたが、どの実機の測定録音も見つかっていません。[HARDWARE-EVIDENCE.md#game-boy-dmg](HARDWARE-EVIDENCE.md#game-boy-dmg)参照 |
 | P3-6 | API／studio／skillで`chip: "dmg"`を受理しrender／再生、editor selectorと変更説明 | done | `apps/web`、skill 0.4.0 |
-| P3-7 | 矩形波のトリガーでPan Docsの通り周波数タイマーの下位2ビットを保持 | done | 本PR。P2-1の第2段階。SameBoyに対するノート最初のステップの差を最大3サイクル解消。残り最大5サイクルは調査した資料に記載がなく、既知の差異として残る |
+| P3-7 | 矩形波のトリガーでPan Docsの通り周波数タイマーの下位2ビットを保持 | done | PR #89。P2-1の第2段階。SameBoyに対するノート最初のステップの差を最大3サイクル解消。残り最大5サイクルは調査した資料に記載がなく、既知の差異として残る |
 
 <a id="phase-4-the-portable-score"></a>
 ## フェーズ4. 移植可能な楽譜
@@ -482,7 +486,7 @@
 | P6-7 | output streamでsnes_spc比較するsheetとcorpus | done | `docs/chips/snes.md` |
 | P6-8 | 既知scriptでDSP streamまたは実機line-out capture | todo | 実機必要。NEXT-04によれば、誰かが実機のS-DSP線を捉えた唯一のロジックアナライザーキャプチャはリンク切れで、唯一のフィルター周波数見積もりは実機キャプチャでなく回路図シミュレーションです。[HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp)参照 |
 | P6-9 | file内driverで任意SPC playerから再生できるexport | doing | `exportSpc`（`packages/chipvoice/src/spc-export.ts`）：ファイル自身のARAMに書き込む自作SPC700プレイヤー。本パッケージ自身のSPC700と`play-spc`の実SPC700の両方に対してラウンドトリップ検証済み（`check:spc-export`、数値は`docs/chips/snes.md`）。ステップ1の録音環境でのフラッシュカート録音は対象外（まだ実機なし）。この1項目のためこの行は開いたままにします |
-| P6-10 | 複数ボイスの実三和音とハードウェアノイズのハット | done | このPR。三和音と内部ミキサー検査は実装・検証済みです。キットのハットは既定でDSP自身のハードウェアノイズ(`NON`、電源投入シーケンスの最初の書き込みで設定しその後は別の値へ書き換えない`FLG`の時計)を使い、キックとスネアはBRRサンプルのままです。`Instrument.noiseMode`でBRRバーストへ戻せます。新しいコーパススクリプトが2ボイス同時ノイズ、保持中の時計変更、`FLG`のリセット／ミュートビットを検証します。マージ前のレビューで、時計が実際には四分の一秒後の後段の書き込みからしか有効になっておらず、曲の最初の250msに入るハイハットはレート0で鳴っていたことが分かり、最初の書き込みへ時計を移して修正しました |
+| P6-10 | 複数ボイスの実三和音とハードウェアノイズのハット | done | PR #92。三和音と内部ミキサー検査は実装・検証済みです。キットのハットは既定でDSP自身のハードウェアノイズ(`NON`、電源投入シーケンスの最初の書き込みで設定しその後は別の値へ書き換えない`FLG`の時計)を使い、キックとスネアはBRRサンプルのままです。`Instrument.noiseMode`でBRRバーストへ戻せます。新しいコーパススクリプトが2ボイス同時ノイズ、保持中の時計変更、`FLG`のリセット／ミュートビットを検証します。マージ前のレビューで、時計が実際には四分の一秒後の後段の書き込みからしか有効になっておらず、曲の最初の250msに入るハイハットはレート0で鳴っていたことが分かり、最初の書き込みへ時計を移して修正しました |
 
 <a id="phase-7-c64"></a>
 ## フェーズ7. C64
@@ -495,7 +499,7 @@
 | P7-4 | intent波形／envelope、4roleを3voiceへ共有するdriver／arranger | done | `chips/c64/driver.ts`、`arranger.ts`。規則は`Sequencer.scheduleStep` |
 | P7-5 | API／studio／skill | done | schema、openapi、skill 0.8.0、llms.txt、studio |
 | P7-6 | reSID-fp digital比較sheetとcorpus | done | `docs/chips/c64.md`、`corpus/c64`、CI `check:c64` |
-| P7-7 | 6510でVICE `testprogs/SID`を実行しOSC3／ENV3を読む第2検証 | done | `packages/conform/roms/vice-sid`、`src/roms/c64.mjs`、CI `roms:c64`。14本中13本成功、`busvalue`はP2-1の知見 |
+| P7-7 | 6510でVICE `testprogs/SID`を実行しOSC3／ENV3を読む第2検証 | done | `packages/conform/roms/vice-sid`、`src/roms/c64.mjs`、CI `roms:c64`。14本全て成功（初回唯一の失敗`busvalue`はP2-1、#86で修正） |
 | P7-8 | 6581 line-out captureでDAC zero、filter curve、出力をfit | todo | 実機必要。NEXT-04はreSIDの`filter.cc`に既に名前付き6581 R4AR自身のオペアンプ伝達曲線表があり、レジスタログ不要でモデルと比較できることを見つけましたが未実装です。[HARDWARE-EVIDENCE.md#c64-sid-6581-8580](HARDWARE-EVIDENCE.md#c64-sid-6581-8580)参照。もう1つの名前付き6581（`libsidplayfp/combined-waveforms`）に対する組み合わせ波形の比較も実装しました。[c64_ja.md#combined-waveforms-against-a-real-6581](chips/c64_ja.md#combined-waveforms-against-a-real-6581)参照 |
 | P7-9 | filterを開くintentとlead sweep | done | `chips/c64/arranger.ts`、`chips/c64/driver.ts`。leadの`sweep`はノート全体でcutoffを開き、bassの`resonant`は高resonanceを保持、両方lowpass。各voiceは`$D417`の自分のrouting bitだけを立て、共有レジスタは他voiceでなく各voice自身の直前の書き込みと比較するため、真の時間順とは違う順で処理されたnoteが後のnote自身の書き込みを覆い隠すことはない。2つのvoiceが同時に異なるfilter設定を求めた場合は`validateSong`の`filter_conflict`で診断。`Instrument.pulseWidth`はframe単位のpulse-width sweepを与えるが、presetは未使用 |
 | P7-10 | 8580の合成波形、triangle／saw遅延、線形DAC、独自filterの第2profile／table | done | `Chip.create`/`renderPerformance`/`renderProject`に`model: "8580"`。`chips/c64/{dsp,sid}.ts`の`SID_8580_PROFILE`と`COMBINED_8580`は、reSID-fp自身の8580テーブルに対して独立にフィットしたもので（`fit:c64 -- --model 8580`）、その`config[1]`の移植ではない（決定41）。reSIDの`filter.cc`の8580 R5曲線とreSID-fpの`Dac`ドキュメントの2.0のラダー比を測定データとして読んだ。第2のオラクルブロック、8580として設定したreSID-fp（`corpus/c64/parity-residfp-8580.json`、`check:residfp-8580`、CI）は99.28%一致、2件の相違は合成波形フィット自身の限界。[c64_ja.md#8580](chips/c64_ja.md#8580)参照 |
@@ -529,7 +533,7 @@
 | P8-10 | palette／drumの量子化live重ね録りとUndo | implemented | D、audio-clock capture、固定伴奏、1take1Undo、draft。[評価](evals/RECORDING-2026-09-06_ja.md)。実携帯はP8-9 |
 | P8-23 | role変奏、他lock、Undo。作成済み／規則ベース、remote AI不要 | implemented | seed melody／drum／timbre、lock、Undo、無音pattern保持。決定26 |
 | P8-11 | 同じtransport／所有モデルのWeb MIDI | implemented | opt-in tap、channel10 drum、模擬port cleanup。実latency未測定 |
-| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM、さらにNES NSF（NEXT-10、PR #106）とGame Boy GBS（NEXT-10、このPR）。独立ZIPとbyte比較、決定26 |
+| P8-12 | stems、全5機種、対応VGMのproducer export | implemented | cancel可WAV／stems／5機種ZIP、NES/GB/MD VGM、さらにNES NSF（NEXT-10、PR #106）とGame Boy GBS（NEXT-10、PR #108）。独立ZIPとbyte比較、決定26 |
 | P8-13 | 実SID filter／sweep、SNES triad／FM drumと豊かな編曲 | done | D、P7-9 done：SIDのfilterはarrangerから到達可能。P5-10 done：MD arrangerのFM drumとLFO。P6-10 done：SNES triadとハードウェアノイズのハット。見た目だけの汎用代替なし |
 
 <a id="audit-follow-ups"></a>
@@ -610,7 +614,7 @@ recorderもcore event queueを使い、短音の休符が古い将来releaseをc
 Mario、NES の Zelda、メガドライブの Sonic は、元の機種でネイティブコマンドを再生し、独立した A/B 参照を備えます。NSF のバンク切り替え、元の DAC サンプルを保持する上限付き VGM 読み込み、FM バイトの直列化、ハードウェアのソロを実装しました。[再現手順](../scores/arrangements/README_ja.md)を参照してください。
 
 今後の作業は分けて扱います。移植用の DAC ドラムサンプルの境界・種類の識別、編集用の FM エンベロープ・余韻・ステレオ表現の復元、実機との出力フィルター・PSG 音量バランスの測定です。ネイティブコマンドとデジタル出力の検証だけで、これらの忠実度まで達成したとはしません。
-確認した 8–10 kHz のエイリアシングは、デシメーション前にフィルターを適用して修正しました。FM、DAC、PSG は個別に比較済みです。実機出力と DAC の不確実性は残ります。[修正の測定結果](evals/AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07_ja.md)を参照してください。
+確認した 8〜10 kHz のエイリアシングは、デシメーション前にフィルターを適用して修正しました。FM、DAC、PSG は個別に比較済みです。実機出力と DAC の不確実性は残ります。[修正の測定結果](evals/AUTOMATIC-MIXING-FOUNDATIONS-2026-09-07_ja.md)を参照してください。
 
 
 Zelda の選曲回帰を修正しました。NSF トラック 3 を使用し、エミュレーターとの一致より先に独立した Overworld のフレーズを検証します。4 機種の移植と A/B リファレンスを再生成します。[証拠と限界](evals/ZELDA-SELECTION-2026-09-07_ja.md)を参照してください。
@@ -650,18 +654,18 @@ Zelda の選曲回帰を修正しました。NSF トラック 3 を使用し、�
 再読み込み後の復元、複数タブ間の調整、共同編集は別の作業です。
 
 
-<a id="interactive-audio-latency--audit-2026-09-08"></a>
-## 操作から再生までの遅延 — 2026-09-08 の監査
+<a id="interactive-audio-latency---audit-2026-09-08"></a>
+## 操作から再生までの遅延 - 2026-09-08 の監査
 
 状態：実装とローカル検証が完了。リリース検証は CI で実施する。[測定・試作・合格条件](INTERACTION-LATENCY_ja.md)を参照。
 
-- [x] LAT-1 — 準備済み選択の即時処理、楽譜取得の重複除去、メタデータ更新の独立化。
-- [x] LAT-2 — 参照音声の遅延取得、音楽設定をキーにした上限付きキャッシュ。
-- [x] LAT-3 — 既存コンパイラーと DSP による段階的プレビューを WAV 書き出しから分離。
-- [x] LAT-4 — 音楽内容の上限付き逐次更新、変更のない曲・停止済み互換エンジンの再利用、準備状態のイベント通知。
-- [x] LAT-5 — 機種別の状態保存能力に基づく、曲途中の切り替えとシーク。
-- [x] LAT-6 — 公開曲情報の再利用、部分読み出しによる音声の範囲配信。
-- [x] LAT-7 — 遅延予算、継続レンダリング、音声連続性の回帰テスト。
+- [x] LAT-1 - 準備済み選択の即時処理、楽譜取得の重複除去、メタデータ更新の独立化。
+- [x] LAT-2 - 参照音声の遅延取得、音楽設定をキーにした上限付きキャッシュ。
+- [x] LAT-3 - 既存コンパイラーと DSP による段階的プレビューを WAV 書き出しから分離。
+- [x] LAT-4 - 音楽内容の上限付き逐次更新、変更のない曲・停止済み互換エンジンの再利用、準備状態のイベント通知。
+- [x] LAT-5 - 機種別の状態保存能力に基づく、曲途中の切り替えとシーク。
+- [x] LAT-6 - 公開曲情報の再利用、部分読み出しによる音声の範囲配信。
+- [x] LAT-7 - 遅延予算、継続レンダリング、音声連続性の回帰テスト。
 
 プレビューと書き出しはコンパイラと DSP を共有する。完全な DSP 状態と最新操作のキャンセル規則により、独立参照音源との忠実性と連続再生の契約を維持する。
 

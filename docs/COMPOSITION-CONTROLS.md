@@ -8,7 +8,7 @@
 
 ## Current request / implemented scope
 
-Replace tempo stepper buttons with a native 40–300 BPM slider, visible endpoints
+Replace tempo stepper buttons with a native 40-300 BPM slider, visible endpoints
 and a synchronized integer input. Keep the existing validated score range and
 live playback transport. Pointer gestures and focused keyboard edits form one
 Undo group. Partial input remains editable; blur/Enter clamps to the supported
@@ -20,10 +20,10 @@ during recording. Expose the reusable primitive in `/lab/components`.
 - Implemented: transposition, −12 to +12 semitones, with a zero detent and explicit reset.
   Apply to pitched roles, retain chords and leave percussion unchanged. Preserve
   the original score so repeated movement cannot compound rounding or clipping.
-- Swing: 50–75%, with 50% labelled straight. This requires an SDK timing field
+- Swing: 50-75%, with 50% labelled straight. This requires an SDK timing field
   shared by real-time playback, recording, export and register capture. Do not
   add a cosmetic slider that affects only the browser or changes beat duration.
-- Implemented: drum activity, 0–100% of the current groove, deterministic and reversible. Strong kick/snare beats are retained first. Timbre/role locks continue to govern the separate variation buttons.
+- Implemented: drum activity, 0-100% of the current groove, deterministic and reversible. Strong kick/snare beats are retained first. Timbre/role locks continue to govern the separate variation buttons.
 - Per-role level: useful for composing a balance, but it must be serialized in
   the score and share export behavior. Keep global listening volume separate.
 

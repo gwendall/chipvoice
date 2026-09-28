@@ -555,7 +555,7 @@ Identical in-flight jobs share work. Different cold jobs receive 503 with
 Retry-After. Completed audio uses an LRU bounded by 32 MiB, 16 entries and ten
 minutes, keyed by the actual built worker hash plus score, options and tags.
 
-Public durations accept integers 1–30; the default remains two loops, refused
+Public durations accept integers 1-30; the default remains two loops, refused
 with 422 if longer. Invalid query values return 400. Cold work is limited to
 six requests/minute/address, cached requests are free. Stable URLs use byte
 ETags and revalidation; publication existence is checked before and after work.

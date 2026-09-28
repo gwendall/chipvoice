@@ -1,5 +1,5 @@
-<a id="readable-frontend-type--2026-09-06"></a>
-# フロントエンドの読みやすい文字 — 2026-09-06
+<a id="readable-frontend-type---2026-09-06"></a>
+# フロントエンドの読みやすい文字 - 2026-09-06
 
 <p align="center">
   <a href="READABLE-TYPE-2026-09-06.md">English</a> &bull;

@@ -273,7 +273,7 @@ synthesis in the playground.
 ## Readable type and attribution
 
 The shared type scale lives in `apps/web/src/ui/tokens.css`: labels are 0.875rem,
-body text 1rem, section headings 1.5rem, and page headings 2–2.75rem. Use those
+body text 1rem, section headings 1.5rem, and page headings 2-2.75rem. Use those
 tokens instead of ad hoc pixel sizes. Mobile layouts wrap controls and navigation;
 they do not shrink labels below 14px at the browser’s default text size. Inputs
 stay at 16px. The shared footer credits “Made by gwendall” at https://gwendall.com.

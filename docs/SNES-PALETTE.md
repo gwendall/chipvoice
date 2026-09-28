@@ -11,7 +11,7 @@ This work improves the factory arrangement, preserving the native DSP and the
 portable score format. It does not claim to reproduce a named game's instruments
 or an unmeasured physical console output stage.
 
-Phase 1 (`feat/snes-sampled-palette`) covers criteria 1–3, 5 and 6.
+Phase 1 (`feat/snes-sampled-palette`) covers criteria 1-3, 5 and 6.
 Phase 1 merged in PR #24. Phase 2 (`feat/snes-polyphonic-arrangement`) implements
 criterion 4 using the evaluated palette.
 

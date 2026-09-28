@@ -166,4 +166,4 @@ V1の聞こえ方、楽譜の保持、共有出力を優先します。MIDI、�
 <a id="readable-type-and-attribution"></a>
 ## 読みやすい文字とクレジット
 
-共通文字サイズは`apps/web/src/ui/tokens.css`に置きます。ラベル0.875rem、本文1rem、節見出し1.5rem、ページ見出し2–2.75remとし、場当たり的なpx指定を避けます。携帯では操作部とナビゲーションを折り返し、ブラウザ標準文字サイズでラベルを14px未満にしません。入力は16pxを保ちます。共通フッターは https://gwendall.com へのリンク付きでMade by gwendallと表示します。
+共通文字サイズは`apps/web/src/ui/tokens.css`に置きます。ラベル0.875rem、本文1rem、節見出し1.5rem、ページ見出し2〜2.75remとし、場当たり的なpx指定を避けます。携帯では操作部とナビゲーションを折り返し、ブラウザ標準文字サイズでラベルを14px未満にしません。入力は16pxを保ちます。共通フッターは https://gwendall.com へのリンク付きでMade by gwendallと表示します。

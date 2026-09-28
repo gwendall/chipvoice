@@ -1,4 +1,4 @@
-# Native song fidelity — 2026-09-07
+# Native song fidelity - 2026-09-07
 
 <p align="center">
   <a href="NATIVE-SONGS-2026-09-07.md">English</a> &bull;
@@ -122,7 +122,7 @@ GME uses its own filters and resampler; matching native commands or digital pins
 does not make the final PCM bit-identical, nor establish measured physical
 console fidelity. PSG accuracy and analog balance keep their conformance limits.
 The Sonic plot still shows additional high-frequency energy in Chipvoice,
-especially near 8–10 kHz. The output stage currently averages multiplexed DAC
+especially near 8-10 kHz. The output stage currently averages multiplexed DAC
 pins over each output sample; distinguish resampling images, filtering and PSG
 balance with isolated reference captures before claiming final-output parity.
 The plot alone does not identify the cause of this residual difference.

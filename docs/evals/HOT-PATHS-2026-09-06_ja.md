@@ -1,5 +1,5 @@
-<a id="hot-path-allocation-audit--2026-09-06"></a>
-# ホットパスの割り当て監査 — 2026-09-06
+<a id="hot-path-allocation-audit---2026-09-06"></a>
+# ホットパスの割り当て監査 - 2026-09-06
 
 <p align="center">
   <a href="HOT-PATHS-2026-09-06.md">English</a> &bull;

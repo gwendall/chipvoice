@@ -50,7 +50,7 @@ Publications expose accessible `variants`: the latest version per console with i
 
 ## Original portraits
 
-`PUT /api/v1/profile` and owner `PUT /api/v1/profiles/{id}` accept `avatar:{palette,variant}`. Palette is 0–3; variant is 0–15; `null` restores the original deterministic portrait. Defaults preserve existing portraits. Rendering is local SVG geometry derived from the public profile ID: no third-party avatar service, image uploads, personal data or secret seed. Public pages and cover PNGs share this renderer. The creator's publication panel selects the artistic profile independently of the music's source credits.
+`PUT /api/v1/profile` and owner `PUT /api/v1/profiles/{id}` accept `avatar:{palette,variant}`. Palette is 0-3; variant is 0-15; `null` restores the original deterministic portrait. Defaults preserve existing portraits. Rendering is local SVG geometry derived from the public profile ID: no third-party avatar service, image uploads, personal data or secret seed. Public pages and cover PNGs share this renderer. The creator's publication panel selects the artistic profile independently of the music's source credits.
 
 ## Verification
 

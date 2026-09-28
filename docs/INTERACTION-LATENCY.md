@@ -10,10 +10,10 @@ Chromium/Playwright on the development Mac, against `https://chipvoice.dev`, wit
 
 | Interaction | Observed delay | Measurement endpoint |
 | --- | --- | --- |
-| Landing: first Mario playback | 2.04–2.60 s | Input to `AudioBufferSource.start()` call |
-| Landing: first Game Boy selection | 1.02–1.89 s | Same |
-| Landing: cached console/song selection | 181–182 ms | Same; no audio fetch/decode |
-| Landing: Mario/Game Boy tempo 100 → 125% | 7.15–12.38 s | Same; 70.83 s of audio rendered first |
+| Landing: first Mario playback | 2.04-2.60 s | Input to `AudioBufferSource.start()` call |
+| Landing: first Game Boy selection | 1.02-1.89 s | Same |
+| Landing: cached console/song selection | 181-182 ms | Same; no audio fetch/decode |
+| Landing: Mario/Game Boy tempo 100 → 125% | 7.15-12.38 s | Same; 70.83 s of audio rendered first |
 | Landing: first Zelda / Sonic selection | 1.87 / 2.72 s | Same |
 | Composer: starter playback / tempo edit | 1.14 / 0.89 s | Same; short starter, not a long MIDI |
 | Composer: first Game Boy selection | 2.51 s | Same |
@@ -48,7 +48,7 @@ The browser worker compiles the full Mario adaptation at 125% tempo, initializes
 | Mega Drive | 58.5 ms | 0 |
 | Super Famicom | 30.2 ms | 0 |
 
-An earlier single-block run took 40–86 ms. These measurements exclude worker startup, source download, delivery to the output device and first-use audio unlock. They establish that waiting for 71 seconds of PCM is unnecessary for producing the first sound. They **do not establish sustained realtime performance, arbitrary seeking, seamless parameter changes or fidelity over an entire song**.
+An earlier single-block run took 40-86 ms. These measurements exclude worker startup, source download, delivery to the output device and first-use audio unlock. They establish that waiting for 71 seconds of PCM is unnecessary for producing the first sound. They **do not establish sustained realtime performance, arbitrary seeking, seamless parameter changes or fidelity over an entire song**.
 
 The existing `ChipCore.schedule/load/render` seam can drive a bounded progressive worker or a direct worklet. Evaluate both before choosing: a worker needs a small bounded PCM queue and underrun handling; a direct worklet must meet every audio deadline. Share the compiler and DSP with offline export. Do not write a second interpretation of the score or reduce full performances to four loop roles.
 
@@ -66,7 +66,7 @@ The existing `ChipCore.schedule/load/render` seam can drive a bounded progressiv
 
 LAT-1/2 are immediate improvements; LAT-3/4 address the main architectural cause. LAT-5 is necessary before promising instant arbitrary mid-song replacement. Register values alone are not complete emulator snapshots, and the generic core currently exposes no save/restore contract. Starting a target chip cold at the current note would lose its history. LAT-6 can be delivered independently. LAT-7 starts with the diagnostic harness and grows with each capability.
 
-Aim for immediate UI acknowledgement and under 50–100 ms of application-added latency for warmed interactive paths. These are proposed budgets, not current guarantees. Network-cold assets, first audio unlock and hardware/Bluetooth latency cannot truthfully have a universal zero-time promise. Keep the previous audio playing while preparation is necessary. Do not change `AudioBufferSource.playbackRate` to implement BPM: it also changes pitch. Do not split hardware mixes into independent stems without checking nonlinear mixing and shared effects.
+Aim for immediate UI acknowledgement and under 50-100 ms of application-added latency for warmed interactive paths. These are proposed budgets, not current guarantees. Network-cold assets, first audio unlock and hardware/Bluetooth latency cannot truthfully have a universal zero-time promise. Keep the previous audio playing while preparation is necessary. Do not change `AudioBufferSource.playbackRate` to implement BPM: it also changes pitch. Do not split hardware mixes into independent stems without checking nonlinear mixing and shared effects.
 
 ## Reproduce
 
@@ -105,16 +105,16 @@ Production-built local app, Chromium on the same development Mac, sequential tri
 
 | Interaction | Implementation sample | Baseline sample |
 | --- | --- | --- |
-| Landing: cached console/song | 18–19 ms | 181–182 ms |
-| Landing: Mario/Game Boy tempo 125% | 385 ms | 7.15–12.38 s |
+| Landing: cached console/song | 18-19 ms | 181-182 ms |
+| Landing: Mario/Game Boy tempo 125% | 385 ms | 7.15-12.38 s |
 | Composer: tempo / transpose / part level | 165 / 140 / 106 ms | 890 ms for tempo |
 | Composer: first Game Boy | 327 ms | 2.51 s |
 | Loop studio: tempo / console handoff completion | 121 / 128 ms | 272 / 277 ms |
 | Lab: cached Super Famicom | 1 ms | 1 ms |
 
-A prior warm trial had a 1.295 s transition wait while the audio clock barely advanced; the repeated warm trials measured 12–19 ms. This outlier remains part of the observations, not a universal sub-100 ms claim. Renaming updates the persistent title without replacing audio.
+A prior warm trial had a 1.295 s transition wait while the audio clock barely advanced; the repeated warm trials measured 12-19 ms. This outlier remains part of the observations, not a universal sub-100 ms claim. Renaming updates the persistent title without replacing audio.
 
-The progressive browser fixture measured a 265 ms first prefix, 147–148 ms tempo/transpose edits and a 50 ms cached console return, with measured nonzero output and zero underruns. The long native Mario fixture seeks to 60 seconds, changes all four visible consoles, then combines rapid edits, seek and loop changes. It retains Play intent, limits workers to three and records zero underruns. **Cold history remains expensive:** the first Game Boy replacement took 7.35 s and Mega Drive 27.11 s on that fixture, while the old audio continued. Subsequent Super Famicom/Famicom changes occurred after the song looped and are not comparable 60-second cold-seek benchmarks.
+The progressive browser fixture measured a 265 ms first prefix, 147-148 ms tempo/transpose edits and a 50 ms cached console return, with measured nonzero output and zero underruns. The long native Mario fixture seeks to 60 seconds, changes all four visible consoles, then combines rapid edits, seek and loop changes. It retains Play intent, limits workers to three and records zero underruns. **Cold history remains expensive:** the first Game Boy replacement took 7.35 s and Mega Drive 27.11 s on that fixture, while the old audio continued. Subsequent Super Famicom/Famicom changes occurred after the song looped and are not comparable 60-second cold-seek benchmarks.
 
 A cold handoff can return its first block nearly spent, because the playhead keeps moving while the target catches up; CI measured one such underrun on 2026-09-15. The handoff now extends that block with warm contiguous reads until the new source starts at least 0.75 s ahead, and the audible source keeps a 3 s reserve instead of 1.5 s while another one prepares. The long fixture forces a Mega Drive target to arrive with 30 ms left, which underran on every run before the change, and counts underruns per phase and per source.
 

@@ -147,7 +147,7 @@ gb.play(song);                        // a 12.5 % pulse lead, a square wave in w
 INTENTS.bass.hollow;                  // "a square wave on the Game Boy's wave channel; a NES has only the triangle"
 ```
 
-**[Try it](https://chipvoice.dev)** — three cartridges, five machines, an editor and four arcade pads
+**[Try it](https://chipvoice.dev)** - three cartridges, five machines, an editor and four arcade pads
 that takes a channel away from the music while you watch. The song lives in the URL,
 so a link is the save file.
 

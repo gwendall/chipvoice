@@ -7,8 +7,8 @@
 </p>
 
 
-<a id="prompt-to-song-creation--proposed"></a>
-## プロンプトによる楽曲作成 — 提案
+<a id="prompt-to-song-creation---proposed"></a>
+## プロンプトによる楽曲作成 - 提案
 
 [生成による作曲](GENERATIVE-COMPOSITION_ja.md)は既存の編集可能な曲とホスティングを使い、OpenAIアダプター、プロンプトUI、公開の作者・由来表示、1コマンドのエージェントクライアントを提供します。ローカルの実Astra試行は成功し、デプロイの証跡は[PR #50](https://github.com/gwendall/chipvoice/pull/50)に記録します。広い音楽評価、修正、機種別版は必要に応じて進めます。SDKはモデルから独立しています。
 

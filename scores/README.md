@@ -20,7 +20,7 @@ console changes its instrument, not the notes or the musical form.
 | --- | --- | --- | --- |
 | Mario · Ground Theme | 50 bars, 80 seconds | [AltoNicoRuso / Alejandro, viola, file 2073](https://ichigos.com/sheets/293) | Complete melody in the MIDI export; raised one octave; constant 150 BPM replaces expressive tempo automation |
 | Zelda · Overworld | 24 bars, about 39 seconds | [Jeffrey M Colletti, dedicated Melody track](https://www.vgmusic.com/file/025afd4ada334a01a042cf6eae931024.html) | Complete melody, including the four-bar introduction and both sections; source pitch and triplets retained |
-| Sonic · Green Hill Zone | 24 bars, 38.4 seconds | [Turret 3471, channel transcription](https://www.vgmusic.com/file/02328f72f692b92c7cabfec2d6f661ed.html) | Complete main-theme cycle, source beats 36–132; Lead track 2 until beat 127, returning Synth 2 phrase from track 8; separate intro and second cycle omitted |
+| Sonic · Green Hill Zone | 24 bars, 38.4 seconds | [Turret 3471, channel transcription](https://www.vgmusic.com/file/02328f72f692b92c7cabfec2d6f661ed.html) | Complete main-theme cycle, source beats 36-132; Lead track 2 until beat 127, returning Synth 2 phrase from track 8; separate intro and second cycle omitted |
 
 Composers: Koji Kondo (Mario/Zelda), Masato Nakamura (Sonic). These are the selected
 transcriptions, **not original game captures or claims of perfect game fidelity**.

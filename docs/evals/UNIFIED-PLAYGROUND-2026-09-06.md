@@ -1,4 +1,4 @@
-# Unified playground evaluation — 2026-09-06
+# Unified playground evaluation - 2026-09-06
 
 <p align="center">
   <a href="UNIFIED-PLAYGROUND-2026-09-06.md">English</a> &bull;
@@ -46,8 +46,8 @@ press scaling and indeterminate progress movement.
   editor/recording, publication, auth/API and shared-draft browser checks remain
   in the web qualification. Composer checks explicitly enter `/?mode=compose`.
 
-The initial instrumented browser run reported 173–176 ms of output delay.
-Steady playback and post-operation cursor error measured 0.8–15.7 ms across seven
+The initial instrumented browser run reported 173-176 ms of output delay.
+Steady playback and post-operation cursor error measured 0.8-15.7 ms across seven
 checks (one display frame). This is browser-clock evidence, not a microphone
 measurement of physical speakers. Subsequent runs write fresh measurements to
 `.artifacts/unified-playground/result.json`; CI retains screenshots and video.
@@ -96,7 +96,7 @@ scripts against a fresh disposable API database; CI still runs the entire suite.
 repeating already-passing API/audio work. The Playwright browser cache disappeared
 during the run and was reinstalled before continuing.
 
-The final instrumented transport run measured 4.0–17.0 ms cursor error. Musical
+The final instrumented transport run measured 4.0-17.0 ms cursor error. Musical
 phase error at the exact console and tempo transition starts was zero. The tests
 also passed the synthetic delayed-output/end/Pause window, old/new presentation
 handoff and A/B reference selection after returning from the composer.
@@ -123,7 +123,7 @@ source without waiting for its missing event. All three failed before their fixe
 
 The full transport E2E also passed in a local Linux Chromium container, including
 composer handoff, screenshots and video. Its observed output delay was about
-30–37 ms (different from the macOS device), with cursor error of 1.6–44.0 ms on
+30-37 ms (different from the macOS device), with cursor error of 1.6-44.0 ms on
 this busy host. CI failure artifacts now retain the source offset, ended flag,
 context state, output timestamp, screenshot and finalized video.
 

@@ -1,5 +1,5 @@
-<a id="loop-recording-evaluation--2026-09-06"></a>
-# ループ録音の評価 — 2026-09-06
+<a id="loop-recording-evaluation---2026-09-06"></a>
+# ループ録音の評価 - 2026-09-06
 
 <p align="center">
   <a href="RECORDING-2026-09-06.md">English</a> &bull;

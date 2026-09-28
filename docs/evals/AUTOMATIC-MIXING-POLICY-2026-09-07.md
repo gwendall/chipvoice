@@ -1,4 +1,4 @@
-# Automatic mixing policy evaluation — 2026-09-07
+# Automatic mixing policy evaluation - 2026-09-07
 
 <p align="center"><a href="AUTOMATIC-MIXING-POLICY-2026-09-07.md">English</a> &bull; <a href="AUTOMATIC-MIXING-POLICY-2026-09-07_ja.md">日本語</a></p>
 
@@ -39,9 +39,9 @@ qualification for that rate. Equivalent NES pulse voices differ by less than
 0.01 dB in the checked conditions; FM1/FM6 onset offsets differ by up to 0.25 dB.
 
 A warmed, interleaved same-host benchmark measured automatic planning at
-0.19–0.39 ms for the generated two-second fixture, versus 0.12–0.23 ms with
+0.19-0.39 ms for the generated two-second fixture, versus 0.12-0.23 ms with
 legacy controls in the same allocator. A single-note game phrase measured
-0.006–0.021 ms. These isolate policy overhead on this host; they are not
+0.006-0.021 ms. These isolate policy overhead on this host; they are not
 representative phone, cold-start or historical-SDK measurements. Generated
 factory JavaScript is about 190 kB, 37 kB gzip. No calibration runs in a worklet.
 
@@ -85,5 +85,5 @@ loaded host. A captured-timestamp regression failed before the shared output clo
 gained a per-context monotonic floor. Seeking still changes transport offsets;
 the fix neither changes PCM nor certifies physical-device latency. Buffer-player
 checks now wait on bounded audio/state deadlines instead of assuming that
-60–300 ms of wall time advances the sound by the same amount. Both independent
+60-300 ms of wall time advances the sound by the same amount. Both independent
 review axes found no blocking issue in this correction.

@@ -1,4 +1,4 @@
-# Portable timbres and dry SNES — 0.16.3
+# Portable timbres and dry SNES - 0.16.3
 
 <p align="center"><a href="PORTABLE-TIMBRES-2026-09-07.md">English</a> &bull; <a href="PORTABLE-TIMBRES-2026-09-07_ja.md">日本語</a></p>
 

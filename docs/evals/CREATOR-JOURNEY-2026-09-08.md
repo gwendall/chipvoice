@@ -1,4 +1,4 @@
-# Creator journey qualification — 2026-09-08
+# Creator journey qualification - 2026-09-08
 
 <p align="center"><a href="CREATOR-JOURNEY-2026-09-08.md">English</a> &bull; <a href="CREATOR-JOURNEY-2026-09-08_ja.md">日本語</a></p>
 

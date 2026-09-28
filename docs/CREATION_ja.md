@@ -64,16 +64,16 @@ console.log(plan?.losses, plan?.mix);
 | パラメーター・操作 | 契約 |
 | --- | --- |
 | `settings.chip` | `2a03`、`dmg`、`md`、`snes`、`c64`。公開デモでは C64 を非表示 |
-| `tempoScale` | 0.1–10倍。コンパクトスコアは有効な BPM 範囲も必要 |
+| `tempoScale` | 0.1〜10倍。コンパクトスコアは有効な BPM 範囲も必要 |
 | `transpose` | 演奏は半音単位 −48〜+48。従来スコアは音域内の整数 |
-| `gain` | 線形マスターゲイン 0–1。既定は各ソースの従来方針 |
+| `gain` | 線形マスターゲイン 0〜1。既定は各ソースの従来方針 |
 | `allowLoss` | SDK の既定 false。対話プレビューは報告付き損失を明示許可 |
 | `parts` | ソースのパート ID 配列。コンパクトでは `lead`、`chord`、`bass`、`perc` |
-| `sampleRate` | 整数 Hz、8000–96000、既定44100 |
+| `sampleRate` | 整数 Hz、8000〜96000、既定44100 |
 | `renderProject.seconds` | 任意の抜粋長、正数で最大600秒。元の長さは延長しない |
 | `load` / `update` | 採用した選択だけ true、失敗・置換は false。`error` を確認 |
 | `playing`, `position`, `duration`, `audibleProject` | 再生意図と実際に聞こえる状態。準備中の値に先走らない |
-| `preparing`, `progress`, `prepared`, `onChange` | 準備状態、0–1進捗、直前の結果、通知。位置はアニメーションフレームで読む |
+| `preparing`, `progress`, `prepared`, `onChange` | 準備状態、0〜1進捗、直前の結果、通知。位置はアニメーションフレームで読む |
 | `cancel` / `dispose` | 準備を中断。dispose は再生・Worker・URLも解放し、自身が所有する Context のみ閉じる |
 
 `ProjectPlayer({context})` は既存 AudioContext を利用できます。`output` は出力観測、`setVolume` はプロジェクトを変えない試聴ゲインです。書き出しにはプロジェクトのゲインを使います。`PerformancePart.program` は新規音符の既定楽器で、音符ごとの指定を優先します。`muted` と `mix.gainDb` は自動ミックスなしでも有効です。ブラウザーとサーバーは同じ `renderProject` を使用します。`Chip`、SFX、生レジスタ、`recordSong`、`toVgm`、NESの曲であれば`exportNsf`、SNES 向けの `exportSpc`（任意の SPC プレイヤーで再生できる標準 `.spc` スナップショット）も利用できます。`projectCapabilities()` は WAV と下位のレジスタ書き出し（2A03/DMG/MD は VGM、SNES は SPC）を区別し、声数・役割を示します。全機種が他機種の全楽器を再現するとは主張しません。
@@ -92,7 +92,7 @@ console.log(plan?.losses, plan?.mix);
 | `GET /api/v1/projects` | `q`、`tag`、`chip`、`handle`、`sort=recent|popular`、不透明 `cursor` |
 | `GET/PUT /api/v1/profile` | 大小文字を区別しない一意ハンドル、別の表示名、自己紹介 |
 | `PUT/DELETE /api/v1/projects/{id}/favourite` | 1アカウント1件。自分の曲は除外 |
-| `POST /api/v1/projects/{id}/report` | 認証付き理由3–500文字。アカウントと曲ごとに1件 |
+| `POST /api/v1/projects/{id}/report` | 認証付き理由3〜500文字。アカウントと曲ごとに1件 |
 | `POST /api/v1/projects/{id}/render` | 所有者が `{kind: 'preview'|'full'}` を開始。曲と種類で冪等 |
 | `GET/DELETE /api/v1/jobs/{id}` | 進捗・状態、または所有者による中断 |
 | `GET /api/v1/jobs/{id}/audio` | 完了済み固定 WAV。公開範囲を適用 |
