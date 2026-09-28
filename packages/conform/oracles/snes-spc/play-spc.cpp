@@ -43,7 +43,25 @@ struct Sample { long cycle; int l; int r; };
 
 static std::vector<Write> g_writes;
 static std::vector<Sample> g_samples;
-static long g_sample_cycle = 0; // the DSP's own 32-cycle sample clock; SPC_DSP_OUT_HOOK fires once per period, unconditionally, from a fixed phase in its pipeline - counting firings from 0 is exact regardless of where in a period that phase falls.
+// The DSP's own 32-cycle sample clock, in real SPC cycles from the start of
+// the loaded snapshot (cycle 0) - not a firing count. SPC_DSP_OUT_HOOK fires
+// once per period, unconditionally, from ECHO_CLOCK(27) in SPC_DSP.cpp (the
+// PHASE(27) slot of GEN_DSP_TIMING). SPC_DSP::run()'s own dispatch (the
+// Duff's-device switch right after GEN_DSP_TIMING) advances m.phase by
+// exactly one clock per phase, in order, and every load() (SPC_DSP::load(),
+// via soft_reset_common()) resets m.phase to 0 - so the very FIRST firing
+// after a snapshot load always lands on real cycle 27 (the 28th phase run
+// from a phase-0 start), not on cycle 0. Every later firing is exactly 32
+// cycles after the one before it, so 27 is the only correction this needs:
+// starting the counter there, once, makes every firing's label the real
+// cycle it happens on. Starting it at 0 (this file's own earlier version)
+// mislabeled every sample by a constant 27 cycles for the whole trace -
+// found and fixed as part of DECISIONS.md #46's exact oracle-sample gate;
+// see corpus/snes/spc/README.md's "the timer-phase regression" section for
+// the sibling bug this one was found alongside (a real one in blargg's own
+// vendored snes_spc, unlike this one, which is entirely this wrapper's own
+// mistake).
+static long g_sample_cycle = 27;
 
 // `SPC_DSP_WRITE_HOOK` fires from `SNES_SPC::dsp_write`, called only for a
 // CPU write to $F3 (DSPDATA); `reg` is the DSP register DSPADDR ($F2) was

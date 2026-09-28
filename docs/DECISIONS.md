@@ -1291,3 +1291,207 @@ has asked for a non-Sony-ROM SPC700.
 AND LGPL-2.1-or-later)`, unchanged by this file: the LGPL half still names
 only `ym2612.ts` and `sdsp.ts`. The package README documents `IPL_ROM`'s
 source next to `importSpc`.
+
+## 46. The exported .spc carries its own tiny SPC700 player, assembled from TS source in the repo (2026-09-28)
+
+P6-9 adds `exportSpc` (`packages/chipvoice/src/spc-export.ts`), which freezes
+a SNES song's register-write capture into a standard `.spc` snapshot. Nothing
+of chipvoice runs on the machine that opens a `.spc` file, so something has
+to replay the writes on the real SPC700 itself: the snapshot's own ARAM
+carries a tiny player program (`chips/snes/spc-player.ts`) that reads the
+next tick-delta, waits it out on a hardware timer, issues the next
+`$F2`/`$F3` pair, repeats, and loops back to the song's loop point forever.
+
+**Why write it, not assemble it externally.** The ticket required the
+player's source stay readable in the repo, with the TS-side bytes
+reproducible from committed source by a script CI can run, not an opaque
+blob. `buildPlayerProgram` in `spc-player.ts` is a small TS emitter: SPC700
+opcodes and operands written out as an annotated byte sequence, assembled by
+chipvoice itself at export time, not by a third-party assembler whose own
+output would need to be vendored or trusted as-is. This is not decision 45's
+IPL ROM exception again: nothing here is copied from another emulator or
+from Sony's own driver code, so there is no licensing question to record,
+only an unusual artifact (assembled SPC700 machine code, MIT, produced by
+TypeScript) worth naming so a future reader does not mistake it for a
+binary blob.
+
+**Timer, tick rate, quantization.** The player times itself with the S-SMP's
+Timer 0, at `TIMER_TARGET = 8` against its 8000 Hz input, giving 1000
+ticks/second (`TICKS_PER_SECOND`, `chips/snes/spc-player.ts`; `SPC_HZ /
+TICKS_PER_SECOND` is 1024 cycles/tick, exactly). Each captured write's cycle
+stamp is rounded to the nearest tick before being re-simulated:
+`exportSpc` runs a second, scratch instance of this package's own SPC700
+over the assembled player program during export, so the tick-delta stream
+that ships is the one that actually reproduces each write's target tick when
+a real SPC700 executes the wait loop and dispatch, not an estimate that
+ignores the player's own instruction cost.
+
+**How close a write lands to its own rounded tick.** Rounding alone promises
+half a tick; the real player also spends real cycles walking its own
+dispatch loop before a write actually reaches the DSP, and a dense same-tick
+burst (a chord, an instrument retrigger touching many voices' registers at
+once) makes many writes queue behind a single real CPU with no DMA to share
+the load. Measured on both the synthetic unit test and on real songs
+(`packages/chipvoice/test/spc-export.mjs`; mario and zelda both converge on
+the same figure independently), the worst case is about 1993-1998 cycles,
+just under two ticks, and does not grow with a song's length - it is bounded
+by how many registers one originally-simultaneous group can touch, not by
+how long the song runs. A back-of-envelope bound on the burst loop itself
+(about 12 cycles per register touched, a 1024-cycle tick) shows one tick
+would need a group under roughly 85 registers wide with zero rounding
+margin left over - not a target this driver's own dispatch cost can reach
+for real content, not a bug to chase further. The test's own bound is set at
+3 ticks: a real margin over the measured ~2-tick ceiling, not the tighter
+figure hoped for at the start of this ticket, kept honest rather than forced.
+
+**Encoding.** The write stream is tick-deltas plus `{reg, value}` pairs,
+`$FE count (reg value)*count` bursts for same-tick register groups, and (new
+since the ticket's first pass) `$FD` back-references: a greedy LZ77-style
+match (`MATCH_MIN_GROUPS = 2` consecutive groups) lets a repeated run of
+groups - the same chord retriggered, the same instrument's envelope
+replayed - point back at stream bytes already written instead of repeating
+them, decoded by the player's own `L_COPY_START` section rather than
+inflating the assembled program with per-song logic. This closed most of the
+gap the first pass's plain encoding left: `mario` (52991/65472 bytes) and
+`zelda` (29623/65472 bytes) both now fit; `sonic` still does not (82896
+needed against 57344 available for its own memory layout) and fails loudly
+with `SpcExportSizeError { measured, limit }` naming its real size, rather
+than truncating - matching how `validateSong` already reports capacity
+elsewhere. A denser encoding (a value dictionary, cross-song matching) was
+considered and set aside, not ruled out: today's one remaining failure is
+named and measured, not silent, which was the ticket's bar.
+
+**Two bugs the oracle comparison found, both fixed.** First, the live S-DSP
+echo buffer (`ESA`/`EDL`) writes into the export's own scratch ARAM on the
+DSP's own initiative while the second, scratch SPC700 re-simulates the
+player program - a back-reference pass reading stream bytes back out of
+that same RAM could read a byte the echo hardware had since overwritten.
+Fixed by tracking every footprint the capture's own `ESA`/`EDL`/`FLG`
+writes could ever put echo into (`inEchoFootprint`) and refusing, in
+`pokeStream`, to trust or reuse any byte inside one - the same
+`SpcExportSizeError` path a plain overflow takes, not a silent misread.
+Second, the final pre-loop wait (the tail between the last write and the
+loop point) rounded its own tick count with `Math.round`, which could round
+down and leave the simulated player waiting fractionally short of the loop
+point it was told to reach; changed to `Math.ceil`, matching what "wait at
+least until the loop point" actually requires.
+
+**Envelope correlation window.** `check-export.mjs` scores audio fidelity by
+per-voice RMS envelope correlation rather than a raw cycle-exact sample
+match, because a write correctly rounded to its own tick still shifts the
+DSP's audio-rate waveform out of phase with an unquantized render, and phase
+alone scores two identical tones as almost entirely different. The window
+width matters: measured at 1, 2 and 4 ticks on both real songs
+(`ENVELOPE_WINDOWS_TICKS`, reported every run, not just historically), a
+correct export climbs from about 0.72-0.85 at 1 tick to 0.91-0.96 at 4,
+still far below anything a listener could perceive as separately timed, and
+climbing - the signature of an under-resolved phase effect, not a real
+mismatch (a real mismatch instead falls or flattens as the window widens).
+Four ticks is kept as the gate (`ENVELOPE_MATCH_THRESHOLD = 0.95` would be
+too tight at the finer windows for the reason above, not because the export
+is wrong at 1 or 2 ticks).
+
+**The oracle comparison: cycle-exact writes, and samples now cycle-exact
+too.** A round two of this same review asked for the oracle write
+comparison to check cycles, not just content, and for the oracle sample gap
+(17-31% raw cycle-exact) to be either fixed or explained with numbers
+rather than left as an unqualified "phase" claim; a round three asked for
+the sample gap itself to be closed, not just characterized further, if
+another cause could be found. All three now hold.
+
+Reading blargg's vendored snes_spc directly (`SNES_SPC.cpp`'s
+`run_timer_`) found a real, one-time quirk in its lazy timer model: `elapsed
+= TIMER_DIV(t, time - t->next_time) + 1` combined with `reset_time_regs()`
+setting every timer's `next_time` to 1 on every snapshot load means the very
+first post-load call always credits itself with one whole prescaler period
+already elapsed, however few cycles actually passed. Confirmed with the
+regression fixture below (`timer-phase.spc`, timer 0 at a period of 1, one
+128-cycle prescaler period at normal tempo): before a fix, blargg's own CPU
+sees timer 0's counter as already non-zero and makes its one write only 15
+cycles into the snapshot, far short of the 128 cycles a full period actually
+takes; this package's own per-cycle model, from the same file, only reaches
+that same write at cycle 140. Round three fixed this at the source instead
+of only naming it: a load-time shim, `fix_snapshot_timer_phase()` in the
+vendored oracle, runs once right after a snapshot loads so blargg's own
+timers start in the same phase as real hardware, not one prescaler period
+ahead of it - with the fix, the oracle's write lands at cycle 141, one cycle
+after this package's own 140 (the same pre-charge labelling difference
+`check.mjs`'s own doc comment already names, not a second issue). This
+minimal regression fixture (one write, one timer target) pins the fix in
+`check:spc` alongside the existing corpus so a future change to the
+vendored oracle cannot silently reopen the one-time jump; `check:spc` now
+covers both files at 100.0000% (3072000/3072000 cycles).
+
+That fix moved the residual write-cycle offset onto a second, narrower
+boundary effect, found this round: the exported player polls Timer 0's own
+output register in a tight loop, and blargg's lazy timer catch-up formula
+and this package's own per-cycle timer model resolve "has this exact
+boundary cycle already elapsed" one cycle differently whenever a poll's own
+dispatch-overhead phase drift (which never compounds - it resynchronizes at
+the very next wait) happens to cross a timer-0 prescaler boundary at the
+wrong instant, making blargg's poll exit one whole 7-cycle "still waiting"
+iteration early. Proven by construction (a single isolated wait never
+reproduces it; a repeating wait-then-write loop does, deterministically)
+and confirmed exhaustively on this corpus (every write in both `mario` and
+`zelda` takes one of exactly two values, nothing else). `check-export.mjs`'s
+`compareOracleWrites` now names both values (`WRITE_CYCLE_OFFSETS = [1,
+-6]`, generalizing the single-offset gate the previous round named
+`T0_STAGE1_PERIOD`) and gates on them exactly - no residual, no running
+count.
+
+Driving this package's own DSP with blargg's own actual write cycles
+(`oracleWrites`, already exact above), instead of this package's own CPU's
+independently re-derived ones, isolates the sample comparison to the one
+question it exists to answer - given the *same* stimulus, does the S-DSP
+core compute the *same* output - with no CPU-timing variable left in it.
+One narrow artifact remained even then: blargg's `SNES_SPC.cpp` keeps the
+DSP lazily caught up (the `RUN_DSP` macro, only actually run from
+`dsp_write`/`dsp_read`/`end_frame`'s own final catch-up call), so
+`play-spc`'s one-shot render may or may not flush this package's own
+trailing `SAMPLE_OUTPUT_CYCLES`-period output sample depending on internal
+phase alignment exactly at the cutoff, while this package's own per-cycle
+DSP model always computes and includes it. Confirmed directly on `zelda`
+(the one song whose tail had not already decayed to silence by the cutoff):
+this package's own last recorded sample sits exactly one
+`SAMPLE_OUTPUT_CYCLES` period past blargg's own last recorded sample, at
+the literal last cycle of the render, nowhere else. `ORACLE_TAIL_TRIM_CYCLES`
+excludes exactly that one trailing period from the oracle samples
+comparison; with it, both `mario` and `zelda` reach exactly 100.0000%
+cycle-exact on the oracle side (`identical === cycles`), the same bar
+`check:spc` already gates its own comparison at. Envelope correlation and
+note-timing alignment are still reported on the oracle side, not gated -
+they were this file's own gate before this round, and stay as evidence
+that the CPU-timing difference the write comparison names is exactly what
+they already tolerated, not a second, undiscovered problem.
+
+`check-export.mjs` also gates the round trip's own timing directly (the
+largest deviation between any write's actual cycle and the tick `exportSpc`
+rounded it to, at the same 3-tick bound the unit test derives, measured
+live on `mario` and `zelda`: 1998 and 1993 cycles respectively, about 1.95
+ticks, unchanged this round), and a `--self-test` mode (wired into CI as
+`check:spc-export:self-test`, alongside `check:spc` itself, which was not
+previously run in CI at all) exercises a positive and a negative control
+per gate: the write-cycle gate accepts both named offsets outright
+(including the `-6` case, not just the plain `+1`) and rejects one cycle
+past either; the new exact sample gate accepts two identical streams and
+rejects one perturbed by a single sample at a single cycle; the round-trip
+timing and envelope-correlation gates keep their existing negative controls
+(a write outside the round-trip timing bound, a dropped voice) unchanged
+from before this round.
+
+**What changes.** `packages/chipvoice/src/spc-export.ts` and
+`chips/snes/spc-player.ts` are new; `exportSpc` and `SpcExportSizeError` are
+exported from the package index; `projectCapabilities()` reports `spc` as
+the SNES `registerExportFormats` entry; `apps/web/src/studio/exports.ts`
+gains an `spc` export kind. None of this touches `spc-import.ts`,
+`spc700.ts` or `ssmp.ts` from decision 45; a round trip through `importSpc`
+is how the CI check in `packages/conform/src/spc/check-export.mjs` proves
+the player's writes land where the capture put them, alongside a direct
+comparison against `play-spc`'s own playback of the same exported file.
+Round three also touches the vendored oracle itself
+(`packages/conform/oracles/snes-spc/`): the `fix_snapshot_timer_phase()`
+load-time shim and the `g_sample_cycle` output-hook fix in `play-spc.cpp`,
+plus the new `timer-phase.spc` regression fixture and its
+`checkTimerPhase` assertion in `check.mjs`. `.github/workflows/ci.yml`
+gains two steps in the `conformance` job: `check:spc` (previously written
+but never run in CI) and the new `check:spc-export:self-test`.

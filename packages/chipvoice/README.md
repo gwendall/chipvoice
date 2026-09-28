@@ -426,6 +426,32 @@ mistake that leaves no evidence:
 It also measures - loop length, onset density, melodic range - and warns when a loop
 is under fourteen seconds, which is where a piece starts being heard as a repeat.
 
+## The song, as bytes: SPC
+
+A SNES song is samples driven by S-DSP register writes read off ARAM, and an
+`.spc` file is exactly that machine's own save state - the sample-playing
+console's native exchange format, and any SPC player, on real hardware too,
+plays it with no chipvoice runtime involved.
+
+```ts
+import { recordSong, exportSpc } from "chipvoice";
+
+const { events, cycles, memory } = recordSong(THEME, { chip: "snes", seconds: 30 });
+writeFileSync(
+  "theme.spc",
+  exportSpc(events, cycles, memory, { title: "Theme", artist: "me", loopAtCycle }),
+);
+```
+
+The exported ARAM carries its own tiny SPC700 player (this package's own
+source, MIT, no opaque blob), the compacted sample directory and BRR data the
+song actually uses, and the S-DSP write stream as tick-delta/register/value.
+Pass `loopAtCycle` and playback repeats forever from there, the way a game's
+own track does. A song that cannot fit in the SNES's 64 KB of sound RAM
+throws `SpcExportSizeError`, carrying `measured` and `limit`, rather than
+writing a truncated file - shorten the song or use fewer distinct instrument
+samples.
+
 ## Other chips
 
 Five machines ship: NES, Game Boy, Mega Drive, SNES and C64. `ChipSpec` names
@@ -439,7 +465,8 @@ it), four sample voices on SNES, and shared chord/percussion on the C64's third
 voice. The C64's filter is reachable too: `lead: "sweep"` opens its cutoff
 across a note, `bass: "resonant"` routes a pulse through it at a high
 resonance. VGM export and import both support NES, Game Boy and Mega Drive;
-SNES and C64 register logs do not yet have a shipped file exporter or
+SNES has its own native `.spc` exporter and importer instead (above; see also
+`importSpc`); C64 register logs do not yet have a shipped file exporter or
 importer.
 
 `validateSong` reports machine-specific base-pitch and arpeggio range warnings.

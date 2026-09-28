@@ -240,9 +240,10 @@ blargg_err_t SNES_SPC::load_spc( void const* data, long size )
 	
 	// DSP registers
 	dsp.load( spc->dsp );
-	
+
 	reset_time_regs();
-	
+	fix_snapshot_timer_phase(); // chipvoice patch (2026-09-28); see its definition in SNES_SPC.cpp
+
 	return 0;
 }
 

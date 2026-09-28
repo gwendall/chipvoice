@@ -296,12 +296,29 @@ const { ok, issues, measured } = validateSong(song);
 
 ループ長、オンセット密度、旋律の音域も測り、反復として聞こえ始める14秒未満のループへ警告します。
 
+<a id="the-song-as-bytes-spc"></a>
+## 曲をバイトにする：SPC
+
+SNESの曲はARAMから読むS-DSPレジスター書き込みが鳴らすサンプルで、`.spc`ファイルはまさにその機種自身のセーブステート - サンプル再生機自身の交換形式であり、どのSPCプレイヤーでも、実機でも、chipvoiceのランタイムなしで再生できます。
+
+```ts
+import { recordSong, exportSpc } from "chipvoice";
+
+const { events, cycles, memory } = recordSong(THEME, { chip: "snes", seconds: 30 });
+writeFileSync(
+  "theme.spc",
+  exportSpc(events, cycles, memory, { title: "Theme", artist: "me", loopAtCycle }),
+);
+```
+
+書き出したARAMには自作の小さなSPC700プレイヤー（本パッケージ自身のソース、MITライセンス、不透明なバイナリではない）、曲が実際に使う圧縮済みサンプルディレクトリとBRRデータ、そしてティック差分・レジスター・値によるS-DSP書き込み列が入ります。`loopAtCycle`を渡すと、ゲーム自身のトラックと同じように、そこから先は永遠にループします。SNESの64 KBのサウンドRAMに収まらない曲は、切り詰めたファイルを書く代わりに`measured`と`limit`を添えた`SpcExportSizeError`を投げます - 曲を短くするか、使用する音色サンプルの種類を減らしてください。
+
 <a id="other-chips"></a>
 ## ほかのチップ
 
 NES、Game Boy、Mega Drive、SNES、C64の5機種を出荷しています。`ChipSpec`が声と役割割当を定義し、`ChipCore`が時刻付きのレジスター書き込みを受け、バッファーを埋めます。楽器はフレームテーブル、FMパッチ、サンプルに対応します。
 
-移植可能な楽譜は4役割を保ちます。Mega DriveはFMの旋律／ベースとPSGの和音／ドラム(または`perc: "punchy"`でチャンネル6のFMドラム。チップ自前のLFOも、それを求めるどのパッチからでも使えます)、SNESはサンプル音声、C64は第3声の和音／打楽器共有へ割り当てます。C64のフィルターにも到達できます：`lead: "sweep"`はノート全体でカットオフを開き、`bass: "resonant"`は高レゾナンスでパルスを通します。VGM出力とVGMインポートはいずれもNES、Game Boy、Mega Driveに対応。SNESとC64のログをファイルへ出す機能・読み込む機能はまだ出荷していません。
+移植可能な楽譜は4役割を保ちます。Mega DriveはFMの旋律／ベースとPSGの和音／ドラム(または`perc: "punchy"`でチャンネル6のFMドラム。チップ自前のLFOも、それを求めるどのパッチからでも使えます)、SNESはサンプル音声、C64は第3声の和音／打楽器共有へ割り当てます。C64のフィルターにも到達できます：`lead: "sweep"`はノート全体でカットオフを開き、`bass: "resonant"`は高レゾナンスでパルスを通します。VGM出力とVGMインポートはいずれもNES、Game Boy、Mega Driveに対応。SNESには専用の`.spc`書き出し・読み込み機能があります（上記、および`importSpc`）。C64のログをファイルへ出す機能・読み込む機能はまだ出荷していません。
 
 `validateSong`は機種別の基音とアルペジオの音域警告を出します。楽譜を保存しますが、すべての変調が表現範囲内に収まる保証はしません。[移植可能な楽譜](../../docs/SCORE_ja.md)と各シートで、能力、およびコーパス一致と実機測定の違いを確認してください。
 
