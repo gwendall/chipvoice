@@ -20,8 +20,6 @@ export interface Tags {
   /** Shown as a comment, and the one place the link survives a re-share. */
   comment?: string;
   url?: string;
-  /** The genre frame's text. Chipvoice writes "Chiptune"; another app may not. */
-  genre?: string;
 }
 
 const utf16 = (text: string): Uint8Array => {
@@ -101,7 +99,8 @@ export function id3(tags: Tags): Uint8Array {
   ];
   if (tags.album) frames.push(frame("TALB", utf16(tags.album)));
   if (tags.year) frames.push(frame("TYER", utf16(tags.year)));
-  if (tags.genre) frames.push(frame("TCON", utf16(tags.genre)));
+  // The genre every player already knows how to show for this.
+  frames.push(frame("TCON", utf16("Chiptune")));
   if (tags.comment) frames.push(comment(tags.comment));
   if (tags.url) {
     // WOAS is a URL frame: no encoding byte, plain ISO-8859-1, no terminator.
@@ -139,12 +138,12 @@ export function id3(tags: Tags): Uint8Array {
 /**
  * A filename a person can read, and one every filesystem accepts.
  *
- * Two forms, because `filename=` must be ASCII and titles may hold accents.
+ * Two forms, because `filename=` must be ASCII and our titles may hold accents.
  * A browser that understands `filename*` uses the readable one; anything older
  * falls back rather than saving something mangled.
  */
-export function contentDisposition(title: string | null, id: string, ext: string, fallbackName = "audio") {
-  const readable = (title ?? "").trim() || `${fallbackName} ${id}`;
+export function contentDisposition(title: string | null, id: string, ext: string) {
+  const readable = (title ?? "").trim() || `chipvoice ${id}`;
   const safe = readable
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
@@ -152,7 +151,7 @@ export function contentDisposition(title: string | null, id: string, ext: string
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 60);
-  const ascii = (safe || `${fallbackName} ${id}`) + `.${ext}`;
+  const ascii = (safe || `chipvoice ${id}`) + `.${ext}`;
   const unicode = encodeURIComponent(`${readable}.${ext}`);
   return `inline; filename="${ascii}"; filename*=UTF-8''${unicode}`;
 }

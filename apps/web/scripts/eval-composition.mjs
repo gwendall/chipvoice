@@ -15,7 +15,7 @@ const out = `../../.artifacts/prompt-composition/${fixture ? "fixture" : "live"}
 await mkdir(out, { recursive: true });
 const server = await compositionServer({ live: !fixture });
 Object.assign(process.env, server.env);
-await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/sse';", resolveDir: process.cwd() }, outfile: "generated/eval-composition-auth.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
+await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from 'web-kit/sse';", resolveDir: process.cwd() }, outfile: "generated/eval-composition-auth.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
 const auth = await import("../generated/eval-composition-auth.mjs");
 try {
   const key = await auth.createKey("live-composition-eval@example.test", "temporary local evaluation");

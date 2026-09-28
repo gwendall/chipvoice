@@ -32,6 +32,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter chipvoice build
+      # apps/web imports web-kit/*, resolved against its built dist/; build it
+      # too, before anything below bundles or typechecks apps/web.
+      - run: pnpm --filter web-kit build
       # The web typecheck imports the catalogues and render workers the web
       # build writes to the ignored `generated/`; this is that step alone,
       # without `next build`.

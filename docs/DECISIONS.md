@@ -1535,8 +1535,16 @@ Table names, migration names and migration order, the `cv_agent_`/
 authorization policy (`authorizeAgent`) all stay exactly as they were,
 passed into the shared factories as configuration rather than generalized
 away. `turbo.json`'s existing `dependsOn: ["^build"]` builds `web-kit`
-before `apps/web` with no further wiring. `.github/workflows/e2e.yml`'s
-`deployment_status` trigger now also checks that `environment_url` starts
-with `https://chipvoice.dev`, so the second app's own production deploy
-does not also fire chipvoice's end-to-end suite under the shared default
-"Production" environment name.
+before `apps/web` for any `pnpm build`/`pnpm typecheck` that goes through
+turbo, but not for the few places that call a package's script directly
+with `pnpm --filter`, which bypasses turbo's dependency graph entirely:
+`.github/workflows/ci.yml`'s `unit` job now builds `web-kit` explicitly
+before bundling `apps/web`'s render worker, and `test-generation.mjs`/
+`scripts/eval-composition.mjs` reference `web-kit/sse` by its package name
+rather than the relative path it replaced. `.github/workflows/e2e.yml`'s
+`deployment_status` trigger checks `deployment.environment` against
+chipvoice's own known values rather than `environment_url`: real GitHub
+deployments show `environment_url` as an ephemeral per-deployment Vercel
+alias that every project linked to this repo shares alike, never a fixed
+value that tells them apart, so it cannot be what keeps the second app's
+own production deploy from also firing chipvoice's end-to-end suite.

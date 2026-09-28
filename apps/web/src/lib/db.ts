@@ -9,7 +9,7 @@ import { migrations } from "./migrations";
  * write rows somebody will later mistake for people.
  *
  * `web-kit/db`'s `createDb` factory does the actual connecting/migrating
- * (decision <TBD>); this file only supplies chipvoice's own local file name,
+ * (decision 47); this file only supplies chipvoice's own local file name,
  * `TURSO_*` environment variable prefix and migration list, unchanged from
  * before this package existed.
  */

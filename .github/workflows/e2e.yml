@@ -17,11 +17,27 @@ concurrency:
 
 jobs:
   e2e:
-    # A future second app in this monorepo gets its own Vercel project, which
-    # reports deployment_status events under the same default "Production"
-    # environment name; environment_url is the one field Vercel sets to the
-    # actual deployed host, so it is what tells the two projects apart.
-    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production' && startsWith(github.event.deployment_status.environment_url, 'https://chipvoice.dev'))
+    # A future second app in this monorepo (gamesounds) gets its own Vercel
+    # project. Checked against real GitHub Deployments on 2026-09-28
+    # (`gh api repos/gwendall/chipvoice/deployments?environment=Production`
+    # and each one's `/statuses`): with a single Vercel project linked,
+    # deployment.environment is plain "Production" (deployment 6704106722,
+    # environment_url https://chipvoice-8287j9rdn-kamirobotics.vercel.app).
+    # During the window this repo also had chipvoice-api linked, 2026-09-04,
+    # every project's environment name was disambiguated instead, as
+    # "Production", a space, an en dash (U+2013, matched literally below,
+    # not a hyphen), a space, then the project name: chipvoice's own became
+    # that shape with "chipvoice" (deployment 6262924288) and chipvoice-api's
+    # became that shape with "chipvoice-api" (deployment 6262917790). So
+    # gamesounds landing is expected to rename chipvoice's own environment
+    # the same way. environment_url does NOT distinguish the two projects:
+    # chipvoice-api's environment_url that same day was
+    # https://chipvoice-65jcghiuf-kamirobotics.vercel.app, the same
+    # "https://chipvoice-<hash>-kamirobotics.vercel.app" host pattern as
+    # chipvoice's own, and neither is ever the custom domain chipvoice.dev -
+    # so deployment.environment is the only field that reliably names the
+    # project, and this checks both forms it is known to take for chipvoice.
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && (github.event.deployment.environment == 'Production' || github.event.deployment.environment == 'Production – chipvoice'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

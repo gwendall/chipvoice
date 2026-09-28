@@ -5,7 +5,7 @@ import { addColumns, migrate as sharedMigrate, type Migration } from "web-kit/db
 
 /**
  * Chipvoice's own migration history and table shapes. `addColumns`/`migrate`
- * themselves live in web-kit/db (decision <TBD>); this array is what makes
+ * themselves live in web-kit/db (decision 47); this array is what makes
  * them chipvoice's, and it never moves: applied migrations are tracked by
  * name, so renaming or reordering an already-applied entry here is
  * unsupported by design (see web-kit/db's `migrate`).
