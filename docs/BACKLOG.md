@@ -196,10 +196,13 @@ created the same day.
   at 900 ms and, to show that specific read has no deadline left at all, at
   5000 ms (0 underruns each, the switch itself just takes longer). A fourth
   scenario delays the *second* post-handoff read instead, to show the new,
-  still-finite cliff is real: 0 underruns at 1000 ms (below the ~1.25 s
-  margin), 1 underrun at 1500 ms (past it); a standalone delay sweep landed
-  the actual threshold at 1200 to 1230 ms, matching the 0.75 s + 0.5 s margin
-  math above.
+  still-finite cliff is real: 0 underruns at 900 ms (above the old 750 ms
+  cliff, still below the new ~1.25 s margin), 1 underrun at 1500 ms (past
+  it); a standalone delay sweep landed the actual threshold at 1200 to
+  1230 ms, matching the 0.75 s + 0.5 s margin math above. 900 ms, not 1000 ms,
+  because `node --test` runs this file in parallel with the rest of the
+  suite on CI's shared vCPUs, and 1000 ms would leave only about 200-230 ms
+  of margin under that measured cliff; 900 ms keeps about 300-330 ms.
 
   Cost, measured in a real browser (Playwright Chromium, real Worker
   threads, a production `apps/web` build), `ProjectPlayer.update({chip})`
@@ -288,9 +291,10 @@ Work without a ticket takes a NEXT id.
   fails on unfixed code at 900 ms of injected delay on the first
   post-handoff read and passes at 900 ms and 5000 ms after the fix on that
   read (0 underruns each); a fourth scenario confirms the second
-  post-handoff read still has a finite cliff, now at 1000-1500 ms instead of
-  the old 750 ms. `test-progressive-long.mjs` and `test-audio-transitions.mjs`
-  stay green. Switch latency (click to hear), measured n=7 per chip with
+  post-handoff read still has a finite cliff, between 900 ms (0 underruns)
+  and 1500 ms (underrun) instead of the old 750 ms. `test-progressive-long.mjs`
+  and `test-audio-transitions.mjs` stay green. Switch latency (click to
+  hear), measured n=7 per chip with
   interleaved before/after runs to cancel out unrelated machine load, rises
   by a median of -7 to +67 ms across the five chips, paid only on a genuine
   cross-chip handoff, never on first playback or a same-source settings

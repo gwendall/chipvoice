@@ -30,7 +30,7 @@ consuming the cached block still advances the group's buffered lead before
 the next, genuinely uncached read is issued, so every read after it, in
 steady state, still races a deadline, now about 1.25 s instead of 0.75 s; a
 second, held-out test scenario confirms that later cliff is still there (0
-underruns at 1000 ms of injected delay on that second read, 1 underrun at
+underruns at 900 ms of injected delay on that second read, 1 underrun at
 1500 ms). Switching chip while playing now takes about 17 to 67 ms longer
 (median, n=7 per chip, interleaved before/after runs on the same machine to
 cancel out unrelated load: 2a03 +17 ms, md +60 ms, snes -7 ms, c64 +67 ms,

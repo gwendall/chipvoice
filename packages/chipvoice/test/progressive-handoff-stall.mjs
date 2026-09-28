@@ -332,8 +332,20 @@ async function handoffWithDelay(delayMs, ordinal = 1) {
 //    deterministic cliff a little under the 1.25s arithmetic (the fixed .025s
 //    scheduling offset in `selectSource`, plus the small real time this
 //    file's own synchronous setup and cache lookups take, account for the
-//    difference). 1000ms and 1500ms below give both sides of that cliff
-//    comfortable headroom rather than sitting exactly on it.
+//    difference).
+//
+//    Margin below that measured cliff: `node --test` runs this file in
+//    parallel with the rest of the suite, on CI's 4 vCPUs, so its own timing
+//    is noisier than the quiet-machine sweep above. A 1000ms delay would
+//    leave only about 200-230ms between the injected delay and the 1200-
+//    1230ms cliff - not enough room under CI load. 900ms below instead
+//    leaves about 300-330ms of margin under the cliff, while still sitting
+//    150ms above the *old* 750ms HANDOFF_LEAD cliff, so it still proves the
+//    gain (this read used to underrun well below 900ms; REV-10's own sweep
+//    found the old cliff at exactly 750ms). 1500ms sits comfortably past the
+//    new cliff instead, and only gets more robust under load, not less (a
+//    slower CI run makes this read even later, further past its deadline,
+//    not closer to making it), so it does not need the same margin.
 //
 //    Unlike ordinal 1, this delay is not awaited by `load()`: the second
 //    'ahead' read runs inside `pump()`, which `selectSource` fires
@@ -348,10 +360,10 @@ async function handoffWithDelay(delayMs, ordinal = 1) {
 //    below, not a timing bound.
 // ---------------------------------------------------------------------------
 {
-  const { readyMs, underruns, sourceUnderruns } = await handoffWithDelay(1000, 2);
-  assert.equal(underruns, 0, `no underrun with 1000ms injected on the second post-handoff read, below the new ~${(HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS).toFixed(2)}s margin (got ${underruns})`);
+  const { readyMs, underruns, sourceUnderruns } = await handoffWithDelay(900, 2);
+  assert.equal(underruns, 0, `no underrun with 900ms injected on the second post-handoff read, above the old 750ms HANDOFF_LEAD cliff yet still below the new ~${(HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS).toFixed(2)}s margin (got ${underruns})`);
   assert.equal(sourceUnderruns, 0);
-  console.log(`PASS 1000ms stall on the second post-handoff read (below the new ~${(HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS).toFixed(2)}s margin): 0 underruns, ${readyMs.toFixed(1)}ms switch latency (unaffected, as expected)`);
+  console.log(`PASS 900ms stall on the second post-handoff read (above the old 750ms cliff, below the new ~${(HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS).toFixed(2)}s margin): 0 underruns, ${readyMs.toFixed(1)}ms switch latency (unaffected, as expected)`);
 }
 {
   const { readyMs, underruns, sourceUnderruns } = await handoffWithDelay(1500, 2);
