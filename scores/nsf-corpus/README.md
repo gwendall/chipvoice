@@ -17,14 +17,25 @@ genuine gap becomes a documented finding instead of a thrown assertion.
 ## What is in the corpus, and what is not
 
 `sources.json` lists every committed file: its title, author, sound driver,
-source URL, licence, licence URL and SHA-256. Every file is:
+source URL, licence, licence URL and SHA-256. Every file but one is:
 
 - a **homebrew or demo NSF** whose licence explicitly permits redistribution
   (CC0, CC-BY, public domain or similarly permissive) - not a commercial
   game rip, ever;
-- **NTSC, 2A03-only**. Expansion-audio NSFs (VRC6, VRC7, FDS, N163, Sunsoft
-  5B, MMC5) are out of scope for this ticket (NEXT-14 covers those chips);
-  `capture-nsf.mjs` rejects them outright.
+- **NTSC, 2A03-only**. Expansion-audio NSFs (VRC7, FDS, N163, Sunsoft 5B,
+  MMC5) are out of scope for this ticket (NEXT-14 covers VRC6 alone so
+  far); `capture-nsf.mjs` rejects the rest outright.
+
+The one exception is `vrc6-probe` (NEXT-14 round 2): a tiny, self-authored
+NSF (CC0, `make-vrc6-probe.mjs`, the same self-authored-fixture convention
+`scores/psid-corpus/make-fixtures.mjs` uses for its two SID probes) that
+declares Konami VRC6 and writes all three of its oscillators every frame.
+No VRC6 NSF this project found carries a licence this corpus's own
+convention requires, so a purpose-built probe stands in for one: it proves
+`capture-nsf.mjs`'s own VRC6 routing here, and, because `nsf-export`'s own
+corpus reads this same `sources.json`, it also proves `exportNsf`'s VRC6
+round-trip and Game_Music_Emu's `Nsf_Emu` itself playing a VRC6 file, held
+to the exact same gates as every 2A03 file in that corpus.
 
 A gitignored `.artifacts/nsf-private/` directory is scored the same way, for
 an owner's own local files that cannot be committed (an unlicensed personal
@@ -43,8 +54,9 @@ pnpm nsf-corpus:sheet                     # also rewrites docs/chips/2a03.md's m
 
 `pnpm nsf-corpus:check` builds the same pinned Game_Music_Emu oracle
 `scores/arrangements/native-oracle.py` already builds for Mario and Zelda
-(revision `fe8da4b6d3876d7542c2fb69d94487e19836d678`, reused unmodified), then
-runs `scores/capture-nsf.mjs` on each committed file and compares the two
+(revision `fe8da4b6d3876d7542c2fb69d94487e19836d678` - round 2 extended its
+patch to also log VRC6 writes from `gme/Nes_Vrc6_Apu.cpp`, for `vrc6-probe`
+below), then runs `scores/capture-nsf.mjs` on each committed file and compares the two
 traces with `compareNsfTrace` (`compare.mjs`). `--no-oracle` skips the build
 and the comparison entirely, scoring only how many commands our own capture
 produces; useful with no network, or while adding a new source file.
@@ -72,6 +84,13 @@ matches that already worked.
 3. Run `pnpm nsf-corpus:sheet` to score it against Game_Music_Emu and update
    `docs/chips/2a03.md`; run `python3 docs/check-translations.py
    --sync-generated` to carry the generated block into the Japanese mirror.
+
+When no real, redistribution-licensed file exists to put a specific
+question to (VRC6's own case, above), a self-authored, CC0 fixture
+(`make-vrc6-probe.mjs`) is the fallback, the same convention
+`scores/psid-corpus/make-fixtures.mjs` uses: a short, hand-assembled `.nsf`
+that exercises exactly what is missing, committed alongside the script that
+built it, `url` pointing at that script rather than a third party.
 
 If `capture-nsf.mjs` rejects a file for a missing 6502 opcode or a
 one-frame INIT budget too tight for that driver, the fix belongs in

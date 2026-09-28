@@ -1,0 +1,10 @@
+# chipvoice register log v1
+# name: saw-worked-example
+# chip: vrc6
+# clock: 1789773
+# cycles: 35903
+# source: src/corpus/generate-vrc6.mjs
+# notes: Nesdev's own worked example (rate $08, period 0), one continuous run, never disabled: the accumulator's top five bits read 1,2,3,4,5,6,0 repeating. This is the log `oracles/game-music-emu.mjs`'s and `oracles/mesen-vrc6.mjs`'s sawtooth cycle correction comments measure their period-0 case (offset -1) on: 8999/8999 edges align exactly under it against both oracles.
+17898 B000 08
+17898 B001 00
+17898 B002 80

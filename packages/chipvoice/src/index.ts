@@ -5,6 +5,7 @@ import { gbChip } from "./chips/gb/index.js";
 import { mdChip } from "./chips/md/index.js";
 import { snesChip } from "./chips/snes/index.js";
 import { c64Chip } from "./chips/c64/index.js";
+import { nesVrc6Chip } from "./chips/nes/vrc6-index.js";
 import { Sequencer, type ChannelClaim, type Song } from "./sequencer.js";
 
 export type { Channel, Instrument, NoteSink, PlayNoteOptions } from "./driver.js";
@@ -49,6 +50,17 @@ export {
   type VoiceSpec,
 } from "./chip.js";
 export { NES_2A03, nesChip } from "./chips/nes/index.js";
+export { Vrc6Apu, VRC6_VOICES } from "./chips/nes/vrc6.js";
+export {
+  NES_VRC6,
+  NES_VRC6_VOICES,
+  Vrc6NesCore,
+  Vrc6NesDigital,
+  Vrc6MixStage,
+  VRC6_MIX_UNIT_GAIN,
+  isVrc6Addr,
+} from "./chips/nes/vrc6-core.js";
+export { nesVrc6Chip } from "./chips/nes/vrc6-index.js";
 export { GB_DMG, gbChip } from "./chips/gb/index.js";
 export { MEGA_DRIVE, mdChip } from "./chips/md/index.js";
 export { Ym2612 } from "./chips/md/ym2612.js";
@@ -139,6 +151,7 @@ export function chipFor(id: string): ChipDefinition | null {
   if (id === "md") return mdChip;
   if (id === "snes") return snesChip;
   if (id === "c64") return c64Chip;
+  if (id === "2a03-vrc6") return nesVrc6Chip;
   return getChip(id);
 }
 

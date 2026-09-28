@@ -162,6 +162,158 @@ itself starts a trace from.
   first carries the identical value, just shifted; only a log that restarts
   the channel from a cold buffer (`script-dmc` in the corpus) shows it.
 
+## VRC6 audio (NEXT-14)
+
+NEXT-14's round 2 asked for a second, independent oracle for Konami's VRC6
+expansion audio, beside the already-vendored Game_Music_Emu
+(`../game-music-emu`). Mesen 2 emulates VRC6 audio too, in
+`Core/NES/Mappers/Audio/{Vrc6Audio,Vrc6Pulse,Vrc6Saw}.h` - not
+`Core/NES/Mappers/Konami/VRC6.h`, which is the mapper/banking class and only
+`#include`s these; the audio classes themselves are what is vendored, under
+`vendor/NES/Mappers/Audio/` at the same pinned commit as the rest of this
+oracle, plus `NES/APU/BaseExpansionAudio.{h,cpp}`, the abstract base every
+expansion-audio chip shares. `NesTypes.h`'s `AudioChannel` enum already
+listed `VRC6 = 7` and `NesApu::AddExpansionAudioDelta` already forwarded to
+the mixer - both written for a future ticket that turned out to be this one -
+so the only shim change VRC6 needed was growing `NesSoundMixer.h`'s
+`deltas[]` array from 5 to 8 voices to hold index 7; nothing vendored was
+touched in round 2. Round 3 added the one marked, cited exception:
+`Vrc6Pulse.h`'s `GetVolume()` carries a small chipvoice patch (see below);
+`Vrc6Audio.h` and `Vrc6Saw.h` remain unchanged.
+
+`main-vrc6.cpp` is the second driver ours: it reads a chipvoice VRC6 register
+log the same way `main.cpp` reads a 2A03 one, but clocks `Vrc6Audio` directly
+through its own `Clock()` rather than through `NesApu::ProcessCpuClock()`
+(irrelevant to a cartridge-mapper chip), and prints every change of the
+mixer's one VRC6 line as `<cycle> 0 <value>`. There is only one voice, not
+three: real Mesen's own `Vrc6Audio::ClockAudio` sums both pulses and the
+sawtooth into one `outputLevel` before ever calling
+`AddExpansionAudioDelta` - it does not expose them separately, so this oracle
+cannot be compared voice by voice the way Game_Music_Emu's can.
+`oracles/mesen-vrc6.mjs` compensates on the chipvoice side (`vrc6-combined`
+in `chips/vrc6.mjs`'s `chipVrc6Combined`): chipvoice's own three voices,
+summed and scaled by 15 the same way, so both sides of the comparison are the
+same single quantity.
+
+Mesen is the independent check of exactly what Game_Music_Emu's own
+`Nes_Vrc6_Apu` cannot check (see this oracle's - and `../game-music-emu`'s -
+own "known limits"): `Vrc6Pulse::Clock` has no period-4-or-under guard,
+`Vrc6Saw::WriteReg`'s disable path explicitly zeroes the accumulator
+(matching nesdev and this core; Game_Music_Emu's own `run_saw` freezes it
+instead), and `$9003` reaches this oracle directly, unlike Game_Music_Emu's
+own dispatch, which drops it. `Vrc6Saw::Clock()` does gate its own timer on
+`_enabled` - an undocumented deviation from nesdev's text ("clearing E does
+not reset the frequency divider") this core does not follow - so the corpus's
+own disable/re-enable script (`corpus/vrc6/edge/saw-enable.log`) is written
+to keep every disabled span an exact multiple of the saw's own full divider
+period, which sidesteps this specific difference rather than measuring it as
+a divergence.
+
+One offset applies to every entry this oracle reports, sawtooth or pulse
+alike: a flat `-1` cycle, from the same "catch the emulated CPU up to a
+write's cycle using the OLD register state, then apply the write" convention
+`main-vrc6.cpp` shares with `main.cpp` and with real Mesen calling
+`WriteRegister` mid-frame after `ProcessCpuClock` has already run for that
+cycle. Measured on `corpus/vrc6/core/saw-worked-example.log` (8999/8999
+edges align at shift -1) and independently on `corpus/vrc6/core/
+pulse-levels.log` (30/30 edges, no sawtooth activity at all, same shift) -
+see `oracles/mesen-vrc6.mjs`'s own comment for the full derivation and why an
+earlier, narrower version of this correction scoped it to sawtooth-only logs
+before the second measurement showed the scoping was unnecessary.
+
+Every log in `corpus/vrc6/core` and `corpus/vrc6/edge` is 100.0000 % against
+this oracle (`check:vrc6-core-mesen`, `check:vrc6-edge-mesen`).
+
+NEXT-14's round 3 went further on the full, duty-generator-active legacy
+corpus (`corpus/vrc6`): `vendor/NES/Mappers/Audio/Vrc6Pulse.h` carries a
+small, marked chipvoice patch on top of Mesen's otherwise-unmodified pulse,
+under a "chipvoice patch" comment marking exactly what changed and when and
+citing the mechanism in full, per GPL-3.0 5(a) ("The work must carry
+prominent notices stating that you modified it, and giving a relevant
+date"). The one line it changes is `GetVolume()`'s duty comparison, from
+`_step <= _dutyCycle` to `_step >= (uint8_t)(15 - _dutyCycle)`. The reason:
+Mesen's `_step` counts up (0 to 15, wrapping, reset to 0 on disable);
+chipvoice's own `step` (`vrc6.ts`) counts down (15 to 0, wrapping, reset to
+15 on the disable-to-enable edge); both freeze while disabled and both
+re-anchor at that same edge on every subsequent disable/re-enable, so the
+identity `s' = 15 - s` (chipvoice's counter s', Mesen's s) holds from the
+first edge onward for any sequence of period, duty or enable writes, not
+just for a run with a fixed duty - substituting it into chipvoice's own
+`s' <= dutyCycle` gives exactly the changed line. `docs/chips/vrc6.md`'s "The
+pulse mapping" has the full derivation and the direct, oracle-against-oracle
+measurement against Game_Music_Emu showing why that oracle's own pulse
+cannot take the same mapping (its `phase` never re-anchors on any
+disable/re-enable, unlike this oracle's `_step`).
+
+Round 4's correction (this file's earlier wording overclaimed what this
+patch, and the gate it enables, prove): this is not a neutral relabelling of
+two conventions that were always going to agree. It changes this oracle's
+OBSERVABLE output. Unpatched, a pulse here is HIGH for the first D+1 steps
+after an enable, then low; Game_Music_Emu's own pulse (power-on `phase = 1`)
+is high-first too. chipvoice's own core is low-first: LOW for the first
+15-D steps, then at volume for D+1 - nesdev's VRC6 audio page, read
+literally ("counting down from 15 to 0... less than or equal to the given
+duty cycle D, the channel volume V is output, otherwise 0"). The patch makes
+THIS oracle low-first too, i.e. it makes Mesen adopt chipvoice's own
+nesdev-literal duty-phase reading - not a convention both sides already
+shared. Consequence: on duty phase alone, `check:vrc6-flat-mesen`'s
+100.0000 % is NOT independent evidence, because the patch is precisely what
+forces phase agreement. What it DOES remain independent evidence for,
+unaffected by the patch, is everything the patch does not touch: the
+divider's own cadence, step timing relative to the period register, freezing
+while disabled, re-anchoring at each enable edge, and the output levels
+themselves. Whose duty-phase reading is hardware-correct is undetermined:
+this core follows nesdev's text, both Mesen 2 and Game_Music_Emu (unpatched)
+disagree with that reading, and no real VRC6 cartridge has been captured to
+check any of the three against hardware (docs/BACKLOG.md's NEXT-14 entry
+tracks that capture; settling it may mean flipping this core's convention or
+dropping this patch). With the patch, the four flat-corpus scripts that
+disable and re-enable a pulse but never the sawtooth (`script-duty`,
+`script-pulse-both`, `script-pulse-enable`, `script-pulse-periods`) gate at a
+literal 100.0000 % against this oracle too (`check:vrc6-flat-mesen`), the
+same as `core` and `edge`.
+
+`check:vrc6-core-mesen`/`check:vrc6-edge-mesen` are unaffected by the patch
+(still 100.0000 %) for a reason that has nothing to do with duty-phase
+agreement at all, and round 3's original explanation for it was wrong: it is
+not that "every script there already held duty and period fixed across an
+enable span, where the mapped and the original condition agree" - a fixed
+duty does not make the two counting directions phase-agree, full stop. The
+real reason, confirmed directly against the corpus: every `$9000`/`$A000`
+write in `corpus/vrc6/core/*.log` and `corpus/vrc6/edge/pulse-enable.log`
+sets bit 7 (M, "ignore duty") - this corpus's own values include `89`, `85`,
+every byte from `80` to `BB`, and `8D`, all with bit 7 set - which bypasses
+the duty generator entirely on both sides (`_ignoreDuty`/`mode`, both return
+`_volume`/`volume` unconditionally, never consulting `_step`/`step` at all).
+Before round 3, no exact gate against Mesen exercised the duty generator at
+all; `check:vrc6-flat-mesen` is the first one that does, and it is exact for
+every reason above except duty-phase polarity itself.
+
+The other three legacy-corpus scripts (`script-all-three`, `script-saw-
+enable`, `script-saw-rates`) disable and re-enable the sawtooth, not just a
+pulse, and stay on the pre-round-3 no-regression baseline convention
+(`check:vrc6-mesen`), for a different, genuine reason: `Vrc6Saw::Clock()`
+gates its whole body, the frequency divider included, behind `if(_enabled)`,
+so the divider pauses entirely while disabled and resumes from wherever it
+stopped, where chipvoice's own `Vrc6Saw.clockDivider()` ticks unconditionally
+every cycle, following nesdev's text literally ("clearing E does not reset
+the frequency divider, however"). `docs/chips/vrc6.md`'s "The sawtooth's
+divider across a disable" has the first-divergence cycle for each. This is
+the same divider-freeze behaviour `corpus/vrc6/edge/saw-enable.log` already
+sidesteps by construction (its disabled spans are exact multiples of the
+saw's own full divider period, so a paused and a continuously-ticking
+divider reach the same next firing either way), noted above; the flat corpus
+was not built with that constraint, so it is the one that exposes it as a
+measured divergence rather than avoiding it. A fourth flat-corpus script,
+`script-saw-worked-example`, used to sit at 99.9972 % against this oracle for
+an unrelated reason - not the sawtooth-disable behaviour above, but two
+distinct harness bugs (one in this oracle's own `main-vrc6.cpp`, one in
+Game_Music_Emu's driver) that both clipped its very last edge, exactly on the
+log's own cycle budget; round 4 found and fixed both (see `main-vrc6.cpp`'s
+and `main.cpp`'s own comments on the delta filter, and `docs/chips/vrc6.md`'s
+"The sawtooth's divider across a disable"), so this script now gates exact
+too and has moved out of `check:vrc6-flat-mesen`'s exclude list.
+
 ## Build
 
 Needs a C++17 compiler and nothing else: no extra system packages, no

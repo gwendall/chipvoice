@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-27",
+  "generatedAt": "2026-09-28",
   "chips": [
     {
       "id": "2a03",
@@ -526,6 +526,59 @@
       },
       "driverCoverage": {
         "reached": 3,
+        "voices": 3
+      }
+    },
+    {
+      "id": "vrc6",
+      "machine": "NES, Famicom (Konami VRC6 cartridges)",
+      "chip": "Konami VRC6",
+      "sheetPath": "docs/chips/vrc6.md",
+      "sheetUrl": "https://github.com/gwendall/chipvoice/blob/main/docs/chips/vrc6.md",
+      "status": "in progress",
+      "digitalParity": {
+        "oracles": [
+          {
+            "marker": "parity",
+            "oracle": "Game_Music_Emu (Nes_Vrc6_Apu)",
+            "files": 8,
+            "cycles": 6339623,
+            "identical": 2413336,
+            "diverging": 7,
+            "firstDivergence": {
+              "file": "script-all-three",
+              "cycle": 17898,
+              "voice": "vp2",
+              "ours": 0,
+              "theirs": 9
+            }
+          },
+          {
+            "marker": "parity-mesen",
+            "oracle": "Mesen 2 (b9fa69d, 2026-06-04), VRC6 audio",
+            "files": 8,
+            "cycles": 6339623,
+            "identical": 5732469,
+            "diverging": 3,
+            "firstDivergence": {
+              "file": "script-all-three",
+              "cycle": 757716,
+              "voice": "vp1",
+              "ours": 75,
+              "theirs": 0
+            }
+          }
+        ],
+        "hardwareCombined": null
+      },
+      "testRoms": null,
+      "analogStage": {
+        "label": "none",
+        "measuredFraction": 0,
+        "mixer": null
+      },
+      "driverCoverage": {
+        "reached": 0,
         "voices": 3
       }
     }

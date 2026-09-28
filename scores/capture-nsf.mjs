@@ -20,7 +20,13 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
   if (nsf2Features & 0xf0) throw new Error('NSF2 non-returning INIT, its own IRQ, and a suppressed PLAY are not supported');
   const programLength = version === 2 ? bytes[125] | (bytes[126] << 8) | (bytes[127] << 16) : bytes.length - 128;
   if (!Number.isInteger(track) || track < 0 || track >= bytes[6]) throw new Error('Invalid NSF track');
-  if (bytes[123] || (bytes[122] & 1)) throw new Error('Only NTSC 2A03 NSF is supported');
+  // Expansion-audio bitfield: bit 0 is VRC6 (`nsf.ts`'s own exporter sets
+  // only this bit, never any other), which this capture routes to `events`
+  // the same as any 2A03 register (see `isVrc6Reg` below); any other bit
+  // names hardware this capture does not model and is rejected, same as a
+  // PAL file.
+  const usesVrc6 = (bytes[123] & 0x01) !== 0;
+  if ((bytes[123] & ~0x01) || (bytes[122] & 1)) throw new Error('Only NTSC 2A03 NSF, optionally with VRC6, is supported');
   if (!Number.isInteger(frames) || frames < 1 || frames > 20000) throw new Error('Invalid capture length');
   const ram = new Uint8Array(65536), load = view.getUint16(8, true);
   const banked = bytes.subarray(112, 120).some(Boolean);
@@ -44,6 +50,15 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
   // from GME's after a few frames without this.
   const standardRate = !speed || speed === 16666;
   const period = standardRate ? (262 * 341 * 4 - 2) / 12 : Math.trunc(speed * 1789772.72727 / 1e6);
+  // Konami VRC6's ten registers: $9000-$9003 (pulse 1, plus the shared
+  // halt/frequency-shift control), $A000-$A002 (pulse 2), $B000-$B002
+  // (the sawtooth). Real VRC6 hardware decodes reads and writes to this
+  // range separately - a write latches a register, a read still returns
+  // whatever PRG-ROM bank is mapped there - so routing these as events on
+  // the write side never conflicts with `banked`'s own read-side mapping
+  // of the same addresses (the data window this player's own ROM may map
+  // at $9000-$9FFF, `nsf.ts`'s `DATA_WINDOW_BASE`, is a read-only concern).
+  const isVrc6Reg = (addr) => (addr >= 0x9000 && addr <= 0x9003) || (addr >= 0xa000 && addr <= 0xa002) || (addr >= 0xb000 && addr <= 0xb002);
   const events = [], calls = [];
   let cpu;
   const bus = {
@@ -56,6 +71,7 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
     write(addr, value) {
       if (banked && addr >= 0x5ff8 && addr <= 0x5fff) banks[addr - 0x5ff8] = value;
       else if (addr >= 0x4000 && addr <= 0x4017 && addr !== 0x4014 && addr !== 0x4016) events.push({at: cpu.cycles, addr, value});
+      else if (usesVrc6 && isVrc6Reg(addr)) events.push({at: cpu.cycles, addr, value});
       else if (addr < 0x2000 || addr >= 0x6000 && addr < 0x8000) ram[addr < 0x2000 ? addr & 0x7ff : addr] = value;
       else throw new Error(`NSF writes unsupported hardware $${addr.toString(16)}`);
     },
@@ -118,5 +134,5 @@ export function captureNsf(bytes, {track = 0, frames = 12000} = {}) {
     for (let i = 0; i < dmcBytes.length; i++) dmcBytes[i] = bus.read(0xc000 + i);
     memory = [{address: 0xc000, bytes: dmcBytes}];
   }
-  return {chip: '2a03', clockHz, period, events, calls, cycles: Math.round(origin + frames * period), memory};
+  return {chip: usesVrc6 ? '2a03-vrc6' : '2a03', clockHz, period, events, calls, cycles: Math.round(origin + frames * period), memory};
 }

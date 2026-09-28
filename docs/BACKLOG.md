@@ -621,10 +621,63 @@ real game music, and a real unit.
 
 **Step 5. New systems, one at a time, under decision 38's guards.**
 
-- todo - NEXT-14 NES expansion audio (VRC6, VRC7, FDS, N163, Sunsoft 5B,
-  MMC5), NEXT-15 AY-3-8910 and YM2149, NEXT-16 YM2151 and YM2610, NEXT-17
-  OPL2 and OPL3; then PC Engine, Game Boy Advance, Amiga Paula, POKEY, TIA,
-  SCC and YM2608.
+- doing - NEXT-14 NES expansion audio: VRC6 done (core from the nesdev wiki
+  and Konami's own documents, harness against two independent oracles -
+  Game_Music_Emu's `Nes_Vrc6_Apu` and Mesen 2's own vendored VRC6 audio - NSF
+  export/playback, the mixing stage's documented inversion modelled, sheet at
+  [docs/chips/vrc6.md](chips/vrc6.md). Round 2 (#111) split the corpus into
+  `core` scripts (no disable after first enable, no `$9003`, no period at or
+  below 4) held to a literal 100 % against both oracles, and `edge` scripts
+  (disable/re-enable, `$9003`, tiny periods) held exactly to Mesen, which
+  models all three, and report-only against Game_Music_Emu, which documents
+  its own gaps there (freeze-not-zero on disable, dropping `$9003` silently);
+  the full duty-generator-active legacy corpus stays on the earlier
+  no-regression baseline against both oracles. Round 3 (#111) closed most of
+  that gap against Mesen 2 specifically: the pulse duty counters run in
+  opposite directions but both re-anchor at the same edge on every
+  disable/re-enable, so an exact algebraic mapping between them (not a
+  per-run shift) makes `Vrc6Pulse.h`'s own condition match chipvoice's
+  exactly, taking 4 of the 8 legacy scripts to a literal 100 % against Mesen
+  2 (`check:vrc6-flat-mesen`); the other 4, which also disable and re-enable
+  the sawtooth, stay on the no-regression baseline because Mesen's own
+  sawtooth divider pauses entirely while disabled, a genuinely different
+  mechanism the mapping does not reach. Measured directly against each other,
+  Game_Music_Emu and Mesen 2 do not closely agree with each other on pulse
+  duty phase either, despite both counting up where chipvoice counts down,
+  because only Mesen re-anchors its counter on every disable, which is also
+  why the mapping does not transfer to Game_Music_Emu. A negative test per
+  exact gate proves each would actually catch a regression. Round 4 (#111)
+  corrected round 3's own overclaim: the `Vrc6Pulse.h` patch changes Mesen's
+  observable duty-phase output (makes it adopt chipvoice's own low-first
+  reading) rather than relabelling a shared convention, so `check:vrc6-flat-
+  mesen` is independent evidence for divider cadence, timing and levels but
+  not for duty-phase polarity itself, which stays undetermined against
+  hardware (`docs/chips/vrc6.md`'s "The pulse mapping" and "Known
+  deviations"); fixed a second false claim (`core`/`edge` stay exact because
+  every corpus script there sets the duty-bypass mode bit, not because a
+  fixed duty makes the counters phase-agree); found and fixed two independent
+  harness bugs that had clipped `script-saw-worked-example`'s last edge
+  against both oracles, taking it to a literal 100 % and into
+  `check:vrc6-flat-mesen`'s exact set (5 of 8 legacy scripts now exact against
+  Mesen 2, not 4); added a third negative test (the fully unmapped upstream
+  pulse condition must also diverge). A self-authored VRC6 NSF probe (CC0)
+  closes NEXT-14's own NSF
+  corpora: `native-oracle.py`'s Game_Music_Emu patch now also logs VRC6
+  writes from `Nsf_Emu`, its real NSF player, so the probe gates exactly in
+  both `scores/nsf-corpus` and `scores/nsf-export`, alongside every
+  real-world 2A03 file there. No driver or arranger role yet, decision 38.
+  VRC7, FDS, N163, Sunsoft 5B, MMC5 still todo. NEXT-15 AY-3-8910 and
+  YM2149, NEXT-16 YM2151 and YM2610, NEXT-17 OPL2 and OPL3; then PC Engine,
+  Game Boy Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.
+- todo - NEXT-14 VRC6 pulse duty-phase capture: a real VRC6 cartridge (a
+  flash cart such as an EverDrive N8 Pro on a Famicom, or an original board)
+  playing back `scores/nsf-corpus`'s `vrc6-probe` NSF, recorded, to settle
+  whether a pulse's duty window is low-first (this core, nesdev's text
+  literally) or high-first (upstream Mesen 2 and Game_Music_Emu, unpatched) -
+  see [docs/chips/vrc6.md](chips/vrc6.md)'s "The pulse mapping" and "Known
+  deviations". Settling it against hardware may mean flipping this core's own
+  convention, or dropping `Vrc6Pulse.h`'s chipvoice patch and accepting the
+  no-regression baseline for the pulse too.
 - A chip enters the public picker when its sheet is filled, or when the sheet
   states which levels are still missing.
 

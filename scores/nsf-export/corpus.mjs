@@ -56,7 +56,7 @@ import {loadArrangement} from '../arrangements/check.mjs';
  *      frames on three files whose last captured writes land within a frame
  *      or two of their own loop point - `zelda-native` (1), `zelda-
  *      rendition` (2), `pently-demo` (1) - and every file's comparable
- *      frames, on all twelve, match 100%: `matched === total`.
+ *      frames, on all thirteen, match 100%: `matched === total`.
  *
  *      Together, proofs #1 and #2 are the reason proof #3's threshold can
  *      be trusted: they prove the export carries every command, in the
@@ -89,10 +89,16 @@ import {loadArrangement} from '../arrangements/check.mjs';
  * The corpus draws on three kinds of the project's own NES content, as the
  * ticket names them: real hardware captures (`mario`/`zelda`'s native
  * NSF-command recordings, decision 29), this project's own driver's 2A03
- * rendition of those same two arrangements, and the eight independently
- * authored, redistribution-licensed NSFs `nsf-corpus` already carries -
- * replayed once through `capture-nsf.mjs` to get a source capture, then
- * re-exported. A file whose source uses DMC (several tracker drums do) is
+ * rendition of those same two arrangements, and every file `nsf-corpus`
+ * already carries (its own `sources.json`, read again here) - eight
+ * independently authored, redistribution-licensed 2A03 NSFs plus, since
+ * round 2, `vrc6-probe`, its one self-authored VRC6 file - each replayed
+ * once through `capture-nsf.mjs` to get a source capture, then re-exported.
+ * `vrc6-probe` is what closes NEXT-14 round 2 item 3: `exportNsf`'s own
+ * VRC6 round-trip, then Game_Music_Emu's `Nsf_Emu` actually playing that
+ * export and held to the same four proofs, below, as any 2A03 file - not
+ * just the register-level `Nes_Vrc6_Apu` oracle `packages/conform` drives
+ * directly. A file whose source uses DMC (several tracker drums do) is
  * expected to fail `exportNsf` with `dmc_unsupported`: that is this
  * format's own stated limit, not a bug, and is reported as a row here
  * rather than skipped quietly.
@@ -386,10 +392,17 @@ function frameCountFor(cycles) {
  * by frame number in `mismatchedFrames`, still failing the gate: this
  * corpus has no such source, but a future one would be caught, not
  * averaged away. */
+// VRC6's ten registers (NEXT-14): included the same way as any 2A03
+// register, so a VRC6-touching capture is held to the exact same
+// frame-for-frame gate as this file's own 2A03 corpus, not a separate,
+// looser one.
+const isVrc6Reg = (addr) => (addr >= 0x9000 && addr <= 0x9003) || (addr >= 0xa000 && addr <= 0xa002) || (addr >= 0xb000 && addr <= 0xb002);
+
 function bucketWritesByFrame(events) {
   const buckets = new Map();
   for (const e of events) {
-    if (e.addr < 0x4000 || e.addr > 0x4017 || e.addr === 0x4014 || e.addr === 0x4016) continue;
+    const is2a03 = e.addr >= 0x4000 && e.addr <= 0x4017 && e.addr !== 0x4014 && e.addr !== 0x4016;
+    if (!is2a03 && !isVrc6Reg(e.addr)) continue;
     const f = Math.floor(e.at / PERIOD);
     if (!buckets.has(f)) buckets.set(f, []);
     buckets.get(f).push({addr: e.addr, value: e.value});

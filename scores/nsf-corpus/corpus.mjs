@@ -13,26 +13,41 @@ import {compareNsfTrace} from './compare.mjs';
  * `scores/arrangements/compare-native.mjs`) into a corpus: many real NSFs,
  * each replayed through `capture-nsf.mjs`'s own offline 6502 and compared,
  * command by command, against the pinned Game_Music_Emu oracle
- * (`scores/arrangements/native-oracle.py`, reused unmodified here). Unlike
- * Mario's exact-cycle assertion, this reports a score per file - commands
- * matched out of total, and the first divergence's cycle and register - so
- * a driver quirk or a genuine hardware gap becomes a documented finding
- * instead of a thrown assertion.
+ * (`scores/arrangements/native-oracle.py`). Unlike Mario's exact-cycle
+ * assertion, this reports a score per file - commands matched out of total,
+ * and the first divergence's cycle and register - so a driver quirk or a
+ * genuine hardware gap becomes a documented finding instead of a thrown
+ * assertion.
  *
  *   node scores/nsf-corpus/corpus.mjs [--json out.json] [--sheet docs/chips/2a03.md]
  *   node scores/nsf-corpus/corpus.mjs --no-oracle   # skip the GME comparison entirely (no network, no C++ build)
  *
- * `sources.json` lists only committed files: homebrew/demo NSFs whose licence
- * explicitly allows redistribution (CC0, CC-BY, public domain, or similarly
- * permissive), each with its source URL, licence, author and SHA-256 next to
- * it. Files placed in the gitignored `.artifacts/nsf-private/` directory are
- * scored too (for an owner's own local, non-redistributable files) but never
- * written to the sheet or the committed JSON; CI never populates that
- * directory, so it contributes nothing there.
+ * `sources.json` lists every committed file: eight real, independently
+ * authored, redistribution-licensed homebrew/demo NSFs (CC0, CC-BY, public
+ * domain, or similarly permissive), each with its source URL, licence,
+ * author and SHA-256 next to it, plus one self-authored file (round 2,
+ * NEXT-14 item 3): `vrc6-probe`, a tiny hand-assembled NSF that declares
+ * Konami VRC6 and writes all three of its oscillators every frame
+ * (`make-vrc6-probe.mjs`, CC0, the same self-authored-fixture convention
+ * `scores/psid-corpus/make-fixtures.mjs` uses). No other VRC6 NSF this
+ * project found carries a licence this corpus's own convention requires, so
+ * a purpose-built probe closes the gap a real tune could not: it exercises
+ * `capture-nsf.mjs`'s own VRC6 routing (the expansion-audio header bit
+ * `exportNsf` sets, routed the same as any 2A03 register) here, and,
+ * because `nsf-export`'s own corpus reads this same `sources.json`, it also
+ * proves `exportNsf`'s VRC6 round-trip and Game_Music_Emu's `Nsf_Emu`
+ * itself playing a VRC6 file - `scores/arrangements/native-oracle.py` now
+ * patches `gme/Nes_Vrc6_Apu.cpp` as well as `gme/Nes_Apu.cpp` so its trace
+ * carries VRC6 writes too, not just this corpus's earlier, 2A03-only ones.
+ * Files placed in the gitignored `.artifacts/nsf-private/` directory are
+ * scored too (for an owner's own local, non-redistributable files) but
+ * never written to the sheet or the committed JSON; CI never populates
+ * that directory, so it contributes nothing there.
  *
- * Every corpus file here is 2A03-only NTSC. Expansion-audio NSFs (VRC6,
- * VRC7, FDS, N163, Sunsoft 5B, MMC5) are out of scope for this ticket
- * (NEXT-14 covers those chips) and are rejected by `capture-nsf.mjs` itself.
+ * Every third-party file here is 2A03-only NTSC; `vrc6-probe` is the one
+ * exception, by design. Other expansion-audio formats (VRC7, FDS, N163,
+ * Sunsoft 5B, MMC5) remain out of scope and are rejected by
+ * `capture-nsf.mjs` itself.
  */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');

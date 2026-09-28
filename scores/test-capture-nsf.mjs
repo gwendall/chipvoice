@@ -4,8 +4,27 @@ const file=new Uint8Array(128+3*4096),v=new DataView(file.buffer);file.set([78,6
 // INIT switches $9000 from bank 1 to bank 2. PLAY reads its first byte.
 file.set([0xa9,2,0x8d,0xf9,0x5f,0x60],128);file.set([0xad,0,0x90,0x8d,0,0x40,0x60],128+16);file[128+4096]=12;file[128+8192]=45;
 const capture=captureNsf(file,{frames:3});assert.deepEqual(capture.events.filter(e=>e.value===45).map(e=>e.addr),[0x4000,0x4000,0x4000]);
-const expansion=file.slice();expansion[123]=1;assert.throws(()=>captureNsf(expansion),/2A03/);
-console.log('PASS banked NSF maps headers and runtime bank writes; expansion hardware is rejected');
+// Bit 0 (VRC6) is the one expansion-audio bit this capture models -
+// `nsf.ts`'s own exporter never sets any other - so it alone must not be
+// rejected, and every other bit still is.
+const vrc6Bit=file.slice();vrc6Bit[123]=1;
+assert.deepEqual(captureNsf(vrc6Bit,{frames:3}).events.filter(e=>e.value===45).map(e=>e.addr),[0x4000,0x4000,0x4000]);
+const expansion=file.slice();expansion[123]=2;assert.throws(()=>captureNsf(expansion),/2A03/);
+console.log('PASS banked NSF maps headers and runtime bank writes; VRC6 alone is accepted, other expansion hardware is rejected');
+
+// A write to one of VRC6's ten registers ($9000-$9003/$A000-$A002/
+// $B000-$B002) is routed as an event, the same as any 2A03 register, once
+// the header's VRC6 bit says to expect it. Real VRC6 hardware decodes
+// reads and writes to this range independently (a write latches a
+// register; a read still returns whatever PRG-ROM bank is mapped there),
+// so this never conflicts with `nsf.ts`'s own data-window reads through
+// the same addresses.
+const vrc6=new Uint8Array(128+4096),vv=new DataView(vrc6.buffer);
+vrc6.set([78,69,83,77,26,1,1,1]);vv.setUint16(8,0x8000,true);vv.setUint16(10,0x8000,true);vv.setUint16(12,0x8001,true);vrc6[123]=1;
+vrc6.set([0x60],128); // INIT: RTS
+vrc6.set([0xa9,0x0f,0x8d,0,0x90,0x60],128+1); // PLAY: LDA #$0f; STA $9000; RTS
+assert.deepEqual(captureNsf(vrc6,{frames:1}).events.filter(e=>e.addr===0x9000).map(e=>e.value),[15]);
+console.log('PASS a VRC6 register write is routed as an event when the header declares VRC6');
 
 // Game_Music_Emu's own player (Nsf_Emu::start_track_ sets play_ready = 4)
 // gives INIT up to four frame periods before the first PLAY call, not one;

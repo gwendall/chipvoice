@@ -31,10 +31,15 @@ class NesSoundMixer
 public:
 	static constexpr uint32_t CycleLength = 10000;
 
-	// Index matches AudioChannel / chipvoice's own voice order: p1, p2, tri,
-	// noi, dmc. Channels 5 and up (FDS, MMC5, ...) are expansion audio this
-	// oracle never wires up, and are dropped.
-	static constexpr int VoiceCount = 5;
+	// Index matches AudioChannel. 0-4 are the 2A03's own p1, p2, tri, noi, dmc
+	// (chipvoice's own voice order too); 5 and 6 (FDS, MMC5) are expansion
+	// audio neither oracle driver wires up and stay perpetually empty; 7 is
+	// VRC6, wired up by main-vrc6.cpp only. Bumped from 5 to 8 for NEXT-14
+	// (decision 38's second expansion-audio ticket) rather than adding a
+	// second mixer type, since an always-empty `deltas[5]`/`deltas[6]` costs
+	// nothing and every future expansion chip through Sunsoft 5B (index 10)
+	// will want the same array grown further, not replaced.
+	static constexpr int VoiceCount = 8;
 	vector<MixerDelta> deltas[VoiceCount];
 
 	uint64_t base = 0;
@@ -43,6 +48,16 @@ public:
 	{
 		int voice = (int) channel;
 		if (voice < 0 || voice >= VoiceCount) {
+			return;
+		}
+		// The 2A03's own channels only ever call this on an actual output
+		// change (real Mesen's ApuTimer/SquareChannel/etc. convention), so a
+		// zero delta was never observed here before NEXT-14. Vrc6Audio's
+		// ClockAudio (vendored, unchanged) calls this every single CPU cycle
+		// unconditionally, delta zero or not - dropping the zero ones changes
+		// no running sum (adding zero is a no-op) and keeps a multi-million-
+		// cycle VRC6 log's vector from holding one entry per cycle.
+		if (delta == 0) {
 			return;
 		}
 		uint64_t absoluteCycle = base + time;

@@ -1,0 +1,37 @@
+# chipvoice register log v1
+# name: script-saw-rates
+# chip: vrc6
+# clock: 1789773
+# cycles: 101178
+# source: src/corpus/generate-vrc6.mjs
+# notes: The sawtooth at several rates below the overflow point (42) and two above it (distorted, non-monotonic ramps), each disabled and re-enabled - its own run - a few full seven-step cycles long.
+17898 B000 01
+17898 B001 14
+17898 B002 80
+23778 B001 14
+23778 B002 00
+29778 B000 08
+29778 B001 14
+29778 B002 80
+35658 B001 14
+35658 B002 00
+41658 B000 15
+41658 B001 14
+41658 B002 80
+47538 B001 14
+47538 B002 00
+53538 B000 2A
+53538 B001 14
+53538 B002 80
+59418 B001 14
+59418 B002 00
+65418 B000 30
+65418 B001 14
+65418 B002 80
+71298 B001 14
+71298 B002 00
+77298 B000 3F
+77298 B001 14
+77298 B002 80
+83178 B001 14
+83178 B002 00

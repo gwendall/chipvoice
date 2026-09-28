@@ -1,0 +1,11 @@
+# chipvoice register log v1
+# name: saw-periods
+# chip: vrc6
+# clock: 1789773
+# cycles: 150586
+# source: src/corpus/generate-vrc6.mjs
+# notes: The sawtooth held at the 12-bit period's maximum, 4095 (the value most likely to expose an off-by-one in either implementation's mask/shift), enabled once and never disabled or re-perioded: two rates, both well under the overflow point.
+17898 B000 0C
+17898 B001 FF
+17898 B002 8F
+132586 B000 28
