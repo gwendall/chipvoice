@@ -121,10 +121,7 @@ created the same day.
   injection (entirely outside `packages/chipvoice/src`, via
   `page.addInitScript`) found nothing to explain the hang either: patching
   `AudioContext.resume`/`AudioWorklet.addModule` with an 8 s delay never
-  moved the slider's DOM-update timing, and tracing `LivePlayback.reconcile`
-  showed only one `createChip` cycle for the whole interaction sequence,
-  finishing hundreds of milliseconds before the `fill('183')` step even
-  starts, so a pile-up of engine recreations isn't it either. The earlier
+  moved the slider's DOM-update timing. The earlier
   120 s default-timeout change (the NEXT-03 fix, applied here on the theory
   of a busy shared runner) has been reverted: raising the budget would only
   make a real hang fail slower, and if the value does eventually arrive after
@@ -133,6 +130,62 @@ created the same day.
   live slider, number and Undo state on failure), since a hang before the
   test's success-only write otherwise leaves no evidence behind. The
   clustering at one exact step remains unexplained.
+
+  A second pass corrects one claim from the paragraph above and adds three
+  new findings, none of which reproduces the hang. First, the correction:
+  `LivePlayback.reconcile` does not run only one `createChip` cycle for the
+  sequence. A fresh runtime trace (`reconcile`'s branch decision plus
+  `RangeControl`'s focus/change/value-sync events, timestamped with
+  `performance.now()`, three full real runs) shows five to six overlapping
+  `createChip` cycles, one per settled tempo value (Home, End, ArrowLeft,
+  each Undo, and the drag's own intermediate steps), because `song.id` is a
+  content fingerprint that includes `bpm` (`score.ts`'s `fingerprint`) and
+  the studio's `SongDocument` never sets an explicit `score.id` to hold it
+  stable, so every tempo edit is a new song by that id and
+  `reconcile`'s fast path (`active.chip.songId === song.id`) misses every
+  time while playing. In all three traced runs, the `createChip` started for
+  the drag gesture's overshoot value is still in flight (no `changed()` yet)
+  when `fill('183')` begins, and only resolves 50 to 90 ms after
+  `valueIs(slider,'183')` already passes, every time; on a slower or more
+  contended host this same overlap could land inside the fill window
+  instead of after it. Second: that overlap is not, by itself, able to
+  explain the hang. `changed()` only calls `setPlaying`/`setLoading`/
+  `setError` (none of which back the number field's `value` prop), and the
+  trace confirms it: no `changed()` event in any of the three runs produced
+  a spurious `RangeControl` value-sync at an unchanged `bpm`, so a bare
+  unrelated re-render cannot be resetting the typed draft. Third, a
+  previously uninvestigated mechanism: Playwright's `fill()` on a
+  `type="number"` input does not set `.value` directly (only
+  `kInputTypesToSetValue` types do); it runs `input.select(); input.focus()`
+  synchronously in-page, then the server issues a separate, genuinely async
+  CDP `Input.insertText` round trip. A script built on this (`select()` and
+  `focus()` immediately followed by a real ~200 ms gap with unrelated
+  re-renders happening, then `insertText`) still landed the typed value
+  correctly, which weakens but does not rule out the mechanism, since that
+  test used a simplified Home+Undo sequence, not the full one. Fourth, the
+  interaction sequence's exact real Home/End/ArrowLeft/Undo/drag/Undo/fill
+  steps were replayed 90 times against a production build (20 at rest, 25
+  under 8x CDP CPU throttling, 45 more at 8 to 10x throttling split across
+  three parallel browser instances under genuine OS-level contention,
+  load average 11 to 32 on this 8-core machine) with zero failures; one
+  clear per-run slowdown outlier appears in each of the three parallel logs
+  (roughly 600 to 750 ms against a normal 150 to 300 ms), showing real
+  contention was occurring, but the value still always landed. This mirrors
+  REV-11's own SNES handoff bug, in the same ticket, which also would not
+  reproduce locally under CDP throttling up to 25x and was fixed on the
+  strength of a targeted injected-delay proof rather than a natural local
+  repro; no equivalent targeted proof has been found here yet, because no
+  mechanism connecting the `createChip` overlap (or the `fill()` gap) to an
+  actual stuck value has been demonstrated, only their timing proximity. No
+  change is made to `LivePlayback`'s recreate-on-tempo-change behavior in
+  this pass: it is a real, newly measured source of concurrent async work
+  right at the failing step, but changing its crossfade strategy without a
+  proven causal link to the hang would be a guess, not a fix, and the
+  existing crossfade-on-recreate is plausibly deliberate (a smooth audible
+  tempo change rather than an instant jump), not obviously a bug. The
+  clustering at one exact step still remains unexplained; the
+  failure-diagnostics `catch` block is the best next source of real
+  evidence, from whichever CI run hits it next.
 
   `test-progressive-long.mjs`'s one SNES underrun is now proven, not just
   argued: `ProgressivePlayback`'s handoff hands a moving group over with only
