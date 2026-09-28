@@ -26,13 +26,23 @@ import { gbChip } from '../dist/index.js';
  * added to ProgressivePlayback, PreviewSource or the worker.
  *
  * Before REV-11's fix, this failed at 900ms of injected delay (past the old
- * 750ms cliff) with a nonzero `underruns` count. After the fix, the delayed
- * read is fetched and cached before the handoff group goes live (see the
- * comment beside `selectSource`'s prefetch in
+ * 750ms cliff) with a nonzero `underruns` count. After the fix, the target's
+ * cold first 'ahead'-lane read is fetched and cached before the handoff group
+ * goes live (see the comment beside `selectSource`'s prefetch in
  * packages/chipvoice/src/playback/ProgressivePlayback.ts), so pump()'s own
- * first post-handoff read is a cache hit: there is no deadline left to miss,
- * at any of the delays exercised below, including one far past anything
- * REV-10's sweep tried.
+ * first post-handoff read is a cache hit: that one specific read has no
+ * deadline left to miss, at any of the delays exercised below on it,
+ * including one far past anything REV-10's sweep tried (scenarios 1 to 3).
+ *
+ * This is a narrower claim than "no deadline at all": every read after that
+ * first one still races a deadline, same as before the fix, just a bigger
+ * one. Consuming the cached block advances the group's own buffered lead by
+ * its 0.5s before the *second* post-handoff read is issued, so that read
+ * (and every one after it, in steady state) now races roughly HANDOFF_LEAD +
+ * 0.5s (about 1.25s) instead of HANDOFF_LEAD (0.75s) alone. Scenario 4 below
+ * targets that second read specifically and shows the new, still-finite
+ * threshold: a long enough stall on it can still underrun, just a
+ * meaningfully longer one than before.
  */
 
 // ---------------------------------------------------------------------------
@@ -134,6 +144,14 @@ const { ProgressivePlayback } = await import('../dist/playback/ProgressivePlayba
 // browser, for the switch-latency numbers in docs/BACKLOG.md's REV-11 entry.
 // ---------------------------------------------------------------------------
 const RATE = 8000;
+// Mirrors the two private constants in ProgressivePlayback.ts's selectSource:
+// HANDOFF_LEAD (the extension loop's own target margin) and the fixed 0.5s
+// size of the prefetched/cached 'ahead' block (`Math.round(rate * .5)`).
+// Neither is exported; these are redeclared here, the same way
+// test/progressive-playback.mjs redeclares its own HANDOFF_LEAD, so a
+// mismatch shows up as a wrong number instead of silently drifting.
+const HANDOFF_LEAD = 0.75;
+const AHEAD_PREFETCH_SECONDS = 0.5;
 // Same fixture and bpms as test/progressive-playback.mjs's own project/project2
 // (scenario 2), deliberately: that file's `positions` array below is chosen
 // against this exact score/rate/bpm pair to land the target's first block
@@ -187,11 +205,14 @@ async function playingAt(project, phase, key) {
 }
 
 /** Runs one moving handoff from `sourceProject` to `targetProject`, delaying
- * the target's first 'ahead'-lane read by `delayMs` of real time (0 for a
- * baseline run with no injected stall). Returns the observed switch latency
- * (`load()`'s own resolution time) and the underrun counts once settled. */
-async function handoffWithDelay(delayMs) {
-  const { context, transport } = await playingAt(sourceProject, 0.05, `stall-source-${delayMs}`);
+ * the target's Nth 'ahead'-lane read (`ordinal`, 1-based; default 1, the
+ * fix's own prefetch) by `delayMs` of real time (0 for a baseline run with no
+ * injected stall). `ordinal: 2` targets pump()'s own first *real* read, the
+ * one that now runs only after the cached prefetch is consumed - see
+ * scenario 4 below. Returns the observed switch latency (`load()`'s own
+ * resolution time) and the underrun counts once settled. */
+async function handoffWithDelay(delayMs, ordinal = 1) {
+  const { context, transport } = await playingAt(sourceProject, 0.05, `stall-source-${ordinal}-${delayMs}`);
   try {
     const before = transport.group;
     // A stateful phase, not a real-time-tracking one: forces the same
@@ -202,22 +223,25 @@ async function handoffWithDelay(delayMs) {
     // one (a static phase like 0.5 banks up to a full 2s of margin for free
     // from the initial block's own second-aligned read, which no realistic
     // injected delay would ever catch).
-    const pending = transport.load({ project: targetProject }, { key: `stall-target-${delayMs}`, phase: nearlySpentPhase() });
+    const pending = transport.load({ project: targetProject }, { key: `stall-target-${ordinal}-${delayMs}`, phase: nearlySpentPhase() });
     // `load()` runs synchronously up to its first await (source.ready), so
     // `transport.incoming` is already the freshly created, cold target
     // source by the time `load()` returns its pending promise.
     const incoming = transport.incoming;
     assert.ok(incoming, 'the incoming target source is set synchronously');
     assert.notEqual(incoming, before?.source, 'the target is a genuinely different (cold) source, like switching console');
-    let armed = delayMs > 0;
+    let seen = 0, hit = false;
     incoming.worker.delayFor = (data) => {
-      if (armed && data.type === 'read' && data.lane === 'ahead') { armed = false; return delayMs; }
+      if (data.type === 'read' && data.lane === 'ahead') {
+        seen++;
+        if (delayMs > 0 && seen === ordinal) { hit = true; return delayMs; }
+      }
       return 0;
     };
     const startedAt = performance.now();
     const selected = await pending;
     const readyMs = performance.now() - startedAt;
-    assert.equal(selected, true, `the handoff still selects successfully with ${delayMs}ms injected on its first ahead read`);
+    assert.equal(selected, true, `the handoff still selects successfully with ${delayMs}ms injected on 'ahead' read #${ordinal}`);
     assert.notEqual(transport.group, before, 'a new group replaced the retiring one');
     // Not a margin assertion here (transport.group.nextAt - .at, read right
     // after load() resolves, is not the margin the handoff actually started
@@ -227,7 +251,7 @@ async function handoffWithDelay(delayMs) {
     // result by array position. nearlySpentPhase()'s own positions are what
     // pins the pre-fix margin to HANDOFF_LEAD; that is checked structurally
     // there, not re-derived here from state the fix's own prefetch disturbs.
-    assert.equal(armed, false, 'the injected delay was actually exercised on the read it targets');
+    if (delayMs > 0) assert.equal(hit, true, `the injected delay was actually exercised on 'ahead' read #${ordinal} (only saw ${seen})`);
     await settleRealtime(transport);
     return { readyMs, underruns: transport.underruns, sourceUnderruns: transport.group.source.underruns };
   } finally { transport.dispose(); }
@@ -263,11 +287,17 @@ async function handoffWithDelay(delayMs) {
 
 // ---------------------------------------------------------------------------
 // 3. A stall far past anything REV-10's own sweep tried (0/300/600/750/900/
-//    1200/2000ms): the fix has no margin to exceed for this specific read, so
-//    it is not a bigger constant that a long enough stall could still beat,
-//    the way REV-11's own proposed adaptive margin (max(HANDOFF_LEAD,
-//    2*lastReadMs)) still would be. Bounded here at 5s only to keep the test
-//    itself fast; nothing in the fix depends on that number.
+//    1200/2000ms), still targeting only the first post-handoff read (ordinal
+//    1, the fix's own prefetch): that specific read has no margin to exceed,
+//    since it is fetched before the handoff group goes live at all, so it is
+//    not a bigger deadline that a long enough stall on *this read* could
+//    still beat, the way REV-11's own proposed adaptive margin (max
+//    (HANDOFF_LEAD, 2*lastReadMs)) still would be (see docs/BACKLOG.md's
+//    REV-11 entry for that comparison's own numbers). Bounded here at 5s only
+//    to keep the test itself fast; nothing about this specific read depends
+//    on that number. This is not a claim about every later read: scenario 4
+//    below targets the next one and finds its own, smaller but still finite,
+//    threshold.
 // ---------------------------------------------------------------------------
 {
   const { readyMs, underruns, sourceUnderruns } = await handoffWithDelay(5000);
@@ -275,6 +305,58 @@ async function handoffWithDelay(delayMs) {
   assert.equal(underruns, 0, `no underrun with a 5s stall on the first post-handoff read (got ${underruns})`);
   assert.equal(sourceUnderruns, 0);
   console.log(`PASS 5s stall on the first post-handoff read: 0 underruns, ${readyMs.toFixed(1)}ms switch latency`);
+}
+
+// ---------------------------------------------------------------------------
+// 4. Control: delay the *second* post-handoff 'ahead' read instead of the
+//    first. This is pump()'s own first genuinely uncached read, issued right
+//    after the cached prefetch from scenario 1 to 3 is consumed, so it still
+//    races a deadline, same as before the fix, just a bigger one, and this
+//    scenario is here specifically to show that deadline is real and finite.
+//
+//    Derivation, not a guess: the extension loop above (selectSource's
+//    `while`) lands the group's margin at go-live at HANDOFF_LEAD (0.75s) for
+//    this exact fixture (confirmed by direct instrumentation of a debug
+//    build: `chunk.end - position` was exactly 6000 frames at RATE=8000,
+//    i.e. 0.75s, the same margin progressive-playback.mjs's scenario 2 checks
+//    structurally). Consuming the cached prefetch (AHEAD_PREFETCH_SECONDS,
+//    0.5s of audio) before the second read is issued advances the group's
+//    buffered lead by that same 0.5s, so the second read's own deadline sits
+//    at roughly HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS = 1.25s from go-live,
+//    not HANDOFF_LEAD alone.
+//
+//    Measured, not just derived: a sweep of this exact scenario (delaying
+//    ordinal 2 from 1000ms to 2000ms, in the scratch harness this test's own
+//    technique was built from) found 0 underruns through 1200ms and a
+//    reliable underrun from 1230ms on, in three repeated full sweeps, i.e. a
+//    deterministic cliff a little under the 1.25s arithmetic (the fixed .025s
+//    scheduling offset in `selectSource`, plus the small real time this
+//    file's own synchronous setup and cache lookups take, account for the
+//    difference). 1000ms and 1500ms below give both sides of that cliff
+//    comfortable headroom rather than sitting exactly on it.
+//
+//    Unlike ordinal 1, this delay is not awaited by `load()`: the second
+//    'ahead' read runs inside `pump()`, which `selectSource` fires
+//    fire-and-forget (`void this.pump(group)`) only after the group is
+//    already live, so `readyMs` here is not expected to wait out `delayMs`
+//    the way it does for ordinal 1 above - the switch itself is not slowed
+//    down by a stall on this later read. `readyMs` is logged for reference
+//    only, not asserted: under this machine's own shared load (several test
+//    files running at once, see CONTRIBUTING.md), the undelayed baseline
+//    latency itself varies enough to make an upper bound on it flaky, which
+//    is exactly why this scenario's real evidence is the underrun count
+//    below, not a timing bound.
+// ---------------------------------------------------------------------------
+{
+  const { readyMs, underruns, sourceUnderruns } = await handoffWithDelay(1000, 2);
+  assert.equal(underruns, 0, `no underrun with 1000ms injected on the second post-handoff read, below the new ~${(HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS).toFixed(2)}s margin (got ${underruns})`);
+  assert.equal(sourceUnderruns, 0);
+  console.log(`PASS 1000ms stall on the second post-handoff read (below the new ~${(HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS).toFixed(2)}s margin): 0 underruns, ${readyMs.toFixed(1)}ms switch latency (unaffected, as expected)`);
+}
+{
+  const { readyMs, underruns, sourceUnderruns } = await handoffWithDelay(1500, 2);
+  assert.ok(underruns > 0, `expected an underrun with 1500ms injected on the second post-handoff read, past the new ~${(HANDOFF_LEAD + AHEAD_PREFETCH_SECONDS).toFixed(2)}s margin (got ${underruns}); if this stops reproducing, the margin math above needs revisiting, not the assertion`);
+  console.log(`PASS 1500ms stall on the second post-handoff read reproduces an underrun (${underruns}), showing the fix moved the cliff, not removed it: ${readyMs.toFixed(1)}ms switch latency`);
 }
 
 process.exitCode = 0;

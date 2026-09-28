@@ -247,6 +247,17 @@ export class ProgressivePlayback {
       // cancelled outright, the position check below just retries with fresh
       // data, the same way any other slow or superseded read in this loop
       // already does.
+      //
+      // This removes the deadline only for that one specific read, not for
+      // every read after it: consuming this cached block still advances the
+      // group's buffered lead by its own duration (up to half a second)
+      // before pump()'s next, genuinely uncached 'ahead' read is issued, so
+      // that read (and every one after it, in steady state) still races a
+      // deadline, just a bigger one, roughly HANDOFF_LEAD plus this block's
+      // length instead of HANDOFF_LEAD alone. A long enough stall on that
+      // later read can still underrun; see
+      // test/progressive-handoff-stall.mjs's scenario 4 for the new,
+      // still-finite threshold and the numbers behind it.
       if (moving && this.group?.source !== source && position >= chunk.start && position < chunk.start + chunk.left.length) {
         const end = chunk.start + chunk.left.length;
         const aheadFrame = end < meta.frames ? end : this.loop ? Math.min(meta.frames - 1, Math.round(meta.loopStartSeconds * rate)) : -1;
