@@ -162,22 +162,42 @@ header/DSP-dump/extra-RAM struct `spc-import.ts` also reads:
 The echo buffer (`ESA`/`EDL`) writes into this same ARAM on the DSP's own
 initiative, live wherever the capture's own register writes ever point it
 while echo writes are enabled; `exportSpc` tracks every value the capture
-gives `ESA`, `EDL` and `FLG` and refuses to produce a file where that window
-could ever land on the player, the directory, a sample, the write stream, or
-the IPL ROM's reserved region (`$FFC0`-`$FFFF`) - `SpcExportSizeError`, never
-a truncated or silently corrupt file. The same error, naming `measured` and
-`limit`, covers the plain case: a song whose player, directory, samples and
-write stream together do not fit before the echo buffer's own fixed window
-(`ESA=$E0`, so $E000/57344 in practice, tighter than the `$FFC0` IPL ceiling
-above it). Two of the repo's three published SNES arrangements now measure
-big enough to hit exactly this: `sonic` (its SNES rendition, several minutes
-at this driver's note density and instrument variety, well over budget even
-after the write stream's own back-reference compaction), and, since the
-richer factory bank NEXT-24 built (decision 53 in
-[DECISIONS.md](../DECISIONS.md)), `mario` too - its samples alone grew past
-the fit. Only `zelda` still fits. There is no SNES-native song in `scores/`
-yet to measure against instead (`native-sources.mjs` only has NES and Mega
-Drive sources) - when one exists it joins this corpus.
+gives `ESA`, `EDL`, `FLG`, `EVOLL` and `EVOLR`, and refuses to produce a file
+where that window could ever land on the player, the directory, a sample,
+the write stream, or the IPL ROM's reserved region (`$FFC0`-`$FFFF`) -
+`SpcExportSizeError`, never a truncated or silently corrupt file. `EVOLL`/
+`EVOLR` are the only register path echo output ever reaches the audible mix
+(the final mix is `MVOL`-scaled voice output plus `EVOL`-scaled echo read,
+nothing else): when a capture's own writes set both to zero, explicitly, and
+never move either off zero again, its echo buffer's contents - real or
+garbage - can never reach a listener, by construction of the mix itself,
+whatever `EON`, `EFB`, `ESA` or `EDL` say. `exportSpc` recognizes that case
+(every capture this driver's `space: "dry"` produces qualifies, since dry
+zeroes `EVOL` before anything else plays and never touches it again),
+rewrites that capture's own `EDL` writes to 0, sets `FLG`'s echo-disable bit
+on every `FLG` write it emits, and gives up the echo buffer's fixed
+reservation entirely: the data may then run all the way up to the `$FFC0`
+IPL ceiling (65472 bytes) instead of stopping at the echo buffer's own fixed
+window (`ESA=$E0`, so $E000/57344 in practice). A capture that does not
+prove its echo silent this way - `space: "room"`, which moves `EVOL` off
+zero on purpose, or any capture that never mentions `EVOLL`/`EVOLR` at all,
+which on real hardware would inherit the S-DSP's own nonzero power-on
+`EVOL` bytes for its whole run - keeps the tighter, fixed window.
+
+Measured against the repo's three published SNES arrangements, all captured
+with the richer factory bank NEXT-24 built (decision 53 in
+[DECISIONS.md](../DECISIONS.md)): in the default `space: "dry"`, `mario`
+(59318/65472) and `zelda` (35593/65472) both fit; `sonic` (its SNES
+rendition, several minutes at this driver's note density and instrument
+variety) does not - its write stream alone needs 74247 bytes, more than the
+41262 left once its directory and samples (24210 bytes) are placed, even
+under the reclaimed ceiling. In `space: "room"`, which moves `EVOL` off
+zero on the pitched voices, the reclaim above does not apply and all three
+are measured against the tighter, fixed $E000/57344 window instead: `mario`
+(59320 bytes) and `sonic` (98459 bytes) no longer fit; `zelda` (35595/65472)
+is small enough to fit either window and still does. There is no SNES-native
+song in `scores/` yet to measure against instead (`native-sources.mjs` only
+has NES and Mega Drive sources) - when one exists it joins this corpus.
 
 Measured by
 [`check:spc-export`](../../packages/conform/src/spc/check-export.mjs)
@@ -204,9 +224,10 @@ boundary at the wrong instant, making blargg's poll exit one whole 7-cycle
 reference implementation, not a bug in either side, proven by construction
 (a single isolated wait never reproduces it; a repeating wait-then-write
 loop does, deterministically) and confirmed exhaustively on this corpus
-(every write in `zelda`, the one of the three arrangements that currently
-fits and so is the only one this write comparison can run against, takes one
-of exactly these two values, nothing else) - see `WRITE_CYCLE_OFFSETS`'s and
+(every write in `mario` and `zelda`, the two of the three arrangements that
+currently fit and so are the only ones this write comparison can run
+against, takes one of exactly these two values, nothing else) - see
+`WRITE_CYCLE_OFFSETS`'s and
 `compareOracleWrites`'s doc comments in `check-export.mjs`. The round trip
 additionally gates on timing: the largest deviation between any write's
 actual cycle and the tick `exportSpc` rounded it to, bounded at three ticks
@@ -231,9 +252,9 @@ shape `check:spc` already gates at 100%. Built this way, the oracle samples
 comparison is gated exactly too: `identical === cycles`, excluding only this
 package's own trailing `SAMPLE_OUTPUT_CYCLES` output period (blargg's own
 one-shot render tool cannot be relied on to have flushed it - see
-`ORACLE_TAIL_TRIM_CYCLES`'s doc comment). Measured on this corpus: `zelda`,
-the only one of the three that currently fits, reaches exactly 100.0000%
-cycle-exact on the oracle side.
+`ORACLE_TAIL_TRIM_CYCLES`'s doc comment). Measured on this corpus: `mario`
+and `zelda`, the two of the three that currently fit, both reach exactly
+100.0000% cycle-exact on the oracle side.
 Envelope correlation and per-note timing alignment are still reported on the
 oracle side too, not gated - they were this file's own gate before this
 rebuild, and stay as evidence that the CPU-timing difference the write
@@ -252,9 +273,9 @@ Samples: Round trip (own CPU on both sides): envelope correlation - both streams
 
 | Song | ARAM used | Round trip (own CPU): writes, max drift | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes (cycleOk, early exits) | play-spc: samples (cycle-exact - gated exact; envelope corr, note timing reported only) |
 | --- | --- | --- | --- | --- | --- |
-| mario | does not fit: 59318 / 57344 bytes | - | - | - | - |
+| mario | 59318 / 65472 bytes | 24144/24144, 1995c (1.95t) | 0.9571 (19.5478 %, 31.4100 % cycle-exact) | 24144/24144, cycleOk true, 3203 early-exit | 1.0000 (0.0000 %, 100.0000 % cycle-exact, 3.8328 % note timing) |
 | zelda | 35593 / 65472 bytes | 12819/12819, 1993c (1.95t) | 0.9668 (11.2373 %, 15.2671 % cycle-exact) | 12819/12819, cycleOk true, 1680 early-exit | 1.0000 (0.0000 %, 100.0000 % cycle-exact, 0.0000 % note timing) |
-| sonic | does not fit: 98457 / 57344 bytes | - | - | - | - |
+| sonic | does not fit: 74247 / 41262 bytes | - | - | - | - |
 <!-- spc-export:end -->
 
 ## Test ROMs

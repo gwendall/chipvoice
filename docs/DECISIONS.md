@@ -2095,7 +2095,7 @@ primary families' new ensemble/detune/noise parameters are doing real
 work, not an artifact of a formula that changes everything a little.
 
 **Evidence.** `docs/SNES-PALETTE.md`'s Phase 3 protocol, committed before
-any bank or driver change (`c4b1899`), and its measurements are the record;
+any bank or driver change (`6e393bc`), and its measurements are the record;
 summarized here. Attack transient energy - the cleanest, most consistently
 directional descriptor - separates cleanly on both reworked brass probes:
 overworld 1.25 dB (main) to 6.93 dB (new dry), boss 0.99 dB to 5.26 dB,

@@ -228,7 +228,7 @@ reliably tracking "does this timbre wander." We are recording this as a
 limit of these two descriptors on this bank's specific probes, per
 criterion 6 ("automated metrics do not certify human preference"), not
 editing the descriptors or the probes to force a cleaner-looking number:
-the protocol above is unchanged from `c4b1899`. Odd/even balance moved for
+the protocol above is unchanged from `6e393bc`. Odd/even balance moved for
 every reworked-family probe (brass, strings) but not in a single direction
 relative to control either, since the 2A03's own odd/even balance varies
 widely by patch (0.46-0.51 dB on the two brass-routed demo presets, 17.47
@@ -237,6 +237,102 @@ two decimal places on every descriptor above, confirming by direct
 measurement (not just source diff) that the ensemble formula's
 `unison: 1, detuneCents: 0` case renders unchanged audio, exactly as
 designed.
+
+## Post-hoc additions (review of PR #125)
+
+These two probes are explicitly **not** part of the pre-declared Phase 3
+protocol above: they were added after `6e393bc` was committed and after the
+bank changed, in response to review of PR #125, which found two gaps in
+the measurements - kick/snare are reworked but the drum-loop probe above
+reports only echo tail ("no pitched spectral descriptors for noise/BRR
+percussion" was the original, now-corrected reasoning), and picked-bass is
+reworked but named by no probe at all. Same three systems, same FFT and
+descriptor code as above (`packages/conform/src/bench/fft.mjs`), run with
+an ad hoc render script kept outside the repo, like the script that
+produced the tables above it - neither is committed, since neither is part
+of the shipped package or the conformance harness, only a one-time
+measurement.
+
+**Kick and snare.** Both are one-shot, non-looping PCM (`baseHz` 0, no
+pitch tracking), about 280 ms (kick) and 240 ms (snare) long in total - too
+short for the protocol's own 4096-sample/200 ms-apart window pair, sized
+for a multi-second held note. This probe halves both figures
+proportionally (2048 samples = 46.4 ms, 100 ms apart); both windows still
+land after the initial click transient and before the encoded PCM ends.
+`oddEven`'s reference frequency is not a tracked pitch - kick and snare
+have none - it is the synthesis recipe's own tonal component: kick's swept
+oscillator sampled near the first window (65 Hz), snare's fundamental sine
+partial (185 Hz, `snare()`'s own first term).
+
+| Probe | | Flatness (dB) | Odd/even (dB) | Centroid move (Hz) | Attack (dB) |
+| --- | --- | --- | --- | --- | --- |
+| kick | control | -2.79 | 1.23 | 9449.1 | 13.17 |
+| | main | -57.23 | 31.34 | 20.5 | 7.73 |
+| | new dry | -55.09 | 27.96 | 20.8 | 8.67 |
+| snare | control | -12.37 | 1.73 | 2545.6 | 11.13 |
+| | main | -7.42 | 10.83 | 1057.4 | 13.02 |
+| | new dry | -10.75 | 21.32 | 349.2 | 12.67 |
+
+Reading these honestly, per criterion 6: attack transient energy, the
+descriptor that separated most cleanly on the pre-declared probes, barely
+moves here (main 7.73 to new dry 8.67 dB on kick; 13.02 to 12.67 dB on
+snare, an actual small decrease) - unsurprising, since both recipes already
+had a dedicated attack-click component before this ticket, unlike the
+pitched families' single-cycle waveforms with no transient at all. Flatness
+and odd/even both move toward the 2A03 control from main to new dry on
+kick (flatness -57.23 to -55.09 against a -2.79 control; odd/even 31.34 to
+27.96 against a 1.23 control), but odd/even moves away from control on
+snare (10.83 to 21.32 against a 1.73 control) while its flatness moves
+toward control (-7.42 to -10.75 against a -12.37 control) - the two drums
+disagree with each other, not just with the pre-declared probes' own mixed
+result for these two descriptors. Centroid move is large on both SNES
+variants against a much larger 2A03 control figure in both cases (9449.1 Hz
+kick, 2545.6 Hz snare control); it separates main from new dry by far more
+on snare (1057.4 to 349.2 Hz) than kick (20.5 to 20.8 Hz, unchanged),
+consistent with snare's new second tonal partial and reshaped noise decay
+moving its own spectral balance around more than kick's single swept
+oscillator does. None of this is a pass/fail claim: 2048 samples/100 ms was
+chosen to fit the sample length, not derived from a measured spread, so no
+threshold is set for these two rows.
+
+**Picked-bass.** Structured exactly like the sustained-chord probe above
+(same bpm, step count, held-then-cut shape), on the bass role instead of
+chord, `intent: { bass: "round" }` - the same intent the `overworld` demo
+score already uses to route to `picked-bass`. C2 (65.41 Hz) held for 4
+seconds, cut at the same step 16 the chord probe cuts at.
+
+| Probe | | Flatness (dB) | Odd/even (dB) | Centroid move (Hz) | Attack (dB) |
+| --- | --- | --- | --- | --- | --- |
+| picked-bass (C2 held) | control | -35.82 | 18.40 | 1.9 | -0.60 |
+| | main | -55.39 | 12.81 | 0.1 | 1.81 |
+| | new dry | -58.60 | 11.30 | 0.1 | 3.56 |
+
+Echo tail energy (RMS, linear), same window as the other two sustained
+probes:
+
+| Probe | control | main | new dry | new room |
+| --- | --- | --- | --- | --- |
+| picked-bass echo tail | 3.35e-30 | 3.29e-19 | 2.90e-19 | 6.21e-5 |
+
+Attack transient energy separates cleanly here, the same direction as the
+pre-declared brass and strings probes: -0.60 dB (control) to 1.81 dB (main)
+to 3.56 dB (new dry), the picked-bass recipe's own `unison: 2,
+detuneCents: 8` giving it a real attack transient a single-cycle waveform
+does not have. Flatness moves further from control on new dry than main
+does (-58.60 vs -55.39, against a -35.82 control), the same direction the
+sustained-chord (strings) probe moved, not the direction the two brass
+probes moved (both moved toward control); odd/even moves toward control
+(12.81 to 11.30 dB, against an 18.40 dB control), which is itself a third,
+different direction from strings' own small move away from control on the
+same descriptor. This is the same descriptor that criterion 6 already
+found does not move in one consistent direction on the pre-declared
+probes; picked-bass does not resolve that, it adds a fourth data point
+to it. Centroid move is near-zero and identical (0.1 Hz) on both SNES
+variants, matching mallet's own finding above that a bin-quantised
+two-snapshot centroid measurement is a coarse instrument at these
+settings. The echo tail follows the same pattern already established on
+the chord and drum probes: `room` measures four to five orders of
+magnitude above dry and main (6.21e-5 vs 2.90e-19 dry, 3.29e-19 main).
 
 Decision 53 in [DECISIONS.md](DECISIONS.md) records the `space` default
 decision itself and its full evidence, including the historical PR #44
