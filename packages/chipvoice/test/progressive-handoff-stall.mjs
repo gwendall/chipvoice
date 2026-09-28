@@ -264,7 +264,7 @@ async function handoffWithDelay(delayMs, ordinal = 1) {
 // ---------------------------------------------------------------------------
 {
   const { readyMs, underruns, sourceUnderruns } = await handoffWithDelay(0);
-  assert.equal(underruns, 0, 'no underrun on an undelayed cross-chip handoff');
+  assert.equal(underruns, 0, `no underrun on an undelayed cross-chip handoff (got ${underruns}, ${readyMs.toFixed(1)}ms switch latency)`);
   assert.equal(sourceUnderruns, 0);
   console.log(`PASS undelayed cross-chip handoff: 0 underruns, ${readyMs.toFixed(1)}ms switch latency`);
 }
@@ -334,9 +334,10 @@ async function handoffWithDelay(delayMs, ordinal = 1) {
 //    file's own synchronous setup and cache lookups take, account for the
 //    difference).
 //
-//    Margin below that measured cliff: `node --test` runs this file in
-//    parallel with the rest of the suite, on CI's 4 vCPUs, so its own timing
-//    is noisier than the quiet-machine sweep above. A 1000ms delay would
+//    Margin below that measured cliff: CI's runner is a shared 4-vCPU
+//    machine, so this file's timing is noisier than the quiet-machine sweep
+//    above even though scripts/run-unit-tests.mjs runs it alone, after the
+//    concurrent batch (REV-13). A 1000ms delay would
 //    leave only about 200-230ms between the injected delay and the 1200-
 //    1230ms cliff - not enough room under CI load. 900ms below instead
 //    leaves about 300-330ms of margin under the cliff, while still sitting
@@ -353,8 +354,8 @@ async function handoffWithDelay(delayMs, ordinal = 1) {
 //    already live, so `readyMs` here is not expected to wait out `delayMs`
 //    the way it does for ordinal 1 above - the switch itself is not slowed
 //    down by a stall on this later read. `readyMs` is logged for reference
-//    only, not asserted: under this machine's own shared load (several test
-//    files running at once, see CONTRIBUTING.md), the undelayed baseline
+//    only, not asserted: under a shared machine's own load (see
+//    CONTRIBUTING.md), the undelayed baseline
 //    latency itself varies enough to make an upper bound on it flaky, which
 //    is exactly why this scenario's real evidence is the underrun count
 //    below, not a timing bound.

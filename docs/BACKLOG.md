@@ -310,6 +310,19 @@ created the same day.
   `environment_url`, so a future second app's own production deploy does not
   also fire chipvoice's end-to-end suite. See [Decision 47](DECISIONS.md).
 
+- done - REV-13 (REV-11 follow-up, test runner only): CI run 36457279940
+  (PR #122, which does not touch `packages/chipvoice`) failed
+  `test/progressive-handoff-stall.mjs` on its undelayed baseline, 1 underrun
+  where 0 was expected, and passed on a rerun of the same commit. That file
+  races a real wall clock against a render running in-process on the same
+  thread, and `scripts/run-unit-tests.mjs` ran it four files at a time on
+  CI's 4 vCPUs, next to the CPU-heavy golden and progressive suites. It now
+  runs alone, after the concurrent batch; both batches always run and either
+  failure fails the job. The baseline assertion now reports the measured
+  switch latency, so a future failure carries its own evidence, and
+  CONTRIBUTING explains that a busy local machine can still make it fail.
+  No engine code changed.
+
 ## Next steps (2026-09-27)
 
 Decisions 38 and 39 set the direction after the review: prove the five chips
