@@ -115,6 +115,31 @@ const VICII_FETCH_CYCLE = 11;
 // `frame-rate-probe.sid`'s own zero-tolerance INIT-phase cycle match, the
 // cheapest possible check that this constant is still right - see
 // `packages/chipvoice/test/psid-import.mjs`).
+//
+// That "handful of candidate cycles" is not one contiguous interval: a
+// cycle-by-cycle sweep of this constant from 10200 to 10850, scored the same
+// way `scores/psid-corpus/corpus.mjs` scores a build (`matched === total`
+// and within `PLAY_TOLERANCE`/`CIA_CYCLE_BOUND` on all six fixtures), passes
+// on exactly one cycle in three, not every cycle - the two VBI-timed
+// fixtures' own maxCycleDeviation cycles through {2, 3, 4, 5} as this
+// constant moves one cycle at a time (real per-line jitter this
+// environment's once-a-frame raster pulse cannot track exactly), and
+// `PLAY_TOLERANCE = 3` only accepts two of every three phases as a result;
+// the two CIA-timed fixtures stay fixed at 43/42 across the whole sweep,
+// confirming again (see `setupCia1`'s own doc comment) that their residual
+// is not phase-sensitive. Within that period-3 comb, every candidate from
+// 10282 to 10765 passes (162 evenly-spaced values spanning 483 cycles,
+// bounded on each side by a short dead zone, roughly 20 cycles wide, where
+// nothing passes - the same shape recurs every ~505 cycles across the wider
+// 9500-12500 range this was also checked against). 10750 sits well inside
+// that band, 468 cycles from its near edge and 15 from its far one, with
+// both its immediate comb neighbors (10747, 10753) passing too - not a
+// knife-edge fit. The two direct measurements above, 10745 and 10749, are
+// not themselves members of the comb (each is 1-2 cycles off it, enough to
+// push a VBI-timed fixture's own deviation to 4 or 5), but both fall deep
+// inside the same 10282-10765 band and each sits within `PLAY_TOLERANCE`
+// itself of the nearest passing cycle - the confirmed-optimal 10750 among
+// them, rather than either raw measurement, is what this constant uses.
 const PAL_INIT_RASTER_PHASE = 10750;
 const CIA_DEFAULT_PAL = 0x4025; // 60 Hz CIA 1 timer A latch, PAL: the SID file format's own default environment.
 const CIA_DEFAULT_NTSC = 0x4295; // Same, NTSC.
@@ -388,6 +413,33 @@ class PsidEnvironment implements Cpu6510Bus {
     return stolen;
   }
 
+  /**
+   * `counter` loads from `latch` unconditionally, with no raster-phase
+   * offset of its own - tried as a fix for the two CIA-timed fixtures'
+   * residual PLAY-phase deviation (43/42 cycles, against 2-3 for every
+   * VBI-timed fixture) and found not to help. An exhaustive sweep of an
+   * added start-phase offset - fine, -200 to +200 cycles; coarse, the CIA's
+   * own full period, 0 to 16421 step 137 - never drove either fixture's
+   * `maxCycleDeviation` below today's 43/42; offset 0 (today's behavior) is
+   * already the sweep's own optimum. The real mechanism, confirmed with
+   * per-call evidence rather than assumed: a CIA-timed fixture's own
+   * dispatch period is not a multiple of the badline recurrence period
+   * (`PAL_CYCLES_PER_LINE * 8 = 504`, since a badline only qualifies once
+   * every 8 raster lines), so which PLAY calls land near a badline drifts
+   * call to call. Logging every deviating call on both fixtures against a
+   * badline check run on each engine's own raster phase at that instant
+   * (the oracle's is exact, free-running since power-on; ours is this
+   * environment's own once-a-frame-pulse `rasterCycle`) shows the ~43-cycle
+   * deviations landing exactly where the oracle's real per-line VIC-II
+   * places a badline but this environment's own coarser, once-per-CPU-
+   * instruction badline check does not (or, on calls late enough into a
+   * run to have accumulated an earlier miss, where the two engines' raster
+   * trackers have already drifted a badline period apart) - a granularity
+   * mismatch between the two models, not a wrong constant. No offset fixes
+   * that, because the two engines' badline counts diverge by a different
+   * amount on different calls, not a fixed one; see `CIA_CYCLE_BOUND` in
+   * `scores/psid-corpus/corpus.mjs` for the resulting bound.
+   */
   setupCia1(latch: number, running: boolean, irqEnabled: boolean) {
     this.cia1.latch = latch; this.cia1.counter = latch; this.cia1.running = running;
     this.cia1.icrMask = irqEnabled ? 0x01 : 0; this.cia1.icrLatch = 0; this.cia1.oneShot = false;

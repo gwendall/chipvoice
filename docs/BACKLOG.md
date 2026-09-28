@@ -441,14 +441,60 @@ real game music, and a real unit.
   budget). `corpus.mjs`'s own `PLAY_TOLERANCE` (5 to 3) and
   `CIA_CYCLE_BOUND` (134 to 89) both tightened to match, with a new
   `scores/psid-corpus/test-corpus.mjs` proving each tightened gate rejects
-  the old, pre-fix measurements. One aside, investigated and found
-  harmless but not fully explained: this environment takes far longer
-  than the oracle to reach the first SID write inside the two VBI-timed
-  fixtures' own (real, third-party) INIT code specifically - ruled out
-  badline-count limits and raster/CIA register polling as causes, and
-  confirmed it has zero effect on the measurement above (the corpus's own
-  per-file `initShift`/`playShift` calibration absorbs it in full). See
-  `docs/chips/c64.md`'s "Known limits" and "History".
+  the old, pre-fix measurements. Round 2 closed the three things a review of that fix left unexplained,
+  rather than merely bounded. First, the CIA-timed fixtures' own 43/42-cycle
+  residual (against 2-3 for every VBI-timed fixture): a hypothesis that this
+  environment's CIA1 Timer A starts at the wrong phase relative to
+  `PAL_INIT_RASTER_PHASE` was tested with an exhaustive sweep of an added
+  start-phase offset (fine, plus or minus 200 cycles; coarse, the CIA's own
+  full 16422-cycle period) and refuted - offset 0, today's unconditional
+  `counter = latch`, is already the sweep's own optimum. Logging every
+  deviating PLAY call on both CIA-timed fixtures against each engine's own
+  badline state at that call found the real mechanism instead: a CIA-timed
+  fixture's own dispatch period is not a multiple of the badline recurrence
+  period (504 cycles, one badline every 8 raster lines), so which calls land
+  near a badline in the oracle's real per-line VIC-II, and whether this
+  environment's own coarser once-per-CPU-instruction check agrees, drifts
+  call to call - a structural granularity mismatch between the two models,
+  not a fixable constant. `CIA_CYCLE_BOUND` stays at 89; see `setupCia1`'s
+  own doc comment in `psid-import.ts` and `CIA_CYCLE_BOUND`'s own comment in
+  `corpus.mjs` for the full evidence. Second, the "this environment takes far longer than the oracle to reach
+  the first SID write inside the two VBI-timed fixtures' own INIT" aside
+  from round 1: that figure (10,000+ cycles) turned out to be stale, from a
+  measurement taken mid-sweep before `PAL_INIT_RASTER_PHASE` was finalized.
+  Remeasured fresh against the current build and cross-checked with a PC
+  trace of this environment's own CPU from INIT entry to the first SID
+  write: the real gap is about 90 cycles on both `gt2-dojo.sid` and
+  `gt2-hyperspace-alt.sid`, not thousands, and over 93% of the traced span
+  is this environment's own CPU idling in its post-INIT `JMP $0350`
+  self-loop, waiting for the next VBI raster IRQ - a real, expected wait of
+  up to about half a PAL frame present equally in the oracle's own timing,
+  not an engine-specific slowdown. An I-flag mismatch was also checked and
+  ruled out directly: libsidplayfp's own reference driver pops a `flags`
+  byte with the interrupt flag set before `jsr init` for every one of this
+  corpus's four GT2 fixtures (none is R64/C64-compatible per its own PSID
+  header), exactly matching this environment's own `cpu.p = 0x24` at INIT
+  entry. Third, `PAL_INIT_RASTER_PHASE = 10750`'s own plateau: a cycle-by-cycle
+  sweep from 10200 to 10850 shows the passing set is a period-3 comb, not
+  one contiguous range - two of every three phases fail because the two
+  VBI-timed fixtures' own maxCycleDeviation cycles through 2, 3, 4 and 5 as
+  the constant moves one cycle at a time, and `PLAY_TOLERANCE = 3` only
+  accepts two of those three. Within that comb, every candidate from 10282
+  to 10765 passes (spanning 483 cycles), bounded by short, roughly
+  20-cycle-wide dead zones on each side, the same shape recurring roughly
+  every 505 cycles further out. 10750 sits 468 cycles from the band's near
+  edge and 15 from its far one, with both immediate comb neighbors passing
+  too - not a knife-edge fit. The two direct measurements themselves, 10745
+  and 10749, are not exact members of the comb (each 1-2 cycles off it,
+  enough to push a VBI-timed fixture's own deviation to 4 or 5), but both
+  sit deep inside the same 10282-10765 band, within `PLAY_TOLERANCE` itself
+  of the nearest passing cycle - 10750 among them, confirmed optimal by the
+  sweep rather than either raw measurement. See `PAL_INIT_RASTER_PHASE`'s
+  own doc comment in `psid-import.ts` for the full arithmetic. All six fixtures measure exactly as round 1 left them (no gate or
+  constant changed): convention-probe and frame-rate-probe at 2 cycles;
+  `gt2-dojo.sid` at 3; `gt2-hyperspace-alt.sid` at 3; `gt2-sanction-cia.sid`
+  at 43; `gt2-consultant-alt-cia.sid` at 42. See `docs/chips/c64.md`'s
+  "Known limits" and "History".
 - done - P6-9: PR #107. `exportSpc` (unblocked by NEXT-08's CPU) turns a SNES capture
   into a standard `.spc` file carrying its own tiny SPC700 player
   (`packages/chipvoice/src/chips/snes/spc-player.ts`), hand-assembled from

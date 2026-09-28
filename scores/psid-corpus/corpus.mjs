@@ -83,6 +83,24 @@ const PLAY_TOLERANCE = 3;
 // margin over the measured one, plus the same PLAY_TOLERANCE jitter every
 // other fixture already allows - just with N brought down from 3 to 2, not a
 // number picked to make today's measurement pass.
+//
+// This is a structural mismatch, not a leftover phase bug: a full sweep of
+// an added CIA start-phase offset (fine, plus or minus 200 cycles; coarse,
+// the CIA's own full 16422-cycle period) never drove either fixture's
+// maxCycleDeviation below 43/42 (see `setupCia1`'s own doc comment in
+// `psid-import.ts`), so CIA_CYCLE_BOUND is not tightening further. Direct
+// per-call evidence: logging every deviating call's own badline state on
+// both engines' raster trackers shows the ~43-cycle deviations landing on
+// calls where the oracle's real per-line VIC-II places a badline but this
+// environment's own once-per-CPU-instruction check does not - never the
+// reverse (this environment never invents a badline the oracle does not
+// also have) - with a further small share landing there once the two
+// engines' raster trackers have already drifted a badline period apart from
+// an earlier such miss. The deviation histogram itself is bimodal, not a
+// clean multiple of 43: ordinary per-line jitter clusters at 0-5 cycles
+// (matching every other fixture's own PLAY_TOLERANCE), and the badline-
+// granularity cluster lands at 38-43, not only 43 itself - both measured
+// directly against a fresh capture at this corpus's default budget.
 const CIA_TIMED = new Set(['gt2-sanction-cia', 'gt2-consultant-alt-cia']);
 const CIA_CYCLE_BOUND = 2 * 43 + PLAY_TOLERANCE; // 89
 const cycleBoundFor = (id) => (CIA_TIMED.has(id) ? CIA_CYCLE_BOUND : PLAY_TOLERANCE);
