@@ -372,9 +372,13 @@ measured against two independent oracles: Nuked-OPM itself, built natively
 as the port's own die-shot-derived reference, gates `core` and `edge` at a
 literal 100 % (9 core scripts / 7,132,062 cycles, 6 edge scripts /
 2,575,891 cycles, every sample exact); ymfm (Aaron Giles, BSD-3-Clause) is
-a second, independent, report-only cross-check, since its `generate()`
-resolves a register write the instant it arrives rather than modelling this
-chip's own two-port write-latch delay. Two defects found and fixed during
+a second, independent, report-only cross-check: its `generate()` resolves
+every pending write the instant it is called, with no equivalent of
+Nuked-OPM's own multi-stage pipeline latency, so the same write reaches the
+DAC output at a different, per-note-varying phase against each oracle - not
+a value or scale difference (confirmed directly: a steady single-operator
+tone is bit-for-bit identical between the two once aligned, 594/594 samples
+exact, ratio 1.000). Two defects found and fixed during
 this ticket turned out to explain what first looked like oracle
 disagreement: the VGM importer's new `ym2151` branch could place an
 address-port write and its data-port write on the same cycle, corrupting

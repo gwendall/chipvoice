@@ -33,37 +33,63 @@ const CHIPS = {
  * 0 for the first, 1 for the second, the convention `oracles/nuked-opm/main.cpp`
  * and `chips/ym2151.mjs` both read.
  *
- * The two writes are NOT put on the same cycle. Both engines that read this
- * log drive the chip by draining every write whose cycle has come due and
- * only then calling one `clock()`/`OPM_Clock()` for that cycle
- * (`chips/ym2151.mjs`, `oracles/nuked-opm/main.cpp`); the chip's own write
- * path (`Ym2151.write`/`OPM_Write`) latches the byte into a single
- * `write_data` field shared by the address and data ports, only sorted out
- * on the next `clock()`. Two writes on the same cycle are both applied
- * before that `clock()` ever runs, so the data byte overwrites `write_data`
- * before the address byte was ever latched - the address-port write is lost
- * and every register write in the file silently misfires (this is what a
- * real CPU driving the chip never does: writing the address port and the
- * data port is two separate bus cycles, never one). `YM2151_WRITE_GAP`
- * (native cycles) is the minimum separation this decoder enforces, both
- * inside one command (address, then its data) and between one command's
- * data write and the next command's address write, so consecutive `0x54`s
- * with no VGM wait between them (common in a real capture) stay safe too.
- * It is comfortably below the up-to-64-cycle write-latch settling window
- * documented in `packages/conform/src/corpus/generate-ym2151.mjs`, so the
- * `edge/write-clobber` probe - two register writes deliberately close
- * enough to trigger that window's drop - still does.
+ * Two gaps, two different bugs. `YM2151_ADDR_DATA_GAP` (native cycles)
+ * separates one command's own address write from its data write: both
+ * engines that read this log drive the chip by draining every write whose
+ * cycle has come due and only then calling one `clock()`/`OPM_Clock()` for
+ * that cycle (`chips/ym2151.mjs`, `oracles/nuked-opm/main.cpp`); the chip's
+ * own write path (`Ym2151.write`/`OPM_Write`) latches the byte into a
+ * single `write_data` field shared by the address and data ports, only
+ * sorted out on the next `clock()`. Two writes close enough to land in the
+ * same `clock()` batch are both applied before that `clock()` ever runs, so
+ * the data byte overwrites `write_data` before the address byte was ever
+ * latched - the address-port write is lost (this is what a real CPU driving
+ * the chip never does: writing the address port and the data port is two
+ * separate bus cycles, never one). Two native cycles is already enough to
+ * land address and data in different batches at `OPM_Clock`'s own
+ * one-call-per-two-cycles rate; `YM2151_ADDR_DATA_GAP` doubles that for
+ * margin.
+ *
+ * `YM2151_SETTLE_CYCLES` separates one command's data write from the next
+ * command's address write - a different, larger window, empirically
+ * confirmed (not guessed) against the vendored `opm.c` itself: a register
+ * write is not applied to its channel/slot the instant the data write
+ * lands, only once the internal 32-tick pipeline sweeps back around to that
+ * register's own channel/slot index, and a new address-port write before
+ * that happens cancels the pending one (`reg_data_ready = reg_data_ready &&
+ * !write_a_en`, unconditional, in the vendored `opm.c`). Sweeping every one
+ * of the 32 slots against every phase of that 32-tick/64-native-cycle
+ * pipeline (writing a slot's TL, then an unrelated channel's register after
+ * a candidate gap, then reading the TL back) found a worst case of exactly
+ * 64 native cycles - the same figure `packages/conform/src/corpus/generate-ym2151.mjs`'s
+ * own module comment already cites for the same mechanism. Below that, a
+ * real capture with two 0x54 commands close together (a dense run of
+ * zero-wait writes is normal - most drivers issue several register writes
+ * per frame with no VGM wait between them) would silently lose the earlier
+ * write, the way the real chip does when a driver does not poll busy - not
+ * a bug in the decoder producing a wrong value, but silent, untraceable
+ * data loss on import.
+ *
+ * `settleCycles` lets a caller ask for a narrower gap than the default
+ * safe one - only `packages/conform/src/corpus/generate-ym2151.mjs`'s
+ * `edge/write-clobber` probe does, deliberately, to keep exercising this
+ * exact drop on purpose once the decoder's own default stopped causing it
+ * by accident.
  */
 const YM2151_COMMAND = 0x54;
 const YM2151_CLOCK_OFFSET = 0x30;
-const YM2151_WRITE_GAP = 4;
+const YM2151_ADDR_DATA_GAP = 4;
+/** See the module doc comment above `YM2151_COMMAND`: the empirically-confirmed worst case is exactly 64. */
+const YM2151_SETTLE_CYCLES = 64;
 
 /**
  * @param {Uint8Array} bytes a .vgm, or a .vgz (gzipped)
  * @param {'2a03'|'dmg'|'ym2151'} chip which machine's commands to keep
+ * @param {{ settleCycles?: number }} [options] `ym2151` only - see the module
+ *   doc comment above `YM2151_COMMAND`. Defaults to `YM2151_SETTLE_CYCLES`.
  */
-export function vgmToWrites(bytes, chip = '2a03') {
-  if (chip === 'ym2151') return ym2151VgmToWrites(bytes);
+export function vgmToWrites(bytes, chip = '2a03', options) {
+  if (chip === 'ym2151') return ym2151VgmToWrites(bytes, options);
   if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = new Uint8Array(zlib.gunzipSync(bytes));
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (String.fromCharCode(...bytes.subarray(0, 4)) !== 'Vgm ') throw new Error('not a VGM file');
@@ -133,8 +159,10 @@ export function vgmToWrites(bytes, chip = '2a03') {
  * is walked separately here. Every other command is stepped over by its
  * length, the same as the main loop; an unmodeled one throws by name
  * (`docs/DECISIONS.md`'s decision 44) rather than being silently skipped.
+ *
+ * @param {{ settleCycles?: number }} [options]
  */
-function ym2151VgmToWrites(bytes) {
+function ym2151VgmToWrites(bytes, { settleCycles = YM2151_SETTLE_CYCLES } = {}) {
   if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = new Uint8Array(zlib.gunzipSync(bytes));
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (String.fromCharCode(...bytes.subarray(0, 4)) !== 'Vgm ') throw new Error('not a VGM file');
@@ -151,19 +179,19 @@ function ym2151VgmToWrites(bytes) {
   let loopAtCycle = -1;
   let at = dataOffset;
   // The next cycle a command's address-port write may land on, so back-to-back
-  // commands (no VGM wait between them) still get `YM2151_WRITE_GAP` apart from
-  // each other, not just from their own data-port write - see the module doc
-  // comment above `YM2151_COMMAND`.
+  // commands (no VGM wait between them) still get `settleCycles` apart from
+  // each other, not just `YM2151_ADDR_DATA_GAP` apart from their own
+  // data-port write - see the module doc comment above `YM2151_COMMAND`.
   let nextAddrCycle = 0;
   while (at < bytes.length) {
     if (at === loopOffset) loopAtCycle = cycles(sample);
     const op = bytes[at];
     if (op === YM2151_COMMAND) {
       const addrCycle = Math.max(cycles(sample), nextAddrCycle);
-      const dataCycle = addrCycle + YM2151_WRITE_GAP;
+      const dataCycle = addrCycle + YM2151_ADDR_DATA_GAP;
       writes.push({ at: addrCycle, addr: 0, value: bytes[at + 1] });
       writes.push({ at: dataCycle, addr: 1, value: bytes[at + 2] });
-      nextAddrCycle = dataCycle + YM2151_WRITE_GAP;
+      nextAddrCycle = dataCycle + settleCycles;
       at += 3;
     } else if (op === 0x61) {
       sample += bytes[at + 1] | (bytes[at + 2] << 8);

@@ -99,7 +99,7 @@
     "bench:nes:compare": "node src/bench/compare.mjs",
     "bench:nes:selftest": "node src/bench/selftest.mjs",
     "test:listening": "node src/listening/test.mjs && node src/listening/test-snes.mjs",
-    "test:unit": "node test/accuracy-data.mjs && node test/vrc6-gate.mjs && node test/ay8910-gate.mjs && node test/ym2151-gate.mjs",
+    "test:unit": "node test/accuracy-data.mjs && node test/vrc6-gate.mjs && node test/ay8910-gate.mjs && node test/ym2151-gate.mjs && node test/ym2151-noise-tick-gate.mjs && node test/ym2151-vgm-settle.mjs",
     "accuracy-data:check": "node src/accuracy-data.mjs --check"
   },
   "dependencies": {

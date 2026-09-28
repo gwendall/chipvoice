@@ -35,6 +35,14 @@ import { vgmToWrites } from '../vgm.mjs';
  * `opm.c`). `SETTLE` (4000 cycles, about 2000 `OPM_Clock()` calls) is
  * comfortably clear of that window, so every script except the one that
  * means to hit it deliberately (`edge/write-clobber`) never does.
+ *
+ * `vgmToWrites`'s own decoder now enforces the same window by default
+ * (`YM2151_SETTLE_CYCLES`, 64 native cycles - the same figure, empirically
+ * confirmed against the vendored `opm.c`, see `packages/conform/src/vgm.mjs`'s
+ * module doc comment) whether or not a script's own writes are spaced this
+ * generously, so `write-clobber` alone passes `settleCycles: 4` to
+ * `writeScript` to ask the decoder for the old, narrow spacing and keep
+ * triggering the drop on purpose.
  */
 const CLOCK = 3579545;
 const SAMPLE_RATE = 44100;
@@ -482,7 +490,8 @@ const EDGE_SCRIPTS = [
   },
   {
     name: 'write-clobber',
-    notes: 'The settling-time behaviour this file\'s own header comment describes, deliberately triggered rather than avoided: two address/data register writes back to back on the very same VGM sample (zero native cycles apart, nowhere near the up-to-64-cycle settling window the first one would need) - so the first write (AR on op C2 of channel 4) is silently dropped and only the second (a harmless RL/FB/CONNECT write to channel 0) lands, per `reg_data_ready = reg_data_ready && !write_a_en` in the vendored `opm.c`. Both oracles model this the same way it happens on real silicon, since it falls out of the two-port protocol itself rather than being a special case either emulator added - a divergence here would mean one of them added special-case handling nuked-opm.c does not have.',
+    notes: 'The settling-time behaviour this file\'s own header comment describes, deliberately triggered rather than avoided: two address/data register writes back to back on the very same VGM sample (zero native cycles apart, nowhere near the up-to-64-cycle settling window the first one would need) - so the first write (AR on op C2 of channel 4) is silently dropped and only the second (a harmless RL/FB/CONNECT write to channel 0) lands, per `reg_data_ready = reg_data_ready && !write_a_en` in the vendored `opm.c`. Both oracles model this the same way it happens on real silicon, since it falls out of the two-port protocol itself rather than being a special case either emulator added - a divergence here would mean one of them added special-case handling nuked-opm.c does not have. `packages/conform/src/vgm.mjs`\'s decoder now spaces every other command a full `YM2151_SETTLE_CYCLES` apart by default specifically so a real capture\'s own zero-wait runs do not lose a write this way by accident - so this probe alone asks for the old, narrow `settleCycles: 4` explicitly (see `vgmToWrites`\'s `settleCycles` option) to keep triggering the drop on purpose.',
+    settleCycles: 4,
     writes: () => {
       const w = writer();
       defaultChannel(w, 4, { connect: 7, kc: 0x4c }, {});
@@ -503,7 +512,7 @@ const EDGE_SCRIPTS = [
   },
 ];
 
-function writeScript(dir, { name, notes, writes }) {
+function writeScript(dir, { name, notes, writes, settleCycles }) {
   fs.mkdirSync(path.join(dir, 'source'), { recursive: true });
   const all = writes();
   const last = all.reduce((m, w) => Math.max(m, w.at), 0);
@@ -523,7 +532,7 @@ function writeScript(dir, { name, notes, writes }) {
   const next = [...manifest.filter((e) => e.filename !== filename), entry].sort((a, b) => a.filename.localeCompare(b.filename));
   fs.writeFileSync(manifestPath, JSON.stringify(next, null, 2) + '\n');
 
-  const decoded = vgmToWrites(bytes, 'ym2151');
+  const decoded = vgmToWrites(bytes, 'ym2151', settleCycles !== undefined ? { settleCycles } : undefined);
   const text = formatLog(
     {
       name,

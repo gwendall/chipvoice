@@ -7,7 +7,7 @@
 </p>
 
 
-Alexey Khokholov（Nuke.YKT）のNuked-OPM 1.0。John McMasterによるチップのダイ画像から書かれ、サイクル精度で照合されたYM2151エミュレーターをネイティブビルドし、レジスターログで動かします。<https://github.com/nukeykt/Nuked-OPM>からLGPL 2.1で同梱します（[LICENSE](LICENSE)）。コミット`f209e6ed3712032b641d53ce8fb24824eae6adc3`に固定しています。ここの参照ビルドは検証用で、`chipvoice`へ同梱しません。
+Alexey Khokholov（Nuke.YKT）のNuked-OPM 1.0。John McMasterによるチップのダイ画像から書かれ、サイクル精度で照合されたYM2151エミュレーターをネイティブビルドし、レジスターログで動かします。<https://github.com/nukeykt/Nuked-OPM>からLGPL 2.1で同梱します（[LICENSE](LICENSE)）。コミット`f209e6ed3712032b641d53ce8fb24824eae6adc3`に固定しています。本リポジトリ内のツールであり、参照実装そのものは同梱しません。ただし`ym2151.ts`（`packages/chipvoice/src/chips/ym2151.ts`）は`opm.c`を行単位で移植したものであるため、公開パッケージのライセンスはこれにより単純なMITではなく`(MIT AND LGPL-2.1-or-later)`です（決定17、決定51）。
 
 <a id="what-is-nukeds-and-what-is-not"></a>
 ## Nukedのコードと本プロジェクトのコード

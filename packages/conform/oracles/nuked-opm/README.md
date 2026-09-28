@@ -12,7 +12,11 @@ natively and driven with a register log. Vendored from
 <https://github.com/nukeykt/Nuked-OPM> under the LGPL 2.1 (see
 [LICENSE](LICENSE)), pinned at commit
 `f209e6ed3712032b641d53ce8fb24824eae6adc3`. It is a tool in this repository;
-nothing here ships in the `chipvoice` package, which stays MIT.
+the oracle itself does not ship - but `ym2151.ts`
+(`packages/chipvoice/src/chips/ym2151.ts`) is a line-for-line port of
+`opm.c`, so the published package's licence is
+`(MIT AND LGPL-2.1-or-later)`, not plain MIT, because of it (decision 17,
+decision 51).
 
 ## What is Nuked's and what is not
 
