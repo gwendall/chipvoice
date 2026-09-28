@@ -2157,6 +2157,97 @@ qualified by `space`. Decision 35 (the SNES engine loads only with what
 needs it) still holds: `space` is a driver-internal register choice, not
 a new import.
 
+**External review (kami's Punk Kart session, code-30).** A blind listener
+(audio only, asked which console) did not move off "NES" for either
+space, one guess per track: race - base (0.19.0 plus kami's own
+`snesEcho` patch) NES, NEXT-24 dry NES, NEXT-24 room NES; final - base
+NES, dry NES, room "Game Boy"; results - NES on all three. A parallel
+style-fit score (3 runs per track, a high score needed to pass) failed
+near-identically across all three builds: race 3/3/3 (base), 2/3/3
+(dry), 3/3/3 (room); final 3/3/3 (base), 3/3/3 (dry), 3/4/3 (room);
+results 3/3/3 on all three. The judge's own words on the failing tracks:
+it hears "8-bit square waves for the melody, a triangle wave for the
+bass, white noise for percussion", flags "missing brass stabs, slap
+bass, strings", and reads room as lacking "the characteristic warm
+echo" (loop level 2.6 dB under base). The jingles (finalLap, win) pass
+8-9 in all three builds; lose is unstable in base (5, 9, 5) and clean in
+dry/room (9, 9, 9 / 8, 8, 8). Two negative controls (white noise, a
+ballad re-prompt) both score 1, so the judge does discriminate a gross
+mismatch, but no positive control (real SNES audio) has run yet, so
+whether it can recognize SNES specifically is still untested. A later
+check of code-30's own integration found the dry-vs-base comparison
+confounded: their local patch skipped kami's `snesEcho` step whenever a
+`space` option was set at all, so "NEXT-24 dry" in this blind test had
+no echo of any kind, against "base" which always had kami's echo patch,
+and "NEXT-24 room" had this driver's own room echo but not kami's patch
+on top of it - the judge's "lacks the warm echo" on dry is exactly what
+a space with `EVOL` zero is supposed to sound like next to one with an
+echo patch, not evidence against the new bank specifically. Recorded
+plainly, correcting for that confound: NEXT-24 does not change this
+external judge's verdict in either space; on this measure it is neither
+better nor worse than 0.19.0, and no human has listened yet. This is a
+different, weaker claim than "reads as SNES" - that reading rests only
+on the internal, pre-declared DSP-level probes above (attack transient
+and echo-tail energy), not on any external or blind listen.
+
+**The dry-space release, honestly.** A held final chord in dry stays at
+full level until key-off, exactly as before this ticket - NEXT-24 did
+not change `note()`, `noteOff()` or `renderPerformance`'s render window,
+confirmed by code-30's own control (`chipvoice-0.19.0` rendered dry,
+with no echo, through the exact same chain: `win` and `lose` end at the
+same duration to the millisecond as NEXT-24 dry, both cut the same way;
+`finalLap` decays cleanly on both, because its last note is plucked and
+ends before the score's own end, not held to it). `plan.seconds` already
+carries `compileSong`'s own 2-second release tail past the last
+`endTick`, and the last key-off lands 2.15-2.68 s before the render
+ends - the window is not the cause, and widening it further changes
+nothing (`+1 s` of window gives byte-identical trimmed output). What a
+listener hears as an abrupt stop is the S-DSP's own fixed, fast (about
+8 ms) hardware release after key-off, immediately followed by
+`trimRender` cutting the now near-silent remainder - accurate hardware
+behavior, not a truncation bug, and it is why `room`, or dry rendered
+through an external echo patch, both decay naturally instead (an echoed
+copy of the note keeps returning after key-off, independent of the dry
+voice's own fast release): NEXT-24 dry actually holds marginally better
+than 0.19.0 on code-30's own numbers (`win` -31.5 dB vs 0.19.0's
+-24.8 dB in the last 100 ms; `lose` -33.0 dB vs -24.5 dB), not worse. A
+driver-side release that tapers the sustain itself before key-off - the
+ADSR's own SR (sustain rate), or a scripted GAIN decrease, the way
+native SPC drivers like N-SPC do - is real, wanted work, tracked as
+Backlog P6-11 (a NEXT-25 candidate), out of this ticket's scope on
+purpose: it would change every dry-space render's audio, `renderSfx`
+included, and needs its own audio-neutrality proof.
+
+**gamesounds impact (`apps/sounds`, deferred to after GS-03/#124).**
+`catalog:check-determinism` finds all 28 `*-16bit-snes` recipes whose
+role is not `chord` now render different audio (112 WAV/PCM mismatches,
+4 variants each); the 16 `chord`-role sounds, all built from `harp`, are
+unaffected (confirmed byte-identical). The five reworked families
+explain 21 of the 28 directly (`lead`:flute, `bass`:picked-bass,
+`perc-kick`/`perc-snare`/`perc-noise-long`:kick or snare - their own
+sample bytes changed, as above). The remaining 7, all `perc-hat` (built
+from the unreworked `hat`/`ohat` sample, confirmed unchanged by source
+diff), move for a different, driver-level reason: `powerOn()`'s new,
+unconditional MVOL/EVOL mute-first writes (above) add 4 register writes
+ahead of everything else in the power-on stream, delaying every later
+register event's timestamp by a constant 40 SPC-cycle units (about
+39 us) - the written values and their order are unchanged (confirmed:
+stripped of timestamps, the rest of the event stream diffs identical to
+`cf23684`), only their timing. A melodic, BRR-decoded voice (harp)
+renders bit-for-bit identical audio across that shift; `hat`/`ohat`,
+which route through the S-DSP's free-running hardware noise generator
+rather than decoded sample data, do not - the same shift lands the
+generator's sampling point elsewhere in its own sequence (raw PCM
+cross-correlates best at a +1-sample lag, not lag 0; the difference is
+not a constant gain, ruling that out). `renderSfx` never consults mix
+calibration, ruling that out too. No rebuild and no blob-store push
+happened here: GS-03 (#124) is fixing the catalogue's own ogg/mp3
+encoder in flight, and rebuilding against the current encoder first
+would re-hash all 880 oggs for nothing. Order stays #124 merges, this
+branch rebases onto `main`, `catalog:build` runs against the fixed
+encoder (a per-field diff will show only these 28 recipes moved), then
+`check-determinism`, then the push.
+
 ## 54. gamesounds' generated sounds ship mono, leveled on their own actual shipped bytes; sfx-engine's presets are filed by what they model, never forced to fill a style (2026-09-29)
 
 GS-03 wires `packages/sfx-engine` (decision 52) into the gamesounds.ai

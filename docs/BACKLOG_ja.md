@@ -736,6 +736,7 @@
 | P6-8 | 既知scriptでDSP streamまたは実機line-out capture | todo | 実機必要。NEXT-04によれば、誰かが実機のS-DSP線を捉えた唯一のロジックアナライザーキャプチャはリンク切れで、唯一のフィルター周波数見積もりは実機キャプチャでなく回路図シミュレーションです。[HARDWARE-EVIDENCE.md#snes-s-dsp](HARDWARE-EVIDENCE.md#snes-s-dsp)参照 |
 | P6-9 | file内driverで任意SPC playerから再生できるexport | doing | `exportSpc`（`packages/chipvoice/src/spc-export.ts`）：ファイル自身のARAMに書き込む自作SPC700プレイヤー。本パッケージ自身のSPC700と`play-spc`の実SPC700の両方に対してラウンドトリップ検証済み（`check:spc-export`、数値は`docs/chips/snes.md`）。ステップ1の録音環境でのフラッシュカート録音は対象外（まだ実機なし）。この1項目のためこの行は開いたままにします |
 | P6-10 | 複数ボイスの実三和音とハードウェアノイズのハット | done | PR #92。三和音と内部ミキサー検査は実装・検証済みです。キットのハットは既定でDSP自身のハードウェアノイズ(`NON`、電源投入シーケンスの最初の書き込みで設定しその後は別の値へ書き換えない`FLG`の時計)を使い、キックとスネアはBRRサンプルのままです。`Instrument.noiseMode`でBRRバーストへ戻せます。新しいコーパススクリプトが2ボイス同時ノイズ、保持中の時計変更、`FLG`のリセット／ミュートビットを検証します。マージ前のレビューで、時計が実際には四分の一秒後の後段の書き込みからしか有効になっておらず、曲の最初の250msに入るハイハットはレート0で鳴っていたことが分かり、最初の書き込みへ時計を移して修正しました |
+| P6-11 | dry空間：key-off前のdriver側リリース減衰（NEXT-25候補） | todo | NEXT-24（decision 53）で記録・再現：保持された音符はkey-offまでフルレベルを保ち、その後S-DSP自身の固定的で高速（約8ms）なハードウェアリリースに入ります。`trimRender`がほぼ無音の残りを切り詰めるため、`room`や外部echoパッチが自らのテールで自然に減衰するのとは違い、何も埋めるものがないまま急に止まったように聞こえます。N-SPCなど実機のドライバーはkey-off前にsustain自体を（ADSR自身のSR＝sustain rateか、スクリプト化したGAIN減少で）テーパーさせますが、このドライバーはまだそれをしません。NEXT-24の対象外とした理由：driver側のリリースはdry空間のあらゆるレンダー音声を変え、`renderSfx`（gamesounds「16bit」風SNESカタログ）も含むため、NEXT-24のexporter修正が使ったのと同じ音声無変化の証明が要ります |
 
 <a id="phase-7-c64"></a>
 ## フェーズ7. C64
