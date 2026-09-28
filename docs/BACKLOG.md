@@ -1010,6 +1010,41 @@ real game music, and a real unit.
   documented one. No driver or arranger role yet, decision 38. Remains: a
   real test ROM (none found to automate); a unit's line-out; other AY/YM
   hosts (MSX's own AY-3-8910, the YM2203/YM2608 SSG half).
+- doing - NEXT-16 first half, Yamaha YM2151 (OPM): `Ym2151`
+  (`packages/chipvoice/src/chips/ym2151.ts`) ported line for line from
+  Nuked-OPM (Nuke.YKT, LGPL 2.1, from John McMaster's YM2151 die shot), the
+  same choice decision 17 made for the YM2612/Nuked-OPN2 (decision 51),
+  sheet at [docs/chips/ym2151.md](chips/ym2151.md). Two independent
+  oracles: Nuked-OPM itself, built natively as the port's own
+  die-shot-derived reference, gates `core` and `edge` at a literal 100 %
+  (9 core scripts / 7,132,062 cycles, 6 edge scripts / 2,575,891 cycles,
+  every sample exact); ymfm (Aaron Giles, BSD-3-Clause) is a second,
+  independent, report-only cross-check, since its `generate()` resolves a
+  register write the instant it arrives rather than modelling this chip's
+  own two-port write-latch delay (decision 48's precedent: a disagreement
+  there is read against Nuked-OPM, never gated on). Two defects found and
+  fixed during this ticket turned out to explain what first looked like
+  oracle disagreement, not a genuine one: the VGM importer's new `ym2151`
+  branch could place an address-port write and its data-port write on the
+  same cycle, corrupting the corpus itself before any comparison ran, fixed
+  by spacing every command's two writes and every command from the next;
+  and `envelopePhase6()` read `eg_serial_bit` one tick late (after that
+  tick's `eg_serial` load/shift, not before, unlike `OPM_EnvelopePhase6`),
+  corrupting the noise channel whenever it was active - invisible on 13 of
+  15 corpus scripts because nothing but the noise channel and a
+  write-mode readback ever consumes that bit. Both fixed, every core and
+  edge script is a literal 100.0000 % identical against Nuked-OPM. No
+  driver or arranger role yet, decision 38 - `Ym2151` is a bare export,
+  reachable directly but not wired into the studio picker or
+  `DigitalChip`. Remains: a driver, an arranger role and a studio picker
+  entry; a real test ROM (none found to automate); an analog stage (no
+  host wires this chip's two DAC pins into a mix stage yet); the YM2610
+  (below).
+- todo - NEXT-16 second half, Yamaha YM2610 (OPNB): deferred out of this
+  ticket's scope (decision 51), tracked as its own, later ticket. Adds
+  ADPCM-A/ADPCM-B sample playback entirely absent from the YM2151 on top
+  of a related FM engine - a substantially different core requiring its
+  own oracle work and probe corpus.
 - A chip enters the public picker when its sheet is filled, or when the sheet
   states which levels are still missing.
 

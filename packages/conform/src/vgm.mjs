@@ -24,10 +24,46 @@ const CHIPS = {
 };
 
 /**
+ * The YM2151's own VGM command, 0x54 `aa dd`: one register write, not an
+ * address inside some larger memory-mapped range the way `2a03`/`dmg`'s
+ * commands are - so unlike those two, `ym2151` is not in `CHIPS` above and
+ * is handled directly in `vgmToWrites` below. Each command becomes two
+ * register-log writes, address port then data port, matching `Ym2151.write`'s
+ * own two-port protocol (`packages/chipvoice/src/chips/ym2151.ts`) - `addr`
+ * 0 for the first, 1 for the second, the convention `oracles/nuked-opm/main.cpp`
+ * and `chips/ym2151.mjs` both read.
+ *
+ * The two writes are NOT put on the same cycle. Both engines that read this
+ * log drive the chip by draining every write whose cycle has come due and
+ * only then calling one `clock()`/`OPM_Clock()` for that cycle
+ * (`chips/ym2151.mjs`, `oracles/nuked-opm/main.cpp`); the chip's own write
+ * path (`Ym2151.write`/`OPM_Write`) latches the byte into a single
+ * `write_data` field shared by the address and data ports, only sorted out
+ * on the next `clock()`. Two writes on the same cycle are both applied
+ * before that `clock()` ever runs, so the data byte overwrites `write_data`
+ * before the address byte was ever latched - the address-port write is lost
+ * and every register write in the file silently misfires (this is what a
+ * real CPU driving the chip never does: writing the address port and the
+ * data port is two separate bus cycles, never one). `YM2151_WRITE_GAP`
+ * (native cycles) is the minimum separation this decoder enforces, both
+ * inside one command (address, then its data) and between one command's
+ * data write and the next command's address write, so consecutive `0x54`s
+ * with no VGM wait between them (common in a real capture) stay safe too.
+ * It is comfortably below the up-to-64-cycle write-latch settling window
+ * documented in `packages/conform/src/corpus/generate-ym2151.mjs`, so the
+ * `edge/write-clobber` probe - two register writes deliberately close
+ * enough to trigger that window's drop - still does.
+ */
+const YM2151_COMMAND = 0x54;
+const YM2151_CLOCK_OFFSET = 0x30;
+const YM2151_WRITE_GAP = 4;
+
+/**
  * @param {Uint8Array} bytes a .vgm, or a .vgz (gzipped)
- * @param {'2a03'|'dmg'} chip which machine's commands to keep
+ * @param {'2a03'|'dmg'|'ym2151'} chip which machine's commands to keep
  */
 export function vgmToWrites(bytes, chip = '2a03') {
+  if (chip === 'ym2151') return ym2151VgmToWrites(bytes);
   if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = new Uint8Array(zlib.gunzipSync(bytes));
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (String.fromCharCode(...bytes.subarray(0, 4)) !== 'Vgm ') throw new Error('not a VGM file');
@@ -88,4 +124,74 @@ export function vgmToWrites(bytes, chip = '2a03') {
     else throw new Error(`unknown VGM command $${op.toString(16)} at ${at}`);
   }
   return { writes, cycles: cycles(totalSamples), loopAtCycle, clock, memory };
+}
+
+/**
+ * The YM2151's own walk of the command stream: `0x54 aa dd` is one register
+ * write, not an address inside some chip's larger memory-mapped range, so
+ * it does not fit `CHIPS`' `{offset, command, base, last}` shape above and
+ * is walked separately here. Every other command is stepped over by its
+ * length, the same as the main loop; an unmodeled one throws by name
+ * (`docs/DECISIONS.md`'s decision 44) rather than being silently skipped.
+ */
+function ym2151VgmToWrites(bytes) {
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) bytes = new Uint8Array(zlib.gunzipSync(bytes));
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (String.fromCharCode(...bytes.subarray(0, 4)) !== 'Vgm ') throw new Error('not a VGM file');
+  const version = view.getUint32(0x08, true);
+  const totalSamples = view.getUint32(0x18, true);
+  const dataOffset = version >= 0x150 ? 0x34 + view.getUint32(0x34, true) : 0x40;
+  const clock = version >= 0x161 && dataOffset > YM2151_CLOCK_OFFSET ? view.getUint32(YM2151_CLOCK_OFFSET, true) : 0;
+  if (!clock) throw new Error('no YM2151 in this file');
+  const loopOffset = view.getUint32(0x1c, true) ? 0x1c + view.getUint32(0x1c, true) : -1;
+
+  const cycles = (sample) => Math.round((sample * clock) / SAMPLE_RATE);
+  const writes = [];
+  let sample = 0;
+  let loopAtCycle = -1;
+  let at = dataOffset;
+  // The next cycle a command's address-port write may land on, so back-to-back
+  // commands (no VGM wait between them) still get `YM2151_WRITE_GAP` apart from
+  // each other, not just from their own data-port write - see the module doc
+  // comment above `YM2151_COMMAND`.
+  let nextAddrCycle = 0;
+  while (at < bytes.length) {
+    if (at === loopOffset) loopAtCycle = cycles(sample);
+    const op = bytes[at];
+    if (op === YM2151_COMMAND) {
+      const addrCycle = Math.max(cycles(sample), nextAddrCycle);
+      const dataCycle = addrCycle + YM2151_WRITE_GAP;
+      writes.push({ at: addrCycle, addr: 0, value: bytes[at + 1] });
+      writes.push({ at: dataCycle, addr: 1, value: bytes[at + 2] });
+      nextAddrCycle = dataCycle + YM2151_WRITE_GAP;
+      at += 3;
+    } else if (op === 0x61) {
+      sample += bytes[at + 1] | (bytes[at + 2] << 8);
+      at += 3;
+    } else if (op === 0x62) { sample += 735; at += 1; }
+    else if (op === 0x63) { sample += 882; at += 1; }
+    else if (op >= 0x70 && op <= 0x7f) { sample += op - 0x70 + 1; at += 1; }
+    else if (op === 0x66) break;
+    else if (op === 0x67) {
+      const length = view.getUint32(at + 3, true);
+      at += 7 + length;
+    } else if (op >= 0x80 && op <= 0x8f) { sample += op - 0x80; at += 1; }
+    else if (op === 0x4f || op === 0x50) at += 2;
+    else if (op >= 0x51 && op <= 0x5f) at += 3;
+    else if (op >= 0xa0 && op <= 0xbf) at += 3;
+    else if (op >= 0xc0 && op <= 0xdf) at += 4;
+    else if (op >= 0xe0 && op <= 0xff) at += 5;
+    else if (op === 0x90 || op === 0x91) at += 5;
+    else if (op === 0x92) at += 6;
+    else if (op === 0x93) at += 11;
+    else if (op === 0x94) at += 2;
+    else if (op === 0x95) at += 5;
+    else if (op >= 0x30 && op <= 0x3f) at += 2;
+    else if (op >= 0x40 && op <= 0x4e) at += version >= 0x160 ? 3 : 2;
+    else throw new Error(`unknown VGM command $${op.toString(16)} at ${at}`);
+  }
+  // `Math.max` against `nextAddrCycle`: a dense run of zero-wait commands at
+  // the very end of the file can push the last data-port write past the
+  // sample-derived total, and a driver that stops at `cycles` would drop it.
+  return { writes, cycles: Math.max(cycles(totalSamples), nextAddrCycle), loopAtCycle, clock, memory: [] };
 }

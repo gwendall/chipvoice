@@ -363,6 +363,31 @@ other real-world 2A03 file. See [docs/chips/vrc6.md](docs/chips/vrc6.md)
 for the full sheet, both oracles' known limits, and what remains (a
 driver/arranger role, a real test ROM - none exists to automate).
 
+NEXT-16's first half adds the Yamaha YM2151 (OPM), the eight-channel,
+four-operator FM synthesiser behind the arcade boards and home computers of
+the mid-to-late 1980s (Sharp X68000, many Taito/Konami/Sega/Capcom boards).
+`Ym2151` (`packages/chipvoice/src/chips/ym2151.ts`) is Nuked-OPM ported line
+for line - the same choice decision 17 made for the YM2612/Nuked-OPN2 -
+measured against two independent oracles: Nuked-OPM itself, built natively
+as the port's own die-shot-derived reference, gates `core` and `edge` at a
+literal 100 % (9 core scripts / 7,132,062 cycles, 6 edge scripts /
+2,575,891 cycles, every sample exact); ymfm (Aaron Giles, BSD-3-Clause) is
+a second, independent, report-only cross-check, since its `generate()`
+resolves a register write the instant it arrives rather than modelling this
+chip's own two-port write-latch delay. Two defects found and fixed during
+this ticket turned out to explain what first looked like oracle
+disagreement: the VGM importer's new `ym2151` branch could place an
+address-port write and its data-port write on the same cycle, corrupting
+the corpus itself before any comparison ran; and `envelopePhase6()` read
+`eg_serial_bit` one tick late, corrupting the noise channel whenever it was
+active, invisible on 13 of the 15 corpus scripts because nothing else ever
+reads that bit. Both fixed, every core and edge script is now a literal
+100.0000 % identical against Nuked-OPM. See
+[docs/chips/ym2151.md](docs/chips/ym2151.md) for the full sheet. No driver
+or arranger role yet (decision 38) - `Ym2151` is a bare export, reachable
+directly but not wired into the studio picker; the YM2610 (OPNB, NEXT-16's
+second half) is deferred to its own, later ticket.
+
 ## 0.19.1: Console changes without a dropout
 
 A cold console change in the middle of a song no longer underruns. When the

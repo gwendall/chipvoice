@@ -7,12 +7,15 @@ import { chipSnes } from './chips/snes.mjs';
 import { chipC64, chipC64_8580 } from './chips/c64.mjs';
 import { chipVrc6, chipVrc6Combined } from './chips/vrc6.mjs';
 import { chipAy8910, chipAy8910Gme } from './chips/ay8910.mjs';
+import { chipYm2151 } from './chips/ym2151.mjs';
 import { nesSndEmu } from './oracles/nes-snd-emu.mjs';
 import { mesen } from './oracles/mesen.mjs';
 import { mesenVrc6 } from './oracles/mesen-vrc6.mjs';
 import { gbSndEmu } from './oracles/gb-snd-emu.mjs';
 import { sameboy } from './oracles/sameboy.mjs';
 import { nukedOpn2 } from './oracles/nuked-opn2.mjs';
+import { nukedOpm } from './oracles/nuked-opm.mjs';
+import { ymfm } from './oracles/ymfm.mjs';
 import { snesSpc } from './oracles/snes-spc.mjs';
 import { residfp, residfp8580 } from './oracles/residfp.mjs';
 import { sn76496 } from './oracles/sn76496.mjs';
@@ -63,9 +66,9 @@ import { ChangeStream } from './change-stream.mjs';
  * the oracle side changes. It reuses `corpus/c64`: same registers, same
  * songs, run twice.
  */
-const CHIPS = { '2a03': chip2a03, dmg: chipDmg, md: chipMd, snes: chipSnes, c64: chipC64, 'c64-8580': chipC64_8580, vrc6: chipVrc6, 'vrc6-combined': chipVrc6Combined, ay8910: chipAy8910, 'ay8910-gme-amp': chipAy8910Gme };
-const ORACLES = { 'nes-snd-emu': nesSndEmu, mesen, 'gb-snd-emu': gbSndEmu, sameboy, 'nuked-opn2': nukedOpn2, 'snes-spc': snesSpc, residfp, 'residfp-8580': residfp8580, sn76496, 'game-music-emu': gameMusicEmu, 'mesen-vrc6': mesenVrc6, ayumi, 'game-music-emu-ay': gameMusicEmuAy };
-const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu', md: 'nuked-opn2', snes: 'snes-spc', c64: 'residfp', 'c64-8580': 'residfp-8580', vrc6: 'game-music-emu', 'vrc6-combined': 'mesen-vrc6', ay8910: 'ayumi', 'ay8910-gme-amp': 'game-music-emu-ay' };
+const CHIPS = { '2a03': chip2a03, dmg: chipDmg, md: chipMd, snes: chipSnes, c64: chipC64, 'c64-8580': chipC64_8580, vrc6: chipVrc6, 'vrc6-combined': chipVrc6Combined, ay8910: chipAy8910, 'ay8910-gme-amp': chipAy8910Gme, ym2151: chipYm2151 };
+const ORACLES = { 'nes-snd-emu': nesSndEmu, mesen, 'gb-snd-emu': gbSndEmu, sameboy, 'nuked-opn2': nukedOpn2, 'snes-spc': snesSpc, residfp, 'residfp-8580': residfp8580, sn76496, 'game-music-emu': gameMusicEmu, 'mesen-vrc6': mesenVrc6, ayumi, 'game-music-emu-ay': gameMusicEmuAy, 'nuked-opm': nukedOpm, ymfm };
+const DEFAULT_ORACLE = { '2a03': 'nes-snd-emu', dmg: 'gb-snd-emu', md: 'nuked-opn2', snes: 'snes-spc', c64: 'residfp', 'c64-8580': 'residfp-8580', vrc6: 'game-music-emu', 'vrc6-combined': 'mesen-vrc6', ay8910: 'ayumi', 'ay8910-gme-amp': 'game-music-emu-ay', ym2151: 'nuked-opm' };
 
 const args = process.argv.slice(2);
 const chipId = args[0];

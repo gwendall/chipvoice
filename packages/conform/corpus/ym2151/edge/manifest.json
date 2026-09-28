@@ -1,0 +1,50 @@
+[
+  {
+    "chip": "ym2151",
+    "filename": "source/dt2-mul-zero.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "2200e35a0e46f114322d2fad2006974c84406bbe2d0d002229b7fe16cb716b00",
+    "note": "Channel 2, one operator: DT2 (the LFO-independent detune, values 0-3) stepped at MUL 0 - the \"times 0.5\" path (`inc = basefreq >> 1` in `OPM_PhaseCalcIncrement` when `multi` is 0), which interacts with DT2's own frequency-number shift ahead of it in a way a MUL >= 1 script never reaches."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/key-on-while-releasing.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "11bf38d34c5d880bbfbbc95b114bf9faaf3aae3c33bb5bbab4f770f6b8924822",
+    "note": "Channel 0, one operator: keyed on, keyed off partway through decay (entering release), then keyed back on again while still in release, before it has reached silence - the envelope generator's restart-from-release path."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/lfo-test-reset.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "b451b887758f0aa3fe2ab6d5f6ab2752ee797b8bb49a08cb7b55a2296fc44675",
+    "note": "The test register (0x01), whose D1 bit resets the LFO's own free-running counter (`OPM_DoRegWrite`'s `mode_test[1]` path): the LFO is left running for a while, the test bit is set then cleared, and channel 3 (LFO depth turned up) is keyed on around the reset so the phase discontinuity is in the trace."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/noise-nfrq-sweep.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "d9ec3d5501f2b576bd2bc1972f64ad718febf6e240d9dfb1010c203c05026e1f",
+    "note": "Channel 7 op4, NE held on, NFRQ stepped through every value 0-31 - the full range, not just the two corners `core/noise` already covers."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/tl-ar-extremes.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "099f5126a37c96b56f0177e852d00be0b93dcc5b928078110b74e7748416e0be",
+    "note": "Channel 1, one operator, the four corners of TL x AR: TL 127 (maximum attenuation, at the edge of silence) with AR 31 (fastest attack), and TL 0 (no attenuation) with AR 0 (an attack so slow it barely moves in this log's span) - the two extremes most likely to expose an off-by-one at either table's edge."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/write-clobber.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "1408463ef6377d891ad5fc735a281d9eb42b219060861596daa6a4c04259d39b",
+    "note": "The settling-time behaviour this file's own header comment describes, deliberately triggered rather than avoided: two address/data register writes back to back on the very same VGM sample (zero native cycles apart, nowhere near the up-to-64-cycle settling window the first one would need) - so the first write (AR on op C2 of channel 4) is silently dropped and only the second (a harmless RL/FB/CONNECT write to channel 0) lands, per `reg_data_ready = reg_data_ready && !write_a_en` in the vendored `opm.c`. Both oracles model this the same way it happens on real silicon, since it falls out of the two-port protocol itself rather than being a special case either emulator added - a divergence here would mean one of them added special-case handling nuked-opm.c does not have."
+  }
+]
