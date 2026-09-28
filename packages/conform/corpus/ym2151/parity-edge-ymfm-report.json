@@ -1,0 +1,336 @@
+{
+  "chip": "ym2151",
+  "oracle": {
+    "id": "ymfm",
+    "name": "ymfm (Aaron Giles)"
+  },
+  "voices": [
+    "l",
+    "r"
+  ],
+  "date": "2026-09-28",
+  "files": 6,
+  "cycles": 2575891,
+  "identical": 855586,
+  "diverging": 6,
+  "results": [
+    {
+      "name": "dt2-mul-zero",
+      "source": "source/dt2-mul-zero.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 120,
+      "cycles": 387987,
+      "identical": 136130,
+      "first": {
+        "cycle": 136000,
+        "voice": 0,
+        "a": 0,
+        "b": 798
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 137106,
+          "a": 3862,
+          "b": 3879,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3862,
+          "onlyB": 3879,
+          "shift": 10,
+          "aligned": 17,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 136752,
+          "a": 3864,
+          "b": 3879,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3864,
+          "onlyB": 3879,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "key-on-while-releasing",
+      "source": "source/key-on-while-releasing.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 64,
+      "cycles": 231980,
+      "identical": 112448,
+      "first": {
+        "cycle": 112448,
+        "voice": 0,
+        "a": 0,
+        "b": 4
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 112478,
+          "a": 1845,
+          "b": 1841,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1845,
+          "onlyB": 1841,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 112868,
+          "a": 1832,
+          "b": 1841,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1832,
+          "onlyB": 1841,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "lfo-test-reset",
+      "source": "source/lfo-test-reset.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 72,
+      "cycles": 328003,
+      "identical": 128000,
+      "first": {
+        "cycle": 128000,
+        "voice": 0,
+        "a": 0,
+        "b": 852
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 128164,
+          "a": 3083,
+          "b": 3079,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3083,
+          "onlyB": 3079,
+          "shift": 10,
+          "aligned": 1,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 128516,
+          "a": 3074,
+          "b": 3079,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 3074,
+          "onlyB": 3079,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "noise-nfrq-sweep",
+      "source": "source/noise-nfrq-sweep.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 248,
+      "cycles": 1031980,
+      "identical": 115040,
+      "first": {
+        "cycle": 112842,
+        "voice": 0,
+        "a": -8,
+        "b": 0
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 115820,
+          "a": 14152,
+          "b": 14189,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 14152,
+          "onlyB": 14189,
+          "shift": 10,
+          "aligned": 9,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 117826,
+          "a": 14229,
+          "b": 14189,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 14229,
+          "onlyB": 14189,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "tl-ar-extremes",
+      "source": "source/tl-ar-extremes.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 88,
+      "cycles": 291964,
+      "identical": 136000,
+      "first": {
+        "cycle": 136000,
+        "voice": 0,
+        "a": 0,
+        "b": 638
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 136542,
+          "a": 2388,
+          "b": 2386,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 2388,
+          "onlyB": 2386,
+          "shift": 10,
+          "aligned": 8,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 136384,
+          "a": 2382,
+          "b": 2386,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 2382,
+          "onlyB": 2386,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "write-clobber",
+      "source": "source/write-clobber.vgm, decoded by packages/conform/src/vgm.mjs",
+      "writes": 124,
+      "cycles": 303977,
+      "identical": 227968,
+      "first": {
+        "cycle": 227968,
+        "voice": 0,
+        "a": 0,
+        "b": 852
+      },
+      "edges": [
+        {
+          "voice": "l",
+          "identical": 228150,
+          "a": 1178,
+          "b": 1183,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1178,
+          "onlyB": 1183,
+          "shift": 10,
+          "aligned": 3,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        },
+        {
+          "voice": "r",
+          "identical": 228204,
+          "a": 1180,
+          "b": 1183,
+          "exact": 0,
+          "near": 0,
+          "onlyA": 1180,
+          "onlyB": 1183,
+          "shift": 0,
+          "aligned": 0,
+          "runs": {
+            "ours": 1,
+            "theirs": 1,
+            "alignedTimes": 0,
+            "alignedValues": 0,
+            "maxShift": 0
+          }
+        }
+      ]
+    }
+  ]
+}

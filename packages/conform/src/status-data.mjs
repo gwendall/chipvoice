@@ -133,10 +133,27 @@ export const CHIPS = [
       'Remains: a studio/arranger integration; a real test ROM (none found to automate - see the sheet); a unit\'s line-out; other AY/YM hosts (MSX, the YM2203/YM2608 SSG half).',
     ],
   },
+  {
+    id: 'ym2151',
+    machine: 'Arcade and home-computer boards (Sharp X68000, many 1980s Taito/Konami/Sega/Capcom boards)',
+    chip: 'Yamaha YM2151 (OPM)',
+    sheet: 'docs/chips/ym2151.md',
+    since: '0.19.1',
+    analog: { done: 0, label: 'none' },
+    /** Voices the driver reaches, of the chip's own two DAC pins. None yet: decision 38 keeps YM2151 out of the studio picker and the arranger, and this chip has no per-channel output tap to reach anyway - see the sheet's "Known deviations". */
+    driver: { reached: 0, voices: 2 },
+    voices: ['l', 'r'],
+    notes: [
+      'NEXT-16\'s first half is written by porting Nuked-OPM (Nuke.YKT, LGPL 2.1, from John McMaster\'s YM2151 die shot) line for line, the same choice decision 17 made for the YM2612 (decision 51), compared against two independent oracles: Nuked-OPM itself, built natively as the port\'s own die-shot-derived reference, and ymfm (Aaron Giles, BSD-3-Clause, hardware-tuned but not die-derived). `core` and `edge` are both held to a literal 100 % against Nuked-OPM: every sample, on the same register stream, at this chip\'s own native rate. ymfm stays report-only throughout, since its `generate()` is not cycle-exact - it resolves a register write the instant it arrives rather than modelling this chip\'s own two-port write-latch delay - so a disagreement there is read against Nuked-OPM, decision 48\'s precedent, not gated on. The YM2610 (OPNB), NEXT-16\'s second half, is a separate, later ticket.',
+      'Analog: unmeasured; no host wires this chip\'s two DAC pins into a mix stage yet.',
+      'Driver: none yet - the studio picker and the arranger do not reach this chip (decision 38); the conformance harness is its only public path today.',
+      'Remains: a studio/arranger integration; a real test ROM (none found to automate - see the sheet); a unit\'s line-out; the YM2610 (OPNB), tracked as its own ticket.',
+    ],
+  },
 ];
 
 export const PLANNED = [
-  { machine: 'Later', chip: 'PC Engine, GBA, Amiga, POKEY, YM2151, YM2610', phase: null, plan: 'After the five, by demand.' },
+  { machine: 'Later', chip: 'PC Engine, GBA, Amiga, POKEY, YM2610', phase: null, plan: 'After the five, by demand.' },
 ];
 
 export const read = (file) => (fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null);

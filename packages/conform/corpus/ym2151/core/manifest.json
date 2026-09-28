@@ -1,0 +1,74 @@
+[
+  {
+    "chip": "ym2151",
+    "filename": "source/algorithms.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "9cf14049c56daaeabfbc22d3f25ec85e2f76cf5914e109df6b8646a9d3a53f2c",
+    "note": "Channel 0 through all eight CONNECT algorithms (0-7), feedback fixed at 4 so op1 self-modulates the same way in each, four operators at distinct TL/MUL so the algorithms' different summing is audible - key on, hold, key off, next algorithm."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/detune-multiple.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "c774a2075034ecfba5bc868ed53d3d6634d0f85e1f751ef8f00778bac58ce8be",
+    "note": "Channel 2, one operator (C2, the audible carrier at CONNECT 7) stepped through DT1 0-7 at MUL 1, then MUL 0-15 at DT1 0, so both the detune table and the times-N/times-0.5 multiple path are each exercised on their own."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/envelope.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "249b95a08f2bfe931c0152448d8a49c6acf475bbe0e925dfbb18d8386a23c6d5",
+    "note": "Channel 3, CONNECT 7, one operator through the envelope corners: AR 31/8/1, D1R/D2R/RR spanning slow to fast, D1L spanning shallow to deep, TL 0 and 96 - each combination keyed on long enough to move through attack into decay."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/feedback.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "3460b407827991dabc870b101dfcbd3a95cc01fc84f4d9b9ce5a0902bb46da4b",
+    "note": "Channel 1, CONNECT 7 (fully additive, so op1's own feedback is directly in the mix), FB stepped 0 through 7."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/keyon-per-operator.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "6d61140a3735fe71e9145536297107fb470987c7cc7727d908fca36e9927de17",
+    "note": "Channel 5, CONNECT 7 (every operator directly in the mix): each of the four operators keyed on alone, then all four together, then released one at a time - proving the per-operator bits of register 0x08 gate independently."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/lfo.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "70e27fd2c5358dc57a047c473ff5bd15d913bc5a15dda96e7d462028fdb6845c",
+    "note": "Channel 4, all four LFO waveforms (0x1b: saw, square, triangle, noise), a low and a high LFRQ, PMD and AMD both nonzero, PMS and AMS both nonzero on the channel - so pitch and amplitude modulation are both audible against every waveform."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/noise.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "a635b831fae6b4ec1f63970af23cca3c5f0ccc2a21617680c54cd2ae821996b6",
+    "note": "Channel 7 op4 (C2), the only slot the noise generator can replace: NE off (a plain tone, as a control), then NE on at NFRQ 0 and NFRQ 31."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/stereo.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "f354360664cc38f86d842b5ea40e36eeb35831e366208336476c418f2dba11bd",
+    "note": "Two channels, one per side: channel 0 RL = left only (0x40 in the top two bits of 0x20), channel 1 RL = right only (0x80), then both switched to the other side and finally both off - stereo audible on the L/R change alone, register values otherwise identical."
+  },
+  {
+    "chip": "ym2151",
+    "filename": "source/timers-csm.vgm",
+    "source": "packages/conform/src/corpus/generate-ym2151.mjs",
+    "licence": "CC0-1.0 (chipvoice project; self-generated, no external material)",
+    "sha256": "a6aef96ab0e23af1b8febb18e334f0719d5661dffdc5e9d76d8e76981a03b458",
+    "note": "Channel 6: Timer A loaded short, IRQEN and LOAD set, then CSM (0x14 bit 7) turned on with the channel's operators otherwise configured normally - CSM key-ons the channel itself on every Timer A overflow, audible as a repeating attack with no register 0x08 write."
+  }
+]

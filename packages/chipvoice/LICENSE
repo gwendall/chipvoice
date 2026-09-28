@@ -1,7 +1,8 @@
-Two files are not under this licence: src/chips/md/ym2612.ts is a port of
-Nuked-OPN2 (Alexey Khokholov) and src/chips/snes/sdsp.ts a port of snes_spc's
-SPC_DSP (Shay Green); both are under the GNU Lesser General Public License
-2.1 or later, as the notices at their tops say. Everything else is MIT.
+Three files are not under this licence: src/chips/md/ym2612.ts is a port of
+Nuked-OPN2 (Alexey Khokholov), src/chips/snes/sdsp.ts a port of snes_spc's
+SPC_DSP (Shay Green), and src/chips/ym2151.ts a port of Nuked-OPM (Nuke.YKT);
+all three are under the GNU Lesser General Public License 2.1 or later, as
+the notices at their tops say. Everything else is MIT.
 
 MIT License
 
