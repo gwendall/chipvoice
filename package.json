@@ -33,6 +33,7 @@
     "audio:check": "node apps/web/scripts/audio-store.mjs check",
     "audio:push": "node apps/web/scripts/audio-store.mjs push",
     "sounds:build": "pnpm --filter gamesounds-site catalog:build",
+    "sounds:check-decode": "pnpm --filter gamesounds-site check-decode",
     "sounds:pull": "node apps/sounds/scripts/audio-store.mjs pull",
     "sounds:check": "node apps/sounds/scripts/audio-store.mjs check",
     "sounds:push": "node apps/sounds/scripts/audio-store.mjs push",

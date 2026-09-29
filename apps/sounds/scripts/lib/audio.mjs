@@ -73,9 +73,11 @@ function peakPerChannel(left, right) {
  * first, on the theory that a sum would bias the ratio `checkFormatEnergies`
  * computes whenever a codec's decoded PCM comes back a different length than
  * the wav it was encoded from. That was backwards, caught by a round-3
- * review before it ever shipped: this repo's dev-machine ffmpeg has no
- * libvorbis (see `vorbisEncoderArgs`'s own header), so its native vorbis
- * encoder is used, which does not trim the ogg's own end granule - the
+ * review before it ever shipped: at the time, this repo's dev-machine ffmpeg
+ * had no libvorbis, so its native vorbis encoder was used (see
+ * docs/DECISIONS.md, decision 54 - that machine-dependent encoder choice is
+ * gone since GS-06/GS-07, below), which does not trim the ogg's own end
+ * granule - the
  * decoded ogg routinely comes back padded with up to ~1023 samples of
  * TRAILING SILENCE, rounded up to the next 1024-sample block. Silence
  * contributes exactly zero to a SUM no matter how much of it there is, so
@@ -496,149 +498,148 @@ export function levelToConvention(render, { targetLufs = LOUDNESS_TARGET_LUFS, p
   return { sampleRate: render.sampleRate, left, right, seconds: render.seconds, peak: peakOf(left, right), rawMeasure: raw, appliedGainDb: Math.round(gainDb * 100) / 100 };
 }
 
-// Picked once per process: most ffmpeg builds (Ubuntu's apt package, which
-// CI installs) ship libvorbis, which encodes a source's own channel count
-// (mono stays mono) at good quality. A handful of minimal builds (observed
-// on a local dev machine's Homebrew ffmpeg) omit libvorbis and only have
-// ffmpeg's own native, "experimental" vorbis encoder, which refuses mono
-// input - `-strict -2` is only needed on that fallback path, so the common
-// case never pays for a flag it does not need.
-//
-// The fallback path's channel layout is NOT the same as the libvorbis
-// path's: it must upmix to stereo (the native encoder's own requirement),
-// so a fallback-built ogg is dual-mono stereo where a libvorbis-built ogg
-// of the same sound stays mono - see encodeVariant's own header for why
-// this matters for loudness. That upmix uses an explicit unity-gain pan
-// filter (`-af pan=stereo|c0=c0|c1=c0`, i.e. copy the mono input to both
-// output channels unchanged), not ffmpeg's own default `-ac 2` upmix:
-// ffmpeg's default applies -3.01 dB (1/sqrt(2)) to each channel, which is
-// correct for panning a mono source into a stereo field but wrong here,
-// since every browser's own mono decode plays a mono file at unity in both
-// channels - `-ac 2` alone would ship this fallback path's oggs about 3 dB
-// quieter than every other shipped format of the same sound. Verified
-// experimentally on this machine (ffmpeg 8.0.1, no libvorbis): a 440 Hz
-// test tone measured max_volume -20.0 dB in the source mono wav, -22.9 dB
-// after the old `-ac 2` encode (a ~2.9 dB loss, matching the expected
-// -3.01 dB attenuation), and -19.9 dB after this pan-filter encode
-// (matching the source, modulo ordinary lossy-codec noise).
-//
-// `oggEncoder` (`"auto" | "native" | "libvorbis"`, default `"auto"`)
-// overrides the auto-detection above - added for GS-07's own tests, so the
-// native fallback path (and its tail-drop retry, see the comment above
-// `encodeVariant` below) can be exercised deliberately even on a machine
-// whose ffmpeg has libvorbis too (true of CI's Ubuntu apt package - both
-// encoders are present there; `"auto"` just never picks the native one on
-// its own when libvorbis is available). Detection of what the machine
-// actually HAS stays cached and machine-wide (`hasLibvorbisCache`) - only
-// which branch a given call TAKES is overridable, never re-probed.
-let hasLibvorbisCache = null;
-function hasLibvorbis() {
-  if (hasLibvorbisCache === null) {
-    const result = spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { maxBuffer: 1024 * 1024 * 8 });
-    hasLibvorbisCache = /libvorbis/.test((result.stdout ?? "").toString());
-  }
-  return hasLibvorbisCache;
-}
-
-function resolveOggEncoder(oggEncoder) {
-  if (oggEncoder === "native" || oggEncoder === "libvorbis") return oggEncoder;
-  return hasLibvorbis() ? "libvorbis" : "native";
-}
-
-export function vorbisEncoderArgs(oggEncoder = "auto") {
-  return resolveOggEncoder(oggEncoder) === "native"
-    ? ["-af", "pan=stereo|c0=c0|c1=c0", "-c:a", "vorbis", "-strict", "-2", "-q:a", "5"]
-    : ["-c:a", "libvorbis", "-q:a", "5"];
-}
-
-// Both ffmpeg output calls in encodeVariant get these unconditionally (ogg
-// AND mp3, libvorbis path and fallback path alike): without them, ffmpeg's
-// ogg/vorbis muxer embeds a random stream serial number, and its mp3 stream
-// carries an encoder/version tag, on every encode - so byte-identical audio
-// re-encoded on a later run (or a fresh checkout) hashes differently even
-// though nothing about the sound changed, which is exactly what
+// Both ffmpeg output calls in encodeVariant (wav measurement round-trips and
+// the mp3 encode) get these unconditionally: without them, ffmpeg's mp3
+// stream carries an encoder/version tag on every encode, so byte-identical
+// audio re-encoded on a later run (or a fresh checkout) hashes differently
+// even though nothing about the sound changed, which is exactly what
 // scripts/check-determinism.mjs exists to catch. Verified experimentally: a
-// test tone encoded twice with the production fallback ogg args (no
-// bitexact) produced same-size, different-sha256 files; with
-// `-fflags +bitexact -flags:a +bitexact` added as OUTPUT options (after
-// `-i`, before the output path - the placement matters, the same flags
-// placed as INPUT/demuxer options before `-i` do not fix it), three repeated
-// encodes of the same input produced byte-identical output. mp3 already
-// happens to be stable on this machine without bitexact, but only because
-// the current ffmpeg/lame version string it embeds does not change between
-// runs; adding the same flags there too removes that dependency on the
-// build machine's ffmpeg version never changing.
+// test tone encoded twice with plain ffmpeg args (no bitexact) produced
+// same-size, different-sha256 files; with `-fflags +bitexact -flags:a
+// +bitexact` added as OUTPUT options (after `-i`, before the output path -
+// the placement matters, the same flags placed as INPUT/demuxer options
+// before `-i` do not fix it), repeated encodes of the same input produced
+// byte-identical output. mp3 already happens to be stable on this machine
+// without bitexact, but only because the current ffmpeg/lame version string
+// it embeds does not change between runs; adding the flags removes that
+// dependency on the build machine's ffmpeg version never changing. The ogg
+// no longer goes through ffmpeg at all (see GS-06/GS-07 below) - `sox -R`
+// is repeatable on its own terms, verified the same way (two encodes of the
+// same input, byte-identical sha256; see test/audio.test.mjs).
 const BITEXACT_ARGS = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
 
-// GS-07: the native-fallback ogg path drops audio, not just pads it -------
+// GS-06/GS-07: ogg encoding switched to libvorbis via sox, everywhere, plus
+// a fixed tail guard so no decoder's own end-trim ever eats real content ---
 //
-// Decision 54 (and the "known, non-blocking issue" section of
-// docs/GAMESOUNDS.md) documented the native vorbis encoder's dev-machine-only
-// end-of-stream behavior as harmless PADDING: a decoded ogg comes back
-// extended with trailing silence out to the next 1024-sample block boundary,
-// which a SUM-based energy check (`energyPerChannel`, above) cannot see,
-// since silence contributes exactly 0. That was incomplete. Measured
-// directly on this machine (ffmpeg 8.0.1, no libvorbis - `hasLibvorbis`
-// above returns false) with an 880 Hz, 0.4-linear-amplitude mono tone,
-// encoded with exactly `vorbisEncoderArgs("native")` plus BITEXACT_ARGS and
-// decoded back:
-//   - input lengths whose `n mod 1024` falls in roughly [962, 1023], and
-//     any length with residue exactly 0, decode SHORT by the entire final
-//     1024-sample block: n=3071 (residue 1023) decodes to 2048 (1023
-//     samples of real, non-silent audio gone, not padded), n=5119 to 4096,
-//     n=20479 to 19456, n=4096 (residue 0) to 3072, n=2048 (residue 0) to
-//     1024.
-//   - n=1023 and n=1024 decode to ZERO samples: the whole sound is gone.
-//   - every other residue tested (1, 152, 352, 452, 512, 552, 652, 752, 852,
-//     904, 952) decodes to `ceil(n/1024)*1024` with no loss - the padding
-//     decision 54 already documented, still real and still harmless.
-//   - a step-2 scan at base 4096 places the threshold between residue 960
-//     (does not truncate) and residue 962 (does); 961 itself was not
-//     directly tested.
-// Decoding all 1080 shipped live oggs on `main` (commit 3b40c16) found 56 of
-// them (5.2%) actually inside the truncating band, mean 999 samples lost
-// (~22.7ms at 44.1kHz), max 1023 - invisible to `checkFormatEnergies`
-// because the lost tail was, in every one of the 56 cases, a quiet decay
-// (near-zero energy) - see docs/DECISIONS.md's dated amendment to decision
-// 54 for the full accounting.
+// Decision 54 (and the GS-07 v1 amendment that briefly replaced it) blamed
+// this repo's own ogg ENCODER for dropped/truncated audio: first as harmless
+// end-of-block padding, then - wrongly - as the native "experimental" vorbis
+// encoder outright dropping a final 1024-sample block on certain input
+// lengths. Neither was the real story. Reviewer measurement (granule
+// positions read directly off the ogg stream, and a decode through the
+// reference libvorbis decoder via `sox`/libvorbisfile) proved the encoder,
+// native OR libvorbis, was never at fault: a native-encoder ogg's own final
+// granule position is always >= the source frame count (n=1023 -> granule
+// 1024, 3071 -> 3072, 4096 -> 4096, 10035 -> 10048), and the reference
+// decoder plays every one of those files whole. What actually cuts audio is
+// DECODERS - plural, and not the same amount:
 //
-// The exact ROOT CAUSE inside ffmpeg's native encoder is NOT identified
-// here, deliberately: this is an empirically measured threshold on one
-// ffmpeg/libavcodec build (8.0.1), not a documented behavior of
-// `libavcodec/vorbisenc.c` read and cited - a different ffmpeg version could
-// move this threshold, narrow it, or widen it. The fix below does not
-// depend on knowing the cause.
+//   - ffmpeg's own CLI decoder (what `decodeToRender` below uses, and so
+//     what CI's `checkFormatLengths` gate was reading) drops up to 128
+//     frames off the END of ANY ogg, libvorbis-encoded ones included - not
+//     just the old native-encoder path. Measured on the real
+//     movement-jump-8bit-2a03 v1 wav (10035 frames): a `sox -R ... -C 5`
+//     libvorbis ogg of it decodes to 9907 frames in the ffmpeg CLI, 128
+//     short. The first 9907 samples match the reference decoder to within
+//     1.5e-5; the missing tail peaks at 0.00024 - real content, just quiet.
+//     This is why the GS-07 v1 fix (a retry that only ran on the native
+//     path) could never pass CI: CI's ffmpeg has libvorbis, so it never took
+//     that branch, and libvorbis oggs get cut by this same CLI decoder too -
+//     333 of 1080 live variants failed CI's length gate this way, every one
+//     exactly 128 frames short.
+//   - Real browsers (Playwright 1.62.1, `decodeAudioData` into an
+//     `OfflineAudioContext`, "last sample whose short RMS-adjacent value
+//     exceeds 1e-3" as the content-loss threshold - see
+//     scripts/check-browser-decode.mjs) are worse, and disagree with the
+//     ffmpeg CLI: across all 1080 live catalogue oggs on `main` (commit
+//     3b40c16, native-encoder-produced), Chromium 151 fails to decode 5 of
+//     them at all, decodes 1013 shorter than the wav, and loses audible
+//     content on 747 relative to what Firefox plays (mean 465 samples lost,
+//     max 1024, about 23ms at 44.1kHz) - while Firefox 153 decodes all 1080
+//     whole. The same 1010 unique wavs re-encoded with `sox -R in.wav -C 5
+//     out.ogg` (libvorbis, mono) fare much better in Chromium - 0 decode
+//     errors, 686 shorter than the wav but by at most 128 frames (matching
+//     the ffmpeg-CLI figure above) - but not perfectly: the last audible
+//     sample matches Firefox exactly on 917 of 1080, and on the other 163 it
+//     sits up to 179 frames earlier (partly the 128-frame buffer trim,
+//     partly each decoder's own different rounding of an already-near-zero
+//     fade tail). Firefox again decodes all 1080 whole. The ffmpeg CLI's own
+//     decoded length matches Chromium's on only 1004 of 1080 - it is NOT a
+//     faithful proxy for what a browser does, which is why
+//     scripts/check-browser-decode.mjs exists as its own, separate gate
+//     (real browsers, not a CLI decode) rather than trusting a wider
+//     `checkFormatLengths` tolerance.
+//   - mp3 has no equivalent content-loss problem: Chromium is gapless-exact
+//     (1042 of 1080 live mp3s decode to exactly the wav's own frame count,
+//     the other 38 longer by 4 to 46 samples, none shorter). Firefox decodes
+//     every mp3 whole too, but shifts the content later by 623 to 1774
+//     samples (mean ~1172, roughly 14 to 40ms) - it does not fully trim the
+//     LAME encoder's own priming delay. That is a real, separate defect
+//     (leading silence/latency, not lost content) - see docs/BACKLOG.md's
+//     GS-08. `check-browser-decode.mjs` reports it, never fails on it.
 //
-// The fix: encode as today; if the decoded ogg comes back shorter than the
-// source, re-encode from a COPY of the source padded with trailing zero
-// samples out to a length whose own residue sits deep inside the measured
-// safe band - `ceil(sourceFrames/1024)*1024 + OGG_TAIL_RETRY_PAD_EXTRA`
-// always lands on residue 512, comfortably inside the 1..960 safe range
-// above - then decode and check again, throwing if even the retry still
-// comes back short. Trailing zeros add no energy (the same sum-invariance
-// decision 54 already relied on) and the native-fallback ogg is already
-// padded to a block boundary regardless of this fix, so nothing audible
-// changes for a sound that goes through the retry; only WHICH block
-// boundary the encoder lands on changes, from one measured to drop content
-// to one measured not to.
+// The catalogue has no loop sounds (docs/BACKLOG.md), so trailing silence -
+// from padding, from a guard, from either decoder's own trim eating into
+// it - is never audible as a seam.
 //
-// This is encode-verify-retry, not a blanket pre-pad: a variant whose first
-// encode already decodes whole (1024 of the 1080 live oggs) never triggers
-// the retry branch at all, so its ogg bytes and hash are byte-for-byte
-// identical to before this fix - zero churn on every ogg that was never
-// broken. The libvorbis path is untouched: it never calls this retry logic,
-// since `isNativeFallbackOgg` below is only true on the native-encoder
-// branch.
-const OGG_TAIL_RETRY_PAD_EXTRA = 512;
+// The fix has two parts:
+//   1. Stop using ffmpeg's own vorbis encoders (native OR libvorbis)
+//      entirely - encode every ogg with `sox -R <wav> -C 5 <ogg>` on every
+//      machine (`-R`: deterministic pseudo-random state, proven
+//      byte-repeatable across two encodes of the same input; `-C 5`: sox's
+//      own documented quality knob for a lossy format, fed straight to
+//      libvorbis's own quality API exactly as ffmpeg's `-q:a 5` is - same
+//      encoder, same scale, same target quality, different front end). This
+//      is the one tool this build ships with AND the one CI exercises, so
+//      there is no dev-machine-only code path left to diverge (GS-06). Sox
+//      keeps the source's own channel count, so the ogg is mono like the
+//      wav and mp3 now - the old native-fallback path's dual-mono stereo
+//      upmix (and its own unity-gain pan filter, `encodeVariant`'s former
+//      header) no longer exists on any machine.
+//   2. Since even a complete, correctly-encoded libvorbis ogg still gets its
+//      last ~128 frames trimmed by ffmpeg's CLI decoder and by Chromium,
+//      append `OGG_TAIL_GUARD_FRAMES` zero samples to the ogg encoder's
+//      INPUT only (never the wav or mp3 that ship) before every encode, so
+//      that trim always eats manufactured silence, never the real signal.
+//      `checkFormatLengths` keeps comparing against the true, unpadded
+//      source frame count - only the ogg's own encoder input changes.
+const OGG_TAIL_GUARD_FRAMES = 256;
 
-function isNativeFallbackOgg(oggEncoder) {
-  return resolveOggEncoder(oggEncoder) === "native";
+// sox and its vorbis format handler are a hard requirement now - there is no
+// silent fallback left to slip to. `ensureSoxVorbis` is called once per
+// process (cached) before the first ogg encode and throws a specific,
+// actionable error naming what to install if either piece is missing, so a
+// misconfigured machine fails the build loudly instead of silently shipping
+// (or silently skipping) ogg files.
+let soxVorbisChecked = false;
+function ensureSoxVorbis() {
+  if (soxVorbisChecked) return;
+  const result = spawnSync("sox", ["--help-format", "vorbis"], { maxBuffer: 1024 * 1024 });
+  if (result.error) {
+    throw new Error(
+      "encodeVariant: `sox` is not installed or not on PATH. Every ogg this catalogue ships is encoded with sox's " +
+        "libvorbis handler (GS-06/GS-07, scripts/lib/audio.mjs) - install it: `brew install sox` on macOS, or on " +
+        "Ubuntu/Debian CI runners `sudo apt-get install -y sox libsox-fmt-base` (use `libsox-fmt-all` if that package " +
+        "does not include vorbis on the runner's release).",
+    );
+  }
+  const out = `${(result.stdout ?? "").toString()}${(result.stderr ?? "").toString()}`;
+  if (!/^Format:\s*vorbis/m.test(out)) {
+    throw new Error(
+      "encodeVariant: `sox` is installed but its vorbis format handler is missing (`sox --help-format vorbis` did not " +
+        "report it). Install the format-handler package: `sudo apt-get install -y libsox-fmt-base` (or " +
+        "`libsox-fmt-all`) on Ubuntu/Debian, or reinstall `sox` from a build with Vorbis support on macOS (Homebrew's " +
+        "`sox` bottle includes it by default).",
+    );
+  }
+  soxVorbisChecked = true;
 }
 
 /** A copy of `render` (see `RenderResult`, this module's own shape) with
  * trailing zero-valued samples appended on every channel out to
- * `targetFrames`. Used only by `encodeVariant`'s native-fallback ogg retry,
- * above - never touches the wav/mp3 that ship, only a re-encode attempt. */
+ * `targetFrames`. Used by `encodeVariant`'s tail guard (`OGG_TAIL_GUARD_FRAMES`,
+ * above) - only ever builds the ogg encoder's own input, never touches the
+ * wav/mp3 that ship. */
 function padRenderTrailingZeros(render, targetFrames) {
   const pad = (samples) => {
     if (!samples) return null;
@@ -655,7 +656,7 @@ function padRenderTrailingZeros(render, targetFrames) {
  * an ogg and an mp3 encoded from the same wav compress to different bytes,
  * so a shared filename hash would only ever be provably correct for the
  * wav itself - the bug that motivated this (see docs/DECISIONS.md). Every
- * ffmpeg output is written to a temp name first, hashed from the bytes
+ * encoder output is written to a temp name first, hashed from the bytes
  * actually on disk, then renamed to its own content-addressed name - the
  * hash this function returns is always the hash of the exact bytes that
  * ship, never assumed from the encoder's own exit code.
@@ -665,25 +666,18 @@ function padRenderTrailingZeros(render, targetFrames) {
  * identity, since the wav IS the canonical render every format was encoded
  * from - and the measured loudness of the shipped wav.
  *
- * Channel layout is NOT uniform across a catalogue built on different
- * machines: the wav and mp3 always carry the render's own channel count
- * (mono for every Phase 1 + GS-03 preset, since none pans away from center -
- * see sfx-engine's `panToStereo`). The ogg does too, IF the build machine's
- * ffmpeg has libvorbis (true in CI - Ubuntu's apt package ships it). On a
- * machine without libvorbis (this repo's own dev Homebrew ffmpeg, confirmed
- * missing it), the ogg is upmixed to dual-mono stereo instead, because
- * ffmpeg's native vorbis encoder refuses mono input - see
- * `vorbisEncoderArgs`'s own header for that upmix and why it must use an
- * explicit unity-gain pan filter, not `-ac 2`, to avoid a ~3 dB loudness
- * loss. Both layouts are correct, matched-loudness audio; a build only
- * needs to know which one it is producing, never assume "mono throughout."
- *
- * `oggEncoder` (`"auto" | "native" | "libvorbis"`, default `"auto"`) is
- * forwarded to `vorbisEncoderArgs` - see that function's own header. It also
- * decides whether the native-fallback tail-drop retry above can run at all:
- * only when the resolved encoder is `"native"`.
+ * Channel layout IS uniform across every machine now (GS-06): the wav, ogg
+ * and mp3 all carry the render's own channel count - mono for every Phase 1
+ * + GS-03 preset, since none pans away from center (see sfx-engine's
+ * `panToStereo`). Before this fix, a machine whose ffmpeg lacked libvorbis
+ * upmixed the ogg to dual-mono stereo instead (this repo's own dev Homebrew
+ * ffmpeg was exactly such a machine) - see docs/DECISIONS.md, decision 54,
+ * for that now-retired mechanism. `sox` keeps the source's own channel
+ * count unconditionally, so there is no longer a machine-dependent layout to
+ * know about.
  */
-export function encodeVariant(render, outDir, { mkdirSync, oggEncoder = "auto" } = {}) {
+export function encodeVariant(render, outDir, { mkdirSync } = {}) {
+  ensureSoxVorbis();
   const wavBytes = toWavBytes(render);
   const wavHash = sha256Hex(wavBytes);
   if (mkdirSync) mkdirSync(outDir, { recursive: true });
@@ -692,39 +686,28 @@ export function encodeVariant(render, outDir, { mkdirSync, oggEncoder = "auto" }
   writeFileSync(wavPath, wavBytes);
 
   const sourceFrames = render.left.length;
-  const oggArgs = vorbisEncoderArgs(oggEncoder);
 
-  let tmpOggPath = join(outDir, `.tmp-${wavHash}.ogg`);
-  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...oggArgs, ...BITEXACT_ARGS, tmpOggPath]);
-  // Decoded once here (rather than after the rename below) so the exact same
-  // decode can both drive the tail-drop retry decision AND be reused as
-  // `decodedOgg` further down - the file's bytes do not change when it is
-  // later renamed to its content-addressed name, so decoding it twice would
-  // only cost an extra ffmpeg process, never change the result.
-  let decodedOgg = decodeToRender(tmpOggPath);
-
-  if (isNativeFallbackOgg(oggEncoder) && decodedOgg.left.length < sourceFrames) {
-    const targetFrames = Math.ceil(sourceFrames / 1024) * 1024 + OGG_TAIL_RETRY_PAD_EXTRA;
-    const paddedWavPath = join(outDir, `.tmp-${wavHash}-padded.wav`);
-    const retryOggPath = join(outDir, `.tmp-${wavHash}-retry.ogg`);
-    writeFileSync(paddedWavPath, toWavBytes(padRenderTrailingZeros(render, targetFrames)));
-    try {
-      run("ffmpeg", ["-y", "-v", "error", "-i", paddedWavPath, ...oggArgs, ...BITEXACT_ARGS, retryOggPath]);
-      const retryDecoded = decodeToRender(retryOggPath);
-      if (retryDecoded.left.length < sourceFrames) {
-        throw new Error(
-          `encodeVariant: native-fallback ogg still decoded short after the tail-drop retry - source ${sourceFrames} frame(s), ` +
-            `padded to ${targetFrames} frame(s) (residue ${targetFrames % 1024}), retry decoded ${retryDecoded.left.length} frame(s). ` +
-            `The empirically measured safe-residue assumption (see the comment above OGG_TAIL_RETRY_PAD_EXTRA in scripts/lib/audio.mjs) ` +
-            `did not hold for this input.`,
-        );
-      }
-      rmSync(tmpOggPath, { force: true });
-      tmpOggPath = retryOggPath;
-      decodedOgg = retryDecoded;
-    } finally {
-      rmSync(paddedWavPath, { force: true });
-    }
+  // GS-07: OGG_TAIL_GUARD_FRAMES of trailing silence, appended to the ogg
+  // encoder's INPUT only (see that constant's own header above) - never to
+  // the wav or mp3 that ship - so a decoder's own end-trim (ffmpeg's CLI
+  // decoder, Chromium, both proven to cut up to ~128 frames even off a
+  // complete libvorbis file) eats manufactured silence, not real content.
+  const guardedWavPath = join(outDir, `.tmp-${wavHash}-guard.wav`);
+  writeFileSync(guardedWavPath, toWavBytes(padRenderTrailingZeros(render, sourceFrames + OGG_TAIL_GUARD_FRAMES)));
+  const tmpOggPath = join(outDir, `.tmp-${wavHash}.ogg`);
+  try {
+    run("sox", ["-R", guardedWavPath, "-C", "5", tmpOggPath]);
+  } finally {
+    rmSync(guardedWavPath, { force: true });
+  }
+  const decodedOgg = decodeToRender(tmpOggPath);
+  if (decodedOgg.left.length < sourceFrames) {
+    throw new Error(
+      `encodeVariant: sox-encoded ogg decoded short even with the ${OGG_TAIL_GUARD_FRAMES}-frame tail guard - source ` +
+        `${sourceFrames} frame(s), guarded input ${sourceFrames + OGG_TAIL_GUARD_FRAMES} frame(s), ffmpeg CLI decoded ` +
+        `${decodedOgg.left.length} frame(s). The measured worst-case end-trim (see OGG_TAIL_GUARD_FRAMES's own header in ` +
+        `scripts/lib/audio.mjs) did not hold for this input - widen the guard.`,
+    );
   }
 
   const oggBytes = readFileSync(tmpOggPath);
@@ -742,20 +725,27 @@ export function encodeVariant(render, outDir, { mkdirSync, oggEncoder = "auto" }
   const measure = measureLoudness(wavPath);
 
   // Measure each shipped format's OWN per-channel peak, per-channel energy
-  // AND decoded frame count, exactly as a browser or the CLI would decode
-  // them - never assumed from the encoder's exit code or from the wav's own
-  // numbers. `formatEnergy` (total energy per channel - the sum of each
+  // AND decoded frame count from ffmpeg's own CLI decode - never assumed
+  // from the encoder's exit code or from the wav's own numbers, but also NOT
+  // a faithful stand-in for a real browser's own decode (see
+  // OGG_TAIL_GUARD_FRAMES's own header above: the ffmpeg CLI and Chromium
+  // agree on decoded length for only 1004 of 1080 live oggs) - that gap is
+  // exactly why scripts/check-browser-decode.mjs exists as its own,
+  // independent gate on real Chromium/Firefox decodes, rather than trusting
+  // this measurement, or a wider `checkFormatLengths` tolerance, to stand in
+  // for it. `formatEnergy` (total energy per channel - the sum of each
   // sample squared, not a mean; see `energyPerChannel`'s own header for why
   // a mean is the wrong quantity here) is what `checkFormatEnergies`
   // (checks.mjs) gates on for LOUDNESS; `formatFrames` (GS-07) is what
-  // `checkFormatLengths` (checks.mjs) gates on for LENGTH - a systematic
-  // loudness bug (the old fallback ogg path's `-ac 2` upmix) and the
-  // native-fallback tail-drop this section's own retry exists to fix are two
-  // different failure modes, caught by two different measurements, because
-  // a dropped quiet decay tail can pass an energy gate outright while still
-  // being real, audible content lost. `formatPeaks` is kept too, purely as
-  // informational data for the build log (see `peakPerChannel`'s own header
-  // for why it is not a gate).
+  // `checkFormatLengths` (checks.mjs) gates on for LENGTH against this same
+  // ffmpeg CLI decode - a systematic loudness bug (the old fallback ogg
+  // path's `-ac 2` upmix, decision 54) and a decoder trimming real, quiet
+  // content off the end (this section's own `OGG_TAIL_GUARD_FRAMES` guard)
+  // are two different failure modes, caught by two different measurements,
+  // because a trimmed quiet decay tail can pass an energy gate outright
+  // while still being real, audible content lost. `formatPeaks` is kept too,
+  // purely as informational data for the build log (see `peakPerChannel`'s
+  // own header for why it is not a gate).
   const sourcePeaks = peakPerChannel(render.left, render.right);
   const sourceEnergy = energyPerChannel(render.left, render.right);
   const decodedMp3 = decodeToRender(join(outDir, mp3Name));
@@ -790,4 +780,4 @@ export function encodeVariant(render, outDir, { mkdirSync, oggEncoder = "auto" }
   };
 }
 
-export { peakOf, peakPerChannel, energyPerChannel, toWavBytes };
+export { peakOf, peakPerChannel, energyPerChannel, toWavBytes, OGG_TAIL_GUARD_FRAMES };

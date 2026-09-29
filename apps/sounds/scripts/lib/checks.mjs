@@ -6,9 +6,9 @@ import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP, firstAboveFloor, peakOf, 
 // checkFormatEnergies guards the shipped ogg/mp3's own decoded loudness
 // against the wav it was encoded from - built from decoding and measuring
 // every real variant in this catalogue (both origins, both formats) after
-// the two fixes this file exists to guard (BITEXACT_ARGS and the fallback
-// ogg path's unity-gain pan filter - see audio.mjs's vorbisEncoderArgs and
-// encodeVariant).
+// the fix this file exists to guard (BITEXACT_ARGS, plus the now-retired
+// fallback ogg path's own unity-gain pan filter - see docs/DECISIONS.md,
+// decision 54, and audio.mjs's encodeVariant).
 //
 // This went through two designs, in order, and the first one was wrong in a
 // way a round-2 review caught before merge:
@@ -352,10 +352,11 @@ export function checkFormatEnergy(sourceEnergyLinear, formatEnergyLinear, { form
 }
 
 /** GS-07: every shipped ogg/mp3 must decode to AT LEAST as many sample
- * frames as the source wav it was encoded from - zero tolerance on the
- * short side. `decodedFrames` is `encodeVariant`'s own `formatFrames.ogg` /
- * `formatFrames.mp3` (scripts/lib/audio.mjs): the actual decoded PCM's
- * `left.length`, measured on the exact bytes that ship, never assumed.
+ * frames as the source wav it was encoded from, per ffmpeg's own CLI decode -
+ * zero tolerance on the short side. `decodedFrames` is `encodeVariant`'s own
+ * `formatFrames.ogg` / `formatFrames.mp3` (scripts/lib/audio.mjs): the actual
+ * decoded PCM's `left.length`, measured on the exact bytes that ship, never
+ * assumed.
  *
  * Unlike `checkFormatEnergy`, this has no per-channel variant to name: a
  * single decoded file's frame count is the same for every one of its
@@ -363,20 +364,26 @@ export function checkFormatEnergy(sourceEnergyLinear, formatEnergyLinear, { form
  * fixed-length buffer into equal-length `left`/`right` arrays), so there is
  * no channel-specific length to report separately the way there is for
  * energy or peak (a channel CAN be quieter than another; it cannot be
- * shorter). Longer than the source is fine and expected - the
- * native-fallback ogg path's own block-boundary padding, and mp3's few
- * extra gapless-trim samples (`docs/GAMESOUNDS.md`), both do this
- * routinely - only SHORTER is ever a defect: a lossy codec may pad silence
- * onto the end, it must never drop real content from it.
+ * shorter). Longer than the source is fine and expected - the ogg's own
+ * `OGG_TAIL_GUARD_FRAMES` pad, and mp3's few extra gapless-trim samples
+ * (`docs/GAMESOUNDS.md`), both do this routinely - only SHORTER is ever a
+ * defect: a lossy codec may pad silence onto the end, it must never drop
+ * real content from it.
  *
  * This exists because `checkFormatEnergies` alone could not see the defect
- * it was built to catch: ffmpeg's native "experimental" vorbis encoder
- * (`vorbisEncoderArgs`'s fallback path, audio.mjs) was found to drop the
- * ogg's entire final 1024-sample block for a band of input lengths, not
- * merely pad it as Decision 54 first assumed (see the amendment to Decision
- * 54 in `docs/DECISIONS.md`, and the comment above `OGG_TAIL_RETRY_PAD_EXTRA`
- * in audio.mjs for the full measured mechanism) - 56 of 1080 live catalogue
- * oggs (5.2%) were affected, and every one of the 56 passed
+ * it was built to catch: decoders - not encoders - were found to trim real,
+ * quiet content off the end of an otherwise-complete ogg. GS-07's own
+ * investigation (see the amendment to Decision 54 in `docs/DECISIONS.md`,
+ * and the comment above `OGG_TAIL_GUARD_FRAMES` in audio.mjs for the full
+ * measured mechanism and numbers) found this was never the encoder's fault -
+ * a native-encoder ogg's own granule position, and a libvorbis ogg decoded
+ * through the reference libvorbis decoder, both prove the encoded stream is
+ * complete. ffmpeg's own CLI decoder (what feeds this very gate) drops up to
+ * 128 frames off the end regardless, and real browsers (Chromium especially)
+ * cut differently again - see `scripts/check-browser-decode.mjs`, the gate
+ * that actually verifies what ships decodes whole in a real browser, since
+ * this ffmpeg-CLI-based gate structurally cannot see that gap. Every one of
+ * the original 56 (of 1080) affected live catalogue oggs passed
  * `checkFormatEnergies` outright, because the lost tail was, in every case,
  * a quiet decay contributing almost nothing to total energy either way. A
  * length gate catches exactly the class of loss an energy gate structurally

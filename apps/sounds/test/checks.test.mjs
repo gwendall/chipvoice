@@ -483,11 +483,15 @@ function sha256Hex(bytes) {
 }
 
 // GS-07: checkFormatLength / checkFormatLengths, the length gate that catches
-// what checkFormatEnergies structurally cannot - a lossy encode dropping real
-// content that happened to be quiet (see checks.mjs's own header on
-// checkFormatLength for the full story: ffmpeg's native vorbis fallback
-// dropping an entire final 1024-sample block for certain input lengths, with
-// every dropped tail being a quiet decay that passed the energy gate outright).
+// what checkFormatEnergies structurally cannot - real content dropped off a
+// file's tail that happened to be quiet (see checks.mjs's own header on
+// checkFormatLength for the full, corrected story: it is a lossy format's
+// own DECODER, not either vorbis encoder, that drops real samples off the
+// end of a file - measured up to 128 frames on ffmpeg's own CLI decoder,
+// worse in real browsers - with every dropped tail being a quiet decay that
+// passed the energy gate outright). The synthetic n=3071 -> 2048 shape used
+// below is a stand-in proving the gate's own zero-tolerance contract, not a
+// claim about which decoder or encoder produces exactly that shape.
 
 {
   // One frame short of the source must fail, with zero tolerance - this is
@@ -511,9 +515,9 @@ function sha256Hex(bytes) {
 }
 
 {
-  // Longer must pass too - both the native-fallback ogg path's own
-  // block-boundary padding and mp3's few extra gapless-trim samples do this
-  // routinely and legitimately (checkFormatLength's own header).
+  // Longer must pass too - the ogg tail guard's own block-boundary padding
+  // and mp3's few extra gapless-trim samples do this routinely and
+  // legitimately (checkFormatLength's own header).
   const result = checkFormatLength(1000, 1536, { format: "ogg" });
   assert.equal(result.ok, true, "a decoded file longer than the source must pass - padding, not a defect");
   console.log("PASS checkFormatLength passes a decoded file longer than the source");
@@ -569,13 +573,13 @@ function sha256Hex(bytes) {
       left,
       right: null,
       sampleRate: 44100,
-      formatFrames: { source: 3071, ogg: 2048, mp3: 3071 }, // the exact n=3071 -> 2048 shape measured on this dev machine
+      formatFrames: { source: 3071, ogg: 2048, mp3: 3071 }, // a synthetic stand-in for a truncated ogg - not tied to any one decoder/encoder
     },
   };
   const failures = checkSound(sound, variantData, sha256Hex);
   assert.ok(failures.some((f) => f.startsWith("variant 1 format length:")), "checkSound must surface a per-variant format-length failure from variantData.formatFrames");
   assert.ok(failures.some((f) => f.includes("ogg")), "the surfaced failure must name ogg as the truncated format");
-  console.log("PASS checkSound reports a per-variant format-length failure via variantData.formatFrames (n=3071 -> 2048, the measured native-fallback defect shape)");
+  console.log("PASS checkSound reports a per-variant format-length failure via variantData.formatFrames (n=3071 -> 2048, a synthetic truncated-ogg shape)");
 }
 
 {

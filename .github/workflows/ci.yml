@@ -217,7 +217,12 @@ jobs:
   # checked for determinism below, not just a subset.
   sounds:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Raised from 20: GS-06/GS-07 added a real-browser decode check
+    # (scripts/check-browser-decode.mjs) across both Chromium and Firefox for
+    # every one of the catalogue's 1080 variants, measured at ~7 minutes
+    # locally - on top of the two package builds, the catalogue build/rebuild,
+    # the test suites and the site's own e2e run this job already did.
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -248,6 +253,18 @@ jobs:
       # apps/web.
       - name: Install ffmpeg
         run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      # GS-06/GS-07: every ogg is now encoded with sox's own libvorbis
+      # handler, on every machine including this one - no ffmpeg-based ogg
+      # path is left to fall back to. `libsox-fmt-base` carries vorbis on
+      # current Ubuntu runner images (`sox --help-format vorbis` exits 1
+      # whether or not the handler is present, per `ensureSoxVorbis`'s own
+      # comment in scripts/lib/audio.mjs, so this step installs both packages
+      # unconditionally rather than branching on that exit code; apt itself
+      # is the idempotency check). `ensureSoxVorbis` still fails the actual
+      # build loudly and specifically if either piece turns out missing,
+      # rather than silently skipping or falling back.
+      - name: Install sox
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sox libsox-fmt-base
       # CI has no license to trust that whatever ffmpeg ships on the runner
       # re-encodes bytes identically to the author's own machine, so it never
       # serves the committed catalog.json as-is. Instead it rebuilds the
@@ -271,13 +288,25 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-      - run: pnpm exec playwright install --with-deps chromium
+          # Keyed to name both browsers explicitly (not just the lockfile
+          # hash) so a cache saved before GS-07 added Firefox can never be
+          # restored as a false hit missing Firefox's own binaries.
+          key: playwright-chromium-firefox-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - run: pnpm exec playwright install --with-deps chromium firefox
       # test-e2e.mjs owns the production server itself (a free port, polled
       # readiness, closed in a `finally`) - the same pattern as apps/web's
       # own test-local.mjs - then runs test-smoke.mjs and
       # packages/gamesounds/test-cli.mjs against it.
       - run: pnpm --filter gamesounds-site test:e2e
+      # GS-07: ffmpeg's own CLI decoder (what catalog:build's checkFormatLengths
+      # gate above reads) was found not to be a faithful proxy for what a real
+      # browser's decodeAudioData does with the same bytes - this step is the
+      # gate that actually matters for players, decoding every catalogue ogg
+      # and mp3 in real Chromium and Firefox (scripts/check-browser-decode.mjs).
+      # Runs against the CI-built catalogue this job already copied over
+      # generated/catalog.json above, and the public/f files pnpm --filter
+      # gamesounds-site build already produced from it.
+      - run: pnpm --filter gamesounds-site check-decode
 
   conformance:
     runs-on: ubuntu-latest

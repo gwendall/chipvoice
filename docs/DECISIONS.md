@@ -2368,73 +2368,230 @@ reason (`build-catalog.mjs` imports its built `dist/` directly).
 - so a change to `packages/sfx-engine` cannot affect what Vercel builds or
 serves.
 
-**Amendment, GS-07 (2026-09-29): round 3's "padding" description was
-incomplete - the native-fallback ogg path DROPS audio, it does not merely
-pad it.** Round 3 above (and `docs/GAMESOUNDS.md`'s "known, non-blocking
-issue" section) described ffmpeg's native vorbis encoder as extending a
-decoded ogg with harmless trailing silence out to the next 1024-sample
-block boundary. That is true for most input lengths, but not all of them.
-Measured directly on this machine (ffmpeg 8.0.1, no libvorbis) with an
-880 Hz, 0.4-linear-amplitude mono tone, encoded with exactly
-`vorbisEncoderArgs("native")` plus `BITEXACT_ARGS` and decoded back: input
-lengths whose `n mod 1024` falls in roughly [962, 1023], and any length
-with residue exactly 0, decode SHORT by the entire final 1024-sample
-block - real, non-silent audio removed, not padded (`n=3071`, residue
-1023, decodes to 2048; `n=4096`, residue 0, decodes to 3072) - and
-`n=1023`/`n=1024` decode to zero samples, the whole sound gone. A step-2
-scan places the threshold between residue 960 (does not truncate) and 962
-(does). Decoding all 1080 shipped live oggs on `main` (commit `3b40c16`)
-found 56 of them (5.2%) actually inside the truncating band, mean 999
-samples lost (about 22.7ms at 44.1kHz), max 1023 samples - invisible to
-`checkFormatEnergies` because the lost tail was, in every one of the 56
-cases, a quiet decay contributing almost nothing to total energy either
-way. `checkFormatEnergies` was never wrong about what it measures; it was
-never the right instrument for a defect that removes real content from a
-part of the signal that was already quiet.
+**Amendment, GS-07 v1 (2026-09-29, superseded below the same day): round
+3's "padding" description was incomplete - the native-fallback ogg path
+DROPS audio, it does not merely pad it.** Round 3 above (and
+`docs/GAMESOUNDS.md`'s "known, non-blocking issue" section) described
+ffmpeg's native vorbis encoder as extending a decoded ogg with harmless
+trailing silence out to the next 1024-sample block boundary. That is true
+for most input lengths, but not all of them. Measured directly on this
+machine (ffmpeg 8.0.1, no libvorbis) with an 880 Hz, 0.4-linear-amplitude
+mono tone, encoded with exactly `vorbisEncoderArgs("native")` plus
+`BITEXACT_ARGS` and decoded back: input lengths whose `n mod 1024` falls
+in roughly [962, 1023], and any length with residue exactly 0, decode
+SHORT by the entire final 1024-sample block - real, non-silent audio
+removed, not padded (`n=3071`, residue 1023, decodes to 2048; `n=4096`,
+residue 0, decodes to 3072) - and `n=1023`/`n=1024` decode to zero
+samples, the whole sound gone. Decoding all 1080 shipped live oggs on
+`main` (commit `3b40c16`) found 56 of them (5.2%) actually inside the
+truncating band, mean 999 samples lost. The fix this amendment shipped -
+an encode-verify-retry inside `encodeVariant`, forced native-only in a new
+`oggEncoder` test option - passed locally and moved exactly those 56
+oggs' `files.ogg` fields. **It never passed CI**, and CI's own `sounds` job
+failure on the resulting PR (#126) is what triggered the re-investigation
+below, superseding this amendment in full.
 
-The exact root cause inside ffmpeg's native encoder is not identified,
-deliberately: this is an empirically measured threshold on one
-ffmpeg/libavcodec build (8.0.1), not a documented behavior of
-`libavcodec/vorbisenc.c` read and cited - a different ffmpeg version could
-move, narrow or widen this threshold. The fix (GS-07) does not depend on
-knowing the cause: `encodeVariant` (`apps/sounds/scripts/lib/audio.mjs`)
-now decodes its first ogg encode and checks the decoded length against the
-source; if short, it re-encodes from a copy of the source padded with
-trailing zero samples out to `ceil(sourceFrames/1024)*1024 + 512` (always
-residue 512, comfortably inside the measured 1..960 safe band), decodes
-again, and throws if even the retry still comes back short. This is
-encode-verify-retry, not a blanket pre-pad: a variant whose first encode
-already decodes whole (1024 of the 1080 live oggs) never triggers the
-retry branch, so its ogg bytes and hash are byte-for-byte identical to
-before this fix. The libvorbis path (CI) is untouched - it never hits this
-retry logic at all.
+**Amendment, GS-07 v2 (2026-09-29): v1 blamed the wrong layer - it is
+DECODERS, not either vorbis ENCODER, that cut real audio off a file's own
+tail, and CI's libvorbis oggs are cut too.** A v1 fix that only retried on
+the native-encoder branch could only ever be a no-op in CI, whose ffmpeg
+has libvorbis - and CI's `sounds` job failed anyway (333 of 1080 variants
+failing the length gate, every one exactly 128 frames short), proving the
+defect was never specific to the native encoder at all. Direct measurement
+settles where it actually lives. Ogg's own granule position - the
+authoritative, standard field a stream's last page carries stating exactly
+how many sample frames it contains - is read straight off the byte stream
+(no decoder involved) and is always >= the source frame count on both
+encoders: a native-encoder ogg at `n=1023` carries granule `1024`; at
+`n=3071`, granule `3072`; at `n=4096`, granule `4096`; at `n=10035`,
+granule `10048`; the same `n=10035` source encoded with libvorbis instead
+carries granule `10035`, exactly matching the true content length. The
+reference libvorbis decoder plays every one of these files whole. The
+encoder, either encoder, was never the problem - every file it produces
+already declares, and contains, its own complete content.
 
-A new gate, `checkFormatLength`/`checkFormatLengths`
-(`apps/sounds/scripts/lib/checks.mjs`), wired into `checkSound` alongside
-`checkFormatEnergies`, now checks every shipped ogg/mp3 decodes to at
-least as many sample frames as the source wav (zero tolerance on the short
-side; longer, from padding or mp3's own gapless-trim slack, is fine and
-expected). It is a structurally different check from
-`checkFormatEnergies`, not a replacement for it: energy catches a uniform
-loudness bug, length catches content removed from a part of the signal
-that was already quiet, and neither can see the other's failure mode.
-`apps/sounds/test/audio.test.mjs` and `apps/sounds/test/checks.test.mjs`
-prove both directly: a standing regression proving the raw native encoder
-(no retry) really drops `n=3071` to 2048 decoded frames; the fix verified
-through the real `encodeVariant` production path (an `oggEncoder` option
-now forces the native-fallback branch even in CI, which has libvorbis) for
-`n=1023`, `3071` and `4096`; a no-churn control proving `n=2600` (already
-decodes whole) produces byte-identical ogg output with and without the
-retry logic present; and unit and wiring tests for the new length gate
-itself. Rebuilding the catalogue on this fix moves exactly the 56
-previously-truncated oggs' `files.ogg.sha256`/`bytes`/`url` - no wav, mp3,
-measure or other variant of any sound changes, chipvoice or generated
-alike (see the GS-07 PR body for the per-field diff proof).
+What actually cuts audio is DECODERS - plural, disagreeing with each other
+and with the truth the granule position states:
 
-This does NOT fix the other half of the round-3 finding: a healthy
-(non-truncating) native-fallback ogg is still padded with trailing silence
-to a 1024-sample block boundary, so a developer's local ogg bytes still do
-not match CI's byte-for-byte for the same input - that remains tracked as
-`docs/BACKLOG.md` GS-06, open, and is out of scope here. GS-07 fixes
-dropped audio, not the harmless local/CI byte divergence GS-06 exists
-for.
+- **ffmpeg's own CLI decoder** (what `decodeToRender` in
+  `apps/sounds/scripts/lib/audio.mjs` uses, and so what `checkFormatLengths`
+  itself was reading) drops up to 128 frames off the end of ANY ogg,
+  libvorbis-encoded ones included. Reproduced directly: a granule-complete,
+  `n=1023` native-encoder ogg (granule `1024`, provably whole) decodes via
+  `ffmpeg -f f32le` to **zero frames** - the entire sound gone, by the
+  decoder, from a stream whose own header says it is complete. A
+  granule-exact `n=10035` libvorbis ogg (granule `10035`, no padding at
+  all) decodes to 9907 frames, 128 short; the first 9907 samples match a
+  reference decode to within 1.5e-5, and the missing tail peaks at
+  0.00024 - real content, just quiet. Across the 1080 live variants
+  re-encoded with libvorbis (the GS-06/GS-07 v2 fix below, before any tail
+  guard), 610 of 1080 (56.5%) decode via this same ffmpeg CLI decoder
+  exactly 128 frames short of source - never more, never less, whenever
+  short at all.
+- **Real browsers** (Playwright 1.62.1, `decodeAudioData` into an
+  `OfflineAudioContext(1, 44100, 44100)`, "last sample whose absolute value
+  exceeds 1e-3" as the content-loss threshold) disagree with the ffmpeg CLI
+  and with each other. On the CURRENT (native-encoder) live catalogue,
+  across all 1080 variants: Chromium 151 fails to decode 5 of them
+  entirely (all `ui-typewriter-*` presets' shortest takes), decodes 1013 of
+  the remaining 1075 shorter than the wav's own frame count, and loses
+  audible content on 747 relative to what Firefox plays (mean 465.3
+  samples lost, max 1024, about 10.5 to 23.2ms at 44.1kHz) - while Firefox
+  153 decodes all 1080 whole. The ffmpeg CLI's own decoded length matches
+  Chromium's on only 1004 of 1080 (93.0%) - it is measurably NOT a faithful
+  proxy for what a browser does with the same bytes.
+
+The same 1010 unique live wavs, re-encoded with `sox -R in.wav -C 5
+out.ogg` (libvorbis, mono, the GS-07 v2 fix below), fare much better in
+Chromium but not perfectly: 0 decode errors; 686 of 1080 (63.5%) still
+decode shorter than the wav's own frame count, but by at most 128 frames
+(matching the ffmpeg-CLI figure above almost exactly - 610 of those 686
+came from ffmpeg's CLI decoder reading exactly the same file the same
+way); the last audible sample matches Firefox exactly on 917 of 1080
+(84.9%), and on the other 163 (15.1%) it sits earlier by 1 to 179 frames
+(mean 74.4, p99 approximately 150). The worst single case,
+`movement-swim-16bit-snes` take 3 (15888 source frames): Chromium decodes
+15760 frames with its last audible sample at 15675, Firefox decodes all
+15888 with its last audible sample at 15854 - a 128-frame buffer shortfall
+but a 179-frame last-audible gap, because a decoder's own rendering of an
+already-near-zero fade tail can differ even inside the portion of the
+buffer that is not literally missing; buffer length and content loss are
+related but not the same measurement, and the larger of the two (179, not
+128) is the one that matters for a guard meant to protect real content.
+Firefox again decodes all 1080 whole.
+
+mp3 has no equivalent content-loss problem, but has a different,
+previously-unmeasured one: Chromium is gapless-exact on every one of the
+1080 live mp3s (1042 decode to exactly the wav's own frame count, the
+other 38 longer by 4 to 46 samples, mean 23.4, none shorter). Firefox
+decodes every mp3 whole too, but its own decoded length exceeds the wav's
+frame count by 623 to 1774 samples (mean 1172.0, roughly 14 to 40ms at
+44.1kHz) - it does not trim the LAME encoder's own priming delay the way
+Chromium's gapless playback does. That is a real, separate defect (added
+leading latency, not lost content) - tracked as new backlog item GS-08,
+not fixed in this ticket. The catalogue has no loop sounds
+(`docs/BACKLOG.md`), so none of this trailing-silence handling - padding,
+a guard, or either decoder's own end-trim - is ever audible as a seam.
+
+**The fix has two parts, both in `apps/sounds/scripts/lib/audio.mjs`.**
+First, stop using ffmpeg's own vorbis encoders - native OR libvorbis -
+entirely: every ogg on every machine, dev and CI alike, is now encoded
+with `sox -R <wav> -C 5 <ogg>` (`-R`: deterministic pseudo-random state,
+proven byte-repeatable across two encodes of the same input; `-C 5`:
+sox's own documented quality knob for a lossy format, fed straight into
+libvorbis's own quality API exactly as ffmpeg's `-q:a 5` is - same
+encoder, same scale, same target quality, different front end). `sox` and
+its vorbis format handler (`libsox-fmt-base`/`libsox-fmt-all` on
+Ubuntu/Debian) are now a hard build requirement - `ensureSoxVorbis` checks
+for both before the first encode and throws a specific, actionable error
+naming exactly what to install if either is missing, never silently
+skipping or falling back. This removes the dev-machine-only code path
+entirely (there is no more "native" branch to diverge into) and delivers
+GS-06 (libvorbis everywhere) as a side effect: sox also keeps the source's
+own mono channel count, so the ogg is mono like the wav and mp3 now - the
+old native-fallback path's dual-mono stereo upmix, and its own unity-gain
+pan filter, no longer exist on any machine. Second, since even a complete,
+correctly-encoded libvorbis ogg still loses up to 128 frames of raw buffer
+length and up to 179 frames of real content to the worse of ffmpeg's CLI
+decoder or Chromium's own end-trim, `encodeVariant` now appends a fixed
+`OGG_TAIL_GUARD_FRAMES = 256` zero-sample pad to the ogg encoder's INPUT
+only (never the wav or mp3 that ship) before every single encode - chosen
+to clear both measured worst cases (128 and 179 frames) with real margin,
+not just the rounder-sounding "128" figure alone. `checkFormatLengths`
+keeps comparing against the true, unpadded source frame count; only the
+ogg encoder's own input changes.
+
+**A new real-browser gate exists because the CLI-decoder-based gate
+structurally cannot see what browsers do.** `checkFormatLength`/
+`checkFormatLengths` (`apps/sounds/scripts/lib/checks.mjs`) are unchanged
+in logic - ffmpeg CLI decode >= source frame count, zero tolerance short -
+and stay wired into `checkSound` alongside `checkFormatEnergies`, catching
+exactly the class of loss energy cannot (content removed from a part of
+the signal that was already quiet). But the 1004/1080 Chromium-match
+figure above means passing that gate was never proof a real browser plays
+a file whole. `apps/sounds/scripts/check-browser-decode.mjs` (new) decodes
+every catalogue ogg and mp3 in real Chromium AND Firefox (one browser
+launch per engine, one page reused, a hard 18-minute process-wide timeout,
+both browsers closed in a `finally` - measured ~7 minutes locally for the
+full 1080-variant catalogue across both engines) via the same
+`decodeAudioData`/`OfflineAudioContext` methodology used to measure the
+numbers above. It fails the build on: any decode error; any decoded length
+shorter than the wav's own frame count; and, ogg only, content loss (the
+browser's own last-audible sample sitting more than `CONTENT_LOSS_MARGIN_FRAMES`
+= 16 frames earlier than the wav's own last-audible sample at the same
+1e-3 threshold - 16 chosen because the measured distribution above is
+bimodal, either an exact match or a 100+ frame gap, nothing in between, so
+16 absorbs benign rounding with no risk of missing a real loss). Firefox's
+mp3 leading delay is reported, never failed on - it is GS-08's concern, not
+this gate's. A negative-fixture self-test (an ogg whose content is built
+to genuinely end 1024 frames before its claimed length, with no tail
+guard) must fail this check in EVERY engine, not just Chromium - content
+that was truly never encoded cannot be played back by any decoder, so if
+the fixture ever passed in some engine, the checker itself would be
+proven untrustworthy and refuses to run the real catalogue at all. Wired
+into the `sounds` CI job (which now also installs Firefox, not just
+Chromium) and exposed as `pnpm sounds:check-decode` for a pre-push local
+run.
+
+**Running the new gate against the rebuilt catalogue itself needed one
+more refinement.** The first real run of `check-browser-decode.mjs`
+against every rebuilt ogg failed: 96 of 1080 (8.9%) showed a gap beyond
+`CONTENT_LOSS_MARGIN_FRAMES` in both Chromium and Firefox, 17 to 332
+frames (mean 42.2, median 29). Every one of the 96 was checked by hand
+against the wav's own samples inside the gap: the loudest sample in any
+of them reached at most 1.68x `CONTENT_LOSS_THRESHOLD` (about -55 dBFS) -
+none came close to real, audible content. All 96 are modal-synthesis or
+chip-decay tails whose amplitude lingers and oscillates right around the
+-60 dBFS threshold for a long stretch; a few dB of difference from lossy
+re-encoding right at that razor's edge shifts exactly where the signal
+last crosses a fixed instantaneous threshold, without any real content
+going missing - the same phenomenon `FORMAT_ENERGY_TOLERANCE_DB` and
+`EXCLUDED_PRESETS` already exist to separate from a real defect at the
+energy-gate level. The check now also requires the wav's own peak inside
+the gap to reach `REAL_CONTENT_THRESHOLD` = 4e-3 (about -48 dBFS,
+comfortably above every measured chatter case and far below the negative
+fixture's own full-amplitude tone) before failing the build - a gap alone
+is no longer enough. The negative fixture (built at a fully audible 0.4
+linear) still fails in both engines under the new rule, proving the
+checker was not simply defanged. After this fix, `check-browser-decode.mjs`
+passes cleanly against the rebuilt catalogue: 0 failures in Chromium, 0 in
+Firefox, across all 2160 ogg+mp3 decodes in each engine.
+
+**Rebuilding the catalogue under the new encoder moves every variant's
+ogg, and nothing else.** Every one of the 1080 variants' `files.ogg` entry
+(sha256, byte count, url) changed; `files.wav` and `files.mp3` did not
+change for a single variant (byte-identical, same sha256, confirmed by
+diffing the freshly rebuilt `generated/catalog.json` field-by-field
+against the pre-rebuild committed version). No sound or variant was added
+or removed (270 sounds, 1080 variants, before and after). No other field -
+`measure`, `peaks`, `duration`, `recipe`, `category`, `tags`, or the
+top-level `categories` list - changed on any sound or variant. `public/f`
+is content-addressed and additive-only, so the old, pre-fix ogg files are
+still physically present there for anyone who wants to re-run a
+before/after comparison.
+
+**Re-measured `FORMAT_ENERGY_TOLERANCE_DB` and the three `EXCLUDED_PRESETS`
+under the new encoder.** Rebuilding logged the real distribution under the
+new encoder across all 2160 ogg/mp3 energy readings: mean |delta| 0.0474
+dB, p99 |delta| 0.2985 dB, max |delta| 0.4789 dB (worst single reading:
+`movement-footstep-realistic-footstep-water-puddle` at -0.48 dB) -
+comfortably inside `FORMAT_ENERGY_TOLERANCE_DB`'s 1.0 dB with real margin,
+so the tolerance itself needs no change. Each of the three
+`EXCLUDED_PRESETS` (`pickup-key`, `impact-glass-light`, `footstep-metal`)
+was independently re-rendered (all 8 `SEED_LADDER` seeds, not just the
+accepted takes) and re-measured against the new sox/libvorbis ogg and the
+(byte-identical, unchanged) mp3: the loss is essentially unchanged from
+before the encoder switch - `impact-glass-light` (6.05 to 6.86 dB) and
+`footstep-metal` (2.17 to 15.59 dB) re-measured within a few hundredths of
+a dB of their existing recorded range, `pickup-key`'s worst-seed range
+moved from 13.2-18.2 dB to 12.64-18.17 dB (still far outside tolerance).
+All three exclusions still trigger and remain excluded; `build-catalog.mjs`'s
+reason strings were updated to the re-measured figures.
+
+**What remains open.** GS-06 (libvorbis everywhere) and this GS-07 v2 fix
+both ship in the same PR (#126) - a developer's local ogg rebuild now
+matches CI's byte-for-byte for the same input, closing GS-06 as a side
+effect rather than merely tolerating the old divergence. GS-08 (Firefox's
+mp3 leading-delay/encoder-priming defect, `docs/BACKLOG.md`) remains open
+and unfixed - it is added latency, not lost content, and out of scope
+here.
