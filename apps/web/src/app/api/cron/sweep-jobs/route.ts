@@ -21,7 +21,15 @@ function isCronRequest(request: Request): boolean {
 }
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Decision 55: matches the jobs/render/generations routes' own 300s budget
+// on this plan - a render the sweep claims can take up to its own
+// 240-second worker deadline, so a 60s function budget would get the
+// function itself killed mid-render with the lease still held (the job then
+// sits until LEASE_TIMEOUT_MS expires before anyone retries it, which is
+// exactly the outcome this route exists to avoid). `sweepProjectJobs`'s own
+// start-budget (`sweepHasBudget`, `apps/web/src/lib/project-jobs.ts`) keeps
+// it from starting a job it cannot still finish inside this window.
+export const maxDuration = 300;
 
 /**
  * The durable queue's cron entry point: reclaims leases a dead instance

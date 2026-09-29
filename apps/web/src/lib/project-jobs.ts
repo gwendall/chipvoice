@@ -17,11 +17,43 @@ import {
 } from "./projects";
 const path = () => join(process.cwd(), "generated/project-render.cjs");
 
+/** Decision 55: the render worker's own hard deadline - also
+ * `runProjectMp3`'s `utilityWorker` timeout - and the one number every
+ * other duration below is measured against: `LEASE_TIMEOUT_MS` (how long a
+ * lease outlives it) and `SWEEP_START_CUTOFF_MS` (how much of the cron
+ * sweep's own function budget a new job's worst case may still use). */
+const WORKER_DEADLINE_MS = 240000;
+
 /** Decision 55: how long a claimed render's lease stands before it is
  * reclaimable, unchanged from the 270-second staleness window decision
- * 27/33 already used (the render worker's own 240-second deadline, plus
- * margin for termination and the final write). */
-const LEASE_TIMEOUT_MS = 270000;
+ * 27/33 already used - `WORKER_DEADLINE_MS` plus 30 seconds' margin for
+ * termination and the final write. */
+const LEASE_TIMEOUT_MS = WORKER_DEADLINE_MS + 30000;
+
+/** Decision 55 (NEXT-19 review fix): the cron sweep route's own Vercel
+ * `maxDuration` - 300 seconds, matching the jobs/render/generations routes'
+ * budget on this plan (`apps/web/src/app/api/cron/sweep-jobs/route.ts`).
+ * `sweepProjectJobs` must never start a job whose worst case
+ * (`WORKER_DEADLINE_MS`) plus a margin for its own final write and function
+ * teardown could still be running when Vercel kills the function outright -
+ * that leaves the lease held until `LEASE_TIMEOUT_MS` expires before anyone
+ * retries it, exactly the failure the sweep exists to prevent. 300 - 240 -
+ * 20 = 40: the sweep only starts new work in the first 40 seconds of its
+ * own run. A losing claim (every row another instance already holds) still
+ * returns near-instantly after that, so this never blocks reclaiming leases
+ * or reporting queue depth, only starting fresh long-running work. */
+const SWEEP_MAX_DURATION_MS = 300000;
+const SWEEP_WRITE_MARGIN_MS = 20000;
+const SWEEP_START_CUTOFF_MS =
+  SWEEP_MAX_DURATION_MS - WORKER_DEADLINE_MS - SWEEP_WRITE_MARGIN_MS;
+
+/** Pure and exported so the 40-second cutoff above is testable with an
+ * injected clock, without stubbing the database or running a real render:
+ * true while `sweepProjectJobs` may still start another job without risking
+ * Vercel killing the function mid-render. */
+export function sweepHasBudget(start: number, now = Date.now()): boolean {
+  return now - start < SWEEP_START_CUTOFF_MS;
+}
 
 /** How many jobs may hold `status in ('rendering','cancelling')` at once.
  * Decision 55 keeps decision 27/33's single fleet-wide slot as the default,
@@ -95,21 +127,36 @@ export async function reclaimExpiredLeases(client: Client, now = Date.now()) {
  * by the same single fleet-wide slot as a request-triggered render: kicking
  * more queued rows than the slot admits is harmless, since every losing
  * claim just returns immediately.
+ *
+ * Decision 55 (NEXT-19 review fix): starting a render or mp3 encode is the
+ * only slow part of a sweep - reclaiming leases and counting rows are both
+ * cheap and always run in full - so `sweepHasBudget` guards only the two
+ * loops below, stopping before this function's own `maxDuration` could kill
+ * it mid-render with the lease still held. `queued`/`mp3` in the return
+ * value still count every row the sweep found, whether or not this run had
+ * budget left to start it - a skipped row is not lost, only left for the
+ * next tick or a live request to claim.
  */
 export async function sweepProjectJobs(limit = 20) {
   const client = await db(),
-    now = Date.now();
-  const reclaimed = await reclaimExpiredLeases(client, now);
+    start = Date.now();
+  const reclaimed = await reclaimExpiredLeases(client, start);
   const queued = await client.execute({
     sql: "select id from project_jobs where status='queued' order by created_at limit ?",
     args: [limit],
   });
-  for (const row of queued.rows) await runProjectJob(String(row.id));
+  for (const row of queued.rows) {
+    if (!sweepHasBudget(start)) break;
+    await runProjectJob(String(row.id));
+  }
   const pendingMp3 = await client.execute({
     sql: "select id from project_jobs where mp3_status='queued' order by created_at limit ?",
     args: [limit],
   });
-  for (const row of pendingMp3.rows) await runProjectMp3(String(row.id));
+  for (const row of pendingMp3.rows) {
+    if (!sweepHasBudget(start)) break;
+    await runProjectMp3(String(row.id));
+  }
   return {
     reclaimed,
     queued: queued.rows.length,
@@ -276,8 +323,13 @@ export async function runProjectJob(id: string) {
           .then(() => (error ? reject(error) : resolve(bytes!)), reject);
       };
       const timer = setTimeout(
-        () => finish(Error("Render exceeded 240 seconds; export locally")),
-        240000,
+        () =>
+          finish(
+            Error(
+              `Render exceeded ${WORKER_DEADLINE_MS / 1000} seconds; export locally`,
+            ),
+          ),
+        WORKER_DEADLINE_MS,
       );
       let polling = false;
       const cancellation = setInterval(() => {
@@ -427,7 +479,7 @@ export async function runProjectMp3(id: string) {
           },
         };
       },
-      240000,
+      WORKER_DEADLINE_MS,
       async () => {
         const active = await client.execute({
           sql: "select 1 from project_jobs j join projects p on p.id=j.project_id where j.id=? and j.mp3_status='queued' and p.deleted_at is null",

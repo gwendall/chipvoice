@@ -3028,9 +3028,10 @@ validated 1-10), or to `failed` with `dead_letter_at` set and a visible
 `error` once attempts are spent. A `cancelling` row whose lease expires
 resolves straight to `cancelled`, never back to `queued` - an owner who
 asked to stop must not have their job silently resumed by a dead instance's
-lease finally timing out. `LEASE_TIMEOUT_MS` is 270 seconds, matched to the
-45-second render deadline of decision 27 plus generous margin for a stalled
-worker thread, not to any request timeout.
+lease finally timing out. `LEASE_TIMEOUT_MS` is 270 seconds: the render
+worker's own 240-second hard deadline (`WORKER_DEADLINE_MS`, also
+`runProjectMp3`'s `utilityWorker` timeout) plus 30 seconds' margin for
+termination and the final write, not any request timeout.
 
 **What drives it.** Nothing new at the infrastructure layer: request-time
 work (a claim still happens inline, same as before), and
@@ -3050,6 +3051,28 @@ naturally idempotent, guarded entirely by its own `mp3_status='queued'`
 checks). This is the actual durability backstop: a job's progress no longer
 depends on the instance that accepted the original request staying alive,
 only on the next cron tick or the next live request, whichever comes first.
+
+**The sweep route's own function budget must outlast the render it starts.**
+Review caught the sweep route shipping with Vercel's `maxDuration = 60`
+while `sweepProjectJobs` runs a claimed render or mp3 encode inline, and
+either can take up to `WORKER_DEADLINE_MS` (240 seconds): a render the sweep
+started past its own first minute would be killed by Vercel with the lease
+still held, at which point the sweep - the exact backstop for the jobs a
+dead instance already lost - would be the thing losing them, until
+`LEASE_TIMEOUT_MS` (270s) plus up to another cron interval finally reclaimed
+it. Fixed two ways: the route's `maxDuration` is now 300, matching the
+jobs/render/generations routes' own budget on this plan (proof the plan
+allows it); and `sweepProjectJobs` now checks `sweepHasBudget(start)` before
+each `runProjectJob`/`runProjectMp3` call, a pure function comparing elapsed
+time against `SWEEP_START_CUTOFF_MS = 300000 - 240000 - 20000 = 40000` (the
+route's budget, minus a render's own worst case, minus 20 seconds' margin
+for the sweep's own final write and teardown). The sweep only starts new
+work in the first 40 seconds of its own run; a losing claim on a later row
+still returns near-instantly, so this never blocks reclaiming leases or
+reporting queue depth, only starting fresh long-running work the function
+could not finish. `apps/web/test-render-queue.mjs` pins `sweepHasBudget`
+directly with an injected clock, since it needs no database or real render
+to exercise.
 
 **The concurrency bound is now a setting, not a constant.** `renderConcurrency()`
 reads `RENDER_CONCURRENCY` (default 1, validated 1-8) into the claim's own
@@ -3118,15 +3141,18 @@ single-run numbers meaningless):**
 `crons` entry calling `/api/cron/sweep-jobs` every 5 minutes; this requires
 `CRON_SECRET` to be set in the production environment before or at deploy
 time, since the route refuses every request (including Vercel's own cron
-caller) when it is unset. No other production behavior changes: default
-`RENDER_CONCURRENCY` stays 1, default `RENDER_MAX_ATTEMPTS` stays 3, and the
-migration is additive-only against the existing `project_jobs` table.
+caller) when it is unset. That route's own `maxDuration` is 300 seconds,
+same as the existing jobs/render/generations routes, so it adds no new
+budget the plan does not already grant elsewhere. No other production
+behavior changes: default `RENDER_CONCURRENCY` stays 1, default
+`RENDER_MAX_ATTEMPTS` stays 3, and the migration is additive-only against
+the existing `project_jobs` table.
 
 **What changes.** `apps/web/src/lib/migrations.ts` adds `durable-render-queue`.
 `apps/web/src/lib/project-jobs.ts` adds `reclaimExpiredLeases`,
-`sweepProjectJobs`, `renderConcurrency`, `renderMaxAttempts`, and fences every
-write in `runProjectJob` by the claim's own `attempts`.
-`apps/web/src/app/api/cron/sweep-jobs/route.ts` is new.
+`sweepProjectJobs`, `renderConcurrency`, `renderMaxAttempts`, `sweepHasBudget`,
+and fences every write in `runProjectJob` by the claim's own `attempts`.
+`apps/web/src/app/api/cron/sweep-jobs/route.ts` is new, `maxDuration = 300`.
 `apps/web/test-render-queue.mjs` pins dedup, the kill/lease-expiry test, the
 cancelling-lease-expires-to-cancelled edge case, dead-lettering after
 `RENDER_MAX_ATTEMPTS`, `RENDER_CONCURRENCY` as a real setting, and the cron

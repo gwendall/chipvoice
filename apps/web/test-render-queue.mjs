@@ -340,6 +340,37 @@ try {
   );
   delete process.env.CRON_SECRET;
   console.log("PASS the cron sweeper renders and encodes without any request, and refuses an unauthenticated call");
+
+  // The cron sweep route's maxDuration is 300s, a render's own worst case is
+  // 240s, and a 20s margin is reserved for the sweep's own final write and
+  // teardown - so sweepHasBudget must stop starting new jobs 40s into a
+  // sweep's own run (300 - 240 - 20 = 40), regardless of how long the sweep
+  // has actually been running. A pure function with an injected clock, no
+  // database or real render needed to exercise it.
+  {
+    const budgetStart = Date.now();
+    assert.equal(
+      api.sweepHasBudget(budgetStart, budgetStart),
+      true,
+      "budget is open right as the sweep starts",
+    );
+    assert.equal(
+      api.sweepHasBudget(budgetStart, budgetStart + 39999),
+      true,
+      "budget is still open 1ms before the 40s cutoff",
+    );
+    assert.equal(
+      api.sweepHasBudget(budgetStart, budgetStart + 40000),
+      false,
+      "budget is closed exactly at the 40s cutoff",
+    );
+    assert.equal(
+      api.sweepHasBudget(budgetStart, budgetStart + 120000),
+      false,
+      "budget stays closed well past the cutoff, for a sweep already deep into a prior render",
+    );
+    console.log("PASS sweepHasBudget stops the sweep from starting a job it could not finish before maxDuration");
+  }
 } finally {
   (await api.db()).close();
   await rm(directory, { recursive: true, force: true });
