@@ -282,17 +282,21 @@ for (const id of ["mario", "zelda", "sonic"])
   for (const chip of [nesChip, gbChip, mdChip, snesChip])
     corpus.push(await arrangement(id, chip));
 
-const expectClean = new Set(["starter/snes", "mario/2a03", "zelda/2a03", "zelda/dmg", "zelda/md", "zelda/snes", "sonic/md", "sonic/snes"]);
-const expectLoopJumpOnly = new Set(["mario/dmg", "mario/md", "mario/snes", "sonic/2a03", "sonic/dmg"]);
+// mario/snes sat just past its loop-jump limit before P6-11 (8.40dB against
+// 8.24dB). The dry release taper (decision 59) lowers the loop's opening
+// 0.3s window by 1.6dB, which lands the seam at 6.82dB against 8.29dB, so it
+// now renders clean alongside the native-chip cases.
+const expectClean = new Set(["starter/snes", "mario/2a03", "mario/snes", "zelda/2a03", "zelda/dmg", "zelda/md", "zelda/snes", "sonic/md", "sonic/snes"]);
+const expectLoopJumpOnly = new Set(["mario/dmg", "mario/md", "sonic/2a03", "sonic/dmg"]);
 let falsePositives = 0;
 for (const { label, findings } of corpus) {
   if (expectClean.has(label)) {
     if (findings.length) falsePositives++;
-    assert.deepEqual(codes(findings), [], `${label}: expected clean (native chip or a verified seamless loop)`);
+    assert.deepEqual(codes(findings), [], `${label}: expected clean (native chip, a verified seamless loop, or mario/snes under its limit since P6-11)`);
   } else if (expectLoopJumpOnly.has(label)) {
     assert.deepEqual(codes(findings), ["loop_level_jump"], `${label}: expected only a chip-adaptation loop-level jump`);
   } else {
     throw new Error(`unexpected corpus case ${label}`);
   }
 }
-console.log(`PASS corpus: ${corpus.length} renders (${expectClean.size} on their native chip or a verified loop, ${expectLoopJumpOnly.size} chip-adapted), ${falsePositives} false positives on known-good renders`);
+console.log(`PASS corpus: ${corpus.length} renders (${expectClean.size} expected clean, ${expectLoopJumpOnly.size} chip-adapted with a loop jump), ${falsePositives} false positives on known-good renders`);
