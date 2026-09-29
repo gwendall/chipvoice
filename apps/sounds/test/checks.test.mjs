@@ -11,9 +11,15 @@ import {
   checkLoudnessBand,
   checkOneCeilingBinds,
   checkChipvoiceVariantCount,
+  checkGeneratedVariantCount,
   checkSound,
+  checkFormatEnergy,
+  checkFormatEnergies,
+  collectFormatPeakDeltas,
+  collectFormatEnergyDeltas,
   LOUDNESS_CEILING_EPSILON_LU,
   PEAK_EPSILON_DB,
+  FORMAT_ENERGY_TOLERANCE_DB,
 } from "../scripts/lib/checks.mjs";
 import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP } from "../scripts/lib/audio.mjs";
 
@@ -133,12 +139,17 @@ function sha256Hex(bytes) {
   // checkSound orchestrates: feed it a sound broken in two independent ways
   // (bad license, bad loudness on its one variant) and confirm both
   // failures are reported, not just the first.
+  const clean = { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP };
   const badSound = {
     license: "CC0-1.0",
     attribution: "should not be here",
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": isolates this test from the variant-count check below
-    variants: [{ n: 1, sha256: "badloud", measure: { lufs: -5, peakDb: -10 } }], // over the LUFS ceiling, independent of the license failure above
+    origin: "generated", // meets the 3-variant floor below, isolating this test from checkGeneratedVariantCount
+    variants: [
+      { n: 1, sha256: "badloud", measure: { lufs: -5, peakDb: -10 } }, // over the LUFS ceiling, independent of the license failure above
+      { n: 2, sha256: "clean2", measure: clean },
+      { n: 3, sha256: "clean3", measure: clean },
+    ],
   };
   const failures = checkSound(badSound, {}, sha256Hex);
   assert.ok(failures.some((f) => f.startsWith("license:")), "checkSound must surface the license failure");
@@ -157,10 +168,11 @@ function sha256Hex(bytes) {
     license: "CC0-1.0",
     attribution: null,
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": isolates this test from the variant-count check below
+    origin: "generated", // meets the 3-variant floor below, isolating this test from checkGeneratedVariantCount
     variants: [
       { n: 1, sha256: "clean1", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
       { n: 2, sha256: "broken2", measure: { lufs: -3, peakDb: -2 } },
+      { n: 3, sha256: "clean3", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
     ],
   };
   const failures = checkSound(sound, {}, sha256Hex);
@@ -180,12 +192,51 @@ function sha256Hex(bytes) {
   const enough = { origin: "chipvoice", variants: [{ n: 1 }, { n: 2 }, { n: 3 }] };
   assert.equal(checkChipvoiceVariantCount(enough).ok, true, "3 variants meets the minimum");
 
-  // A non-chipvoice origin (the procedural engine, GS-02, reserved as
-  // "generated") is not held to this floor by this check - it would define
-  // its own rule when it exists, not inherit chipvoice's by accident.
+  // A non-chipvoice origin (generated, GS-03) is not held to this floor by
+  // this check - checkGeneratedVariantCount (below) defines its own rule
+  // instead of inheriting chipvoice's by accident.
   const generatedWithOne = { origin: "generated", variants: [{ n: 1 }] };
   assert.equal(checkChipvoiceVariantCount(generatedWithOne).ok, true, "a non-chipvoice origin is not held to the chipvoice minimum");
   console.log("PASS checkChipvoiceVariantCount only binds chipvoice-origin sounds");
+}
+
+{
+  // checkGeneratedVariantCount: the generated-origin analogue (GS-03). A
+  // generated sound is rendered from a seed ladder, not sourced, so it has
+  // the same lack of excuse for fewer than the minimum.
+  const tooFew = { origin: "generated", variants: [{ n: 1 }, { n: 2 }] };
+  const result = checkGeneratedVariantCount(tooFew);
+  assert.equal(result.ok, false, "a generated sound with 2 variants must fail the 3-variant minimum");
+  console.log("PASS checkGeneratedVariantCount fails a generated sound with fewer than 3 variants");
+
+  const enough = { origin: "generated", variants: [{ n: 1 }, { n: 2 }, { n: 3 }] };
+  assert.equal(checkGeneratedVariantCount(enough).ok, true, "3 variants meets the minimum");
+
+  // A chipvoice-origin sound is not held to this floor by this check - it
+  // has its own (checkChipvoiceVariantCount, above).
+  const chipvoiceWithOne = { origin: "chipvoice", variants: [{ n: 1 }] };
+  assert.equal(checkGeneratedVariantCount(chipvoiceWithOne).ok, true, "a non-generated origin is not held to the generated minimum");
+  console.log("PASS checkGeneratedVariantCount only binds generated-origin sounds");
+}
+
+{
+  // checkSound wires checkGeneratedVariantCount in too, under the same
+  // "variant count:" label chipvoice's own failure uses (GS-03's rule is
+  // meant to read as the same rule applied to the other origin, not a
+  // different kind of failure).
+  const tooFewGenerated = {
+    license: "CC0-1.0",
+    attribution: null,
+    source: { name: "gamesounds sfx-engine", url: "https://gamesounds.ai", author: "Gwendall Esnault" },
+    origin: "generated",
+    variants: [
+      { n: 1, sha256: "a", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+      { n: 2, sha256: "b", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+    ],
+  };
+  const failures = checkSound(tooFewGenerated, {}, sha256Hex);
+  assert.ok(failures.some((f) => f.startsWith("variant count:")), "checkSound must surface a generated sound's variant-count failure");
+  console.log("PASS checkSound refuses a generated sound with fewer than 3 variants, with a negative test proving it");
 }
 
 {
@@ -259,8 +310,12 @@ function sha256Hex(bytes) {
     license: "CC0-1.0",
     attribution: null,
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": isolates this test from the variant-count check
-    variants: [{ n: 1, sha256: "neitherbinds", measure: { lufs: -30, peakDb: -10 } }],
+    origin: "generated", // meets the 3-variant floor below, isolating this test from checkGeneratedVariantCount
+    variants: [
+      { n: 1, sha256: "neitherbinds", measure: { lufs: -30, peakDb: -10 } },
+      { n: 2, sha256: "clean2", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+      { n: 3, sha256: "clean3", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } },
+    ],
   };
   const failures = checkSound(brokenSound, {}, sha256Hex);
   assert.ok(!failures.some((f) => f.startsWith("variant 1 loudness:")), "the two static ceilings alone must not fire on this variant");
@@ -305,14 +360,122 @@ function sha256Hex(bytes) {
 }
 
 {
+  const goodMeasure = { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP };
   const goodSound = {
     license: "CC0-1.0",
     attribution: null,
     source: { name: "chipvoice", url: "https://chipvoice.dev", author: "Gwendall Esnault" },
-    origin: "generated", // not "chipvoice": a 1-variant sound is otherwise clean, this only isolates it from the variant-count floor
-    variants: [{ n: 1, sha256: "good1", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } }],
+    origin: "generated",
+    variants: [
+      { n: 1, sha256: "good1", measure: goodMeasure },
+      { n: 2, sha256: "good2", measure: goodMeasure },
+      { n: 3, sha256: "good3", measure: goodMeasure },
+    ],
   };
   const failures = checkSound(goodSound, {}, sha256Hex);
   assert.deepEqual(failures, [], "a genuinely clean sound must report no failures (sanity check)");
   console.log("PASS checkSound reports no failures for a genuinely clean sound");
+}
+
+{
+  // checkFormatEnergy is now the whole gate (no aggregate layer) - it must
+  // still catch a gross per-file failure that no tolerance should ever
+  // admit: a channel that decoded silent even though the wav's own energy on
+  // that channel is real.
+  const result = checkFormatEnergy(0.49, 0, { format: "ogg", channel: "left" });
+  assert.equal(result.ok, false, "a channel that decoded silent must fail regardless of tolerance");
+  console.log("PASS checkFormatEnergy fails a channel that decoded silent");
+}
+
+{
+  // checkFormatEnergies must refuse a stereo source whose shipped format
+  // decoded back as mono outright - a channel silently collapsed, never a
+  // loudness rounding difference, so no toleranceDb value should admit it.
+  const sourceEnergy = { left: 0.49, right: 0.42 };
+  const formatEnergy = { ogg: { left: 0.49, right: null }, mp3: { left: 0.49, right: 0.42 } };
+  const result = checkFormatEnergies(sourceEnergy, formatEnergy);
+  assert.equal(result.ok, false, "a stereo source collapsing to a mono ogg must fail");
+  assert.match(result.reason, /silently collapsed/, "the failure must name the collapsed-channel case, not a generic tolerance miss");
+  console.log("PASS checkFormatEnergies refuses a stereo source that collapsed to mono in the shipped ogg");
+}
+
+{
+  // This is the negative test the coordinator's round-2 review asked for,
+  // made concrete: the old ogg fallback path's `-ac 2` upmix applies
+  // ffmpeg's default -3.0103 dB in the energy domain too
+  // (10*log10((1/sqrt(2))**2), the same numeric value as its peak-domain
+  // 20*log10(1/sqrt(2)) counterpart, since a uniform amplitude scale
+  // produces the same dB delta in either domain). Unlike the old per-variant
+  // peak backstop (17 dB, sized to admit legitimate outliers that turned out
+  // not to be legitimate), checkFormatEnergy catches this bug DIRECTLY, on a
+  // single variant, with no aggregate needed - the exact design change this
+  // round of review required.
+  const oldAcTwoDeltaDb = 10 * Math.log10(1 / 2);
+  const wavEnergy = 0.49;
+  const buggyOggEnergy = wavEnergy * Math.pow(10, oldAcTwoDeltaDb / 10);
+  const left = checkFormatEnergy(wavEnergy, buggyOggEnergy, { format: "ogg", channel: "left" });
+  assert.equal(left.ok, false, `a single -3.0103 dB -ac 2 style delta must fail the +/-${FORMAT_ENERGY_TOLERANCE_DB} dB per-variant energy gate directly`);
+  console.log(
+    `PASS checkFormatEnergy fails a single old-\`-ac 2\`-sized delta (${oldAcTwoDeltaDb.toFixed(4)} dB) directly, per variant, ` +
+      "with no aggregate check required",
+  );
+}
+
+{
+  // The second negative test this round of review required: a HF-dominated
+  // signal whose lossy encode loses real energy must fail too - not just the
+  // uniform -ac 2 upmix case above. Numbers matched to the measured
+  // pickup-key class of defect (13.2 to 18.2 dB of real, sum-based energy
+  // lost across its seed ladder) that led to that preset's exclusion
+  // (build-catalog.mjs's EXCLUDED_PRESETS).
+  const wavEnergy = 0.09; // -20.9 dB RMS-ish source energy, matching pickup-key's own order of magnitude
+  const hfLossDeltaDb = -18.2;
+  const lossyOggEnergy = wavEnergy * Math.pow(10, hfLossDeltaDb / 10);
+  const result = checkFormatEnergy(wavEnergy, lossyOggEnergy, { format: "ogg", channel: "left" });
+  assert.equal(result.ok, false, "a HF-dominated signal that loses 18.2 dB of real energy through the lossy encode must fail");
+  assert.match(result.reason, /codec passband/, "the failure reason must point at the codec-passband/exclusion explanation, not a generic tolerance miss");
+  console.log("PASS checkFormatEnergy fails a HF-dominated signal whose lossy encode loses real energy (the pickup-key class of defect, 18.2 dB)");
+}
+
+{
+  // The complementary positive case: the real, healthy catalogue's worst
+  // remaining delta after the three HF-dominated presets are excluded
+  // (footstep-water-puddle, measured at 0.56 dB) must comfortably pass.
+  const wavEnergy = 0.09;
+  const healthyDeltaDb = -0.56;
+  const healthyOggEnergy = wavEnergy * Math.pow(10, healthyDeltaDb / 10);
+  const result = checkFormatEnergy(wavEnergy, healthyOggEnergy, { format: "ogg", channel: "left" });
+  assert.equal(result.ok, true, "the real catalogue's worst healthy delta (0.56 dB, footstep-water-puddle) must pass the 1.0 dB tolerance");
+  console.log("PASS checkFormatEnergy passes the real catalogue's worst healthy delta (0.56 dB) with margin");
+}
+
+{
+  // collectFormatPeakDeltas is kept, but only as informational build-log
+  // data now (never a gate) - prove it still returns one finite dB delta per
+  // valid format/channel reading, matching the plain peak-domain dB formula.
+  const sourcePeaks = { left: 0.7, right: null };
+  const formatPeaks = { ogg: { left: 0.7, right: 0.7 }, mp3: { left: 0.35, right: null } };
+  const deltas = collectFormatPeakDeltas(sourcePeaks, formatPeaks);
+  assert.equal(deltas.length, 3, "mono source upmixed to stereo ogg (2 readings) plus a mono mp3 (1 reading) = 3 deltas");
+  assert.ok(deltas.every((d) => Number.isFinite(d)), "every collected delta must be a finite number");
+  const mp3Delta = 20 * Math.log10(0.35 / 0.7);
+  assert.ok(deltas.some((d) => Math.abs(d - mp3Delta) < 1e-9), "the mp3 delta must match the plain peak-domain dB formula");
+  console.log("PASS collectFormatPeakDeltas returns one finite dB delta per valid format/channel reading (informational only, not a gate)");
+}
+
+{
+  // collectFormatEnergyDeltas mirrors collectFormatPeakDeltas above, for the
+  // metric that actually gates the build now - prove it too returns one
+  // finite dB delta per valid format/channel reading, matching the plain
+  // energy-domain (10*log10) dB formula, and that it is what this file's own
+  // FORMAT_ENERGY_TOLERANCE_DB and build-catalog.mjs's EXCLUDED_PRESETS
+  // reasons were derived from (docs/DECISIONS.md decision 54).
+  const sourceEnergy = { left: 0.49, right: null };
+  const formatEnergy = { ogg: { left: 0.49, right: 0.49 }, mp3: { left: 0.245, right: null } };
+  const deltas = collectFormatEnergyDeltas(sourceEnergy, formatEnergy);
+  assert.equal(deltas.length, 3, "mono source upmixed to stereo ogg (2 readings) plus a mono mp3 (1 reading) = 3 deltas");
+  assert.ok(deltas.every((d) => Number.isFinite(d)), "every collected delta must be a finite number");
+  const mp3Delta = 10 * Math.log10(0.245 / 0.49);
+  assert.ok(deltas.some((d) => Math.abs(d - mp3Delta) < 1e-9), "the mp3 delta must match the plain energy-domain (10*log10) dB formula");
+  console.log("PASS collectFormatEnergyDeltas returns one finite dB delta per valid format/channel reading (the same numbers the gate itself judges)");
 }

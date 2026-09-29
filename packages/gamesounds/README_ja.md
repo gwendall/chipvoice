@@ -18,7 +18,7 @@
 npx gamesounds add jump coin hit/heavy ui/confirm --style 8bit
 ```
 
-各イベント（カテゴリid、裸のリーフ名、または`leaf/tag` - `docs/GAMESOUNDS.md`参照）をgamesounds.aiに対して解決し、音声をダウンロードし、`sounds.json`と`SOUNDS-CREDITS.md`をカレントディレクトリに書き出す（`--out`で別のディレクトリを選べる）。ダウンロードした各ファイルのハッシュは、コマンドが終了する前にサーバー自身のコンテンツアドレス化されたストアに対して検証される。再実行しても安全：ディスク上に既にあるファイルは再ダウンロードされず、後続の実行は`sounds.json`を置き換えるのではなく追加する。`gamesounds add --help`で全フラグ（`--style`、`--api`、`--out`）の一覧が表示される。
+各イベント（カテゴリid、裸のリーフ名、または`leaf/tag` - `docs/GAMESOUNDS.md`参照）をgamesounds.aiに対して解決し、音声をダウンロードし、`sounds.json`と`SOUNDS-CREDITS.md`をカレントディレクトリに書き出す（`--out`で別のディレクトリを選べる）。ダウンロードした各ファイルのハッシュは、コマンドが終了する前にサーバー自身のコンテンツアドレス化されたストアに対して検証される。再実行しても安全：ディスク上に既にあるファイルは再ダウンロードされず、後続の実行は`sounds.json`を置き換えるのではなく追加する。`gamesounds add --help`で全フラグ（`--style`、`--api`、`--out`）の一覧が表示される。`--style`は、レトロな`8bit`/`16bit`チップサウンドだけでなく、カタログが持つすべてのファセットに到達する - `--style realistic`、`scifi`、`fantasy`、`minimal-ui`は、まったく同じ方法でgamesounds自身が手続き的に生成した音（`origin: "generated"`、`packages/sfx-engine`）を解決する。
 
 <a id="the-runtime"></a>
 ## ランタイム
@@ -61,5 +61,12 @@ npm run typecheck
 npm run test:unit    # node --test over test/*.mjs, a fake AudioContext
 node test-cli.mjs    # the CLI against a real local gamesounds.ai server
 ```
+
+`test-cli.mjs`は、元のchipvoice受け入れ例と並んで`add --style realistic`
+をエンドツーエンドでカバーする(生成起源の音を解決し、ダウンロードし、
+そのSHA-256を検証する) - CLIとランタイムはGS-03のためにコード変更を必
+要としなかった(音の起源はどちらにとっても不透明で、両者は解決済みの
+`Sound`/`Variant`しか扱わず、chipvoiceやsfx-engine自身のレシピ型を扱う
+ことは決してない)。追加されたのはテストのみである。
 
 `bin/gamesounds.mjs`はプレーンなESMのまま、ビルドせずに出荷される（`dist/`に依存しない）ため、ビルド不要で実行できる。`dist/`は、このパッケージをビルドするかnpmからインストールした場合に`import "gamesounds"`が解決する先でしかない。

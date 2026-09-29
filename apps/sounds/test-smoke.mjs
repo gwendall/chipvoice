@@ -100,6 +100,30 @@ try {
   const actualSha256 = createHash("sha256").update(bytes).digest("hex");
   assert.equal(actualSha256, variant.files.wav.sha256, "the served .wav's bytes hash to its own recorded SHA-256 (per-file content addressing)");
 
+  // GS-03: /api/v1/resolve with a non-retro style reaches a generated
+  // (sfx-engine) sound end to end, over HTTP, honestly labelled, and its
+  // served file's bytes match its own recorded SHA-256 - the same proof as
+  // the chipvoice download above, for the other origin.
+  const resolveResponse = await page.request.post(`${SITE}/api/v1/resolve`, {
+    data: { events: ["hit/heavy"], style: "realistic" },
+  });
+  assert.equal(resolveResponse.status(), 200);
+  const resolveBody = await resolveResponse.json();
+  assert.deepEqual(resolveBody.unresolved, [], "hit/heavy --style realistic must resolve, not fall through");
+  const generatedSoundId = resolveBody.resolved[0].sound;
+  assert.ok(generatedSoundId, `expected a resolved sound id, got ${JSON.stringify(resolveBody.resolved)}`);
+  const generatedSoundResponse = await page.request.get(`${SITE}/api/v1/sounds/${generatedSoundId}`);
+  assert.equal(generatedSoundResponse.status(), 200);
+  const { sound: generatedSound } = await generatedSoundResponse.json();
+  assert.equal(generatedSound.origin, "generated", `--style realistic must resolve a generated-origin sound, got origin ${generatedSound.origin}`);
+  assert.equal(generatedSound.style, "realistic");
+  const generatedVariant = generatedSound.variants[0];
+  const generatedFileResponse = await page.request.get(`${SITE}${generatedVariant.files.wav.url}`);
+  assert.equal(generatedFileResponse.status(), 200);
+  const generatedBytes = await generatedFileResponse.body();
+  const generatedSha256 = createHash("sha256").update(generatedBytes).digest("hex");
+  assert.equal(generatedSha256, generatedVariant.files.wav.sha256, "the served generated-origin .wav's bytes hash to its own recorded SHA-256");
+
   // Keyboard shortcuts: `/` focuses search, `j`/`k` move selection, `space`
   // plays the selected row, `d` downloads it.
   await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
@@ -129,7 +153,9 @@ try {
   console.log(
     `PASS: home loads, search finds ${rowCount} 'jump' result(s), play starts a real AudioBufferSourceNode, ` +
       `preload-on-visibility fills the decode cache, the mini-player and playhead track playback, the spam guard ` +
-      `caps active voices at 1, download bytes match each file's own SHA-256, keyboard shortcuts (/ j k space d) work`,
+      `caps active voices at 1, download bytes match each file's own SHA-256, POST /api/v1/resolve with --style ` +
+      `realistic resolves a generated-origin sound (${generatedSoundId}) whose file also matches its own SHA-256, ` +
+      `keyboard shortcuts (/ j k space d) work`,
   );
 } finally {
   await browser.close();

@@ -35,11 +35,13 @@ export const STYLES: readonly Style[] = [
 ];
 
 /**
- * Where a sound came from. Every Phase 1 sound is `"chipvoice"` (rendered by
- * chipvoice's own `renderSfx`, no third-party sounds and no external
- * generation API - see docs/DECISIONS.md). `"generated"` is reserved for the
- * procedural synthesis engine tracked as GS-02 in docs/BACKLOG.md (our own
- * DSP, deterministic, recipe + seed), not built in this phase.
+ * Where a sound came from. `"chipvoice"` is rendered by chipvoice's own
+ * `renderSfx` (real chip emulation). `"generated"` is rendered by
+ * `packages/sfx-engine`, gamesounds' own deterministic procedural synthesis
+ * engine (a recipe plus a seed - GS-02, decision 52; wired into the
+ * catalogue by GS-03, decision 54). Both are entirely our own DSP: no
+ * third-party sounds and no external generation API, ever - see
+ * docs/DECISIONS.md.
  */
 export type Origin = "chipvoice" | "generated";
 
@@ -79,6 +81,16 @@ export interface Variant {
   measure: Measure;
   /** 96 points, 0 to 1, for an instant waveform before any audio loads. */
   peaks: number[];
+  /**
+   * How to render THIS variant again: each generated variant carries its own
+   * recipe (same shape as `Sound.recipe`, but with this variant's own seed -
+   * that is the whole difference between one variant and the next). Present
+   * on every `origin: "generated"` variant; chipvoice-origin variants leave
+   * this unset and rely on `Sound.recipe` instead (chipvoice's own seed
+   * ladder is not itself part of the recipe shape - see
+   * apps/sounds/catalog/chipvoice-recipes.mjs).
+   */
+  recipe?: unknown;
 }
 
 /** Loudness and level, as measured on the built file, not a target. */
@@ -121,9 +133,14 @@ export interface Sound {
   origin: Origin;
   /**
    * How to render this sound again: a chipvoice `{ chip, channel, note,
-   * instrument, duration, ... }` recipe for `origin: "chipvoice"`, `undefined`
-   * otherwise. Left untyped here so this package never depends on chipvoice;
-   * the catalogue build imports chipvoice's own `SfxRecipe` type to write it.
+   * instrument, duration, ... }` recipe for `origin: "chipvoice"`; an
+   * sfx-engine `{ engine: "sfx-engine@1", model, params, seed, sampleRate }`
+   * recipe (its first variant's own seed) for `origin: "generated"` (GS-03,
+   * decision 54). Left untyped here so this package never depends on
+   * chipvoice or sfx-engine; the catalogue build imports each engine's own
+   * recipe type to write it. Every generated variant also carries its OWN
+   * recipe on `Variant.recipe`, with that variant's own seed - this field is
+   * the sound's first take, not a substitute for a variant's own.
    */
   recipe?: unknown;
   loop: { start: number; end: number } | null;

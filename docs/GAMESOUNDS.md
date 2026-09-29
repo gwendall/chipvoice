@@ -21,10 +21,19 @@ carries a `style` (one of ten facets: `8bit`, `16bit`, `arcade`, `cartoon`,
 `realistic`, `scifi`, `fantasy`, `horror`, `cozy`, `minimal-ui`), a licence
 and its source as data, and 1 to 8 `Variant`s of the same idea - each with a
 duration, precomputed waveform `peaks` and content-addressed `files`. A
-`Sound`'s own `origin` (`"chipvoice"` for every Phase 1 sound; `"generated"`
-is reserved for the procedural synthesis engine tracked as
-[GS-02](BACKLOG.md)) and its `recipe` record how it was made without
-depending on chipvoice's own types.
+`Sound`'s own `origin` is `"chipvoice"` (chipvoice's own `renderSfx`, real
+chip emulation) or `"generated"` (`packages/sfx-engine`'s deterministic
+procedural synthesis - GS-02, wired into the catalogue by
+[GS-03](BACKLOG.md), [Decision 54](DECISIONS.md)); both are entirely our
+own DSP, no third-party sounds and no external generation API, ever. Its
+`recipe` records how the sound was made without this package depending on
+either chipvoice's or sfx-engine's own types: a chipvoice
+`{chip, channel, note, instrument, duration, ...}` shape, or sfx-engine's
+own `{engine: "sfx-engine@1", model, params, seed, sampleRate}`. Every
+generated `Variant` additionally carries its OWN `recipe` (same shape,
+this variant's own seed) - unlike chipvoice, where one recipe shape
+describes the whole sound and the seed ladder that produced its siblings is
+not itself part of the recipe.
 
 ## Taxonomy and event resolution
 
@@ -40,39 +49,186 @@ data exist yet - that is Phase 2), so ties break on the sound's own id,
 sorted ascending, and a requested style with no candidate falls back to any
 style in the category rather than resolving to nothing. The taxonomy keeps
 every category it defines even when nothing is filed there yet - a future
-style or the procedural engine ([GS-02](BACKLOG.md)) may fill one in - but
-`GET /api/v1/categories` (`listCategoriesWithCounts()`) attaches every
-category's own honest `count` (its leaf's own sounds plus every descendant
-leaf's, for a branch), and the site's category cards and hub pages show
-that same count and an explicit "No sounds filed here yet" rather than
-presenting an empty category as if it had content. Of 85
-categories, 52 currently hold at least one chipvoice sound
-(2 of the taxonomy's 10 style facets exist today, `8bit` and `16bit` - the
-rest are non-retro styles the procedural engine will reach).
+style or preset may fill one in - but `GET /api/v1/categories`
+(`listCategoriesWithCounts()`) attaches every category's own honest `count`
+(its leaf's own sounds plus every descendant leaf's, for a branch), and the
+site's category cards and hub pages show that same count and an explicit
+"No sounds filed here yet" rather than presenting an empty category as if
+it had content. Of 85 categories, 50 currently hold at least one sound (44
+chipvoice-only before [GS-03](BACKLOG.md) wired in the generated half; the
+6 new ones are categories only a generated preset reaches, e.g.
+`world/machine-hum`). 7 of the taxonomy's 10 style facets exist today:
+chipvoice's `8bit` and `16bit`, plus `minimal-ui`, `realistic`, `scifi`,
+`fantasy` and `cartoon` from [GS-03](BACKLOG.md)'s generated half -
+`arcade`, `horror` and `cozy` remain unfilled, honestly (see "Generated
+sounds" below for the rule that keeps a facet unfilled rather than
+mislabelling something into it).
 
 ## Sourcing and licensing
 
-gamesounds is our own sound bank: every sound is made procedurally by
-chipvoice's own offline `renderSfx` (`packages/chipvoice`, `b649b54`) -
-no third-party sounds, no external generation API, `CC0-1.0` by
-construction. No other source is mixed in for Phase 1, so "all CC0" holds
+gamesounds is our own sound bank: every sound is made procedurally, by
+chipvoice's own offline `renderSfx` (`origin: "chipvoice"`,
+`packages/chipvoice`, real chip emulation) or by `packages/sfx-engine`
+(`origin: "generated"`, GS-02's own deterministic DSP, recipe + seed) - no
+third-party sounds, no external generation API, ever, `CC0-1.0` by
+construction for both. No other source is mixed in, so "all CC0" holds
 without a runtime licence filter; `checkLicense` in `scripts/lib/checks.mjs`
 still refuses any sound the build produces without one (belt and braces,
-not a filter over mixed sources). A second origin, `"generated"`, is
-reserved in the schema for the procedural synthesis engine tracked as
-[GS-02](BACKLOG.md) (our own DSP, deterministic, recipe + seed) - a later
-ticket, not built in this phase.
+not a filter over mixed sources). See "Style and category mapping" below
+for how each of sfx-engine's 53 presets was filed.
+
+## Generated sounds (GS-03)
+
+`apps/sounds/catalog/generated-recipes.mjs` maps every one of
+`packages/sfx-engine`'s 53 named presets (GS-02) onto the taxonomy: a
+category, a style, tags and a title, hand-written per preset - the
+generated-origin analogue of `chipvoice-recipes.mjs`. `build-catalog.mjs`'s
+`buildGenerated` renders each through `recipeForPreset(id, seed, 44100)`
+directly at the catalogue's own 44.1 kHz (never through sfx-engine's
+default 48 kHz), through the same trim/level/encode/measure pipeline as the
+chipvoice half.
+
+**The style rule** (`generated-recipes.mjs`'s own header carries the same
+reasoning, line by line, next to the map it explains):
+
+- `impact`, `footstep`, `whoosh`, `explosion` -> `realistic` - every one of
+  these models real-world physics (a struck or rigid material, a walked
+  surface, air movement, a blast), never a stylized interpretation of one.
+- `scifi` -> `scifi` - synthetic sound design, not modeling anything real.
+- `magic` -> `fantasy` - spell/cast content, sparkle-layered synthesis.
+- `ui` -> `minimal-ui` - short, oscillator-only interface blips.
+- `pickup` -> judged per preset, never forced. `pickup.ts`'s own header
+  says these are deliberately "not an 8-bit square-wave cliche": the warm,
+  bright tuned-oscillator arpeggios (`coin`, `gem`, `powerup`, `level-up`)
+  read as `cartoon`; `key`, the one physically-informed preset in the
+  family (a struck-metal modal jingle), is honestly `realistic` instead,
+  like the material-impact families it shares its synthesis technique
+  with. Nothing is forced into `cartoon`, `horror` or `cozy` just to fill
+  an empty facet - an empty facet is honest, a mislabelled one is not.
+
+**Category choices that are not a mechanical rename of the preset id**
+(every category below already exists in `catalog/taxonomy.json`; this
+ticket adds none):
+
+- All 12 `impact-*` presets file under `combat/hit`, except
+  `impact-body-{light,heavy}`, whose own description ("a light/heavy
+  body/punch impact") names `combat/punch` directly.
+- `whoosh-sword` -> `combat/sword` (a swing IS the sword sound);
+  `whoosh-punch` -> `combat/punch` (alongside `impact-body`, distinguished
+  by tag); `whoosh-pass-by` and `whoosh-cloth` have no dedicated taxonomy
+  leaf for a generic air-movement cue, so both file under `movement/dash`
+  (the closest honest "burst of movement" leaf), distinguished by tag.
+- `scifi-shield-up`/`down` -> `combat/shield` (an exact alias match:
+  "shield up"). `scifi-power-up`/`down` are a device/system cue, not a
+  pickup, so they file under `world/machine-hum` ("engine hum, drone,
+  electric hum"), not `collect/powerup` - naming them a powerup would have
+  been the mislabel this whole rule exists to avoid.
+  `scifi-computer-beep` -> `ui/confirm` ("acknowledgement" IS a confirm
+  cue). `scifi-zap` has no dedicated "electric" leaf, so it files under
+  `combat/hit`, tagged `zap`/`electric`. `scifi-teleport` uses the
+  `magic/teleport` category - a category about the *event* (warp/blink),
+  independent of the `scifi` style facet sitting on top of it.
+- `magic-shimmer` has no leaf of its own; it is a `magic/cast` variant
+  (tagged `shimmer` instead of `spell`) per `magic.ts`'s own description
+  ("cast, shimmer... layer a sparkle... over a gesture sweep").
+
+**Quality gate**: every generated variant runs through the same
+`checkSound` every chipvoice variant does (license, variant count, sha256,
+no clipping, leading silence, both loudness checks, and a per-variant
+format-energy check - see below). The format-energy check gates on each
+variant's TOTAL energy per channel (the sum of each sample squared, not a
+mean or a peak - see `energyPerChannel` in
+`apps/sounds/scripts/lib/audio.mjs` and [Decision 54](DECISIONS.md) for
+why it must be a sum), decoding the shipped ogg/mp3 back to PCM and
+comparing against the source wav within `FORMAT_ENERGY_TOLERANCE_DB`
+(1.0 dB). A preset whose variants fail, whose style judgment cannot be
+made honestly, or that simply sounds wrong is excluded by name and reason
+in `build-catalog.mjs`'s `EXCLUDED_PRESETS` map rather than shipped or
+force-fit. This ticket's own build excludes three of the 53 presets this
+way: `pickup-key`, `impact-glass-light` and `footstep-metal` each put
+most of their own synthesized energy above 16 kHz (97.4%, 77.6% and 31.0%
+respectively, measured with a steep highpass) - inside the range both
+ffmpeg's native vorbis encoder and libmp3lame filter away at this
+catalogue's quality settings, so their shipped ogg/mp3 lose real energy
+against their own wav across the seed ladder (13.2 to 18.2 dB, 6.1 to 6.9
+dB and 2.2 to 15.6 dB respectively) rather than the harmless peak-only
+"transient smearing" some other presets legitimately show. A follow-up
+ticket tracks finding why sfx-engine's own modal synthesis puts their
+energy there and fixing it at the source (see `docs/BACKLOG.md`); tuning
+a preset's own sound stays out of scope here (sfx-engine's fixture-pinned
+output, GS-02's own hash fixture, is not touched by this ticket) - a
+preset that needs that gets excluded, not silently shipped worse than it
+should be, and can come back once fixed.
+
+**Loudness's own trap** (see [Decision 54](DECISIONS.md) and
+[GAMESOUNDS-ENGINE.md](GAMESOUNDS-ENGINE.md#loudness-convention-across-engines)
+for the full mechanism): sfx-engine meters and gains a render as mono,
+*before* panning to stereo - every preset pans to 0, where equal-power pan
+law gives `left = right = mono * cos(pi/4)`, about -3.0103 dB quieter than
+the mono figure the engine reports on `RenderedSound.loudness`. Trusting
+that self-reported figure instead of re-measuring the actual shipped bytes
+would silently under-level every generated variant by about 3 dB.
+`renderGeneratedVariants` in `build-catalog.mjs` never does this: it takes
+`RenderedSound.left` as the shipped signal (valid exactly because
+`left === right` at `pan: 0`, the only pan value any preset uses) and runs
+it through the catalogue's own `levelToConvention`, which re-measures
+whatever bytes it is actually given. Generated sounds ship **mono wav and
+mp3**, the same layout the chipvoice half already actually ships (verified
+directly from `apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes`,
+`channels = right ? 2 : 1`: chipvoice's `renderSfx` is never called with
+`stereo: true` anywhere in this catalogue), not the "stereo dual-mono"
+layout an earlier note assumed - consistency with the *actual*, not
+aspirationally-documented, existing convention was the measured reason to
+deviate from that default. The ogg format is the one exception, and it is
+NOT uniform: `vorbisEncoderArgs` picks libvorbis, which keeps a mono source
+mono, when the build machine's ffmpeg has it (true in CI); otherwise it
+falls back to ffmpeg's own native vorbis encoder, which refuses mono input
+and must upmix to dual-mono stereo instead (true of this repo's own dev
+Homebrew ffmpeg, and so of the catalogue actually committed by this
+ticket). Never assume "mono throughout" for ogg specifically - see
+[Decision 54](DECISIONS.md) for how that fallback upmix is kept correctly
+leveled (a unity-gain pan copy, not a naive channel-count conversion) and
+byte-for-byte reproducible across rebuilds. `apps/sounds/test/generated-loudness.test.mjs`
+proves both loudness directions: a variant leveled through the catalogue's
+own pipeline on its true shipped layout passes `checkOneCeilingBinds`, and
+a variant that instead ships the engine's own pre-pan self-report as its
+recorded measure fails it, on real, independently-measured bytes.
+
+**Known, non-blocking issue: dev-machine ogg trailing-silence padding.**
+When the build machine's ffmpeg lacks libvorbis (true of this repo's own
+dev Homebrew ffmpeg, not true of CI's Ubuntu apt ffmpeg - see the ogg
+fallback-upmix paragraph above), the native vorbis encoder it falls back
+to does not trim the ogg's own end granule, so a decoded ogg built on
+this machine comes back padded with trailing silence out to the next
+1024-sample block boundary (up to 1023 samples, about 23 ms at 44.1 kHz).
+This is harmless to the format-energy gate itself, because that gate
+compares TOTAL energy (a sum of squares), and trailing zero-valued
+padding contributes exactly 0 to a sum - but it did once cause a mean-based
+version of the same gate to fail 36 sounds that had no real defect (see
+[Decision 54](DECISIONS.md)'s round-3 correction for the full story). The
+padding remains in this machine's locally-built oggs; a developer
+rebuilding the catalogue locally will get ogg bytes that differ from
+CI's, though neither is wrong under the current gate. Building shipped
+oggs with libvorbis on every machine (tracked as `docs/BACKLOG.md` GS-06)
+would remove the difference entirely rather than merely tolerate it.
 
 ## Variants
 
 Every Phase 1 sound is generated, not sourced, so none has an excuse to
 ship few takes: every sound carries 3 to 5 variants (Phase 1 ships 4 per
-event x chip group). `checkChipvoiceVariantCount` in `scripts/lib/checks.mjs`
-fails the build if any chipvoice-origin sound falls under 3, with a negative
-test in `apps/sounds/test/checks.test.mjs`; the check is gated on
-`origin === "chipvoice"` rather than applied unconditionally so a future
-non-chipvoice origin (the procedural engine, [GS-02](BACKLOG.md)) can define
-its own rule instead of inheriting this one by accident.
+event x chip group, and 4 per generated preset). `checkChipvoiceVariantCount`
+in `scripts/lib/checks.mjs` fails the build if any chipvoice-origin sound
+falls under 3, with a negative test in `apps/sounds/test/checks.test.mjs`;
+the check is gated on `origin === "chipvoice"` rather than applied
+unconditionally so a non-chipvoice origin can define its own rule instead
+of inheriting this one by accident - `checkGeneratedVariantCount` is that
+rule for `origin === "generated"` (GS-03), same floor of 3, "the same
+survival rule as the chipvoice half" (the same keep-first-4-audible-and-
+byte-distinct candidate-ladder pattern, just walking a plain incrementing
+seed ladder instead of an escalating detune/duration/volume nudge ladder -
+every one of sfx-engine's 8 models registers real per-seed jitter for every
+preset kind, so a plain seed ladder reliably produces byte-distinct takes
+without needing chipvoice's coarser-quantization workaround).
 `apps/sounds/catalog/chipvoice-recipes.mjs`'s
 `chipvoiceGroups`/`groupCandidates` is the mechanism: each event x chip group
 carries an ordered candidate ladder, not a fixed 4-shot list - every rung
@@ -149,6 +305,64 @@ from the candidate pool, the mechanism behind the CLI's `swap`).
 a broken one. Every route is built on `web-kit/http`'s route envelope and
 rate-limited per IP with `web-kit/limit` (Decision 47) - `POST /resolve` is
 the one write-shaped call in an otherwise read-only API.
+
+`style` is a plain equal-match filter over whichever candidates a category
+and tag already narrowed to (`pickSoundForEvent` in `src/lib/catalog.ts`),
+origin-blind by construction: asking for a style GS-03 newly populates
+(`realistic`, `scifi`, `fantasy`) reaches a generated sound the exact same
+way asking for `8bit`/`16bit` reaches a chipvoice one - no special-casing
+either origin. Leaving `style` unset keeps the pre-GS-03 default: every
+candidate in the category/tag pool, tie-broken by `rank.score` (always 0 in
+Phase 1) then the sound's own id ascending. Every generated sound's id is
+composed as `${category-slug}-${style}-${preset}`
+(`build-catalog.mjs`'s `buildGenerated`), and every style facet a generated
+sound can carry starts with a letter (`realistic`, `scifi`, `fantasy`,
+`cartoon`, `minimal-ui`), while both existing chipvoice styles start with a
+digit (`8bit`, `16bit`) - under `localeCompare`, a digit always sorts
+before a letter, so a generated sound can never become the alphabetically-
+first (and so selected) candidate in a category a chipvoice sound already
+occupies.
+
+That id-ordering argument only shows a generated sound can never *outrank*
+an existing chipvoice one within a single already-matched candidate pool -
+it says nothing on its own about whether some other combination of
+category, tag and style could resolve to a *different* pool than before
+GS-03 shipped. `apps/sounds/test/resolve-generated.test.mjs` checks that
+directly and exhaustively, not just a few spot cases: for every (category,
+tag-or-none, style) combination the catalogue can actually be asked for -
+405 of them, covering 85 categories, every tag actually in use, and all
+three styles (none, `8bit`, `16bit`) - it picks the sound the real,
+built catalogue returns and separately picks the sound a chipvoice-only
+subset of that same catalogue would return, and proves the two agree
+whenever the chipvoice-only pick is non-null. A generated sound can only
+ever fill a gap a chipvoice sound leaves empty; it can never override one
+that exists. This is a real, intended behavior change for a combination
+that previously resolved to nothing, not a no-op: 138 of the 405
+combinations previously resolved to nothing and now resolve to a generated
+sound - 46 unique (category, tag) gaps, each filling identically under all
+three styles, so 92 of the 138 are an `8bit`/`16bit` request newly reaching
+a generated sound, not just the style-less default. Examples:
+`movement/footstep/concrete`, `movement/footstep/wood`,
+`combat/explosion/small`, `combat/shield`, `ui/toggle/on`,
+`collect/coin/coin` and `magic/cast/shimmer` all previously resolved to
+nothing under an explicit `8bit` or `16bit` request (no chipvoice sound
+exists for any of them, in any style) and now resolve to a generated one.
+
+The same invariant extends to the EXCLUDE (swap) path -
+`pickSoundForEvent`'s `exclude` parameter, the mechanism behind
+`POST /resolve`'s `exclude` field and the CLI's `swap`. For every
+combination with a chipvoice-only pick, excluding that pick's own id must
+give the same next pick on both the chipvoice-only pool and the full pool,
+whenever the chipvoice-only pool still has another candidate once its own
+pick is excluded. When the chipvoice-only pool has no other candidate -
+`pickSoundForEvent`'s own documented fallback returns the same excluded
+sound again rather than nothing, since "a swap request with no other
+candidate should say so honestly" - the only permitted difference on the
+full pool is a generated sound filling that gap in place of "the same
+sound again", the same gap-filling-never-overriding rule applied to the
+swap case. `apps/sounds/test/resolve-generated.test.mjs` proves this
+exhaustively too, against the same real, built catalogue and the same
+production `pickSoundForEvent` function.
 
 ## The manifest (sounds.json)
 

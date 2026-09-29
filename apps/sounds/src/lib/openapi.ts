@@ -47,6 +47,14 @@ const VARIANT = {
       description: "Loudness and level, measured on this variant's own shipped wav.",
     },
     peaks: { type: "array", items: { type: "number" }, description: "96 points, 0 to 1, for an instant waveform." },
+    recipe: {
+      type: "object",
+      nullable: true,
+      description:
+        'How to render THIS exact variant again, deterministically: { engine: "sfx-engine@1", model, params, seed, sampleRate }, ' +
+        'with this variant\'s own seed. Present on every origin: "generated" variant. Absent on origin: "chipvoice" variants, ' +
+        "which rely on the sound's own top-level `recipe` instead (chipvoice's seed ladder is not itself part of the recipe shape).",
+    },
   },
 };
 
@@ -68,7 +76,15 @@ const SOUND = {
     origin: {
       type: "string",
       enum: ["chipvoice", "generated"],
-      description: 'Every Phase 1 sound is "chipvoice" (rendered by chipvoice\'s own renderSfx, no third-party sounds). "generated" is reserved for the procedural synthesis engine, not built yet.',
+      description: '"chipvoice" is rendered by chipvoice\'s own renderSfx (real chip emulation). "generated" is rendered by sfx-engine, gamesounds\' own deterministic procedural synthesis engine. Both are our own DSP; no third-party sounds and no external generation API, ever.',
+    },
+    recipe: {
+      type: "object",
+      nullable: true,
+      description:
+        "How to render this sound again, deterministically. For origin \"chipvoice\": a chip/channel/note/instrument recipe. " +
+        'For origin "generated": { engine: "sfx-engine@1", model, params, seed, sampleRate } - the sound\'s first variant\'s own recipe. ' +
+        "Every variant of a generated sound also carries its own recipe (with its own seed) on `variants[n].recipe`.",
     },
     loop: {
       type: "object",

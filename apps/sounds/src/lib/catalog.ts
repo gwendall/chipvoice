@@ -192,12 +192,20 @@ export function resolveEvent(input: string): ResolvedEvent {
  * `exclude` (the CLI's `swap`) drops given sound ids from the candidate pool
  * before picking, so "the next best" is simply "the best of what is left" -
  * the same deterministic sort, just missing what the caller already has.
+ *
+ * `sounds` overrides the candidate pool (defaulting to the full loaded
+ * catalogue, `listSounds()`). No production caller passes it - it exists so
+ * test/resolve-generated.test.mjs can run this EXACT function against a
+ * chipvoice-only subset of the real catalogue and compare the result to a
+ * full-catalogue call, proving the GS-03 resolve invariant against the
+ * actual selection logic rather than a second, hand-copied implementation
+ * of it that could silently drift from this one.
  */
 export function pickSoundForEvent(
   category: string,
-  { style, tag, exclude }: { style?: Style; tag?: string | null; exclude?: Set<string> } = {},
+  { style, tag, exclude, sounds }: { style?: Style; tag?: string | null; exclude?: Set<string>; sounds?: Sound[] } = {},
 ): Sound | null {
-  let candidates = listSounds().filter((s) => s.category === category);
+  let candidates = (sounds ?? listSounds()).filter((s) => s.category === category);
   if (tag) {
     const needle = tag.toLowerCase();
     candidates = candidates.filter((s) => s.tags.some((t) => t.toLowerCase() === needle));

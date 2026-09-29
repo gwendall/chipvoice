@@ -9,7 +9,7 @@
 //    no step at the seam), not just that the function ran.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -22,8 +22,12 @@ import {
   toWavBytes,
   LOUDNESS_TARGET_LUFS,
   TRUE_PEAK_CEILING_DBTP,
+  encodeVariant,
+  peakPerChannel,
+  energyPerChannel,
 } from "../scripts/lib/audio.mjs";
-import { checkLeadingSilence } from "../scripts/lib/checks.mjs";
+import { checkLeadingSilence, checkFormatEnergy, checkFormatEnergies, FORMAT_ENERGY_TOLERANCE_DB } from "../scripts/lib/checks.mjs";
+import { createHash } from "node:crypto";
 
 function run(cmd, args) {
   const result = spawnSync(cmd, args, { maxBuffer: 1024 * 1024 * 64 });
@@ -280,4 +284,173 @@ try {
   const dirty = measureLoopSeam(render, 0, period + Math.floor(period / 4));
   assert.ok(dirty.valueStep >= LOOP_SEAM_MAX_STEP, `a loop cut a quarter-period off must fail the ${LOOP_SEAM_MAX_STEP} threshold, got ${dirty.valueStep}`);
   console.log(`PASS measureLoopSeam reports a dirty seam for a loop cut a quarter-period off (value ${dirty.valueStep.toFixed(4)})`);
+}
+
+{
+  // Regression record for a real bug a PR review caught: WITHOUT bitexact
+  // flags, ffmpeg's ogg/vorbis muxer embeds a random stream serial number on
+  // every encode, so re-encoding byte-identical audio (as a fresh
+  // checkout's build inevitably does) produces a different SHA-256 every
+  // run, even though nothing about the sound changed -
+  // scripts/check-determinism.mjs exists to catch exactly this. This proves
+  // the bug was real by calling the exact PRE-FIX ogg args directly (not
+  // through encodeVariant, which no longer has a non-bitexact path to call)
+  // - a fixture, not a test of current production code, kept so this
+  // regression stays provable even though the code that caused it is gone.
+  const sampleRate = 44100;
+  const n = Math.round(sampleRate * 0.2);
+  const left = new Float32Array(n);
+  for (let i = 0; i < n; i++) left[i] = 0.8 * Math.sin((2 * Math.PI * 440 * i) / sampleRate);
+  const dir = makeWorkDir();
+  try {
+    const wavPath = join(dir, "tone.wav");
+    writeFileSync(wavPath, toWavBytes({ sampleRate, left, right: null, seconds: n / sampleRate, peak: 0.8 }));
+    const hashOf = (path) => createHash("sha256").update(readFileSync(path)).digest("hex");
+    const encodeOld = (label) => {
+      const outPath = join(dir, `old-${label}.ogg`);
+      run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, "-ac", "2", "-c:a", "vorbis", "-strict", "-2", "-q:a", "5", outPath]);
+      return hashOf(outPath);
+    };
+    const a = encodeOld("a");
+    const b = encodeOld("b");
+    assert.notEqual(a, b, "the pre-fix ogg args (no bitexact) must be non-deterministic across repeated encodes of the same input, proving BITEXACT_ARGS fixes a real bug");
+    console.log("PASS regression record: the pre-fix ogg fallback args really do produce different bytes across repeated encodes of the same input");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+{
+  // Round-3 regression, all synthetic (no ffmpeg needed - the bug was in
+  // energyPerChannel's own JS, not in any codec): a round-2 review's own
+  // energy metric (mean-square, sum divided by sample count) got the
+  // padding case backwards and failed 36 real, unaffected catalogue
+  // variants before a round-3 review caught it. This repo's dev-machine
+  // ffmpeg has no libvorbis (see vorbisEncoderArgs's own header in
+  // audio.mjs), so its native vorbis encoder does not trim the ogg's own
+  // end granule - a decoded ogg routinely comes back padded with trailing
+  // silence out to the next 1024-sample block boundary. n=1029 and
+  // padded=2048 below are combat-shoot-16bit-snes's own real numbers, the
+  // shortest of the 36 round-3 failures.
+  const sampleRate = 44100;
+  const n = 1029;
+  const padded = 2048;
+  const short = new Float32Array(n);
+  for (let i = 0; i < n; i++) short[i] = 0.4 * Math.sin((2 * Math.PI * 880 * i) / sampleRate);
+  const withTrailingSilence = new Float32Array(padded); // zero-initialized; short's samples copied in below
+  withTrailingSilence.set(short);
+
+  const sourceEnergy = energyPerChannel(short, null);
+  const paddedEnergy = energyPerChannel(withTrailingSilence, null);
+
+  // (a) the fix itself: a signal padded with trailing silence must PASS -
+  // total energy (the sum of each sample squared) cannot be moved by
+  // appending zeros, so the padded "format" reading must land within
+  // tolerance of the short "source" reading - exactly 0 dB apart, not just
+  // "close enough".
+  const passResult = checkFormatEnergy(sourceEnergy.left, paddedEnergy.left, { format: "ogg", channel: "left" });
+  assert.equal(passResult.ok, true, `total energy must be unaffected by ${padded - n} samples of trailing-silence padding: ${passResult.reason ?? ""}`);
+  console.log(`PASS energyPerChannel (total energy) is unaffected by trailing-silence padding (${n} samples padded to ${padded}) - checkFormatEnergy passes`);
+
+  // (c) pure regression pin, so nobody reintroduces mean-square division by
+  // accident: the OLD metric this file shipped first (removed - see
+  // energyPerChannel's own header in audio.mjs for the full story)
+  // reimplemented inline here, not imported, since the buggy version no
+  // longer exists anywhere in this codebase. It must read close to -3 dB of
+  // "loss" on exactly this padding shape even though not one real sample of
+  // energy was lost - matching combat-shoot-16bit-snes's own real measured
+  // -3.02 dB before the fix.
+  const meanSquare = (samples) => samples.reduce((sum, s) => sum + s * s, 0) / samples.length;
+  const oldBuggyDeltaDb = 10 * Math.log10(meanSquare(withTrailingSilence) / meanSquare(short));
+  assert.ok(
+    oldBuggyDeltaDb < -2.5 && oldBuggyDeltaDb > -3.5,
+    `the old, removed mean-square metric must read close to -3 dB on this padding shape (got ${oldBuggyDeltaDb.toFixed(4)} dB)`,
+  );
+  console.log(
+    `PASS regression pin: the old, removed mean-square metric would have read ${oldBuggyDeltaDb.toFixed(4)} dB on this exact padding shape ` +
+      "(pure padding, zero real energy actually lost) - documents why energyPerChannel sums instead of averaging",
+  );
+
+  // (b) the fix must still catch a real bug even with padding sitting
+  // alongside it: scale the padded signal by the old ogg fallback path's
+  // exact `-ac 2` factor (1/sqrt(2)) and confirm checkFormatEnergy still
+  // fails at very close to its exact -3.0103 dB signature, not masked (or
+  // amplified) by the padding.
+  const degraded = new Float32Array(padded);
+  for (let i = 0; i < padded; i++) degraded[i] = withTrailingSilence[i] / Math.SQRT2;
+  const degradedEnergy = energyPerChannel(degraded, null);
+  const failResult = checkFormatEnergy(sourceEnergy.left, degradedEnergy.left, { format: "ogg", channel: "left" });
+  assert.equal(failResult.ok, false, "a real -ac 2 style gain bug must still fail even on a padded signal");
+  assert.match(failResult.reason, /-3\.0/, `the failure must still read close to the exact -3.0103 dB -ac 2 signature (reason: ${failResult.reason})`);
+  console.log(
+    "PASS a real -ac-2-style gain bug still fails at its exact -3.0103 dB signature even when trailing-silence padding is also present, " +
+      "proving the fix does not mask a genuine regression",
+  );
+}
+
+{
+  // encodeVariant itself (the production path, both fixes together): the
+  // same render encoded twice, in two separate output directories, must
+  // ship byte-identical ogg and mp3 (BITEXACT_ARGS), and the shipped ogg's
+  // own decoded ENERGY (per channel - checkFormatEnergies, the real gate now)
+  // must land within tolerance of the source's energy, never the ~3dB-down
+  // loudness the fallback path's old `-ac 2` upmix used to cause.
+  const sampleRate = 44100;
+  const n = Math.round(sampleRate * 0.25);
+  const left = new Float32Array(n);
+  for (let i = 0; i < n; i++) left[i] = 0.7 * Math.sin((2 * Math.PI * 523 * i) / sampleRate);
+  const render = { sampleRate, left, right: null, seconds: n / sampleRate, peak: 0.7 };
+  const dirA = mkdtempSync(join(tmpdir(), "gamesounds-encode-a-"));
+  const dirB = mkdtempSync(join(tmpdir(), "gamesounds-encode-b-"));
+  try {
+    const a = encodeVariant(render, dirA, { mkdirSync });
+    const b = encodeVariant(render, dirB, { mkdirSync });
+    assert.equal(a.files.ogg.sha256, b.files.ogg.sha256, "encodeVariant's shipped ogg bytes must be identical across two encodes of the same render");
+    assert.equal(a.files.mp3.sha256, b.files.mp3.sha256, "encodeVariant's shipped mp3 bytes must be identical across two encodes of the same render");
+    console.log("PASS encodeVariant is deterministic: the same render encodes to byte-identical ogg and mp3 across two separate runs");
+
+    const sourceEnergy = energyPerChannel(render.left, render.right);
+    const energyCheck = checkFormatEnergies(sourceEnergy, a.formatEnergy);
+    assert.ok(energyCheck.ok, `encodeVariant's own shipped ogg/mp3 must pass checkFormatEnergies: ${energyCheck.reason ?? ""}`);
+    console.log(
+      `PASS encodeVariant's shipped ogg and mp3 decode back within ${FORMAT_ENERGY_TOLERANCE_DB} dB of the wav's own energy per channel ` +
+        `(source ${JSON.stringify(a.formatEnergy.source)}, ogg ${JSON.stringify(a.formatEnergy.ogg)}, mp3 ${JSON.stringify(a.formatEnergy.mp3)})`,
+    );
+  } finally {
+    rmSync(dirA, { recursive: true, force: true });
+    rmSync(dirB, { recursive: true, force: true });
+  }
+}
+
+{
+  // Real-fixture regression for the round-2 review's HF-dominated-content
+  // finding: a signal whose real energy sits mostly above ~16 kHz (a
+  // near-Nyquist tone at this catalogue's 44.1 kHz encode rate) must
+  // actually FAIL checkFormatEnergies through the real encodeVariant
+  // production path - not just as an asserted number, but as the same
+  // ffmpeg ogg/vorbis and libmp3lame encodes the catalogue ships. This is
+  // the exact class of defect that got `pickup-key`, `impact-glass-light`
+  // and `footstep-metal` excluded (build-catalog.mjs's EXCLUDED_PRESETS):
+  // both encoders roll off well before Nyquist at this catalogue's quality
+  // settings, so a signal that lives almost entirely up there loses real
+  // energy through the encode, not just peak.
+  const sampleRate = 44100;
+  const n = Math.round(sampleRate * 0.3);
+  const left = new Float32Array(n);
+  for (let i = 0; i < n; i++) left[i] = 0.8 * Math.sin((2 * Math.PI * 20500 * i) / sampleRate);
+  const render = { sampleRate, left, right: null, seconds: n / sampleRate, peak: 0.8 };
+  const dir = mkdtempSync(join(tmpdir(), "gamesounds-hf-encode-"));
+  try {
+    const encoded = encodeVariant(render, dir, { mkdirSync });
+    const sourceEnergy = energyPerChannel(render.left, render.right);
+    const energyCheck = checkFormatEnergies(sourceEnergy, encoded.formatEnergy);
+    assert.equal(energyCheck.ok, false, "a ~20.5kHz near-Nyquist tone must fail checkFormatEnergies through the real encodeVariant path, proving the HF-energy-loss finding in code, not just asserted numbers");
+    console.log(
+      `PASS a near-Nyquist (20.5kHz) tone fails checkFormatEnergies through the real encodeVariant path ` +
+        `(source ${JSON.stringify(encoded.formatEnergy.source)}, ogg ${JSON.stringify(encoded.formatEnergy.ogg)}, mp3 ${JSON.stringify(encoded.formatEnergy.mp3)}) - ` +
+        "the same class of defect that excluded pickup-key, impact-glass-light and footstep-metal",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }

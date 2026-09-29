@@ -2060,3 +2060,310 @@ render-parity.
 outside it is required to adopt it. It is the sound-generation option
 gamesounds.ai's app can call into going forward, alongside whatever it
 already has.
+
+## 54. gamesounds' generated sounds ship mono, leveled on their own actual shipped bytes; sfx-engine's presets are filed by what they model, never forced to fill a style (2026-09-29)
+
+GS-03 wires `packages/sfx-engine` (decision 52) into the gamesounds.ai
+catalogue: `apps/sounds/catalog/generated-recipes.mjs` maps all 53 named
+presets to a taxonomy category, a style and tags, rendered at the
+catalogue's own 44.1 kHz through the same trim/level/encode/measure
+pipeline the chipvoice half already uses, 4 seed-ladder variants per
+preset. Two things had to be decided that were left open (or assumed
+incorrectly) when decision 52 shipped.
+
+**Channel layout: mono for wav and mp3, catalogue-wide; ogg depends on the
+build machine's ffmpeg - decided by measurement, not by following the
+suggested default.** Decision 52's own writeup, and `docs/BACKLOG.md`'s
+GS-03 tracking bullet, both assumed the existing catalogue ships stereo
+("the shipped stereo 44.1 kHz channel layout"). Direct inspection of
+`apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes` (`channels = right ? 2 :
+1`) shows this was never true: chipvoice's own `renderSfx` is never called
+with `stereo: true` anywhere in the catalogue build, so every existing
+chipvoice-origin sound already ships mono in its wav and mp3. Generated
+sounds match that convention for the same reason - consistency with the
+actual, not aspirationally documented, existing convention - not to
+introduce a stereo file layout no sound actually uses.
+
+The ogg format is the one exception, and it is NOT uniform across a
+catalogue built on different machines: `vorbisEncoderArgs` (same file)
+picks its encoder once per build machine - libvorbis, if the machine's
+ffmpeg has it (true in CI, Ubuntu's apt package), which keeps a mono source
+mono; ffmpeg's own native "experimental" vorbis encoder otherwise (this
+repo's own dev Homebrew ffmpeg, confirmed missing libvorbis), which refuses
+mono input and must upmix to dual-mono stereo instead. A catalogue built in
+CI ships mono ogg files; a catalogue built locally on a libvorbis-less
+machine (what actually built the catalogue this ticket commits) ships
+dual-mono-stereo ogg files of the same, equally-loud sounds. Both are
+correct; a build only needs to know which one it is producing, never assume
+"mono throughout" - see the next-but-one paragraph below for how that
+fallback upmix is kept correctly leveled and byte-for-byte reproducible,
+a defect a PR review of this same ticket's rebuild caught before merge.
+
+This also sidesteps the loudness trap in the direction it actually runs:
+sfx-engine's `loudness/normalize.ts` meters and gains a render as mono
+*before* `panToStereo` runs
+(`packages/sfx-engine/src/render/renderRecipe.ts`), so its own
+self-reported `RenderedSound.loudness` describes the pre-pan signal, not
+the post-pan channel a caller receives - at every preset's `pan: 0`,
+equal-power pan law gives `left = right = mono * cos(pi/4)`, about
+-3.0103 dB quieter than the engine's own figure. Trusting that figure
+instead of re-measuring the actual shipped bytes would have silently
+under-leveled every generated variant by about 3 dB. `build-catalog.mjs`'s
+`renderGeneratedVariants` never does this: it takes `RenderedSound.left`
+as the shipped signal (valid exactly because `left === right` at `pan: 0`)
+and runs it through the catalogue's own `levelToConvention`, which
+re-measures whatever bytes it is actually given, regardless of what any
+engine claims about them.
+`apps/sounds/test/generated-loudness.test.mjs` proves both directions on
+real, independently-measured bytes: the correct path passes
+`checkOneCeilingBinds`, and shipping the engine's own pre-pan self-report
+as the recorded measure fails it.
+
+**Ogg's fallback upmix: bitexact determinism and a unity-gain pan, not
+`-ac 2`.** Building on a libvorbis-less machine's fallback path (the one
+that actually built this ticket's committed catalogue) surfaced two
+defects, both caught by a PR review of this same rebuild before merge and
+now fixed in `encodeVariant` (`apps/sounds/scripts/lib/audio.mjs`). First:
+without explicit bitexact flags, ffmpeg's ogg/vorbis and mp3 muxers embed a
+randomized-per-encode stream serial number, so re-running the same build
+with no signal change at all produced different ogg/mp3 bytes and a
+spurious re-hash of every file, catalogue-wide, on every rebuild - fixed by
+adding `-fflags +bitexact -flags:a +bitexact` as OUTPUT options (placed
+after `-i`, immediately before the output path; the same flags placed as an
+INPUT option before `-i` do not fix it), on both formats. Second, and more
+serious: the fallback upmix used `-ac 2`, ffmpeg's generic channel-count
+converter, which applies its default equal-power split (-3.0103 dB,
+`1/sqrt(2)`, per channel) when going from 1 to 2 channels - correct for
+spreading a mono source across a stereo *mix*, wrong for how a browser
+plays a mono file copied to both channels (unity gain, not attenuated), so
+every ogg built on this fallback path shipped about 3 dB too quiet. Fixed
+by replacing `-ac 2` with an explicit unity-gain pan filter,
+`-af pan=stereo|c0=c0|c1=c0` (a literal copy of the source channel into
+both outputs, no channel-count-conversion gain math involved). Verified
+directly with ffmpeg's own `volumedetect`: a -20.0 dBFS source measured
+-22.9 dBFS through the old `-ac 2` path (matching the expected -3.01 dB
+loss almost exactly) and -19.9 dBFS through the new pan-filter path.
+
+`encodeVariant` now also decodes every shipped ogg and mp3 back to PCM and
+measures each one's own ENERGY (total energy - the sum of each sample
+squared, not a mean, and not peak - see below for why) per channel,
+recorded as `formatEnergy`; `checkSound` (`scripts/lib/checks.mjs`) gates
+every variant on it directly, `checkFormatEnergy`/`checkFormatEnergies`, a
+single per-variant, per-channel, per-format tolerance
+(`FORMAT_ENERGY_TOLERANCE_DB`, 1.0 dB) with no separate aggregate layer.
+
+This replaces an earlier, wrong design a round-2 PR review caught before
+merge: a per-variant PEAK tolerance loosened to 17 dB, backstopped by a
+separate whole-build aggregate check on the mean of every peak delta. The
+outliers that tolerance was widened to admit - `pickup-key` losing up to
+16.23 dB of peak, `impact-glass-light` and `footstep-metal` losing smaller
+but still large amounts - were assumed to be lossy-codec transient smearing
+(a block-transform codec spreading a sharp attack's energy across an MDCT
+block, which lowers peak while roughly preserving total energy: a real,
+harmless artifact elsewhere in this catalogue). They are not that. Decoding
+both the wav and the shipped ogg/mp3 and measuring actual ENERGY showed
+these three presets lose real, substantial energy through the lossy
+encode - `pickup-key` 13.2 to 16.5 dB, `impact-glass-light` up to 6.6 dB,
+`footstep-metal` up to 7.8 dB on the catalogue's own shipped variants - and
+a steep 16 kHz highpass on their own source wav shows why: 97.4%, 77.6% and
+31.0% of each preset's own energy sits above 16 kHz, respectively, well
+inside the range both ffmpeg's native vorbis encoder and libmp3lame simply
+filter away at this catalogue's quality settings (`impact-metal-heavy`, an
+unaffected preset, has 0.0% of its energy up there). Transient smearing
+preserves energy; a codec's own lowpass removing content the source never
+had a chance to keep does not - the wav and the shipped lossy files are
+audibly different sounds for these three, not a measurement artifact. They
+are excluded (`build-catalog.mjs`'s `EXCLUDED_PRESETS`), with a follow-up
+ticket (`docs/BACKLOG.md`, GS-05) to find why sfx-engine's own modal
+synthesis puts their energy there and fix it at the source - tuning the
+engine itself stays out of scope for this ticket (decision 52, this
+decision). A whole-build aggregate mean check also had its own, separate
+problem once framed this way: bugging only the generated half of a build
+(about half of ~1092 variants) would move the catalogue-wide mean by
+roughly 0.4 dB, comfortably under even a tight bound - a partial regression
+could hide in the average. Peak itself was also simply the wrong signal
+for either job, fragile under a lossy codec in both directions, so it is
+kept only as informational build-log data
+(`collectFormatPeakDeltas`), never as a gate.
+
+`FORMAT_ENERGY_TOLERANCE_DB` (1.0 dB) is derived from the real, healthy
+catalogue AFTER the three exclusions above: the measured max |energy
+delta| across every remaining format/channel reading is 0.56 dB
+(`footstep-water-puddle`, the worst of the rest). The bug this check
+exists to catch (the old ogg fallback path's `-ac 2` upmix) has an exact,
+content-independent signature of -3.0103 dB
+(`10*log10((1/sqrt(2))**2)`, the same numeric value in the energy domain
+as its peak-domain `20*log10(1/sqrt(2))` counterpart, since a uniform
+amplitude scale produces the same dB delta in either domain) on every
+affected channel. 1.0 dB sits with real margin on both sides: about 0.44
+dB of headroom above the healthy worst case, over 2 dB of headroom below
+the bug's own size. A single variant then catches the systematic bug
+directly, and a partial regression can no longer hide in an average -
+bugging only the generated half would have moved the old design's mean by
+about 0.4 dB and passed it. `apps/sounds/test/audio.test.mjs` and
+`apps/sounds/test/checks.test.mjs` prove both fixes and the energy gate,
+including a standing regression record that the pre-fix ogg args really do
+produce different bytes across repeated encodes of the same input, a
+direct proof that the old `-ac 2` delta fails `checkFormatEnergy` on a
+single variant with no aggregate needed, a proof that a HF-dominated
+signal whose lossy encode loses energy fails too, and a real-fixture
+regression (a ~20.5 kHz near-Nyquist tone run through the actual
+`encodeVariant` production path) proving the HF-energy-loss finding in
+code, not just asserted numbers.
+
+**Round 3: the ENERGY metric itself was measuring the wrong thing.** A
+later local rebuild, with this design otherwise unchanged, failed 36
+sounds against `FORMAT_ENERGY_TOLERANCE_DB` - 33 pre-existing
+`origin: "chipvoice"` sounds entirely outside this ticket's scope, plus 3
+more generated presets (`ui-hover`, `ui-toggle-off`, `ui-text-blip`, all
+short "minimal-ui" oscillator blips) beyond the three already excluded
+above. The first read was more codec passband loss; it was not. The real
+cause: `energyPerChannel` computed a MEAN (sum of squares divided by
+sample count), and on this development machine ffmpeg is built without
+libvorbis, so `encodeVariant`'s ogg fallback path uses ffmpeg's own
+"experimental" native vorbis encoder (`vorbisEncoderArgs` in
+`scripts/lib/audio.mjs`), which does not trim the ogg's own end granule.
+A decoded ogg from this machine comes back padded with trailing silence
+out to the next 1024-sample block boundary (up to 1023 samples, about
+23 ms at 44.1 kHz). Padding grows the sample count while leaving the sum
+of squares almost unchanged, so a MEAN reads an artificially lower value;
+for a clip only ~1000-3500 samples long (exactly the `ui-*` presets'
+size), that padding is a large fraction of the total length and the bias
+is large enough to trip a 1.0 dB gate. mp3 is unaffected (ffmpeg already
+trims LAME's own gapless padding), and CI's ffmpeg (the Ubuntu apt
+package) is built with libvorbis and does not hit this path at all - the
+defect is specific to oggs built on this machine, not to any shipped
+audio. The fix: `energyPerChannel` now sums instead of averaging (total
+energy, not mean-square power), which is invariant to trailing
+zero-valued padding, while a real uniform-gain bug (the `-ac 2` case
+above) still produces the identical `10*log10(k**2)` delta either way,
+since the length term cancels in a ratio - the fix loses no sensitivity
+to the bug the gate exists to catch. Re-measured over the full local
+catalogue with the corrected sum metric (270 sounds, 1080 variants, 3240
+ogg/mp3 format/channel readings): mean |delta| 0.0327 dB, p99 |delta|
+0.3595 dB, max |delta| 0.5556 dB, still `footstep-water-puddle` - within
+0.005 dB of the figure the original (mean-based) measurement had already
+found for that preset, since its ~10,500-11,500-sample variants are far
+enough from the 1024-sample block boundary that the bias barely reached
+them. `FORMAT_ENERGY_TOLERANCE_DB` stays at 1.0 dB under the corrected
+metric too, with the same real margin on both sides. The three `ui-*`
+presets pass comfortably once summed (worst deltas -0.05, -0.10 and
+-0.18 dB) and were never a real defect, only this measurement artifact.
+The three exclusions above were re-checked the same way and hold under
+the corrected metric, re-measured rather than assumed: `pickup-key` now
+13.2 to 18.2 dB, `impact-glass-light` 6.1 to 6.9 dB, `footstep-metal` 2.2
+to 15.6 dB - and for `footstep-metal` specifically, every one of its
+eight candidate seeds exceeds tolerance, not only the worst ones, which
+settles the open question of whether that exclusion was itself partly a
+padded-mean artifact: it was not. `apps/sounds/test/audio.test.mjs` adds
+three regression tests for this using the real
+`combat-shoot-16bit-snes` shape (1029 real samples padded to 2048): a
+padded-silence signal passes the corrected gate; the same signal scaled
+by `1/sqrt(2)` still fails at exactly -3.0103 dB; and a pure regression
+guard proves in code, not just asserted numbers, that the removed
+mean-square formula really would have read about -3 dB on the padded
+case alone. The padding defect itself - harmless to the gate now, but
+still worth fixing so a developer's local ogg bytes match CI's - is
+tracked as a known, non-blocking issue rather than fixed in this ticket
+(`docs/GAMESOUNDS.md`'s ogg-fallback-upmix section, `docs/BACKLOG.md`
+GS-06).
+
+**Style: what a preset actually models, never a forced fit.** `impact`,
+`footstep`, `whoosh` and `explosion` presets model real-world physics
+(struck materials, walked surfaces, air movement, a blast) and are filed
+`realistic`; `scifi` presets are synthetic sound design and stay `scifi`;
+`magic` presets are spell/cast content and are filed `fantasy`; `ui`
+presets are short oscillator-only blips and are filed `minimal-ui`.
+`pickup` is the one family judged per preset rather than by a blanket
+rule: `pickup.ts`'s own header calls its warm, tuned-oscillator arpeggios
+(`coin`, `gem`, `powerup`, `level-up`) deliberately "not an 8-bit
+square-wave cliche", so those are filed `cartoon`; `key`, the one
+physically-informed preset in the family (a struck-metal modal jingle), is
+filed `realistic` instead, honestly, alongside the material-impact
+families it shares its synthesis technique with. Nothing is forced into
+`cartoon`, `horror` or `cozy` just to give an otherwise-empty style facet a
+sound: an empty facet stays empty and honest, rather than mislabelled.
+`apps/sounds/catalog/generated-recipes.mjs`'s own header carries this same
+reasoning line by line, next to the map it explains; `docs/GAMESOUNDS.md`'s
+"Generated sounds" section is the canonical summary.
+
+**Guards.** Every generated variant runs through the same `checkSound`
+every chipvoice variant does, including a new `checkGeneratedVariantCount`
+(same 3-minimum floor as `checkChipvoiceVariantCount`, gated on
+`origin === "generated"` so neither rule can silently apply to the other's
+sounds by accident). A preset whose variants fail, whose style judgment
+cannot be made honestly, or that simply sounds wrong is named and excluded
+with a reason in `build-catalog.mjs`'s `EXCLUDED_PRESETS` map, rather than
+shipped anyway or forced into a facet it does not belong in; this ticket's
+own build excludes three presets this way (`pickup-key`,
+`impact-glass-light`, `footstep-metal` - see the format-energy paragraphs
+above, including the round-3 correction, for the measured reason each was
+excluded). Tuning a preset's own sound is explicitly
+out of scope here - sfx-engine's committed hash fixture (decision 52) is
+not touched by this ticket, and a preset that needs tuning gets excluded,
+not silently shipped worse than it should be. `POST /api/v1/resolve`
+reaches a generated sound through an ordinary, origin-blind style match.
+The correctly-scoped guarantee, proven exhaustively (not just
+spot-checked) by `apps/sounds/test/resolve-generated.test.mjs` against the
+real, built catalogue: for every (category, tag-or-none, style)
+combination the catalogue can actually be asked for, the full-catalogue
+pick equals the chipvoice-only pick whenever a chipvoice-only pick exists
+at all - a generated sound can only ever fill a gap a chipvoice sound
+leaves empty, it can never override one that exists, since
+`pickSoundForEvent`'s style fallback and id tie-break (every generated
+sound's id starts with a letter, sorting after chipvoice's digit-starting
+`8bit`/`16bit` under `localeCompare`) never reaches past an existing
+chipvoice candidate. This is a real, intended behavior change for a
+combination that previously resolved to nothing, not a no-op: across 405
+combinations checked (85 categories, every tag actually in use, all three
+styles - none, `8bit`, `16bit`), 138 previously-unresolvable combinations
+now resolve to a generated sound - 46 unique (category, tag) gaps, each
+one filling identically under all three styles, so 92 of the 138 are a
+`8bit`/`16bit` request newly reaching a generated sound, not just the
+style-less default. Examples: `movement/footstep/concrete`,
+`movement/footstep/wood`, `combat/explosion/small`, `combat/shield`,
+`ui/toggle/on`, `collect/coin/coin` and `magic/cast/shimmer` all
+previously resolved to nothing under an explicit `8bit` or `16bit` request
+(no chipvoice sound exists for any of them, in any style) and now resolve
+to a generated one - correctly: gamesounds' resolve behavior has always
+been to widen the search across style rather than return nothing (it never
+falls back across tag), and a generated sound filling a gap the
+chipvoice-only catalogue actually has is that same fallback doing its job
+over a wider candidate pool, not a new kind of override.
+
+The same invariant extends to the EXCLUDE (swap) path,
+`pickSoundForEvent`'s `exclude` parameter (the CLI's `swap`): for every
+combination with a chipvoice-only pick, excluding that pick's own id must
+give the same next pick on both the chipvoice-only pool and the full pool,
+whenever the chipvoice-only pool still has another candidate once its own
+pick is excluded. When the chipvoice-only pool has no other candidate -
+`pickSoundForEvent`'s own documented fallback returns the same excluded
+sound again rather than nothing, "a swap request with no other candidate
+should say so honestly" - the only permitted difference on the full pool
+is a generated sound filling that gap in place of "the same sound again",
+the same gap-filling-not-overriding rule applied to the swap case. Also
+proven exhaustively by `apps/sounds/test/resolve-generated.test.mjs`,
+against the same real, built catalogue and the same production
+`pickSoundForEvent` function, never a second hand-copied selection logic.
+
+**What changes.** `apps/sounds/catalog/generated-recipes.mjs` (new),
+`scripts/build-catalog.mjs` (renders and merges the generated half),
+`scripts/lib/checks.mjs` (`checkGeneratedVariantCount`),
+`packages/gamesounds/src/types.ts` (`Origin`'s doc comment no longer says
+"not built in this phase"; `Variant` gains an optional `recipe`, one per
+generated variant), `src/lib/openapi.ts` (the same, reflected in
+`/openapi.json`/`/llms.txt`/`/skill.md`/`/.well-known/mcp.json`, all
+derived from it), and the sound detail page (states plainly whether a
+sound was made by chip emulation or by sfx-engine, and which model).
+`packages/gamesounds`'s CLI and runtime needed no code change - a sound's
+origin is opaque to both, they only ever handle a resolved
+`Sound`/`Variant` - only new test coverage. CI's `sounds` job now builds
+`packages/sfx-engine` before `catalog:build`, the same way it already
+builds `packages/chipvoice` and `packages/web-kit` first, for the same
+reason (`build-catalog.mjs` imports its built `dist/` directly).
+`apps/sounds/vercel.json`'s `ignoreCommand` is unchanged: the site's own
+`src/` never imports `packages/sfx-engine` (only the build-time
+`scripts/build-catalog.mjs` does), and Vercel's `buildCommand` never runs
+`catalog:build` - it serves the already-committed `generated/catalog.json`
+- so a change to `packages/sfx-engine` cannot affect what Vercel builds or
+serves.

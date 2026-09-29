@@ -364,26 +364,33 @@ stated margin, not picked to make today's output pass.
 ### Loudness convention across engines
 
 This engine's own `loudness/normalize.ts` measures and gains a render as
-mono, since every recipe here renders one channel. The gamesounds.ai
-catalogue build (`apps/sounds/scripts/lib/audio.mjs`'s `levelToConvention`,
-same -18 LUFS momentary / -1 dBTP true-peak ceilings, same peak-wins
-tie-break) instead measures and levels each file on its own shipped channel
-layout - stereo 44.1 kHz for most catalogue sources. BS.1770's channel
-summation reads a mono signal about `-10*log10(2) = -3.0103` LU quieter than
-the same content played as two identical (dual-mono) channels, for the same
-reason Table 1's stereo test cases needed that exact shift above: a render
-of THIS engine gained to exactly -18 LUFS as measured here would, played
-back, sit about 3 dB louder in the listener's ear than a catalogue sound
-nominally at -18 LUFS, because the catalogue's meter is crediting a second
-channel this engine's meter never sees. This is a real cross-engine
-mismatch, not a rounding error, and this PR does not change either engine's
-normalization to fix it. GS-03, when it wires sfx-engine into the
-catalogue, must reconcile it: either re-level every sfx-engine render
-through the catalogue's own `levelToConvention` on the render's actual
-shipped channel layout (mono stays mono, or is duplicated to stereo first,
-whichever the catalogue ends up shipping for procedural sounds), or ship
-and meter mono consistently catalogue-wide - either way, so both engines'
-sounds land at the same -18 LUFS in the listener's ears, not just on paper.
+mono, since every recipe here renders one channel, BEFORE `panToStereo`
+runs (`render/renderRecipe.ts`) - so the figures it reports on
+`RenderedSound.loudness` describe the pre-pan signal, not the post-pan
+`left`/`right` channels a caller actually receives. Every preset in this
+package renders at `pan: 0` (`graphParams.pan ?? 0`), where equal-power pan
+law gives `left = right = mono * cos(pi/4)`, about -3.0103 dB - the exact
+`-10*log10(2)` BS.1770 shift Table 1's stereo cases needed above, in
+reverse: trusting this engine's own self-reported loudness for a rendered
+`left` channel would silently ship a file that measures about 3 dB quieter
+than its recorded figure claims (the trap runs opposite to the mono-vs-
+dual-mono direction the paragraph below once worried about, because the
+signal that reaches a listener here is one *panned* channel, not two summed
+ones). GS-03 (which wires sfx-engine into the catalogue) settled this: it
+found, by reading `apps/sounds/scripts/lib/audio.mjs`'s `toWavBytes`
+directly (`channels = right ? 2 : 1`), that the gamesounds.ai catalogue in
+fact ships every chipvoice-origin sound as mono today - chipvoice's own
+`renderSfx` is never called with `stereo: true` anywhere in the catalogue
+build - contrary to what this section previously assumed ("stereo 44.1 kHz
+for most catalogue sources"). Generated sounds ship mono wav and mp3 too,
+for that measured reason, not the suggested-by-default alternative (ogg is
+the one exception, and is not uniform across build machines - see Decision
+54): each variant's own `RenderedSound.left` (valid as the shipped mono
+signal exactly because `left === right` at `pan: 0`) is fed through the
+catalogue's own `levelToConvention`, which re-measures the actual shipped
+mono bytes rather than trusting this engine's pre-pan self-report - never
+the reverse. See [Decision 54](DECISIONS.md) and the "Loudness" section of
+[GAMESOUNDS.md](GAMESOUNDS.md).
 
 ## Quality evidence
 
