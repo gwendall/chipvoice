@@ -29,6 +29,19 @@ export const SNES_PROCESSOR_NAME = "snes-processor";
 
 export const SNES_VOICES = ["left", "right"] as const;
 
+/**
+ * Not a real S-SMP port: $F8/$F9 are unimplemented on this chip (real
+ * hardware documents them as plain general-purpose storage, no special
+ * function), so `SnesChip.write` never sees a genuine one from `Ssmp` - it
+ * only forwards $F2/$F3 traffic into `events` (see `ssmp.ts`'s `write`).
+ * `importSpc` uses this address, once, right after a plan's synthetic
+ * DSP-register restore writes, to tell a fresh chip "the register file you
+ * now hold is a snapshot's, not the result of 128 writes that just
+ * happened" - see `SDsp.restoreInternalState`'s doc comment for why that
+ * distinction matters.
+ */
+export const DSP_SNAPSHOT_RESTORE_ADDR = 0xf9;
+
 export class SnesChip implements DigitalChip {
   readonly voices = SNES_VOICES;
   readonly ram = new Uint8Array(0x10000);
@@ -50,6 +63,7 @@ export class SnesChip implements DigitalChip {
   write(addr: number, value: number) {
     if (addr === 0xf2) this.selected = value & 0xff;
     else if (addr === 0xf3 && this.selected < 0x80) this.dsp.write(this.selected, value);
+    else if (addr === DSP_SNAPSHOT_RESTORE_ADDR) this.dsp.restoreInternalState();
   }
 
   /** One clock: the writes stamped at or before it, then one phase of the DSP. */

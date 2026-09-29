@@ -66,12 +66,25 @@ const check = (name, ok, extra = '') => {
   // 128 registers restored (256 synthetic events), then the two real writes.
   check('every DSP register is restored as a synthetic write pair', plan.events.length >= 256 + 2);
   check('restoreEvents reports exactly the 256 synthetic pairs', plan.restoreEvents === 256);
+  check('snapshotEvents adds the DSPADDR seed and the restore sentinel', plan.snapshotEvents === plan.restoreEvents + 2);
   const restore = plan.events.slice(0, plan.restoreEvents);
   check('the restore pairs are all stamped at cycle 0', restore.every((e) => e.at === 0));
   check('MVOLL is restored via the same $F2/$F3 protocol', restore[0x0c * 2].addr === 0xf2 && restore[0x0c * 2].value === 0x0c && restore[0x0c * 2 + 1].addr === 0xf3 && restore[0x0c * 2 + 1].value === 0x7f);
   const real = plan.events.slice(plan.restoreEvents);
-  check('the program\'s own writes are captured in order', real.length === 2 && real[0].addr === 0xf2 && real[0].value === 0x6c && real[1].addr === 0xf3 && real[1].value === 0x20);
-  check('the real writes land after the restore, on ascending cycles', real[0].at >= 0 && real[1].at >= real[0].at);
+  // Two synthetic events precede the program's own writes here, both stamped
+  // at cycle 0 like the restore loop itself, both placed after
+  // `restoreEvents` (not inside it) so a caller that only skips the first
+  // `restoreEvents` entries still sees them: the snapshot's own DSPADDR
+  // (this fixture never patches RAM $F2, so it reads back as 0) and the
+  // reserved sentinel `DSP_SNAPSHOT_RESTORE_ADDR` ($F9, chips/snes/dsp.ts)
+  // that tells a fresh chip to re-sync the DSP's hidden per-sample latches
+  // from the register file it was just handed (see spc-import.ts's own doc
+  // comment on both events).
+  check('DSPADDR is seeded from the snapshot right after the restore loop', real[0].addr === 0xf2 && real[0].value === 0 && real[0].at === 0);
+  check('the snapshot-restore sentinel event follows it', real[1].addr === 0xf9 && real[1].at === 0);
+  const cpuWrites = real.slice(2);
+  check('the program\'s own writes are captured in order', cpuWrites.length === 2 && cpuWrites[0].addr === 0xf2 && cpuWrites[0].value === 0x6c && cpuWrites[1].addr === 0xf3 && cpuWrites[1].value === 0x20);
+  check('the real writes land after the restore, on ascending cycles', cpuWrites[0].at >= 0 && cpuWrites[1].at >= cpuWrites[0].at);
   check('no ID666 tag is reported when the file has none', plan.id666 === undefined);
   console.log('PASS a minimal valid .spc restores CPU, RAM and DSP registers and captures the program\'s own writes');
 }

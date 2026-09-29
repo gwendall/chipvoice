@@ -2,7 +2,7 @@ import type {PerformancePlan} from './performance.js';
 import type {RegisterEvent} from './chip.js';
 import {Spc700} from './chips/snes/spc700.js';
 import {Ssmp} from './chips/snes/ssmp.js';
-import {SnesChip, SPC_HZ} from './chips/snes/dsp.js';
+import {DSP_SNAPSHOT_RESTORE_ADDR, SnesChip, SPC_HZ} from './chips/snes/dsp.js';
 
 /**
  * The ID666 tag, when a file carries one: the song's own metadata, never
@@ -26,13 +26,26 @@ export interface Id666Tag {
 export interface SpcPerformancePlan extends PerformancePlan {
   id666?: Id666Tag;
   /**
-   * How many of `events`, from the start, are the synthetic DSP-register
-   * restore writes (see `importSpc`'s doc comment) rather than writes the
-   * CPU actually made while playing. A comparison against a real CPU oracle
-   * - which loads a snapshot's registers directly, never through $F2/$F3 -
-   * skips exactly this many events from the front before comparing.
+   * How many of `events`, from the start, are the synthetic per-register
+   * DSPADDR/DSPDATA restore pairs (see `importSpc`'s doc comment). This
+   * does NOT cover every synthetic event the plan opens with - the DSPADDR
+   * seed and the `DSP_SNAPSHOT_RESTORE_ADDR` sentinel both come right
+   * after this many entries, deliberately outside this count, so a caller
+   * that only wants to skip the per-register restore pairs (e.g. `check.mjs`'s
+   * `resolveWrites`, which still wants to see the DSPADDR seed) can. See
+   * `snapshotEvents` for the index of the first write the CPU itself made.
    */
   restoreEvents: number;
+  /**
+   * How many of `events`, from the start, are synthetic (not writes the CPU
+   * actually made while playing): the `restoreEvents` per-register restore
+   * pairs, plus the DSPADDR seed and the `DSP_SNAPSHOT_RESTORE_ADDR`
+   * sentinel that follow them. A comparison against a real CPU oracle -
+   * which loads a snapshot's registers and hidden latches directly, never
+   * through any $F2/$F3 write a replay can see - skips exactly this many
+   * events from the front before comparing.
+   */
+  snapshotEvents: number;
 }
 
 // The .spc container: a fixed-offset struct, not a chip's own behavior, so
@@ -191,6 +204,36 @@ export function importSpc(bytes: Uint8Array, options: {seconds?: number} = {}): 
     events.push({at: 0, addr: 0xf3, value: dspRegs[reg]});
   }
   const restoreEvents = events.length;
+  // DSPADDR ($F2) is S-SMP latch state, not one of the 128 DSP registers
+  // the loop above restores. A snapshot taken mid-song (the normal case)
+  // almost never has $F2 written again before the CPU's very next real
+  // instruction: the resumed trace typically starts with a bare
+  // "MOV $F3,A" targeting DSPDATA, relying on $F2 already holding the
+  // register the program selected before the snapshot was taken. A fresh
+  // chip replaying `events` without this line starts with the loop's own
+  // last iteration selected (register 127) instead, so that first real
+  // write lands on the wrong register. This event seeds the true selected
+  // register; it is stamped at cycle 0 like the restore loop, but placed
+  // after `restoreEvents` so callers that skip the first `restoreEvents`
+  // entries (the synthetic per-register restore writes) still see it.
+  events.push({at: 0, addr: 0xf2, value: ssmp.dspAddr});
+  // The 128 writes above land every register at its snapshot value, but a
+  // fresh `SnesChip` replaying them is left with the DSP's hidden
+  // per-sample latches (the echo address, the direction page, the KON
+  // edge-latch) and its echo history at their constructor defaults, not at
+  // what a chip that had actually been playing up to this instant would
+  // hold. Those latches only ever re-sync from the register file once a
+  // sample (`SDsp`'s `echo_29`/`misc_*` phases), so without this event a
+  // replay's very first sample - and, through the echo buffer's 8-deep
+  // history, every sample until the ring wraps once - runs on stale state
+  // instead of the snapshot's own (see `SDsp.restoreInternalState`'s doc
+  // comment). `DSP_SNAPSHOT_RESTORE_ADDR` is not a real port; `SnesChip`
+  // recognizes it as "the register file you now hold is a snapshot's" and
+  // re-syncs those latches from it immediately, matching what `SDsp.load`
+  // already does for a caller with the raw register block in hand. Placed
+  // after `restoreEvents` for the same reason as the DSPADDR seed above.
+  events.push({at: 0, addr: DSP_SNAPSHOT_RESTORE_ADDR, value: 0});
+  const snapshotEvents = events.length;
 
   const maxEvents = 4_000_000;
   while (ssmp.cycle < totalCycles) {
@@ -205,6 +248,7 @@ export function importSpc(bytes: Uint8Array, options: {seconds?: number} = {}): 
     loopStartSeconds: 0,
     events,
     restoreEvents,
+    snapshotEvents,
     memory: [{address: 0, bytes: ram.slice()}],
     notes: [],
     losses: [],

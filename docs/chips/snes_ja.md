@@ -77,17 +77,19 @@
 置いて個人的にテストでき、CIはそれに依存しません。
 
 <!-- spc:begin -->
-`check:spc`による生成：2026-09-27。参照：play-spc（blarggのSPC700、蓄積済みsnes_spc）。
+`check:spc`による生成：2026-09-29。参照：play-spc（blarggのSPC700、蓄積済みsnes_spc）。
 
 | | |
 | --- | --- |
-| ファイル数 | 2 |
+| ファイル数 | 4 |
 | 書き込み列の相違 | 0 |
-| 一致サンプルサイクル | 3072000 / 3072000 (100.0000 %) |
+| 一致サンプルサイクル | 7168000 / 7168000 (100.0000 %) |
 | サンプルに相違のあるファイル | 0 |
 
 | ファイル | 書き込み | サンプル | 最初の相違 |
 | --- | --- | --- | --- |
+| corpus/snes/spc/dspaddr-select.spc | 1/1 | 100.0000 % | なし |
+| corpus/snes/spc/echo-snapshot-restore.spc | 1/1 | 100.0000 % | なし |
 | corpus/snes/spc/selftest.spc | 3/3 | 100.0000 % | なし |
 | corpus/snes/spc/timer-phase.spc | 1/1 | 100.0000 % | なし |
 <!-- spc:end -->

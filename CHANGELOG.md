@@ -9,6 +9,23 @@ Notable changes to the `chipvoice` package and the SDK it exposes, newest
 first. See [README.md](README.md) for the current quickstart and feature
 overview.
 
+## Unreleased
+
+`importSpc` restores an S-DSP snapshot's hidden per-sample state (the echo
+address and direction-page latches, the KON edge-latch, the echo history and
+its ring position) and its DSPADDR selection, not just its 128 registers, so
+a fresh chip replaying an imported plan now starts every sample - including
+the first, and the echo buffer's first 8-deep history window - on the actual
+snapshot state, on both `performance.ts`'s and `progressive-renderer.ts`'s
+playback paths, not only in `check:spc`. Found and fixed by testing against
+real commercial SPC rips (NEXT-26, kept locally only, never committed); see
+decision 58 in [DECISIONS.md](docs/DECISIONS.md) for the full mechanism, the
+two new self-authored regression files in `packages/conform/corpus/snes/spc`,
+and the explicit decision that `importSpc` does not replicate `play-spc`'s
+`clear_echo()` demo-player convention. A snapshot resumed the old way could
+mis-route its very first DSP register write and mis-render up to 8 samples
+of echo; both are now bit-exact.
+
 ## 0.20.0: Console files in and out, and a fuller SNES
 
 New since 0.19.1: the package plays the consoles' own music files (`.spc`,
