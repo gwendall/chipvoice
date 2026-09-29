@@ -8,7 +8,7 @@ import { compositionServer } from "./test/composition-server.mjs";
 // every paid call below until the test spends it on purpose.
 const server = await compositionServer({ access: "invite", budgetUsd: 50 });
 Object.assign(process.env, server.env);
-await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from 'web-kit/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
+await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from './src/lib/composition/admission';export * from 'web-kit/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
 const api = await import("./generated/test-generation.mjs");
 const out = "../../.artifacts/prompt-composition";
 await mkdir(out, { recursive: true });
@@ -64,6 +64,11 @@ try {
   assert.equal(server.calls[0].store, false);
   assert.equal(server.calls[0].text.format.strict, true);
   assert.equal(result.project.visibility, "private");
+  // Decision 56 (NEXT-21): the known-melody gate's best match is recorded on
+  // EVERY generation, not only refused ones - the evidence a future
+  // recalibration (the planned ~250-sample GEN benchmark run) reads back.
+  assert.ok(result.moderation.melody, "an ordinary successful generation still records its best known-melody match");
+  assert.ok(result.moderation.melody.similarity < 0.4, "an ordinary generation's best match stays below the refusal threshold");
   assert.equal(result.project.generation.prompt, request.prompt);
   assert.equal(result.project.profile.id, (await api.ensureProfile(caller.userId)).id);
   assert.equal(result.evaluation.seconds, 10);
@@ -184,6 +189,102 @@ finally:
     await query("/api/v1/generations", post({ ...request, prompt }, `failure-${prompt}`));
     assert.equal(server.calls.length, calls, "failed idempotent retry does not spend again");
   }
+  // Decision 56 (NEXT-21): both prompt moderation and the known-melody
+  // output check, exercised end to end through the real pipeline (not just
+  // the pure modules' own unit tests).
+  const composition = api.compositionConfig();
+  const budget = api.compositionBudget(composition.model, composition.maxTokens);
+  const spend = async () => (await api.monthSpend(client, Date.now(), budget)).usd;
+  {
+    // A denylisted name is refused for free, before any network call at all -
+    // neither moderation nor the paid model is ever reached.
+    const callsBefore = server.calls.length, moderationCallsBefore = server.moderationCalls.length;
+    const spendBefore = await spend();
+    const named = await query("/api/v1/generations", post({ ...request, prompt: "a chiptune tribute to Mario" }, "failure-known-work"));
+    assert.equal(named.status, 202);
+    const namedResult = await completed(named.body.id);
+    assert.equal(namedResult.status, "failed");
+    assert.equal(namedResult.errorCode, "prompt_known_work");
+    assert.equal(namedResult.projectId, null);
+    assert.equal(server.calls.length, callsBefore, "a denylisted prompt never reaches the paid model");
+    assert.equal(server.moderationCalls.length, moderationCallsBefore, "a denylisted prompt never reaches moderation either - the cheaper check runs first");
+    // A pre-call refusal cost nothing, so the month's priced spend is
+    // unchanged - not billed at admission.ts's worst-case reserve.
+    assert.equal(await spend(), spendBefore, "a known-work refusal prices at zero, not the reserve");
+  }
+  {
+    // The free moderation endpoint flags the prompt: refused before any
+    // paid model call, and the outcome (flagged categories only) is
+    // recorded on the generation record.
+    const callsBefore = server.calls.length, moderationCallsBefore = server.moderationCalls.length;
+    const spendBefore = await spend();
+    const flagged = await query("/api/v1/generations", post({ ...request, prompt: "flag-me" }, "failure-flag-me"));
+    assert.equal(flagged.status, 202);
+    const flaggedResult = await completed(flagged.body.id);
+    assert.equal(flaggedResult.status, "failed");
+    assert.equal(flaggedResult.errorCode, "prompt_flagged");
+    assert.equal(flaggedResult.projectId, null);
+    assert.deepEqual(flaggedResult.moderation, { flagged: true, categories: ["violence"], model: "omni-moderation-latest" });
+    assert.equal(server.moderationCalls.length, moderationCallsBefore + 1);
+    assert.equal(server.calls.length, callsBefore, "a flagged prompt never reaches the paid model");
+    assert.equal(await spend(), spendBefore, "a flagged-prompt refusal prices at zero, not the reserve");
+    const retryCalls = server.calls.length;
+    await query("/api/v1/generations", post({ ...request, prompt: "flag-me" }, "failure-flag-me"));
+    assert.equal(server.calls.length, retryCalls, "failed idempotent retry does not spend again");
+  }
+  {
+    // The moderation call itself fails: this fails CLOSED (never generates
+    // unchecked) with a retryable error, never silently proceeding. A real
+    // outage means many retries in a row, so each one must still price at
+    // zero - never the reserve - or an outage alone could exhaust the
+    // month's budget with no model call ever made.
+    const callsBefore = server.calls.length;
+    const spendBefore = await spend();
+    const down = await query("/api/v1/generations", post({ ...request, prompt: "moderation-down" }, "failure-moderation-down"));
+    assert.equal(down.status, 202);
+    const downResult = await completed(down.body.id);
+    assert.equal(downResult.status, "failed");
+    assert.equal(downResult.errorCode, "moderation_unavailable");
+    assert.equal(downResult.projectId, null);
+    assert.ok(!JSON.stringify(downResult).includes("DO_NOT_LEAK_PROVIDER_BODY"));
+    assert.equal(server.calls.length, callsBefore, "moderation failing closed never reaches the paid model");
+    assert.equal(await spend(), spendBefore, "a moderation-outage refusal prices at zero, not the reserve");
+  }
+  {
+    // The real known-melody gate: measured on the model's OUTPUT after an
+    // ordinary, unflagged prompt and a successful (mocked) paid call - the
+    // model itself is what reproduced a known melody, not the prompt. The
+    // fixture's 16 notes run about 16 seconds at 120 BPM (see
+    // composition-server.mjs), so this request asks for longer than the
+    // shared 10-second `request` so the notes fit the requested duration
+    // and the check under test - not an unrelated duration validation -
+    // is what refuses it.
+    const spendBefore = await spend();
+    const knownMelody = await query("/api/v1/generations", post({ ...request, prompt: "known-melody", durationSeconds: 20 }, "failure-known-melody"));
+    assert.equal(knownMelody.status, 202);
+    const knownMelodyResult = await completed(knownMelody.body.id);
+    assert.equal(knownMelodyResult.status, "failed");
+    assert.equal(knownMelodyResult.errorCode, "known_melody");
+    assert.equal(knownMelodyResult.projectId, null);
+    assert.equal(knownMelodyResult.moderation.flagged, false, "the prompt itself was never flagged - only the output matched");
+    assert.match(knownMelodyResult.error, /100% similarity/);
+    assert.equal(knownMelodyResult.moderation.melody.similarity, 1, "the refusing match itself is recorded as evidence, not just the refusal message");
+    assert.ok(knownMelodyResult.moderation.melody.referenceId, "the matched reference id is recorded alongside the similarity");
+    // Decision 56: a POST-call refusal (the model WAS actually called) must
+    // price at what that call really cost, not at admission.ts's worst-case
+    // reserve - `jobs.ts` now persists `usage`/`model` the instant
+    // `model.generate` returns, before `compositionProject` or this gate can
+    // throw. The fixture server always returns the same usage
+    // (`test/composition-server.mjs`: 100 input / 200 output tokens), so the
+    // real price is computable and tiny next to the reserve.
+    const realPrice = api.priceUsage(budget.prices, { input: 100, cached: 0, output: 200 });
+    assert.ok(realPrice < budget.reserveUsd / 100, "sanity: the fixture's real usage prices far below the reserve, so the two are easy to tell apart");
+    // `spend()` sums every row for the month in SQL, so its float rounding
+    // can differ in the last bit from this one generation's own
+    // `priceUsage` call - compare with a tiny epsilon, not strict equality.
+    assert.ok(Math.abs(await spend() - spendBefore - realPrice) < 1e-9, "a known-melody refusal (after the paid call) prices at the call's real usage, not the reserve");
+  }
+
   const slow = await query("/api/v1/generations", post({ ...request, prompt: "slow" }, "cancel-model"));
   while (!(await query(`/api/v1/generations/${slow.body.id}`, { headers })).body.status.match(/composing|failed/)) await new Promise(resolve => setTimeout(resolve, 50));
   const cancelled = await query(`/api/v1/generations/${slow.body.id}`, { method: "DELETE", headers });
@@ -230,7 +331,8 @@ finally:
   assert.equal(server.calls.length, budgetCalls, "a spent budget never reaches the provider");
   await client.execute({ sql: "delete from generations where id=?", args: [spender] });
   const count = Number((await client.execute({ sql: "select count(*) as n from generations where user_id=?", args: [caller.userId] })).rows[0].n);
-  for (let i = count; i < 10; i++) await client.execute({ sql: "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at) values(?,?,?,?,?,?,?,'failed',?)", args: [api.newId(), caller.userId, artist.id, `quota-${i}`, "test", JSON.stringify(request), "test", Date.now()] });
+  const dailyLimit = (await query("/api/v1/generations/access", { headers })).body.dailyLimit;
+  for (let i = count; i < dailyLimit; i++) await client.execute({ sql: "insert into generations(id,user_id,profile_id,request_key,request_hash,request,model,status,created_at) values(?,?,?,?,?,?,?,'failed',?)", args: [api.newId(), caller.userId, artist.id, `quota-${i}`, "test", JSON.stringify(request), "test", Date.now()] });
   const callsBeforeLimit = server.calls.length;
   assert.equal((await query("/api/v1/generations", post(request, "over-day-limit"))).status, 429);
   assert.equal(pick((await query("/api/v1/generations/access", { headers })).body).reason, "daily_limit");

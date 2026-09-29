@@ -21,7 +21,8 @@ export default function Privacy() {
     <section>
       <h2>{t("Your prompts")}</h2>
       <p>{t("If you generate a song from a text prompt, chipvoice stores that prompt, tied to your account. It is private by default: chipvoice never returns or displays a prompt to anyone but the account that wrote it, whether or not the resulting song is published.")}</p>
-      <p>{t("Your prompt is sent to chipvoice's model provider, OpenAI, only to produce the song. chipvoice does not use prompts to train any model.")}</p>
+      <p>{t("Your prompt is sent to chipvoice's model provider, OpenAI, to check it against OpenAI's moderation and to produce the song. chipvoice does not use prompts to train any model.")}</p>
+      <p>{t("chipvoice may refuse to generate a song: OpenAI's moderation can reject the prompt itself, and a separate check can reject a result that too closely matches a well-known melody.")}</p>
       <p>{t("See ")}<a href="https://developers.openai.com/api/docs/guides/your-data">{t("OpenAI's own description of how it handles API data")}</a>{t(" for what that means on its side.")}</p>
       <p>{t("chipvoice keeps a generation's prompt for as long as its song exists. Withdrawing a generated song deletes its prompt too; the record that you generated a song (its model and token usage, which keep the beta's shared budget honest) stays, but the prompt text itself does not. A prompt whose song was never withdrawn is kept indefinitely.")}</p>
     </section>
@@ -32,7 +33,7 @@ export default function Privacy() {
         <li>{t("Vercel hosts chipvoice.dev and keeps its own standard web server logs, which include IP addresses, for every request.")}</li>
         <li>{t("Turso hosts the database that stores your account, songs, publications and prompts.")}</li>
         <li>{t("domani sends your sign-in email, so it receives the address to deliver it to.")}</li>
-        <li>{t("OpenAI receives your prompt, as described above, only to generate your song.")}</li>
+        <li>{t("OpenAI receives your prompt, as described above, to check it against OpenAI's moderation and to generate your song.")}</li>
       </ul>
     </section>
     <section>

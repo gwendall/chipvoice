@@ -1189,8 +1189,24 @@ real game music, and a real unit.
 - doing - NEXT-20: quotas and billing. Quotas are in place for the beta
   (decision 42): invitations, the daily limit and a monthly budget the server
   prices from recorded usage, 110 USD in production. Billing remains.
-  NEXT-21: prompt moderation and refusal of known melodies, measured by
-  melodic similarity.
+- done - NEXT-21: prompt moderation and refusal of known melodies, measured
+  by melodic similarity (decision 56). The prompt itself is screened for
+  free, before any paid model call: a denylisted franchise/composer name is
+  refused with no network call, and OpenAI's free Moderation API
+  (`omni-moderation-latest`) refuses a flagged prompt too, failing closed on
+  its own failure, and never spends the month's budget - both checks record
+  explicit zero usage. The real gate is on the model's OUTPUT: every
+  generated melodic line is measured against a small reference set (the
+  site's own Mario/Zelda/Sonic transcriptions plus hand-encoded
+  public-domain incipits, each verified against a published score and
+  stored as interval/rhythm data only) with a transposition- and
+  tempo-invariant windowed edit distance, calibrated to a threshold of 0.40
+  (90% recall at zero false positives on the calibration set; verified,
+  unchanged, at 94%/zero on a held-out set, and zero false positives -
+  0.000 similarity - on 8 real, redistribution-licensed chiptunes from
+  `scores/nsf-corpus`; see decision 56 for the full confusion matrices and
+  methodology). The gate's best match is recorded on every generation, not
+  only refused ones, as evidence for a future recalibration.
 - P8-9 and P8-14. done - NEXT-22: terms, ownership of generated songs and
   prompt privacy. `/terms` and `/privacy` (decision 57): no ownership claim,
   prompts stay owner-only and are erased when their song is withdrawn, and

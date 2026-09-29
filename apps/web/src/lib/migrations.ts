@@ -303,6 +303,14 @@ export const migrations: Migration[] = [
       );
     },
   },
+  {
+    // Decision 56 (NEXT-21): every checked prompt's moderation outcome -
+    // flagged categories only, never scores (see moderation.ts).
+    name: "prompt-moderation",
+    async up(tx: Transaction) {
+      await addColumns(tx, "generations", { moderation: "text" });
+    },
+  },
 ];
 
 /** `web-kit/db`'s `migrate` bound to chipvoice's own migration history, for

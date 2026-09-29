@@ -18,6 +18,11 @@ const failures: Record<string, string> = {
   model_refused: "The model declined this request. Try a different musical brief.",
   render_failed: "The score was saved, but its audio could not be prepared.",
   authorization_expired: "Your composition authorization expired. Sign in again to continue.",
+  // Decision 56 (NEXT-21): prompt moderation and the known-melody check.
+  prompt_flagged: "This prompt could not be composed as written. Rewrite it and try again.",
+  prompt_known_work: "This prompt names a known work. Describe an original piece instead.",
+  moderation_unavailable: "Content moderation is temporarily unavailable. Try again shortly.",
+  known_melody: "The composition matched a well-known melody too closely. Try a different musical idea.",
 };
 // Why a signed-in account cannot compose now (GET /api/v1/generations/access,
 // decision 42), and the same reasons when a POST is refused.

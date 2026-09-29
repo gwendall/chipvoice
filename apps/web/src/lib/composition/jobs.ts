@@ -11,10 +11,19 @@ import { compositionConfig, openAIModel, type CompositionModel } from "./model";
 import { compositionAccess, compositionBudget, isInvited, monthSpend, requireBudget, requireInvitation } from "./admission";
 import { compositionRequest, compositionTarget, compositionInstructions, compositionSchema, compositionProject } from "./score";
 import { decodeWav, wholeSongChecks, type Finding, type PartActivity } from "./checks";
+import { moderatePrompt, knownWorkInPrompt } from "./moderation";
+import { knownMelodySimilarity, KNOWN_MELODY_THRESHOLD } from "./similarity";
 
 function error(status: number, code: string, message: string): never { throw new ProjectHttpError(status, code, message); }
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const viewer = (row: Record<string, unknown>) => ({ userId: String(row.user_id), profileId: String(row.profile_id) });
+
+/** Recorded on a generation refused before any paid call (known-work prompt,
+ * flagged prompt, or a moderation outage) so `monthSpend` prices the row at
+ * its true cost, zero, instead of `admission.ts`'s worst-case reserve. See
+ * the comment in `runGeneration`'s catch block below and decision 56. */
+const ZERO_USAGE = JSON.stringify({ input_tokens: 0, output_tokens: 0, input_tokens_details: { cached_tokens: 0 } });
+const PRE_CALL_REFUSAL_CODES = new Set(["prompt_known_work", "prompt_flagged", "moderation_unavailable"]);
 
 export async function createGeneration(value: unknown, requestKey: string, caller: Caller) {
   const parsed = compositionRequest.safeParse(value);
@@ -118,6 +127,7 @@ export async function getGeneration(id: string, caller: Caller, summary = false)
     project: publication, render: job,
     evaluation: row.report ? JSON.parse(String(row.report)) : null,
     songReport: row.song_report ? JSON.parse(String(row.song_report)) : null,
+    moderation: row.moderation ? JSON.parse(String(row.moderation)) : null,
     usage: row.usage ? JSON.parse(String(row.usage)) : null,
   };
 }
@@ -192,12 +202,56 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
     const request = compositionRequest.parse(JSON.parse(String(row.request)));
     let project = row.document ? JSON.parse(String(row.document)) : null;
     if (row.status === "queued") {
+      // Decision 56 (NEXT-21): both prompt-side screens run before any paid
+      // model call, so a refusal never spends a model request - the
+      // generation row's status never reaches 'composing' when either
+      // refuses. The catch block below records `usage` as all-zero for
+      // these three codes (`prompt_known_work`, `prompt_flagged`,
+      // `moderation_unavailable`), so `monthSpend` prices the row at its
+      // true cost, zero, rather than `admission.ts`'s worst-case reserve -
+      // a moderation outage or a denylisted prompt must not burn budget on
+      // retries. The row itself is kept either way, so the daily-limit
+      // accounting (which only counts rows, never usage) is unchanged.
+      if (await stopped()) return;
+      const named = knownWorkInPrompt(request.prompt);
+      if (named) error(422, "prompt_known_work", `This prompt names a known work ("${named}"). Describe an original piece instead.`);
+      const moderation = await moderatePrompt(request.prompt, controller.signal);
+      await client.execute({ sql: "update generations set moderation=? where id=?", args: [JSON.stringify(moderation), id] });
+      if (moderation.flagged) error(422, "prompt_flagged", "This prompt could not be composed as written. Rewrite it and try again.");
       await client.execute({ sql: "update generations set status='composing' where id=? and active=1 and status='queued'", args: [id] });
       if (await stopped()) return;
       const model = suppliedModel ?? openAIModel({ ...compositionConfig(), model: String(row.model) });
       const result = await model.generate({ instructions: compositionInstructions(request), prompt: request.prompt, schema: compositionSchema, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(210000)]), onProgress: progress => { outputCharacters = progress.outputCharacters; } });
       if (await stopped()) return;
+      // Decision 56: record the real usage the instant it's known, before
+      // `compositionProject` or the melody gate can throw. Without this, a
+      // throw here (a known-melody refusal, or `compositionProject`
+      // rejecting the model's output) left `usage` null all the way to the
+      // catch block below, which coalesces to a null-usage row and so gets
+      // priced at `admission.ts`'s worst-case reserve for the rest of the
+      // month instead of what the call actually cost. The later
+      // status='validating' update below writes the same `usage`/`model`
+      // again - a harmless, idempotent repeat once a generation gets that far.
+      await client.execute({ sql: "update generations set model=?,usage=? where id=?", args: [result.model, JSON.stringify(result.usage), id] });
+      row.model = result.model;
       project = compositionProject(result.value, request);
+      // Decision 56: the real known-melody gate, measured on the model's
+      // OUTPUT (the notes it actually wrote), not the prompt - see
+      // ./similarity.ts's module comment for why the prompt-side screen
+      // above cannot catch this by itself. The best match is recorded on
+      // EVERY generation, including ones below the threshold, by folding it
+      // into the same `moderation` JSON column the prompt screen already
+      // writes to (a `melody` key alongside it, no new column and no
+      // migration) - decision 56's planned ~250-sample GEN benchmark run is
+      // the real negative set for recalibrating `KNOWN_MELODY_THRESHOLD`,
+      // and it needs every generation's score, not only the refused ones.
+      const melodicParts = project.source.kind === "performance" ? project.source.performance.parts : [];
+      const melodyMatch = knownMelodySimilarity(melodicParts);
+      const melody = melodyMatch ? { similarity: melodyMatch.similarity, referenceId: melodyMatch.referenceId, part: melodyMatch.part } : null;
+      await client.execute({ sql: "update generations set moderation=? where id=?", args: [JSON.stringify({ ...moderation, melody }), id] });
+      const knownMelody = melodyMatch && melodyMatch.similarity >= KNOWN_MELODY_THRESHOLD ? melodyMatch : null;
+      if (knownMelody)
+        error(422, "known_melody", `This composition matched a well-known melody too closely (${Math.round(knownMelody.similarity * 100)}% similarity). Try a different musical idea.`);
       await client.execute({ sql: "update generations set document=?,model=?,usage=?,output_characters=?,progress_at=?,status='validating' where id=? and status='composing'", args: [canonical(project), result.model, JSON.stringify(result.usage), outputCharacters, Date.now(), id] });
       row.status = "validating"; row.model = result.model;
     }
@@ -222,7 +276,11 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
     const timedOut = controller.signal.reason?.name === "TimeoutError" || (e instanceof Error && e.name === "TimeoutError");
     const code = timedOut ? "generation_timeout" : e instanceof ProjectHttpError ? e.code : "composition_failed";
     const message = timedOut ? "The composition exceeded its time limit. No new request was started automatically." : e instanceof ProjectHttpError ? e.message : "The composition could not be completed. Please try another request.";
-    await client.execute({ sql: "update generations set status='failed',error=?,error_code=?,finished_at=? where id=? and status not in ('cancelled','failed')", args: [message, code, Date.now(), id] });
+    // A pre-call refusal never reached the model, so its usage is truthfully
+    // zero, not unknown - coalesce so any usage a later failure already
+    // recorded (e.g. after the model call) is never overwritten.
+    const usage = PRE_CALL_REFUSAL_CODES.has(code) ? ZERO_USAGE : null;
+    await client.execute({ sql: "update generations set status='failed',error=?,error_code=?,finished_at=?,usage=coalesce(usage,?) where id=? and status not in ('cancelled','failed')", args: [message, code, Date.now(), usage, id] });
   } finally {
     clearTimeout(timer); clearInterval(cancellation);
     await client.execute({ sql: "update generations set active=0 where id=?", args: [id] });
