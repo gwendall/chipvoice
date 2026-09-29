@@ -61,11 +61,11 @@ public:
 	}
 
 	// ---------------------------------------------------------------------
-	// chipvoice patch (2026-09-28, round 4 wording), upstream Mesen 2
+	// chipvoice patch (2026-09-29, round 5 wording), upstream Mesen 2
 	// (b9fa69d) is otherwise unmodified. See oracles/mesen/README.md and
-	// docs/chips/vrc6.md ("Digital parity", "The pulse mapping") for the
-	// full story; this comment gives the mechanism and says plainly what it
-	// does and does not prove.
+	// docs/chips/vrc6.md ("Digital parity", "The pulse mapping", "Hardware
+	// evidence") for the full story; this comment gives the mechanism and
+	// says plainly what it does and does not prove.
 	//
 	// This is not a convention relabelling: it changes Mesen's observable
 	// output. Unpatched, a pulse here is HIGH for the first D+1 steps after
@@ -116,13 +116,21 @@ public:
 	// against, Mesen's own independent implementation of those, same as
 	// `check:vrc6-core-mesen`/`check:vrc6-edge-mesen` always were.
 	//
-	// Whose duty-phase reading is correct is an open question, not one this
-	// patch or this gate settles: this core follows nesdev's text; both
-	// Mesen 2 and Game_Music_Emu, unpatched, disagree with that reading (and
-	// with each other's own re-anchoring behaviour - "The pulse mapping" in
-	// docs/chips/vrc6.md has the numbers); no real VRC6 cartridge has been
-	// captured to check any of the three against hardware
-	// (docs/BACKLOG.md's NEXT-14 entry tracks that capture).
+	// Whose duty-phase reading is correct is not something this patch or
+	// this gate settles on its own - but round 5 found it settled elsewhere,
+	// in a real hardware test that predates this project by over a decade:
+	// rainwarrior, hotswapping a real Esper Dream 2 VRC6 cartridge on real
+	// NES/Famicom hardware (nesdev forums, "VRC6 $9003 audio enable
+	// register?", 12 August 2012), wrote "The pulse duty cycles begin with
+	// 0 and end at the volume setting" - low-first, chipvoice's own reading,
+	// not Mesen's or Game_Music_Emu's unpatched one. Neither of those two
+	// cites any measurement for its own high-first choice. Full source
+	// table in docs/chips/vrc6.md's "Hardware evidence". This patch is
+	// therefore not just a convention match forced by this project onto an
+	// oracle that could have gone either way: it is what an independent,
+	// real-hardware source says the chip actually does. Un-patching would
+	// make this oracle disagree with real hardware again, on purpose, so it
+	// stays.
 	//
 	// `check:vrc6-core-mesen`/`check:vrc6-edge-mesen` are unaffected by this
 	// patch (still 100 %) for a reason unrelated to duty phase at all: every
