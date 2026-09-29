@@ -8,7 +8,7 @@ import { compositionServer } from "./test/composition-server.mjs";
 // every paid call below until the test spends it on purpose.
 const server = await compositionServer({ access: "invite", budgetUsd: 50 });
 Object.assign(process.env, server.env);
-await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from 'web-kit/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
+await build({ stdin: { contents: "export * from './src/lib/auth';export * from './src/lib/db';export * from './src/lib/projects';export * from './src/lib/composition/model';export * from './src/lib/composition/admission';export * from 'web-kit/sse';", resolveDir: process.cwd() }, outfile: "generated/test-generation.mjs", bundle: true, platform: "node", format: "esm", packages: "external", logLevel: "silent" });
 const api = await import("./generated/test-generation.mjs");
 const out = "../../.artifacts/prompt-composition";
 await mkdir(out, { recursive: true });
@@ -64,6 +64,11 @@ try {
   assert.equal(server.calls[0].store, false);
   assert.equal(server.calls[0].text.format.strict, true);
   assert.equal(result.project.visibility, "private");
+  // Decision 56 (NEXT-21): the known-melody gate's best match is recorded on
+  // EVERY generation, not only refused ones - the evidence a future
+  // recalibration (the planned ~250-sample GEN benchmark run) reads back.
+  assert.ok(result.moderation.melody, "an ordinary successful generation still records its best known-melody match");
+  assert.ok(result.moderation.melody.similarity < 0.4, "an ordinary generation's best match stays below the refusal threshold");
   assert.equal(result.project.generation.prompt, request.prompt);
   assert.equal(result.project.profile.id, (await api.ensureProfile(caller.userId)).id);
   assert.equal(result.evaluation.seconds, 10);
@@ -187,10 +192,14 @@ finally:
   // Decision 56 (NEXT-21): both prompt moderation and the known-melody
   // output check, exercised end to end through the real pipeline (not just
   // the pure modules' own unit tests).
+  const composition = api.compositionConfig();
+  const budget = api.compositionBudget(composition.model, composition.maxTokens);
+  const spend = async () => (await api.monthSpend(client, Date.now(), budget)).usd;
   {
     // A denylisted name is refused for free, before any network call at all -
     // neither moderation nor the paid model is ever reached.
     const callsBefore = server.calls.length, moderationCallsBefore = server.moderationCalls.length;
+    const spendBefore = await spend();
     const named = await query("/api/v1/generations", post({ ...request, prompt: "a chiptune tribute to Mario" }, "failure-known-work"));
     assert.equal(named.status, 202);
     const namedResult = await completed(named.body.id);
@@ -199,12 +208,16 @@ finally:
     assert.equal(namedResult.projectId, null);
     assert.equal(server.calls.length, callsBefore, "a denylisted prompt never reaches the paid model");
     assert.equal(server.moderationCalls.length, moderationCallsBefore, "a denylisted prompt never reaches moderation either - the cheaper check runs first");
+    // A pre-call refusal cost nothing, so the month's priced spend is
+    // unchanged - not billed at admission.ts's worst-case reserve.
+    assert.equal(await spend(), spendBefore, "a known-work refusal prices at zero, not the reserve");
   }
   {
     // The free moderation endpoint flags the prompt: refused before any
     // paid model call, and the outcome (flagged categories only) is
     // recorded on the generation record.
     const callsBefore = server.calls.length, moderationCallsBefore = server.moderationCalls.length;
+    const spendBefore = await spend();
     const flagged = await query("/api/v1/generations", post({ ...request, prompt: "flag-me" }, "failure-flag-me"));
     assert.equal(flagged.status, 202);
     const flaggedResult = await completed(flagged.body.id);
@@ -214,14 +227,19 @@ finally:
     assert.deepEqual(flaggedResult.moderation, { flagged: true, categories: ["violence"], model: "omni-moderation-latest" });
     assert.equal(server.moderationCalls.length, moderationCallsBefore + 1);
     assert.equal(server.calls.length, callsBefore, "a flagged prompt never reaches the paid model");
+    assert.equal(await spend(), spendBefore, "a flagged-prompt refusal prices at zero, not the reserve");
     const retryCalls = server.calls.length;
     await query("/api/v1/generations", post({ ...request, prompt: "flag-me" }, "failure-flag-me"));
     assert.equal(server.calls.length, retryCalls, "failed idempotent retry does not spend again");
   }
   {
     // The moderation call itself fails: this fails CLOSED (never generates
-    // unchecked) with a retryable error, never silently proceeding.
+    // unchecked) with a retryable error, never silently proceeding. A real
+    // outage means many retries in a row, so each one must still price at
+    // zero - never the reserve - or an outage alone could exhaust the
+    // month's budget with no model call ever made.
     const callsBefore = server.calls.length;
+    const spendBefore = await spend();
     const down = await query("/api/v1/generations", post({ ...request, prompt: "moderation-down" }, "failure-moderation-down"));
     assert.equal(down.status, 202);
     const downResult = await completed(down.body.id);
@@ -230,6 +248,7 @@ finally:
     assert.equal(downResult.projectId, null);
     assert.ok(!JSON.stringify(downResult).includes("DO_NOT_LEAK_PROVIDER_BODY"));
     assert.equal(server.calls.length, callsBefore, "moderation failing closed never reaches the paid model");
+    assert.equal(await spend(), spendBefore, "a moderation-outage refusal prices at zero, not the reserve");
   }
   {
     // The real known-melody gate: measured on the model's OUTPUT after an
@@ -248,6 +267,8 @@ finally:
     assert.equal(knownMelodyResult.projectId, null);
     assert.equal(knownMelodyResult.moderation.flagged, false, "the prompt itself was never flagged - only the output matched");
     assert.match(knownMelodyResult.error, /100% similarity/);
+    assert.equal(knownMelodyResult.moderation.melody.similarity, 1, "the refusing match itself is recorded as evidence, not just the refusal message");
+    assert.ok(knownMelodyResult.moderation.melody.referenceId, "the matched reference id is recorded alongside the similarity");
   }
 
   const slow = await query("/api/v1/generations", post({ ...request, prompt: "slow" }, "cancel-model"));

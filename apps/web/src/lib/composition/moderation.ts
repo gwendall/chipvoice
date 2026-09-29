@@ -39,6 +39,17 @@ export interface ModerationOutcome {
   /** Flagged category names only (e.g. "violence", "hate") - never scores. */
   categories: string[];
   model: string;
+  /** The output-side known-melody check's strongest match (decision 56,
+   * NEXT-21), added by `jobs.ts` once a generation's score exists - null
+   * until then, or when a generation has no melodic content at all to
+   * measure. Recorded on EVERY generation, not only ones the match refuses:
+   * this is the evidence decision 56's planned ~250-sample GEN benchmark
+   * recalibration reads back. `similarity` is the same 0..1 measure
+   * `./similarity.ts` computes for the refusal itself, never a per-category
+   * breakdown - so "never scores" above still describes the PROMPT
+   * moderation, and this is a separate, deliberate exception documented
+   * here. */
+  melody?: { similarity: number; referenceId: string; part: string } | null;
 }
 
 /** Whole-word/phrase match against the known-work denylist, sharing

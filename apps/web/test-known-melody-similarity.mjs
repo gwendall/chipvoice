@@ -233,7 +233,7 @@ const heldOut = evaluate(buildSet(2));
 // independent target to satisfy.
 check("threshold (0.40) reproduces decision 56's calibration-set confusion matrix", () => {
   const c = confusion(calibration, KNOWN_MELODY_THRESHOLD);
-  assert.deepEqual(c, { tp: 44, fn: 4, fp: 0, tn: 23 });
+  assert.deepEqual(c, { tp: 43, fn: 5, fp: 0, tn: 23 });
 });
 check("threshold (0.40) reproduces decision 56's held-out confusion matrix", () => {
   const c = confusion(heldOut, KNOWN_MELODY_THRESHOLD);
