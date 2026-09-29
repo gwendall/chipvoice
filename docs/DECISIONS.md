@@ -2219,7 +2219,7 @@ Backlog P6-11 (a NEXT-25 candidate), out of this ticket's scope on
 purpose: it would change every dry-space render's audio, `renderSfx`
 included, and needs its own audio-neutrality proof.
 
-**gamesounds impact (`apps/sounds`, deferred to after GS-03/#124).**
+**gamesounds impact (`apps/sounds`, rebuilt after GS-07/#126).**
 `catalog:check-determinism` finds all 28 `*-16bit-snes` recipes whose
 role is not `chord` now render different audio (112 WAV/PCM mismatches,
 4 variants each); the 16 `chord`-role sounds, all built from `harp`, are
@@ -2241,13 +2241,30 @@ rather than decoded sample data, do not - the same shift lands the
 generator's sampling point elsewhere in its own sequence (raw PCM
 cross-correlates best at a +1-sample lag, not lag 0; the difference is
 not a constant gain, ruling that out). `renderSfx` never consults mix
-calibration, ruling that out too. No rebuild and no blob-store push
-happened here: GS-03 (#124) is fixing the catalogue's own ogg/mp3
-encoder in flight, and rebuilding against the current encoder first
-would re-hash all 880 oggs for nothing. Order stays #124 merges, this
-branch rebases onto `main`, `catalog:build` runs against the fixed
-encoder (a per-field diff will show only these 28 recipes moved), then
-`check-determinism`, then the push.
+calibration, ruling that out too. The rebuild waited for the
+catalogue's own ogg encoder fix, which landed as GS-07 (#126: sox's
+libvorbis everywhere, decision 54's GS-07 amendments), not in GS-03 as
+first planned. A first rebuild of this branch against the pre-GS-07
+encoder (native ffmpeg vorbis, on `3b40c16`) failed the format-energy
+gate on one of these 28: `combat-shoot-16bit-snes` variant 2's ogg
+decoded silent in both channels while its own wav's energy was 161.
+Rebased onto GS-07, `catalog:build` passes every gate, and a per-field
+diff of the rebuilt `generated/catalog.json` against GS-07's shows
+exactly the predicted set and nothing else: the same 28
+`*-16bit-snes` sounds (16 `flute`, 7 `hat`, 2 `kick`, 2
+`picked-bass`, 1 `snare`), all 112 of their variants with new wav, mp3
+and ogg bytes (sha256, url, `peaks`; `measure` moves on some), and
+no sound added or removed (270 sounds and 1080 variants before and
+after). The 16 `harp` `chord`-role sounds and all 226 non-SNES sounds
+are unchanged field for field. The browser decode gate
+(`check-decode`) passes on the rebuilt files (0 failures of 2160
+decodes per engine, max |browser - reference| 1.54e-5 in both; GS-08's
+mp3 lags are unchanged at 0 in Chromium and 576 in Firefox on
+1080/1080, and its information-only minimum correlation moves from
+0.888 to 0.883 with the new SNES content), CI's
+`catalog:check-determinism` re-renders them, and the new files go to
+the Blob store (`sounds:push`, then `sounds:check`) before this
+merges.
 
 ## 54. gamesounds' generated sounds ship mono, leveled on their own actual shipped bytes; sfx-engine's presets are filed by what they model, never forced to fill a style (2026-09-29)
 
