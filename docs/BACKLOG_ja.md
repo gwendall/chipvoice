@@ -590,7 +590,7 @@
   ダーが完了した時点で1回実行して記録し、却下はしません（GEN-04は分離）。
 - GEN-04: 修復の呼び出し。計測した失敗がそれを正当化する場合だけです。
 - todo - NEXT-18: スタイル、テンポ、構成の指定。GEN-11とGEN-12: 対象を絞った改訂とコンソール別の変奏。
-- todo - NEXT-19: デプロイ規模での永続的なジョブキュー。AUD-2のキャッシュと重複排除と合わせます。
+- done - NEXT-19: PR #TBD。決定55。`project_jobs`は既存のSQLite/libsqlデータベース内で永続的なキューになりました。attempts、再取得可能なリース、`RENDER_MAX_ATTEMPTS`後のdead-lettering、ライブなリクエストとは独立にキューを進めるVercel Cronスイープ（`/api/cron/sweep-jobs`）です。`RENDER_CONCURRENCY`により決定27/33の単一スロット上限が設定になりました（デフォルトは1のまま）。AUD-2のdedupとversion keyはそのまま再利用しています。
 - doing - NEXT-20: 利用上限と課金。ベータ向けの利用上限は整いました（決定42）。招待制、1日上限、そしてサーバーが記録済みの使用量から換算する月間予算（本番は110 USD）です。課金は残ります。NEXT-21: プロンプトのモデレーションと、旋律の類似度で計測した既知の旋律の拒否。
 - P8-9とP8-14。done - NEXT-22: 利用規約、生成した曲の権利、プロンプトのプライバシー。
   `/terms`と`/privacy`（決定57）：所有権は主張せず、プロンプトは本人限定のまま
@@ -797,7 +797,7 @@
 | # | チケット | 状態 | 優先／依存 |
 | --- | --- | --- | --- |
 | AUD-1 | stable user、API key、browser session分離。再login復元、atomic token、agent key不変 | implemented | account所有、独立key／session、atomic login、失効、UI。決定28 |
-| AUD-2 | render CPU測定、variant上限／cache、同時dedup。worker／storageは測定に応じる | partial | workerと時間／同時／頻度／cache上限、version key、dedup、条件GET実装。代表CPU／分散は未完、決定27 |
+| AUD-2 | render CPU測定、variant上限／cache、同時dedup。worker／storageは測定に応じる | partial | workerと時間／同時／頻度／cache上限、version key、dedup、条件GET実装。キュー永続性（attempts、リース再取得、dead-lettering、cronスイープ）実装、決定55。代表CPU／分散は未完、決定27 |
 | AUD-3 | 低sample rate予約、readerなしtimeline上限、beatDelay契約修復 | partial | 予約、host時計expiry、直接shared bus queue実装（決定23）。低rate性能は別 |
 | AUD-4 | 機種／voice音域とarrange診断、明示target保持 | implemented | target保持、基音／arpeggio範囲とchord容量の警告に加え、変調（ビブラート範囲／解像度／レート、スライド範囲／解像度、ボリュームステップ）とvoice budget（voice共有、打楽器voice）診断、いずれもmeasured／limit付きで`validateSong`と両APIルートに後方互換で実装 |
 | AUD-5 | 正確なerror処理のversioned DB migration | implemented | atomic version移行、新旧／冪等／失敗rollback、決定28 |

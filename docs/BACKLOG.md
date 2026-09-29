@@ -1152,8 +1152,13 @@ real game music, and a real unit.
 - GEN-04: a repair call, only if measured failures justify it.
 - todo - NEXT-18: style, tempo and structure control. GEN-11 and GEN-12:
   targeted revisions and console variants.
-- todo - NEXT-19: a durable job queue at deployment scale, with AUD-2's cache
-  and deduplication.
+- done - NEXT-19: PR #TBD. Decision 55. `project_jobs` is now a durable queue
+  in the existing SQLite/libsql database: attempts, a reclaimable lease,
+  dead-lettering after `RENDER_MAX_ATTEMPTS`, and a Vercel Cron sweep
+  (`/api/cron/sweep-jobs`) that reclaims expired leases and advances the
+  queue independently of any live request. `RENDER_CONCURRENCY` makes
+  decision 27/33's single-slot bound a setting (default unchanged at 1).
+  AUD-2's dedup and versioned keys are unchanged and reused as-is.
 - doing - NEXT-20: quotas and billing. Quotas are in place for the beta
   (decision 42): invitations, the daily limit and a monthly budget the server
   prices from recorded usage, 110 USD in production. Billing remains.
@@ -1384,7 +1389,7 @@ rewrite.
 | # | Ticket | Status | Priority / dependency |
 | --- | --- | --- | --- |
 | AUD-1 | Separate stable user identity, API keys and browser sessions; recover publications across logins, consume magic tokens atomically, and do not rotate an agent key on browser login | implemented | Stable account ownership, independent keys/sessions, atomic login consumption, revocation and account UI; decision 28 |
-| AUD-2 | Profile render CPU, bound/cache request variants and deduplicate concurrent renders; add worker/storage only as measurements justify | partial | Worker, duration/concurrency/rate/cache bounds, versioned keys, deduplication and conditional GET implemented; representative CPU profiling and distributed capacity remain open; decision 27 |
+| AUD-2 | Profile render CPU, bound/cache request variants and deduplicate concurrent renders; add worker/storage only as measurements justify | partial | Worker, duration/concurrency/rate/cache bounds, versioned keys, deduplication and conditional GET implemented; queue durability (attempts, lease reclaim, dead-lettering, cron sweep) implemented, decision 55; representative CPU profiling and distributed capacity remain open; decision 27 |
 | AUD-3 | Make low-sample-rate offline scheduling correct, bound the timeline without a position reader and fix beatDelay's contract | partial | Scheduling fixes, host-driven offline expiry and direct shared bus queues included (decision 23); low-rate performance qualification remains separate |
 | AUD-4 | Validate playable ranges per machine/voice and return arrangement diagnostics; preserve explicit target identity in the arranged API | implemented | Target identity preserved; base-pitch/arpeggio range and chord-capacity warnings, plus modulation (vibrato range/resolution/rate, slide range/resolution, volume step) and voice-budget (voice share, percussion voice) diagnostics, all with measured/limit fields, backward-compatible in `validateSong` and both API routes |
 | AUD-5 | Use versioned database migrations with precise error handling | implemented | Versioned atomic migrations; legacy/fresh/idempotence/failure rollback covered; decision 28 |
