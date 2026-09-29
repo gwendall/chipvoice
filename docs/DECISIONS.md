@@ -3076,3 +3076,26 @@ are now fixed rather than the pages being softened to match the gap.
 instruction. `withdrawProject` erases a withdrawn project's prompts. None
 of this changes decisions 39, 42 or 43; it makes their public-facing text
 match what was already decided, and closes the two gaps above.
+
+**Amendment: who else handles your data, and what the browser keeps -
+caught by a PR review of this same ticket before merge.** The first draft
+of `/privacy` opened by claiming to describe "exactly what chipvoice
+stores today", then named only OpenAI as a third party and said nothing
+about cookies or browser storage - both true gaps, not just omissions of
+detail, given that opening claim. The page now also says, checked against
+the same files as everything else on it: Vercel hosts chipvoice.dev and
+keeps its own standard request logs (IP addresses included); Turso hosts
+the database (`apps/web/src/lib/db.ts`, the `TURSO_*` prefix); domani
+delivers the sign-in email and so sees the address it is sent to
+(`apps/web/src/lib/mail.ts`, `DOMANI_API_KEY`); OpenAI receives prompts,
+as already stated. `@vercel/blob` (decision 40) was checked and excluded
+from this list: it stores the studio's own lab and arrangement
+recordings, never a user's song audio or any other user data, which is
+rendered on request from the stored score instead
+(`apps/web/src/app/api/audio/[id]/[format]/route.ts`). The page also now
+states the session cookie's 30-day lifetime (`SESSION_TTL_MS`,
+`apps/web/src/lib/auth.ts`), names what the browser keeps locally (a song
+or prompt draft in progress, and a short-lived cache of the signed-in
+account's own display details), and states plainly that chipvoice runs no
+analytics or advertising trackers, which a search of `apps/web/src` and
+its dependencies confirms.

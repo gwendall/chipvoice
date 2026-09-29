@@ -26,12 +26,26 @@ export default function Privacy() {
       <p>{t("chipvoice keeps a generation's prompt for as long as its song exists. Withdrawing a generated song deletes its prompt too; the record that you generated a song (its model and token usage, which keep the beta's shared budget honest) stays, but the prompt text itself does not. A prompt whose song was never withdrawn is kept indefinitely.")}</p>
     </section>
     <section>
+      <h2>{t("Who else handles it")}</h2>
+      <p>{t("Running chipvoice depends on a few other services, each seeing only what its own job needs:")}</p>
+      <ul>
+        <li>{t("Vercel hosts chipvoice.dev and keeps its own standard web server logs, which include IP addresses, for every request.")}</li>
+        <li>{t("Turso hosts the database that stores your account, songs, publications and prompts.")}</li>
+        <li>{t("domani sends your sign-in email, so it receives the address to deliver it to.")}</li>
+        <li>{t("OpenAI receives your prompt, as described above, only to generate your song.")}</li>
+      </ul>
+    </section>
+    <section>
       <h2>{t("Deleting your data")}</h2>
       <p>{t("There is currently no self-serve way to delete an entire account. Write to ")}<a href="mailto:hello@chipvoice.dev">{t("hello@chipvoice.dev")}</a>{t(" and we will delete your account, songs and prompts by hand.")}</p>
     </section>
     <section>
       <h2>{t("Who can see what")}</h2>
       <p>{t("A public song, its title, console, tags and audio, is visible to anyone with the link, and listed in Explore. An unlisted song is visible only to whoever has its link. A private song, and every prompt, is visible only to its owner.")}</p>
+    </section>
+    <section>
+      <h2>{t("Cookies and browser storage")}</h2>
+      <p>{t("Signing in sets one cookie that keeps you signed in for 30 days. Your browser also keeps a couple of things locally on your device: any song or prompt you are still drafting, so a reload does not lose it, and a short-lived cache of your own signed-in account details, so the app does not have to re-check on every page. chipvoice runs no analytics or advertising trackers.")}</p>
     </section>
     <section>
       <h2>{t("Changes and contact")}</h2>
