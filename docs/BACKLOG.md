@@ -1025,15 +1025,22 @@ real game music, and a real unit.
   VRC7, FDS, N163, MMC5 still todo. NEXT-15 (below) added the Sunsoft 5B.
   NEXT-16 YM2151 and YM2610, NEXT-17 OPL2 and OPL3; then PC Engine, Game Boy
   Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.
-- todo - NEXT-14 VRC6 pulse duty-phase capture: a real VRC6 cartridge (a
-  flash cart such as an EverDrive N8 Pro on a Famicom, or an original board)
-  playing back `scores/nsf-corpus`'s `vrc6-probe` NSF, recorded, to settle
-  whether a pulse's duty window is low-first (this core, nesdev's text
-  literally) or high-first (upstream Mesen 2 and Game_Music_Emu, unpatched) -
-  see [docs/chips/vrc6.md](chips/vrc6.md)'s "The pulse mapping" and "Known
-  deviations". Settling it against hardware may mean flipping this core's own
-  convention, or dropping `Vrc6Pulse.h`'s chipvoice patch and accepting the
-  no-regression baseline for the pulse too.
+- done - NEXT-14 round 5, VRC6 pulse duty-phase: settled from published
+  evidence, no hardware purchase needed (decision 38's own ordering).
+  rainwarrior's real-hardware tests of VRC6 cartridges hotswapped on real
+  NES/Famicom hardware (nesdev forums, "VRC6 $9003 audio enable register?",
+  12 August 2012; the thread names Esper Dream 2 and Akumajou Densetsu):
+  "The pulse duty cycles
+  begin with 0 and end at the volume setting" - low-first, this core's own
+  reading (nesdev's text, literally), not upstream Mesen 2's or
+  Game_Music_Emu's unpatched high-first one, neither of which cites any
+  measurement for its own choice. The same author wrote the same reading
+  into the nesdev wiki's VRC6 audio article the next day, where it still
+  stands. No code change to `vrc6.ts`: it was already correct.
+  `Vrc6Pulse.h`'s chipvoice patch (making Mesen 2 adopt this reading) stays,
+  now documented as hardware-confirmed rather than undetermined - see
+  [docs/chips/vrc6.md](chips/vrc6.md)'s new "Hardware evidence" section and
+  its updated "Known deviations" row.
 - doing - NEXT-15 AY-3-8910 / YM2149, first hosted as the Sunsoft 5B: core
   written from nesdev's "Sunsoft 5B audio" page and General Instrument's
   AY-3-8910/8912/8913 datasheet (three 12-bit tone channels, one shared

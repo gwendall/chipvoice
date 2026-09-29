@@ -17,7 +17,7 @@ replacing any of them. The method behind every section is in
 | | |
 | --- | --- |
 | **Machine** | NES, Famicom (Konami VRC6 cartridges: Akumajou Densetsu / Castlevania III, Madara, Esper Dream 2) |
-| **Status** | **in progress**: measured against two independent oracles, Game_Music_Emu's `Nes_Vrc6_Apu` and, since round 2, Mesen 2's own VRC6 audio; the corpus is split so every script that avoids the oracles' own known gaps (no disable after the first enable, no period at or below 4, no `$9003` writes) gates at a literal 100 % against both, and every script that hits one of those gaps gates exactly against Mesen 2 (which models all three) while Game_Music_Emu reports the same script without gating CI; round 3 patched Mesen 2's pulse to adopt this core's own nesdev-literal duty-phase reading (a one-line algebraic mapping, not a time shift), so the four flat-corpus scripts that disable and re-enable a pulse but never the sawtooth gate at a literal 100 % against Mesen 2 too (`check:vrc6-flat-mesen`) - round 4: that gate is independent evidence for divider cadence, step timing, disable/enable behaviour and levels, but not for duty-phase polarity itself, since the patch is what makes Mesen agree on phase, and whose phase convention is hardware-correct remains open ("The pulse mapping" below); round 4 also found and fixed two harness bugs that had clipped one script's last edge, so a fifth script (`script-saw-worked-example`) now gates exactly too; the remaining three, which disable and re-enable the sawtooth, stay on the original eight-script corpus's no-regression baseline, 38.1 % against Game_Music_Emu (unchanged) and 90.4 % against Mesen 2; the per-run, shift-tolerant match the board reads is 79.0 % of 105 runs; a self-authored VRC6 NSF probe proves NSF export/playback round-trips through Game_Music_Emu's own `Nsf_Emu` player exactly; no driver reaches it yet |
+| **Status** | **in progress**: measured against two independent oracles, Game_Music_Emu's `Nes_Vrc6_Apu` and, since round 2, Mesen 2's own VRC6 audio; the corpus is split so every script that avoids the oracles' own known gaps (no disable after the first enable, no period at or below 4, no `$9003` writes) gates at a literal 100 % against both, and every script that hits one of those gaps gates exactly against Mesen 2 (which models all three) while Game_Music_Emu reports the same script without gating CI; round 3 patched Mesen 2's pulse to adopt this core's own nesdev-literal duty-phase reading (a one-line algebraic mapping, not a time shift), so the four flat-corpus scripts that disable and re-enable a pulse but never the sawtooth gate at a literal 100 % against Mesen 2 too (`check:vrc6-flat-mesen`) - round 4: that gate is independent evidence for divider cadence, step timing, disable/enable behaviour and levels, but not for duty-phase polarity itself, since the patch is what makes Mesen agree on phase; round 5 closed the polarity question itself, without a hardware purchase: rainwarrior's real-hardware tests of VRC6 cartridges hotswapped on real hardware (nesdev forums, 12 August 2012; the thread names Esper Dream 2 and Akumajou Densetsu) state the pulse is low-first, the same reading this core already implements and the same text rainwarrior wrote into the nesdev wiki's VRC6 audio article the next day; neither upstream Mesen 2 nor Game_Music_Emu cites any hardware measurement for their own high-first choice ("Hardware evidence" below); round 4 also found and fixed two harness bugs that had clipped one script's last edge, so a fifth script (`script-saw-worked-example`) now gates exactly too; the remaining three, which disable and re-enable the sawtooth, stay on the original eight-script corpus's no-regression baseline, 38.1 % against Game_Music_Emu (unchanged) and 90.4 % against Mesen 2; the per-run, shift-tolerant match the board reads is 79.0 % of 105 runs; a self-authored VRC6 NSF probe proves NSF export/playback round-trips through Game_Music_Emu's own `Nsf_Emu` player exactly; no driver reaches it yet |
 | **Core** | written from the nesdev wiki and Konami's own VRC6 documents: the standalone digital chip in `packages/chipvoice/src/chips/nes/vrc6.ts`, the combined `2a03-vrc6` cartridge chip and its mixing stage in `vrc6-core.ts` |
 | **Licence of the core** | MIT, like the rest of the package. Game_Music_Emu's `Nes_Vrc6_Apu`, the oracle, is LGPL and lives in the harness only: decision 41 |
 | **Sheet updated** | 2026-09-28, by hand and by `conform` |
@@ -381,14 +381,53 @@ disabled, re-anchoring at each enable edge, and the output levels themselves
 - all still read from, and compared against, Mesen's own independent
 implementation of those.
 
-Whose duty-phase reading is correct is genuinely undetermined: this core
-follows nesdev's text; both Mesen 2 and Game_Music_Emu, unpatched, disagree
-with that reading (and, per the direct oracle-against-oracle measurement
-below, with each other); no real VRC6 cartridge has been captured to check
-any of the three against hardware. Settling it may mean flipping this core's
-own convention, or dropping this patch and accepting the no-regression
-baseline for the pulse too - see [BACKLOG.md](../BACKLOG.md)'s NEXT-14 entry
-for the capture that would decide between them.
+Whose duty-phase reading is correct was, as of round 4, genuinely
+undetermined: this core follows nesdev's text; both Mesen 2 and
+Game_Music_Emu, unpatched, disagree with that reading (and, per the direct
+oracle-against-oracle measurement below, with each other); no real VRC6
+cartridge had been captured to check any of the three against hardware.
+Round 5 (below) found that a real VRC6 cartridge already had been checked
+against hardware, published on the nesdev forums in 2012, and settled it:
+this core's low-first reading is the one a real chip gives.
+
+### Hardware evidence
+
+Before proposing a purchase, decision 38 orders a search of published
+evidence first. Two primary sources on the VRC6 pulse's duty-phase question
+turned up; only one of them actually distinguishes low-first from
+high-first.
+
+| Source | Measurement | Distinguishes low/high-first? | Verdict |
+| --- | --- | --- | --- |
+| [nesdev forums, "VRC6 $9003 audio enable register?"](https://forums.nesdev.org/viewtopic.php?t=9207), rainwarrior, 12 August 2012 | Real VRC6 cartridges tested by hotswap (a live cartridge-swap rig, not an emulator) on real NES/Famicom hardware; earlier in the same thread rainwarrior names Esper Dream 2 and Akumajou Densetsu as the cartridges hotswap-tested, though the post quoted below does not itself say which cartridge that specific statement was measured on. Testing the enable/disable/re-enable behaviour of `$X002` directly (the same post's own preceding sentence: "The pulse and saw wave phases can be reset by clearing the enable bit in $X002"), rainwarrior wrote: "The pulse duty cycles begin with 0 and end at the volume setting. The duty width in $9000/$A000 corresponds to the width of the high period at the end of the cycle." | Yes - directly. "Begin with 0, end at the volume setting" is low-first, by name, immediately after describing the phase-reset-by-disable/enable behaviour it is a statement about | **Low-first.** Matches this core exactly (LOW for the first 15-D steps, then volume for D+1, "at the end of the cycle"). The very next day, the same author wrote the same reading into the nesdev wiki's VRC6 audio article (revision 12547, 13 August 2012, "counting down from 15 to 0... the channel volume V is output" - the text this core's own doc comment already quotes), where it has stood, unchanged on this point, ever since |
+| [nesdev.org/vrcvi.txt, "VRCVI Chip Info"](https://www.nesdev.org/vrcvi.txt), Kevin Horton, 1999 | Real oscilloscope and Fluke 83 multimeter measurements of an actual VRCVI chip's output, register dump against a re-synthesized WAV ("I have extensively tested the output of the actual VRCVI chip to this spec and everything fits perfectly... All frequency and duty cycle measurements were taken with a Fluke 83 multimeter, and all waveform data was culled from my oscilloscope measuring the real chip") | No. The document describes the duty generator's existence and the frequency/duty-percentage formulas it produces, but never states which half of a duty window is output first relative to an enable edge | Corroborates that the duty-width percentages this sheet already uses (1/16 through 8/16) are real-hardware-verified, but is silent on phase polarity specifically - not distinguishing evidence for this question |
+
+Neither upstream Mesen 2's `Vrc6Pulse.h` (`_step <= _dutyCycle`, high-first)
+nor Game_Music_Emu's `Nes_Vrc6_Apu.cpp` (`phase < duty`, high-first, `phase`
+initialized to 1 at power-on) carries a code comment or a commit message
+citing any measurement for that choice - an emulator's own choice with
+nothing cited behind it is not evidence, so neither counts against
+rainwarrior's report above. A wider search (the nesdev wiki's `Talk:VRC6`
+and `Talk:VRC6_audio` pages, the VRC6 audio article's own edit history, a
+dozen more nesdev forum threads on VRC6 audio, mixing and test ROMs, Mesen's
+GitHub history) turned up no other primary source - measurement, scope
+capture or decap - on this specific question, and no dissent from
+rainwarrior's 2012 finding in the thirteen years since.
+
+**Conclusion: this core's low-first reading is hardware-correct.** No code
+change to `vrc6.ts` is needed - it already implements the reading a real
+VRC6 chip gives. `Vrc6Pulse.h`'s chipvoice patch (making Mesen 2 adopt this
+reading) stays: un-patching it would make the Mesen oracle disagree with
+real hardware again, on purpose, which is strictly worse than the status
+quo. What does change is what the patch, and `check:vrc6-flat-mesen`'s
+100 %, are evidence of: the patch itself is still not *independent*
+evidence for phase (it was written to match this core, not derived from
+Mesen's own hardware test), but the underlying question the patch encodes
+an answer to is no longer undetermined - it is settled by a real,
+independent, hardware-tested source external to both chipvoice and Mesen.
+`docs/BACKLOG.md`'s NEXT-14 entry records this; no hardware purchase or new
+capture bench was needed to close it, per decision 38's own ordering
+(published evidence first, free, before any unit is bought).
 
 The false claim being corrected here: this file used to say
 `check:vrc6-core-mesen`/`check:vrc6-edge-mesen` are unaffected by the patch
@@ -650,7 +689,7 @@ player every 2A03 file in both corpora is measured against.
 | --- | --- | --- | --- |
 | A pulse's duty phase does not resume from step 15 on re-enable, and does not advance at all while disabled or in "always on" mode, against Game_Music_Emu | no, that oracle's, not this core's | this core follows nesdev's explicit text ("it will resume from the beginning when E is once again set"); Game_Music_Emu's `run_square` only advances the phase while `volume && !gate && period > 4`, and never resets `phase` on any register write or disable/re-enable (`gme/Nes_Vrc6_Apu.h`/`.cpp`), so it freezes and resumes wherever it stopped instead; Mesen 2's own `_step` does reset on every disable (to 0, not 15), so its own version of this row is mapped to an exact gate instead (`Vrc6Pulse.h`'s "chipvoice patch" comment; "The pulse mapping" above) | every corpus script that disables and re-enables a pulse, against Game_Music_Emu; measured as a per-run shift, not a raw match (see above); no longer affects Mesen 2 |
 | Game_Music_Emu and Mesen 2 do not closely agree with each other on pulse duty phase either, despite both counting the duty step up where this core counts it down | no, each oracle's own choice, not this core's | both count up (nesdev's text describes counting down, which this core follows literally), but only Mesen re-anchors its counter on every disable; Game_Music_Emu's phase never resets, so the two independent oracles diverge from each other on most cycles of a script that disables and re-enables a pulse, measured directly oracle against oracle: `script-duty` 92.8250 %, `script-pulse-both` 32.4362 %, `script-pulse-periods` 49.1166 % identical (against an unmapped Mesen build; see "The pulse mapping" above) | explains why the mapping above closes the gap against Mesen 2 but cannot be extended to Game_Music_Emu; no effect on this core's own gates, which measure each oracle separately |
-| Pulse duty phase after enable: this core outputs the low part first (LOW for the first 15-D steps, then volume for D+1), where upstream Mesen 2 and Game_Music_Emu both output the high part first (volume for D+1 steps, then low) | undetermined - hardware unverified | this core follows nesdev's text literally ("counting down from 15 to 0... when the current step is less than or equal to the given duty cycle D, the channel volume V is output, otherwise 0"); upstream Mesen 2 resets its step counter to 0, not 15, on every enable, and Game_Music_Emu's own `phase` starts at 1 from power-on and is never reset to a value consistent with this core's reading either; no real VRC6 cartridge has been captured to settle which reading is hardware-correct (`Vrc6Pulse.h`'s "chipvoice patch" comment; "The pulse mapping" above) | phase only - duty width, divider period and output level are all unchanged either way; `check:vrc6-flat-mesen`'s 100 % is not independent evidence on this specific question, since `Vrc6Pulse.h`'s patch is what makes Mesen adopt this core's own reading rather than an agreement found between two unmodified implementations; a real-hardware capture that would settle it is tracked in [BACKLOG.md](../BACKLOG.md) |
+| Pulse duty phase after enable: upstream Mesen 2 and Game_Music_Emu both output the high part first (volume for D+1 steps, then low); this core outputs the low part first (LOW for the first 15-D steps, then volume for D+1) | no, upstream Mesen 2's and Game_Music_Emu's own uncited choice, not this core's | this core follows nesdev's text literally ("counting down from 15 to 0... when the current step is less than or equal to the given duty cycle D, the channel volume V is output, otherwise 0"), which round 5 found to be hardware-confirmed low-first (rainwarrior's real-hardware tests of VRC6 cartridges hotswapped on real hardware, nesdev forums, 12 August 2012: "the pulse duty cycles begin with 0 and end at the volume setting"; "Hardware evidence" above); upstream Mesen 2 resets its step counter to 0, not 15, on every enable, and Game_Music_Emu's own `phase` starts at 1 from power-on, and neither cites any measurement for that choice | phase only - duty width, divider period and output level are all unchanged either way; `check:vrc6-flat-mesen`'s 100 % is still not independent evidence for this specific gate (`Vrc6Pulse.h`'s patch is what makes Mesen adopt this core's own reading, not an agreement found between two unmodified implementations), but the reading itself is no longer undetermined against hardware; `Vrc6Pulse.h`'s patch stays, documented in "Hardware evidence" above and [BACKLOG.md](../BACKLOG.md) |
 | The sawtooth's accumulator does not freeze on disable, and its divider does not stop, against Game_Music_Emu | no, that oracle's, not this core's | this core follows nesdev's text ("the accumulator is forced to zero"; "clearing E does not reset the frequency divider"); Game_Music_Emu's `run_saw` takes a branch while disabled that touches neither (`gme/Nes_Vrc6_Apu.cpp`) | every corpus script that disables and re-enables the sawtooth, against Game_Music_Emu |
 | Mesen 2's sawtooth frequency divider pauses entirely while disabled and resumes from wherever it stopped, rather than continuing to tick | no, that emulator's own choice | this core ticks the divider unconditionally every cycle, per nesdev's text ("clearing E does not reset the frequency divider, however"); Mesen 2's `Vrc6Saw::Clock()` gates its whole body, divider included, behind `if(_enabled)` (`Vrc6Saw.h`) | `script-saw-enable`, `script-saw-rates`, `script-all-three` against Mesen 2 ("The sawtooth's divider across a disable" above); not exercised by `edge/saw-enable.log`, whose disabled spans are exact multiples of the saw's own full divider period, so both conventions land on the same next firing there |
 | A pulse whose reloaded period is 4 cycles or less never toggles in the oracle | no, a gap in the oracle | Game_Music_Emu's `run_square` only runs its phase-advance loop when `period > 4`; this core keeps advancing at any period | `script-pulse-periods`' own period-0 and period-1 runs |
@@ -672,6 +711,23 @@ behaviour once written, not their reset value.
 
 ## History
 
+- 2026-09-29 (NEXT-14, round 5): closed the duty-phase polarity question
+  round 4 left open, from published evidence, no hardware purchase needed:
+  rainwarrior's real-hardware tests of VRC6 cartridges hotswapped on real
+  hardware (nesdev forums, "VRC6 $9003 audio enable register?", 12 August
+  2012; the thread names Esper Dream 2 and Akumajou Densetsu) state the
+  pulse duty cycle is low-first, the exact reading this core already
+  implements and the reading the same author wrote into the nesdev wiki's
+  VRC6 audio article the next day; neither upstream Mesen 2 nor
+  Game_Music_Emu cites any hardware measurement for their own high-first
+  choice. No code change to `vrc6.ts`: it was already correct.
+  `Vrc6Pulse.h`'s chipvoice patch stays, its comment and this sheet's
+  "Known deviations" row rewritten from "undetermined" to hardware-
+  confirmed; new "Hardware evidence" section above has the full source
+  table, including a second primary source (Kevin Horton's 1999
+  oscilloscope-measured VRCVI chip info document) that corroborates the
+  duty-width percentages but does not itself distinguish low-first from
+  high-first.
 - 2026-09-28 (NEXT-14, round 4, PR #111): corrected round 3's overclaim about
   `Vrc6Pulse.h`'s patch and `check:vrc6-flat-mesen`: the patch changes
   Mesen's observable duty-phase output (makes it adopt this core's own
@@ -729,6 +785,15 @@ behaviour once written, not their reset value.
   revision `b9fa69ddc6d0a331fb103fdb5eef6904305703c2`, the same commit
   already pinned for the plain 2A03 oracle), the second, independent oracle
   round 2 added, read and run the same way, never ported.
+- [NESdev forums: "VRC6 $9003 audio enable register?"](https://forums.nesdev.org/viewtopic.php?t=9207),
+  rainwarrior, August 2012 - the real-hardware (VRC6 cartridges hotswapped
+  on real hardware; the thread names Esper Dream 2 and Akumajou Densetsu)
+  test that settled the pulse duty-phase question round 5 closes; see
+  "Hardware evidence" above.
+- [nesdev.org/vrcvi.txt: "VRCVI Chip Info"](https://www.nesdev.org/vrcvi.txt),
+  Kevin Horton, 1999 - oscilloscope-and-multimeter measurements of a real
+  VRCVI chip, corroborating the duty-width formulas without bearing on
+  phase polarity; see "Hardware evidence" above.
 
 ---
 
