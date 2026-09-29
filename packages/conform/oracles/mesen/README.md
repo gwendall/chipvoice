@@ -267,10 +267,11 @@ undetermined: this core follows nesdev's text, both Mesen 2 and
 Game_Music_Emu (unpatched) disagree with that reading, and no real VRC6
 cartridge had been captured to check any of the three against hardware.
 Round 5 found it was already settled, published, without a hardware
-purchase: rainwarrior, hotswapping a real Esper Dream 2 VRC6 cartridge on
-real hardware (nesdev forums, "VRC6 $9003 audio enable register?", 12 August
-2012), reported the pulse is low-first ("the pulse duty cycles begin with 0
-and end at the volume setting") - this core's own reading, not the
+purchase: rainwarrior, hotswapping real VRC6 cartridges on real hardware
+(nesdev forums, "VRC6 $9003 audio enable register?", 12 August 2012; the
+thread names Esper Dream 2 and Akumajou Densetsu), reported the pulse is
+low-first ("the pulse duty cycles begin with 0 and end at the volume
+setting") - this core's own reading, not the
 unpatched oracle's; neither Mesen 2 nor Game_Music_Emu cites a measurement
 for its own high-first choice. `docs/chips/vrc6.md`'s "Hardware evidence"
 has the full source table; `docs/BACKLOG.md`'s NEXT-14 entry records the

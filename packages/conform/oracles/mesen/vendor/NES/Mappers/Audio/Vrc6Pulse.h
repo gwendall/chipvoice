@@ -119,9 +119,10 @@ public:
 	// Whose duty-phase reading is correct is not something this patch or
 	// this gate settles on its own - but round 5 found it settled elsewhere,
 	// in a real hardware test that predates this project by over a decade:
-	// rainwarrior, hotswapping a real Esper Dream 2 VRC6 cartridge on real
-	// NES/Famicom hardware (nesdev forums, "VRC6 $9003 audio enable
-	// register?", 12 August 2012), wrote "The pulse duty cycles begin with
+	// rainwarrior, hotswapping real VRC6 cartridges on real NES/Famicom
+	// hardware (nesdev forums, "VRC6 $9003 audio enable register?", 12
+	// August 2012; the thread names Esper Dream 2 and Akumajou Densetsu),
+	// wrote "The pulse duty cycles begin with
 	// 0 and end at the volume setting" - low-first, chipvoice's own reading,
 	// not Mesen's or Game_Music_Emu's unpatched one. Neither of those two
 	// cites any measurement for its own high-first choice. Full source

@@ -1027,9 +1027,10 @@ real game music, and a real unit.
   Advance, Amiga Paula, POKEY, TIA, SCC and YM2608.
 - done - NEXT-14 round 5, VRC6 pulse duty-phase: settled from published
   evidence, no hardware purchase needed (decision 38's own ordering).
-  rainwarrior's real-hardware test of an actual Esper Dream 2 VRC6
-  cartridge, hotswapped on real NES/Famicom hardware (nesdev forums, "VRC6
-  $9003 audio enable register?", 12 August 2012): "The pulse duty cycles
+  rainwarrior's real-hardware tests of VRC6 cartridges hotswapped on real
+  NES/Famicom hardware (nesdev forums, "VRC6 $9003 audio enable register?",
+  12 August 2012; the thread names Esper Dream 2 and Akumajou Densetsu):
+  "The pulse duty cycles
   begin with 0 and end at the volume setting" - low-first, this core's own
   reading (nesdev's text, literally), not upstream Mesen 2's or
   Game_Music_Emu's unpatched high-first one, neither of which cites any
