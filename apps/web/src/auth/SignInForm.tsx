@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useI18n, useT } from "@/i18n/react";
+import Link, { useI18n, useT } from "@/i18n/react";
 /** One email flow for the composer, account tools and the dedicated sign-in page. */
 export function SignInForm({ next }: { next?: string }) {
   const t = useT(), { locale } = useI18n();
@@ -31,5 +31,6 @@ export function SignInForm({ next }: { next?: string }) {
     <button className="small-button dark" disabled={busy || cooldown > 0}>{t(busy ? "Sending your link…" : sent ? "Send another link" : "Send sign-in link")}</button></div>
     <div role="status" aria-live="polite">{sent && <p><strong>{t("Check your inbox")}</strong><br/>{t("Open the email link to return here. It works once, for 30 minutes. Check spam too.")}</p>}{cooldown > 0 && <p>{t("You can request another link in {seconds}s.", { seconds: cooldown })}</p>}</div>
     {message && <p role="alert">{t(message)}</p>}
+    <p className="signin-legal">{t("By continuing, you agree to chipvoice's ")}<Link href="/terms">{t("terms of use")}</Link>{t(" and ")}<Link href="/privacy">{t("privacy policy")}</Link>.</p>
   </form>;
 }

@@ -253,8 +253,13 @@ finally:
   assert.equal((await completed(held.body.id)).status, "failed");
   await api.withdrawProject(result.projectId, caller.userId);
   assert.equal((await query(`/api/v1/generations/${id}`, { headers })).status, 404);
-  await writeFile(`${out}/report.json`, JSON.stringify({ model: result.model, providerCalls: server.calls.length, evaluation: result.evaluation, privateSong: true, promptOwnerOnly: true, completeWavMp3: true }, null, 2));
-  console.log("PASS prompt composition: actual HTTP provider adapter, idempotency, normal project/render storage, WAV/MP3, private prompt, failures, cancellation, scope and browser screenshots");
+  // Decision 57: withdrawing the song also erases its prompt, not only its
+  // audio and page - the generations row stays (model/usage/timestamps still
+  // feed the monthly budget), but the private text itself does not.
+  const scrubbed = await client.execute({ sql: "select request from generations where id=?", args: [id] });
+  assert.equal(JSON.parse(scrubbed.rows[0].request).prompt, "[deleted with its song]", "withdrawing a song deletes its prompt");
+  await writeFile(`${out}/report.json`, JSON.stringify({ model: result.model, providerCalls: server.calls.length, evaluation: result.evaluation, privateSong: true, promptOwnerOnly: true, completeWavMp3: true, promptDeletedWithSong: true }, null, 2));
+  console.log("PASS prompt composition: actual HTTP provider adapter, idempotency, normal project/render storage, WAV/MP3, private prompt, prompt deletion on withdrawal, failures, cancellation, scope and browser screenshots");
 } catch (error) {
   console.error(server.logs());
   throw error;
