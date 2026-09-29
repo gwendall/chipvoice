@@ -1227,7 +1227,8 @@
   "A saved or published song stores its score, title and console choice, and, once you publish it, a public profile and a visibility you choose: public, unlisted or private. The account that owns a song is never exposed in that song's public API response or page.": "保存または公開した曲には、楽譜、タイトル、選択した音源チップが保存されます。公開すると、公開プロフィールと、公開・限定公開・非公開から選んだ公開範囲も保存されます。曲の所有アカウントは、その曲の公開APIレスポンスやページに一切表示されません。",
   "Your prompts": "あなたのプロンプトについて",
   "If you generate a song from a text prompt, chipvoice stores that prompt, tied to your account. It is private by default: chipvoice never returns or displays a prompt to anyone but the account that wrote it, whether or not the resulting song is published.": "テキストプロンプトから曲を生成すると、chipvoice はそのプロンプトをあなたのアカウントに紐づけて保存します。プロンプトは既定で非公開です。生成された曲が公開されているかどうかにかかわらず、chipvoice はプロンプトを書いた本人以外の誰にも返却・表示しません。",
-  "Your prompt is sent to chipvoice's model provider, OpenAI, only to produce the song. chipvoice does not use prompts to train any model.": "あなたのプロンプトは、曲を生成する目的のみで chipvoice のモデル提供元である OpenAI に送信されます。chipvoice はプロンプトをモデルの学習に使用しません。",
+  "Your prompt is sent to chipvoice's model provider, OpenAI, to check it against OpenAI's moderation and to produce the song. chipvoice does not use prompts to train any model.": "あなたのプロンプトは、chipvoice のモデル提供元である OpenAI に送信され、OpenAI のモデレーションによる確認と曲の生成に使われます。chipvoice はプロンプトをモデルの学習に使用しません。",
+  "chipvoice may refuse to generate a song: OpenAI's moderation can reject the prompt itself, and a separate check can reject a result that too closely matches a well-known melody.": "chipvoice は曲の生成を拒否することがあります。OpenAI のモデレーションがプロンプト自体を拒否する場合と、生成結果がよく知られたメロディーに酷似しているとして別のチェックが拒否する場合があります。",
   "OpenAI's own description of how it handles API data": "OpenAI 自身によるAPIデータの取り扱いについての説明",
   "chipvoice keeps a generation's prompt for as long as its song exists. Withdrawing a generated song deletes its prompt too; the record that you generated a song (its model and token usage, which keep the beta's shared budget honest) stays, but the prompt text itself does not. A prompt whose song was never withdrawn is kept indefinitely.": "chipvoice は、生成に使われたプロンプトをその曲が存在する間保持します。生成した曲を取り下げると、そのプロンプトも削除されます。曲を生成したという記録（ベータ版の共有予算を正しく管理するために必要なモデル名やトークン使用量）は残りますが、プロンプトのテキスト自体は残りません。取り下げられていない曲のプロンプトは無期限に保持されます。",
   "Deleting your data": "データの削除について",
@@ -1257,7 +1258,7 @@
   "Vercel hosts chipvoice.dev and keeps its own standard web server logs, which include IP addresses, for every request.": "Vercelがchipvoice.devをホスティングしており、すべてのリクエストについて、IPアドレスを含む標準的なWebサーバーログを自身で保持しています。",
   "Turso hosts the database that stores your account, songs, publications and prompts.": "Turso が、あなたのアカウント・曲・公開物・プロンプトを保存するデータベースをホスティングしています。",
   "domani sends your sign-in email, so it receives the address to deliver it to.": "domani がサインイン用メールを送信するため、送信先としてあなたのメールアドレスを受け取ります。",
-  "OpenAI receives your prompt, as described above, only to generate your song.": "OpenAI は、上記のとおり、曲を生成する目的のみであなたのプロンプトを受け取ります。",
+  "OpenAI receives your prompt, as described above, to check it against OpenAI's moderation and to generate your song.": "OpenAI は、上記のとおり、モデレーションによる確認と曲の生成のためにあなたのプロンプトを受け取ります。",
   "Cookies and browser storage": "クッキーとブラウザストレージ",
   "Signing in sets one cookie that keeps you signed in for 30 days. Your browser also keeps a couple of things locally on your device: any song or prompt you are still drafting, so a reload does not lose it, and a short-lived cache of your own signed-in account details, so the app does not have to re-check on every page. chipvoice runs no analytics or advertising trackers.": "サインインすると、30日間サインイン状態を保つクッキーが1つ設定されます。ブラウザはこのほかにも、いくつかの情報をお使いの端末上にローカルに保持します。作成中の曲やプロンプトの下書き（再読み込みで失われないように）と、ご自身のサインイン済みアカウント情報の短期間のキャッシュ（毎回のページ読み込みで再確認しなくて済むように）です。chipvoice はアナリティクスや広告トラッキングを一切使用していません。"
 }
