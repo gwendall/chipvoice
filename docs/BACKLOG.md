@@ -1159,8 +1159,10 @@ real game music, and a real unit.
   prices from recorded usage, 110 USD in production. Billing remains.
   NEXT-21: prompt moderation and refusal of known melodies, measured by
   melodic similarity.
-- P8-9 and P8-14. todo - NEXT-22: terms, ownership of generated songs and
-  prompt privacy.
+- P8-9 and P8-14. done - NEXT-22: terms, ownership of generated songs and
+  prompt privacy. `/terms` and `/privacy` (decision 57): no ownership claim,
+  prompts stay owner-only and are erased when their song is withdrawn, and
+  generation now actually declines known melodies.
 - GEN-13: the closed beta, then pricing from its measurements. The server
   now enforces the beta's invitation and budget (decision 42); inviting
   people and measuring remain.

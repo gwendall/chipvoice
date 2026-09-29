@@ -76,6 +76,18 @@ export const pages = {
     description:
       "Renders a fixed set of inputs in this browser and compares the result byte for byte against Node, on the device you opened it on.",
   },
+  terms: {
+    path: "/terms",
+    title: "Terms of use · chipvoice",
+    description:
+      "Plain-language terms for chipvoice's closed beta: who owns your songs, what publishing licenses to chipvoice, and the no-warranty on third-party rights.",
+  },
+  privacy: {
+    path: "/privacy",
+    title: "Privacy policy · chipvoice",
+    description:
+      "What chipvoice stores about your account, your songs and your prompts, who can see it, and how to ask us to delete it.",
+  },
   missing: {
     path: "",
     title: "Page not found · chipvoice",

@@ -166,6 +166,7 @@ export default function PromptComposer({ target }: { target: string }) {
     <p>{t("Describe a new song. It starts private, with your selected console and artist. Your current draft stays here.")}</p>
     <form onSubmit={e => { e.preventDefault(); void generate(); }}>
       <label>{t("Music prompt")}<textarea required minLength={1} maxLength={2000} value={prompt} disabled={busy} onChange={e => setPrompt(e.target.value)} /></label>
+      <p className="prompt-privacy-note">{t("Your prompt stays private to your account, even if you publish the song. See the ")}<Link href="/privacy">{t("privacy policy")}</Link>.</p>
       <div className="prompt-options">
         <RangeControl id="prompt-duration" label={t("Song duration")} unit={t("seconds")} min={10} max={90} value={seconds} disabled={busy} onChange={setSeconds} />
         {!!artists.length && <label>{t("Artist")}<select value={artist} disabled={busy} onChange={e => setArtist(e.target.value)}>{artists.map(p => <option key={p.id} value={p.id}>{p.displayName || p.handle || t("My artist")}</option>)}</select></label>}

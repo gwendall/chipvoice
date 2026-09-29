@@ -21,6 +21,8 @@ const quiet = [
   "lab",
   "lab/arrangements",
   "lab/components",
+  "terms",
+  "privacy",
 ];
 for (const page of quiet) {
   const path = `.next/server/app/en/${page}.html`;
@@ -43,5 +45,5 @@ for (const page of quiet) {
   }
 }
 console.log(
-  "PASS pages with no audio feature ship no chip engine (about, accuracy, instruments, connect, docs, signin, lab and its sub-pages)",
+  "PASS pages with no audio feature ship no chip engine (about, accuracy, instruments, connect, docs, signin, lab and its sub-pages, terms, privacy)",
 );
