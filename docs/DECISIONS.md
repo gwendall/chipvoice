@@ -3284,6 +3284,12 @@ within two points of its pre-fix numbers (was 44/48 and 45/48; is now
 43/48 and 45/48) rather than collapsing, so the fix closed the exploit
 without materially weakening the gate on real paraphrases.
 
+Eight songs is still a thin negative set, and eight scores of exactly
+0.000 carry no margin information beyond "clearly below 0.40" - a
+larger real corpus could surface a nonzero max and a narrower true
+margin. The threshold is accepted provisionally on this evidence,
+not treated as final: see "Evidence for recalibration" next.
+
 **Evidence for recalibration.** Every generation - not only ones the
 gate refuses - now records its best known-melody match as it happens:
 `jobs.ts` calls `knownMelodySimilarity` (rather than only checking the
@@ -3311,7 +3317,15 @@ explicit zero usage for all three pre-call refusal codes
 (`prompt_known_work`, `prompt_flagged`, `moderation_unavailable`) so
 `monthSpend` prices them at their true cost, zero, instead of the
 reserve rate. `test-generation.mjs` asserts `monthSpend` is unchanged
-before and after each of the three refusal types.
+before and after each of the three refusal types. A refusal that DID
+reach the model - `known_melody`, or any other throw between
+`model.generate` returning and the generation reaching `validating` -
+had the same null-`usage` problem for the opposite reason: `jobs.ts` now
+persists `usage` and `model` the instant `model.generate` returns,
+before `compositionProject` or the melody gate can throw, so a post-call
+refusal is priced at what the call actually cost rather than the
+reserve; `test-generation.mjs`'s known-melody case asserts the month's
+spend rises by exactly the mocked call's priced usage, not the reserve.
 
 **Why.** Both checks are pure, dependency-free and unit-tested with no
 network or key - the moderation endpoint is mocked, not called - so
@@ -3331,6 +3345,7 @@ every generation's best known-melody match as evidence; migration
 `compositionConfig` splits out `openAICredentials`, shared by the paid
 adapter and the free moderation call; `scripts/melody-negative-corpus.mjs`
 (new) is the manual real-corpus validation report described above.
+
 ## 57. chipvoice publishes terms of use and a privacy policy: no ownership claim on your songs, prompts stay owner-only and are erased when their song is withdrawn (2026-09-29)
 
 NEXT-22. chipvoice had no terms page and no privacy page; `/terms` and

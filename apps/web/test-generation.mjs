@@ -259,6 +259,7 @@ finally:
     // shared 10-second `request` so the notes fit the requested duration
     // and the check under test - not an unrelated duration validation -
     // is what refuses it.
+    const spendBefore = await spend();
     const knownMelody = await query("/api/v1/generations", post({ ...request, prompt: "known-melody", durationSeconds: 20 }, "failure-known-melody"));
     assert.equal(knownMelody.status, 202);
     const knownMelodyResult = await completed(knownMelody.body.id);
@@ -269,6 +270,19 @@ finally:
     assert.match(knownMelodyResult.error, /100% similarity/);
     assert.equal(knownMelodyResult.moderation.melody.similarity, 1, "the refusing match itself is recorded as evidence, not just the refusal message");
     assert.ok(knownMelodyResult.moderation.melody.referenceId, "the matched reference id is recorded alongside the similarity");
+    // Decision 56: a POST-call refusal (the model WAS actually called) must
+    // price at what that call really cost, not at admission.ts's worst-case
+    // reserve - `jobs.ts` now persists `usage`/`model` the instant
+    // `model.generate` returns, before `compositionProject` or this gate can
+    // throw. The fixture server always returns the same usage
+    // (`test/composition-server.mjs`: 100 input / 200 output tokens), so the
+    // real price is computable and tiny next to the reserve.
+    const realPrice = api.priceUsage(budget.prices, { input: 100, cached: 0, output: 200 });
+    assert.ok(realPrice < budget.reserveUsd / 100, "sanity: the fixture's real usage prices far below the reserve, so the two are easy to tell apart");
+    // `spend()` sums every row for the month in SQL, so its float rounding
+    // can differ in the last bit from this one generation's own
+    // `priceUsage` call - compare with a tiny epsilon, not strict equality.
+    assert.ok(Math.abs(await spend() - spendBefore - realPrice) < 1e-9, "a known-melody refusal (after the paid call) prices at the call's real usage, not the reserve");
   }
 
   const slow = await query("/api/v1/generations", post({ ...request, prompt: "slow" }, "cancel-model"));

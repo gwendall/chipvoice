@@ -223,6 +223,17 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
       const model = suppliedModel ?? openAIModel({ ...compositionConfig(), model: String(row.model) });
       const result = await model.generate({ instructions: compositionInstructions(request), prompt: request.prompt, schema: compositionSchema, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(210000)]), onProgress: progress => { outputCharacters = progress.outputCharacters; } });
       if (await stopped()) return;
+      // Decision 56: record the real usage the instant it's known, before
+      // `compositionProject` or the melody gate can throw. Without this, a
+      // throw here (a known-melody refusal, or `compositionProject`
+      // rejecting the model's output) left `usage` null all the way to the
+      // catch block below, which coalesces to a null-usage row and so gets
+      // priced at `admission.ts`'s worst-case reserve for the rest of the
+      // month instead of what the call actually cost. The later
+      // status='validating' update below writes the same `usage`/`model`
+      // again - a harmless, idempotent repeat once a generation gets that far.
+      await client.execute({ sql: "update generations set model=?,usage=? where id=?", args: [result.model, JSON.stringify(result.usage), id] });
+      row.model = result.model;
       project = compositionProject(result.value, request);
       // Decision 56: the real known-melody gate, measured on the model's
       // OUTPUT (the notes it actually wrote), not the prompt - see
