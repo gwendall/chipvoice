@@ -2367,3 +2367,74 @@ reason (`build-catalog.mjs` imports its built `dist/` directly).
 `catalog:build` - it serves the already-committed `generated/catalog.json`
 - so a change to `packages/sfx-engine` cannot affect what Vercel builds or
 serves.
+
+**Amendment, GS-07 (2026-09-29): round 3's "padding" description was
+incomplete - the native-fallback ogg path DROPS audio, it does not merely
+pad it.** Round 3 above (and `docs/GAMESOUNDS.md`'s "known, non-blocking
+issue" section) described ffmpeg's native vorbis encoder as extending a
+decoded ogg with harmless trailing silence out to the next 1024-sample
+block boundary. That is true for most input lengths, but not all of them.
+Measured directly on this machine (ffmpeg 8.0.1, no libvorbis) with an
+880 Hz, 0.4-linear-amplitude mono tone, encoded with exactly
+`vorbisEncoderArgs("native")` plus `BITEXACT_ARGS` and decoded back: input
+lengths whose `n mod 1024` falls in roughly [962, 1023], and any length
+with residue exactly 0, decode SHORT by the entire final 1024-sample
+block - real, non-silent audio removed, not padded (`n=3071`, residue
+1023, decodes to 2048; `n=4096`, residue 0, decodes to 3072) - and
+`n=1023`/`n=1024` decode to zero samples, the whole sound gone. A step-2
+scan places the threshold between residue 960 (does not truncate) and 962
+(does). Decoding all 1080 shipped live oggs on `main` (commit `3b40c16`)
+found 56 of them (5.2%) actually inside the truncating band, mean 999
+samples lost (about 22.7ms at 44.1kHz), max 1023 samples - invisible to
+`checkFormatEnergies` because the lost tail was, in every one of the 56
+cases, a quiet decay contributing almost nothing to total energy either
+way. `checkFormatEnergies` was never wrong about what it measures; it was
+never the right instrument for a defect that removes real content from a
+part of the signal that was already quiet.
+
+The exact root cause inside ffmpeg's native encoder is not identified,
+deliberately: this is an empirically measured threshold on one
+ffmpeg/libavcodec build (8.0.1), not a documented behavior of
+`libavcodec/vorbisenc.c` read and cited - a different ffmpeg version could
+move, narrow or widen this threshold. The fix (GS-07) does not depend on
+knowing the cause: `encodeVariant` (`apps/sounds/scripts/lib/audio.mjs`)
+now decodes its first ogg encode and checks the decoded length against the
+source; if short, it re-encodes from a copy of the source padded with
+trailing zero samples out to `ceil(sourceFrames/1024)*1024 + 512` (always
+residue 512, comfortably inside the measured 1..960 safe band), decodes
+again, and throws if even the retry still comes back short. This is
+encode-verify-retry, not a blanket pre-pad: a variant whose first encode
+already decodes whole (1024 of the 1080 live oggs) never triggers the
+retry branch, so its ogg bytes and hash are byte-for-byte identical to
+before this fix. The libvorbis path (CI) is untouched - it never hits this
+retry logic at all.
+
+A new gate, `checkFormatLength`/`checkFormatLengths`
+(`apps/sounds/scripts/lib/checks.mjs`), wired into `checkSound` alongside
+`checkFormatEnergies`, now checks every shipped ogg/mp3 decodes to at
+least as many sample frames as the source wav (zero tolerance on the short
+side; longer, from padding or mp3's own gapless-trim slack, is fine and
+expected). It is a structurally different check from
+`checkFormatEnergies`, not a replacement for it: energy catches a uniform
+loudness bug, length catches content removed from a part of the signal
+that was already quiet, and neither can see the other's failure mode.
+`apps/sounds/test/audio.test.mjs` and `apps/sounds/test/checks.test.mjs`
+prove both directly: a standing regression proving the raw native encoder
+(no retry) really drops `n=3071` to 2048 decoded frames; the fix verified
+through the real `encodeVariant` production path (an `oggEncoder` option
+now forces the native-fallback branch even in CI, which has libvorbis) for
+`n=1023`, `3071` and `4096`; a no-churn control proving `n=2600` (already
+decodes whole) produces byte-identical ogg output with and without the
+retry logic present; and unit and wiring tests for the new length gate
+itself. Rebuilding the catalogue on this fix moves exactly the 56
+previously-truncated oggs' `files.ogg.sha256`/`bytes`/`url` - no wav, mp3,
+measure or other variant of any sound changes, chipvoice or generated
+alike (see the GS-07 PR body for the per-field diff proof).
+
+This does NOT fix the other half of the round-3 finding: a healthy
+(non-truncating) native-fallback ogg is still padded with trailing silence
+to a 1024-sample block boundary, so a developer's local ogg bytes still do
+not match CI's byte-for-byte for the same input - that remains tracked as
+`docs/BACKLOG.md` GS-06, open, and is out of scope here. GS-07 fixes
+dropped audio, not the harmless local/CI byte divergence GS-06 exists
+for.

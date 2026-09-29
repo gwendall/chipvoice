@@ -194,23 +194,49 @@ own pipeline on its true shipped layout passes `checkOneCeilingBinds`, and
 a variant that instead ships the engine's own pre-pan self-report as its
 recorded measure fails it, on real, independently-measured bytes.
 
-**Known, non-blocking issue: dev-machine ogg trailing-silence padding.**
-When the build machine's ffmpeg lacks libvorbis (true of this repo's own
-dev Homebrew ffmpeg, not true of CI's Ubuntu apt ffmpeg - see the ogg
+**Dev-machine ogg trailing-silence padding (GS-06, still open) and the
+tail-DROP defect it turned out to be hiding (GS-07, fixed).** When the
+build machine's ffmpeg lacks libvorbis (true of this repo's own dev
+Homebrew ffmpeg, not true of CI's Ubuntu apt ffmpeg - see the ogg
 fallback-upmix paragraph above), the native vorbis encoder it falls back
-to does not trim the ogg's own end granule, so a decoded ogg built on
-this machine comes back padded with trailing silence out to the next
+to does not trim the ogg's own end granule, so most decoded oggs built on
+this machine come back padded with trailing silence out to the next
 1024-sample block boundary (up to 1023 samples, about 23 ms at 44.1 kHz).
-This is harmless to the format-energy gate itself, because that gate
-compares TOTAL energy (a sum of squares), and trailing zero-valued
-padding contributes exactly 0 to a sum - but it did once cause a mean-based
+This part is harmless to the format-energy gate, because that gate
+compares TOTAL energy (a sum of squares) and trailing zero-valued padding
+contributes exactly 0 to a sum - though it did once cause a mean-based
 version of the same gate to fail 36 sounds that had no real defect (see
-[Decision 54](DECISIONS.md)'s round-3 correction for the full story). The
-padding remains in this machine's locally-built oggs; a developer
-rebuilding the catalogue locally will get ogg bytes that differ from
-CI's, though neither is wrong under the current gate. Building shipped
-oggs with libvorbis on every machine (tracked as `docs/BACKLOG.md` GS-06)
-would remove the difference entirely rather than merely tolerate it.
+[Decision 54](DECISIONS.md)'s round-3 correction for that story).
+
+That "just padding" description was incomplete: for input lengths whose
+`n mod 1024` falls in roughly [962, 1023], or that land exactly on a
+1024-sample multiple, the same native encoder instead drops the entire
+final 1024-sample block - real, non-silent audio removed, not padded (an
+880 Hz test tone at `n=3071` decoded back at only 2048 frames; `n=1023`
+and `n=1024` decoded to zero samples, the whole sound gone). Decoding all
+1080 shipped live oggs on `main` before the fix found 56 of them (5.2%)
+actually inside the truncating band, mean 999 samples lost (about 22.7ms
+at 44.1kHz) - invisible to the format-energy gate because the lost tail
+was, in every one of the 56 cases, a quiet decay contributing almost
+nothing to total energy either way. See [Decision 54](DECISIONS.md)'s
+GS-07 amendment for the full measured mechanism.
+
+GS-07 fixed the drop, not the padding: `encodeVariant`
+(`apps/sounds/scripts/lib/audio.mjs`) now decodes its first native-fallback
+ogg encode and, if it comes back shorter than the source, re-encodes from a
+copy of the source padded to a length known to land in the measured safe
+residue band, then decodes and checks again - encode-verify-retry, so a
+variant that already decoded whole never changes. A new gate,
+`checkFormatLength`/`checkFormatLengths` (`apps/sounds/scripts/lib/checks.mjs`),
+checks every shipped ogg/mp3 decodes to at least as many sample frames as
+its source wav, catching exactly the class of loss the energy gate cannot:
+real content removed from a part of the signal that was already quiet.
+The harmless padding on a healthy (non-truncating) native-fallback ogg
+remains: a developer rebuilding the catalogue locally will still get ogg
+bytes that differ from CI's for the same input, though neither is wrong
+under the current gates. Building shipped oggs with libvorbis on every
+machine (tracked as `docs/BACKLOG.md` GS-06, still open) would remove that
+difference entirely rather than merely tolerate it.
 
 ## Variants
 

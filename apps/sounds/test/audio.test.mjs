@@ -25,9 +25,31 @@ import {
   encodeVariant,
   peakPerChannel,
   energyPerChannel,
+  vorbisEncoderArgs,
 } from "../scripts/lib/audio.mjs";
-import { checkLeadingSilence, checkFormatEnergy, checkFormatEnergies, FORMAT_ENERGY_TOLERANCE_DB } from "../scripts/lib/checks.mjs";
+import { checkLeadingSilence, checkFormatEnergy, checkFormatEnergies, checkFormatLengths, FORMAT_ENERGY_TOLERANCE_DB } from "../scripts/lib/checks.mjs";
 import { createHash } from "node:crypto";
+
+// Whether this runner's ffmpeg has the native "experimental" vorbis encoder
+// at all (distinct from libvorbis - both can appear in the same `-encoders`
+// listing, see vorbisEncoderArgs's own header in audio.mjs). Every ffmpeg
+// build this repo has been run on (this dev machine's Homebrew build, and
+// CI's Ubuntu apt package) has it, but GS-07's own brief is explicit that a
+// runner missing it must skip with a printed reason, never silently.
+function nativeVorbisAvailable() {
+  const result = spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { maxBuffer: 1024 * 1024 * 8 });
+  return /^\s*[A-Za-z.]+\s+vorbis\s/m.test((result.stdout ?? "").toString());
+}
+
+// An 880 Hz, 0.4-linear-amplitude mono tone at `n` samples - the exact
+// signal shape the reviewer's own bench used to measure the GS-07 defect
+// (see the comment above OGG_TAIL_RETRY_PAD_EXTRA in scripts/lib/audio.mjs),
+// so these tests reproduce the same numbers the fix's own header cites.
+function gs07ToneRender(n, sampleRate = 44100, amp = 0.4, freq = 880) {
+  const left = new Float32Array(n);
+  for (let i = 0; i < n; i++) left[i] = amp * Math.sin((2 * Math.PI * freq * i) / sampleRate);
+  return { sampleRate, left, right: null, seconds: n / sampleRate, peak: amp };
+}
 
 function run(cmd, args) {
   const result = spawnSync(cmd, args, { maxBuffer: 1024 * 1024 * 64 });
@@ -452,5 +474,121 @@ try {
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// --- GS-07: the native-fallback ogg path drops audio, not just pads it ---
+
+if (!nativeVorbisAvailable()) {
+  console.log("SKIP GS-07 native-fallback ogg tests: this runner's ffmpeg has no native \"vorbis\" encoder at all (checked via `ffmpeg -encoders`)");
+} else {
+  {
+    // Standing regression record, mirroring the BITEXACT_ARGS regression
+    // above: calls the REAL production fallback args directly
+    // (vorbisEncoderArgs("native")), with no retry logic in the path at all,
+    // and proves the raw encoder really does drop the entire final
+    // 1024-sample block at n=3071 (residue 1023) - decoding to 2048, not
+    // 3072 (a harmless pad) and not 3071 (lossless). This is what makes the
+    // retry logic below provably necessary rather than a coincidence: if
+    // this regression ever stopped reproducing (a future ffmpeg fixing its
+    // own native encoder), the retry would simply become a no-op, never
+    // wrong - but this test would then need updating to say so explicitly,
+    // not silently keep asserting a bug that no longer exists.
+    const n = 3071;
+    const dir = mkdtempSync(join(tmpdir(), "gamesounds-gs07-raw-"));
+    try {
+      const wavPath = join(dir, "in.wav");
+      writeFileSync(wavPath, toWavBytes(gs07ToneRender(n)));
+      const oggPath = join(dir, "raw.ogg");
+      const BITEXACT = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
+      const result = spawnSync("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...vorbisEncoderArgs("native"), ...BITEXACT, oggPath]);
+      assert.equal(result.status, 0, `raw native-fallback ogg encode must succeed: ${result.stderr}`);
+      const decoded = decodeToRender(oggPath);
+      assert.equal(decoded.left.length, 2048, `the raw native encoder (no retry) must drop n=${n} (residue ${n % 1024}) to exactly 2048 decoded frames, matching the reviewer's own bench measurement`);
+      assert.ok(decoded.left.length < n, "2048 decoded frames is short of the 3071-frame source - this is a drop, not a pad");
+      console.log(`PASS regression record: the raw native-fallback ogg encoder (no retry) really does drop n=${n} to ${decoded.left.length} decoded frames (${n - decoded.left.length} real samples lost), proving the retry below does real work`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  {
+    // The fix through the real production path: encodeVariant, with the
+    // native encoder forced (oggEncoder: "native") so this exercises the
+    // fallback branch even on a CI machine whose ffmpeg has libvorbis too.
+    // Each of the reviewer's own three shortest truncating lengths (n=1023,
+    // the whole-sound-gone case; n=3071 and n=4096, both whole-block drops)
+    // must decode to at least n frames after the fix, and must still pass
+    // checkFormatEnergies (the retry only changes how much trailing silence
+    // is appended before the block boundary, never the real signal itself).
+    for (const n of [1023, 3071, 4096]) {
+      const dir = mkdtempSync(join(tmpdir(), `gamesounds-gs07-fix-${n}-`));
+      try {
+        const render = gs07ToneRender(n);
+        const encoded = encodeVariant(render, dir, { mkdirSync, oggEncoder: "native" });
+        assert.ok(
+          encoded.formatFrames.ogg >= n,
+          `encodeVariant's native-fallback retry must decode at least ${n} frames for a ${n}-frame source, got ${encoded.formatFrames.ogg}`,
+        );
+        const sourceEnergy = energyPerChannel(render.left, render.right);
+        const energyCheck = checkFormatEnergies(sourceEnergy, encoded.formatEnergy);
+        assert.ok(energyCheck.ok, `the retried ogg must still pass checkFormatEnergies for n=${n}: ${energyCheck.reason ?? ""}`);
+        const lengthCheck = checkFormatLengths(render.left.length, encoded.formatFrames);
+        assert.ok(lengthCheck.ok, `the retried ogg must pass checkFormatLengths for n=${n}: ${lengthCheck.reason ?? ""}`);
+        console.log(`PASS encodeVariant's native-fallback retry fixes n=${n} (source ${n} frames -> decoded ${encoded.formatFrames.ogg} frames), passing both checkFormatEnergies and checkFormatLengths`);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  }
+
+  {
+    // Control: a length that already decodes whole on the FIRST try (n=2600,
+    // residue 552 - deep inside the safe band the header comment above
+    // OGG_TAIL_RETRY_PAD_EXTRA measured) must produce byte-identical ogg
+    // output whether or not the retry logic is even present in the code
+    // path. encodeVariant is called with the retry logic fully in place
+    // (oggEncoder: "native" exercises that branch of the function); a
+    // second, raw ffmpeg call using the exact same production args
+    // (vorbisEncoderArgs("native")) bypasses encodeVariant - and therefore
+    // the retry logic - entirely. Byte-identical output between the two
+    // proves the retry causes zero churn on a variant that was never
+    // broken, not merely that it "should" in theory.
+    const n = 2600;
+    const render = gs07ToneRender(n);
+    const dir = mkdtempSync(join(tmpdir(), "gamesounds-gs07-control-"));
+    try {
+      const encoded = encodeVariant(render, dir, { mkdirSync, oggEncoder: "native" });
+      assert.equal(encoded.formatFrames.ogg, Math.ceil(n / 1024) * 1024, `n=${n} (residue ${n % 1024}) must decode whole on the first try with no retry needed`);
+
+      const rawWavPath = join(dir, "raw.wav");
+      writeFileSync(rawWavPath, toWavBytes(render));
+      const rawOggPath = join(dir, "raw.ogg");
+      const BITEXACT = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
+      const rawResult = spawnSync("ffmpeg", ["-y", "-v", "error", "-i", rawWavPath, ...vorbisEncoderArgs("native"), ...BITEXACT, rawOggPath]);
+      assert.equal(rawResult.status, 0, `raw control encode must succeed: ${rawResult.stderr}`);
+      const rawHash = createHash("sha256").update(readFileSync(rawOggPath)).digest("hex");
+
+      assert.equal(encoded.files.ogg.sha256, rawHash, "a variant that already decodes whole must produce byte-identical ogg output with the retry logic present (encodeVariant) and entirely absent (raw ffmpeg) - no churn");
+      console.log(`PASS control: n=${n} produces byte-identical ogg output through encodeVariant (retry logic present but not triggered) and a raw direct encode (retry logic absent) - sha256 ${encoded.files.ogg.sha256.slice(0, 12)}...`);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  {
+    // vorbisEncoderArgs("native") and vorbisEncoderArgs("libvorbis") must
+    // always resolve to their own distinct, forced branch regardless of
+    // machine detection - the override is meant to work identically on a
+    // machine with or without libvorbis, which is exactly what lets the
+    // fallback path be exercised deliberately in CI (docs/GAMESOUNDS.md,
+    // decision 54: CI's ffmpeg has libvorbis, so "auto" alone never reaches
+    // the native branch there).
+    const nativeArgs = vorbisEncoderArgs("native");
+    const libvorbisArgs = vorbisEncoderArgs("libvorbis");
+    assert.ok(nativeArgs.includes("vorbis") && !nativeArgs.includes("libvorbis"), "the forced native args must select the native \"vorbis\" codec name, not libvorbis");
+    assert.ok(libvorbisArgs.includes("libvorbis"), "the forced libvorbis args must select the \"libvorbis\" codec name");
+    assert.notDeepEqual(nativeArgs, libvorbisArgs, "the two forced encoder choices must produce different ffmpeg args");
+    console.log("PASS vorbisEncoderArgs(\"native\") and vorbisEncoderArgs(\"libvorbis\") both force their own branch regardless of machine auto-detection");
   }
 }

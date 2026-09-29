@@ -521,15 +521,34 @@ export function levelToConvention(render, { targetLufs = LOUDNESS_TARGET_LUFS, p
 // after the old `-ac 2` encode (a ~2.9 dB loss, matching the expected
 // -3.01 dB attenuation), and -19.9 dB after this pan-filter encode
 // (matching the source, modulo ordinary lossy-codec noise).
-let vorbisEncoderArgsCache = null;
-function vorbisEncoderArgs() {
-  if (vorbisEncoderArgsCache) return vorbisEncoderArgsCache;
-  const result = spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { maxBuffer: 1024 * 1024 * 8 });
-  const hasLibvorbis = /libvorbis/.test((result.stdout ?? "").toString());
-  vorbisEncoderArgsCache = hasLibvorbis
-    ? ["-c:a", "libvorbis", "-q:a", "5"]
-    : ["-af", "pan=stereo|c0=c0|c1=c0", "-c:a", "vorbis", "-strict", "-2", "-q:a", "5"];
-  return vorbisEncoderArgsCache;
+//
+// `oggEncoder` (`"auto" | "native" | "libvorbis"`, default `"auto"`)
+// overrides the auto-detection above - added for GS-07's own tests, so the
+// native fallback path (and its tail-drop retry, see the comment above
+// `encodeVariant` below) can be exercised deliberately even on a machine
+// whose ffmpeg has libvorbis too (true of CI's Ubuntu apt package - both
+// encoders are present there; `"auto"` just never picks the native one on
+// its own when libvorbis is available). Detection of what the machine
+// actually HAS stays cached and machine-wide (`hasLibvorbisCache`) - only
+// which branch a given call TAKES is overridable, never re-probed.
+let hasLibvorbisCache = null;
+function hasLibvorbis() {
+  if (hasLibvorbisCache === null) {
+    const result = spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { maxBuffer: 1024 * 1024 * 8 });
+    hasLibvorbisCache = /libvorbis/.test((result.stdout ?? "").toString());
+  }
+  return hasLibvorbisCache;
+}
+
+function resolveOggEncoder(oggEncoder) {
+  if (oggEncoder === "native" || oggEncoder === "libvorbis") return oggEncoder;
+  return hasLibvorbis() ? "libvorbis" : "native";
+}
+
+export function vorbisEncoderArgs(oggEncoder = "auto") {
+  return resolveOggEncoder(oggEncoder) === "native"
+    ? ["-af", "pan=stereo|c0=c0|c1=c0", "-c:a", "vorbis", "-strict", "-2", "-q:a", "5"]
+    : ["-c:a", "libvorbis", "-q:a", "5"];
 }
 
 // Both ffmpeg output calls in encodeVariant get these unconditionally (ogg
@@ -550,6 +569,85 @@ function vorbisEncoderArgs() {
 // runs; adding the same flags there too removes that dependency on the
 // build machine's ffmpeg version never changing.
 const BITEXACT_ARGS = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
+
+// GS-07: the native-fallback ogg path drops audio, not just pads it -------
+//
+// Decision 54 (and the "known, non-blocking issue" section of
+// docs/GAMESOUNDS.md) documented the native vorbis encoder's dev-machine-only
+// end-of-stream behavior as harmless PADDING: a decoded ogg comes back
+// extended with trailing silence out to the next 1024-sample block boundary,
+// which a SUM-based energy check (`energyPerChannel`, above) cannot see,
+// since silence contributes exactly 0. That was incomplete. Measured
+// directly on this machine (ffmpeg 8.0.1, no libvorbis - `hasLibvorbis`
+// above returns false) with an 880 Hz, 0.4-linear-amplitude mono tone,
+// encoded with exactly `vorbisEncoderArgs("native")` plus BITEXACT_ARGS and
+// decoded back:
+//   - input lengths whose `n mod 1024` falls in roughly [962, 1023], and
+//     any length with residue exactly 0, decode SHORT by the entire final
+//     1024-sample block: n=3071 (residue 1023) decodes to 2048 (1023
+//     samples of real, non-silent audio gone, not padded), n=5119 to 4096,
+//     n=20479 to 19456, n=4096 (residue 0) to 3072, n=2048 (residue 0) to
+//     1024.
+//   - n=1023 and n=1024 decode to ZERO samples: the whole sound is gone.
+//   - every other residue tested (1, 152, 352, 452, 512, 552, 652, 752, 852,
+//     904, 952) decodes to `ceil(n/1024)*1024` with no loss - the padding
+//     decision 54 already documented, still real and still harmless.
+//   - a step-2 scan at base 4096 places the threshold between residue 960
+//     (does not truncate) and residue 962 (does); 961 itself was not
+//     directly tested.
+// Decoding all 1080 shipped live oggs on `main` (commit 3b40c16) found 56 of
+// them (5.2%) actually inside the truncating band, mean 999 samples lost
+// (~22.7ms at 44.1kHz), max 1023 - invisible to `checkFormatEnergies`
+// because the lost tail was, in every one of the 56 cases, a quiet decay
+// (near-zero energy) - see docs/DECISIONS.md's dated amendment to decision
+// 54 for the full accounting.
+//
+// The exact ROOT CAUSE inside ffmpeg's native encoder is NOT identified
+// here, deliberately: this is an empirically measured threshold on one
+// ffmpeg/libavcodec build (8.0.1), not a documented behavior of
+// `libavcodec/vorbisenc.c` read and cited - a different ffmpeg version could
+// move this threshold, narrow it, or widen it. The fix below does not
+// depend on knowing the cause.
+//
+// The fix: encode as today; if the decoded ogg comes back shorter than the
+// source, re-encode from a COPY of the source padded with trailing zero
+// samples out to a length whose own residue sits deep inside the measured
+// safe band - `ceil(sourceFrames/1024)*1024 + OGG_TAIL_RETRY_PAD_EXTRA`
+// always lands on residue 512, comfortably inside the 1..960 safe range
+// above - then decode and check again, throwing if even the retry still
+// comes back short. Trailing zeros add no energy (the same sum-invariance
+// decision 54 already relied on) and the native-fallback ogg is already
+// padded to a block boundary regardless of this fix, so nothing audible
+// changes for a sound that goes through the retry; only WHICH block
+// boundary the encoder lands on changes, from one measured to drop content
+// to one measured not to.
+//
+// This is encode-verify-retry, not a blanket pre-pad: a variant whose first
+// encode already decodes whole (1024 of the 1080 live oggs) never triggers
+// the retry branch at all, so its ogg bytes and hash are byte-for-byte
+// identical to before this fix - zero churn on every ogg that was never
+// broken. The libvorbis path is untouched: it never calls this retry logic,
+// since `isNativeFallbackOgg` below is only true on the native-encoder
+// branch.
+const OGG_TAIL_RETRY_PAD_EXTRA = 512;
+
+function isNativeFallbackOgg(oggEncoder) {
+  return resolveOggEncoder(oggEncoder) === "native";
+}
+
+/** A copy of `render` (see `RenderResult`, this module's own shape) with
+ * trailing zero-valued samples appended on every channel out to
+ * `targetFrames`. Used only by `encodeVariant`'s native-fallback ogg retry,
+ * above - never touches the wav/mp3 that ship, only a re-encode attempt. */
+function padRenderTrailingZeros(render, targetFrames) {
+  const pad = (samples) => {
+    if (!samples) return null;
+    const out = new Float32Array(targetFrames);
+    out.set(samples);
+    return out;
+  };
+  return { sampleRate: render.sampleRate, left: pad(render.left), right: pad(render.right) };
+}
 
 /**
  * Encodes a leveled render to ogg, mp3 and wav under `outDir`. Each format
@@ -579,8 +677,13 @@ const BITEXACT_ARGS = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
  * explicit unity-gain pan filter, not `-ac 2`, to avoid a ~3 dB loudness
  * loss. Both layouts are correct, matched-loudness audio; a build only
  * needs to know which one it is producing, never assume "mono throughout."
+ *
+ * `oggEncoder` (`"auto" | "native" | "libvorbis"`, default `"auto"`) is
+ * forwarded to `vorbisEncoderArgs` - see that function's own header. It also
+ * decides whether the native-fallback tail-drop retry above can run at all:
+ * only when the resolved encoder is `"native"`.
  */
-export function encodeVariant(render, outDir, { mkdirSync } = {}) {
+export function encodeVariant(render, outDir, { mkdirSync, oggEncoder = "auto" } = {}) {
   const wavBytes = toWavBytes(render);
   const wavHash = sha256Hex(wavBytes);
   if (mkdirSync) mkdirSync(outDir, { recursive: true });
@@ -588,8 +691,42 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
   const wavPath = join(outDir, wavName);
   writeFileSync(wavPath, wavBytes);
 
-  const tmpOggPath = join(outDir, `.tmp-${wavHash}.ogg`);
-  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...vorbisEncoderArgs(), ...BITEXACT_ARGS, tmpOggPath]);
+  const sourceFrames = render.left.length;
+  const oggArgs = vorbisEncoderArgs(oggEncoder);
+
+  let tmpOggPath = join(outDir, `.tmp-${wavHash}.ogg`);
+  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, ...oggArgs, ...BITEXACT_ARGS, tmpOggPath]);
+  // Decoded once here (rather than after the rename below) so the exact same
+  // decode can both drive the tail-drop retry decision AND be reused as
+  // `decodedOgg` further down - the file's bytes do not change when it is
+  // later renamed to its content-addressed name, so decoding it twice would
+  // only cost an extra ffmpeg process, never change the result.
+  let decodedOgg = decodeToRender(tmpOggPath);
+
+  if (isNativeFallbackOgg(oggEncoder) && decodedOgg.left.length < sourceFrames) {
+    const targetFrames = Math.ceil(sourceFrames / 1024) * 1024 + OGG_TAIL_RETRY_PAD_EXTRA;
+    const paddedWavPath = join(outDir, `.tmp-${wavHash}-padded.wav`);
+    const retryOggPath = join(outDir, `.tmp-${wavHash}-retry.ogg`);
+    writeFileSync(paddedWavPath, toWavBytes(padRenderTrailingZeros(render, targetFrames)));
+    try {
+      run("ffmpeg", ["-y", "-v", "error", "-i", paddedWavPath, ...oggArgs, ...BITEXACT_ARGS, retryOggPath]);
+      const retryDecoded = decodeToRender(retryOggPath);
+      if (retryDecoded.left.length < sourceFrames) {
+        throw new Error(
+          `encodeVariant: native-fallback ogg still decoded short after the tail-drop retry - source ${sourceFrames} frame(s), ` +
+            `padded to ${targetFrames} frame(s) (residue ${targetFrames % 1024}), retry decoded ${retryDecoded.left.length} frame(s). ` +
+            `The empirically measured safe-residue assumption (see the comment above OGG_TAIL_RETRY_PAD_EXTRA in scripts/lib/audio.mjs) ` +
+            `did not hold for this input.`,
+        );
+      }
+      rmSync(tmpOggPath, { force: true });
+      tmpOggPath = retryOggPath;
+      decodedOgg = retryDecoded;
+    } finally {
+      rmSync(paddedWavPath, { force: true });
+    }
+  }
+
   const oggBytes = readFileSync(tmpOggPath);
   const oggHash = sha256Hex(oggBytes);
   const oggName = `${oggHash}.ogg`;
@@ -604,23 +741,23 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
 
   const measure = measureLoudness(wavPath);
 
-  // Decode the shipped ogg and mp3 back to PCM and measure each one's OWN
-  // per-channel peak AND per-channel energy, exactly as a browser or the CLI
-  // would decode them - never assumed from the encoder's exit code or from
-  // the wav's own numbers. `formatEnergy` (total energy per channel - the
-  // sum of each sample squared, not a mean; see `energyPerChannel`'s own
-  // header for why a mean is the wrong quantity here) is what
-  // `checkFormatEnergies` (checks.mjs) actually gates the build on: a
-  // systematic loudness bug (the old fallback ogg path's `-ac 2` upmix) and
-  // a preset whose real content sits mostly above the codec's own passband
-  // (round 2's finding - see build-catalog.mjs's EXCLUDED_PRESETS) both show
-  // up here as real energy loss, which sample peak alone can miss or
-  // over-report depending on the signal's own shape. `formatPeaks` is kept
-  // too, purely as informational data for the build log (see
-  // `peakPerChannel`'s own header for why it is not a gate).
+  // Measure each shipped format's OWN per-channel peak, per-channel energy
+  // AND decoded frame count, exactly as a browser or the CLI would decode
+  // them - never assumed from the encoder's exit code or from the wav's own
+  // numbers. `formatEnergy` (total energy per channel - the sum of each
+  // sample squared, not a mean; see `energyPerChannel`'s own header for why
+  // a mean is the wrong quantity here) is what `checkFormatEnergies`
+  // (checks.mjs) gates on for LOUDNESS; `formatFrames` (GS-07) is what
+  // `checkFormatLengths` (checks.mjs) gates on for LENGTH - a systematic
+  // loudness bug (the old fallback ogg path's `-ac 2` upmix) and the
+  // native-fallback tail-drop this section's own retry exists to fix are two
+  // different failure modes, caught by two different measurements, because
+  // a dropped quiet decay tail can pass an energy gate outright while still
+  // being real, audible content lost. `formatPeaks` is kept too, purely as
+  // informational data for the build log (see `peakPerChannel`'s own header
+  // for why it is not a gate).
   const sourcePeaks = peakPerChannel(render.left, render.right);
   const sourceEnergy = energyPerChannel(render.left, render.right);
-  const decodedOgg = decodeToRender(join(outDir, oggName));
   const decodedMp3 = decodeToRender(join(outDir, mp3Name));
   const formatPeaks = {
     source: sourcePeaks,
@@ -631,6 +768,11 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
     source: sourceEnergy,
     ogg: energyPerChannel(decodedOgg.left, decodedOgg.right),
     mp3: energyPerChannel(decodedMp3.left, decodedMp3.right),
+  };
+  const formatFrames = {
+    source: sourceFrames,
+    ogg: decodedOgg.left.length,
+    mp3: decodedMp3.left.length,
   };
 
   return {
@@ -644,6 +786,7 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
     measure,
     formatPeaks,
     formatEnergy,
+    formatFrames,
   };
 }
 

@@ -123,17 +123,23 @@ function processVariant(render, n) {
       left: leveled.left,
       right: leveled.right,
       sampleRate: leveled.sampleRate,
-      // Both decoded back from the actually-shipped ogg/mp3 bytes by
+      // All three decoded back from the actually-shipped ogg/mp3 bytes by
       // encodeVariant itself (scripts/lib/audio.mjs). formatEnergy is what
-      // checkSound's checkFormatEnergies actually gates on (total energy -
+      // checkSound's checkFormatEnergies gates on for LOUDNESS (total energy -
       // the sum of each sample squared - per channel) - the class of bug a
       // missing libvorbis fallback's old `-ac 2` upmix caused shows up here
-      // as an exact -3.01 dB delta.
+      // as an exact -3.01 dB delta. formatFrames (GS-07) is what
+      // checkSound's checkFormatLengths gates on for LENGTH - the native
+      // fallback ogg encoder was found to drop its own entire final
+      // 1024-sample block for a band of input lengths, invisible to the
+      // energy gate because the lost tail was always a quiet decay (see
+      // docs/DECISIONS.md's amendment to decision 54).
       // formatPeaks is kept only as informational build-log data
       // (collectFormatPeakDeltas) - see checks.mjs's own header for why peak
       // was retired as a gate.
       formatPeaks: encoded.formatPeaks,
       formatEnergy: encoded.formatEnergy,
+      formatFrames: encoded.formatFrames,
     },
   };
 }

@@ -15,6 +15,8 @@ import {
   checkSound,
   checkFormatEnergy,
   checkFormatEnergies,
+  checkFormatLength,
+  checkFormatLengths,
   collectFormatPeakDeltas,
   collectFormatEnergyDeltas,
   LOUDNESS_CEILING_EPSILON_LU,
@@ -478,4 +480,125 @@ function sha256Hex(bytes) {
   const mp3Delta = 10 * Math.log10(0.245 / 0.49);
   assert.ok(deltas.some((d) => Math.abs(d - mp3Delta) < 1e-9), "the mp3 delta must match the plain energy-domain (10*log10) dB formula");
   console.log("PASS collectFormatEnergyDeltas returns one finite dB delta per valid format/channel reading (the same numbers the gate itself judges)");
+}
+
+// GS-07: checkFormatLength / checkFormatLengths, the length gate that catches
+// what checkFormatEnergies structurally cannot - a lossy encode dropping real
+// content that happened to be quiet (see checks.mjs's own header on
+// checkFormatLength for the full story: ffmpeg's native vorbis fallback
+// dropping an entire final 1024-sample block for certain input lengths, with
+// every dropped tail being a quiet decay that passed the energy gate outright).
+
+{
+  // One frame short of the source must fail, with zero tolerance - this is
+  // the exact shape of the real defect (a whole trailing block gone, but even
+  // a single missing sample frame is a real content loss, not rounding
+  // slack).
+  const result = checkFormatLength(1000, 999, { format: "ogg" });
+  assert.equal(result.ok, false, "one frame short of the source must fail (zero tolerance on the short side)");
+  assert.match(result.reason, /ogg/, "the failure reason must name the format");
+  assert.match(result.reason, /1000/, "the failure reason must name the source frame count");
+  assert.match(result.reason, /999/, "the failure reason must name the decoded frame count");
+  console.log("PASS checkFormatLength fails a decoded file one frame short of the source, naming both lengths and the format");
+}
+
+{
+  // Exactly equal must pass - the boundary case, proving this is a "no
+  // shorter than" gate, not a stricter "must match exactly" one.
+  const result = checkFormatLength(1000, 1000, { format: "mp3" });
+  assert.equal(result.ok, true, "a decoded length exactly equal to the source must pass");
+  console.log("PASS checkFormatLength passes a decoded file exactly as long as the source");
+}
+
+{
+  // Longer must pass too - both the native-fallback ogg path's own
+  // block-boundary padding and mp3's few extra gapless-trim samples do this
+  // routinely and legitimately (checkFormatLength's own header).
+  const result = checkFormatLength(1000, 1536, { format: "ogg" });
+  assert.equal(result.ok, true, "a decoded file longer than the source must pass - padding, not a defect");
+  console.log("PASS checkFormatLength passes a decoded file longer than the source");
+}
+
+{
+  // A non-finite/negative decoded count must fail outright, distinctly from
+  // an ordinary short-by-N-frames failure, the same way checkFormatEnergy
+  // treats an invalid decoded energy as an outright failure rather than a
+  // delta.
+  const result = checkFormatLength(1000, NaN, { format: "ogg" });
+  assert.equal(result.ok, false, "a non-finite decoded frame count must fail outright");
+  assert.match(result.reason, /not a valid number/, "the failure reason must call out an invalid number, not a generic short-by-N message");
+  console.log("PASS checkFormatLength fails outright on a non-finite decoded frame count");
+}
+
+{
+  // checkFormatLengths runs both formats against one variant's own source
+  // frame count and names which format(s) failed - the ogg-only defect this
+  // ticket exists for must not be masked by a healthy mp3 alongside it.
+  const result = checkFormatLengths(2048, { ogg: 1024, mp3: 2048 });
+  assert.equal(result.ok, false, "an ogg short of the source must fail even when mp3 alongside it is fine");
+  assert.match(result.reason, /ogg/, "the failure reason must name ogg as the format that failed");
+  assert.ok(!/mp3.*short|mp3.*decoded \d+ sample frame/.test(result.reason), "mp3, which is not short, must not itself be reported as short");
+  console.log("PASS checkFormatLengths fails when only the ogg is short, naming ogg specifically");
+}
+
+{
+  // Both formats meeting or exceeding the source length must pass.
+  const result = checkFormatLengths(2048, { ogg: 2048, mp3: 3000 });
+  assert.equal(result.ok, true, "both formats at or above the source length must pass");
+  console.log("PASS checkFormatLengths passes when both formats are at or above the source length");
+}
+
+{
+  // checkSound wires checkFormatLengths in too, via variantData.formatFrames -
+  // the real production path (build-catalog.mjs's processVariant attaches
+  // formatFrames from encodeVariant's own return value). A truncated ogg must
+  // fail checkSound even though the same variant's energy is perfectly
+  // healthy (exactly the real-world case: a dropped quiet tail moves length,
+  // not energy).
+  const sound = {
+    license: "CC0-1.0",
+    attribution: null,
+    source: { name: "gamesounds sfx-engine", url: "https://gamesounds.ai", author: "Gwendall Esnault" },
+    variants: [{ n: 1, sha256: "trunc1", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } }],
+  };
+  const left = new Float32Array(3071);
+  for (let i = 0; i < left.length; i++) left[i] = 0.4 * Math.sin((2 * Math.PI * 880 * i) / 44100);
+  const variantData = {
+    trunc1: {
+      peakLinear: 0.4,
+      left,
+      right: null,
+      sampleRate: 44100,
+      formatFrames: { source: 3071, ogg: 2048, mp3: 3071 }, // the exact n=3071 -> 2048 shape measured on this dev machine
+    },
+  };
+  const failures = checkSound(sound, variantData, sha256Hex);
+  assert.ok(failures.some((f) => f.startsWith("variant 1 format length:")), "checkSound must surface a per-variant format-length failure from variantData.formatFrames");
+  assert.ok(failures.some((f) => f.includes("ogg")), "the surfaced failure must name ogg as the truncated format");
+  console.log("PASS checkSound reports a per-variant format-length failure via variantData.formatFrames (n=3071 -> 2048, the measured native-fallback defect shape)");
+}
+
+{
+  // The complementary positive case: a variant whose formatFrames are all at
+  // or above its own source length must report no format-length failure.
+  const sound = {
+    license: "CC0-1.0",
+    attribution: null,
+    source: { name: "gamesounds sfx-engine", url: "https://gamesounds.ai", author: "Gwendall Esnault" },
+    variants: [{ n: 1, sha256: "healthy1", measure: { lufs: LOUDNESS_TARGET_LUFS, peakDb: TRUE_PEAK_CEILING_DBTP } }],
+  };
+  const left = new Float32Array(2600);
+  for (let i = 0; i < left.length; i++) left[i] = 0.4 * Math.sin((2 * Math.PI * 880 * i) / 44100);
+  const variantData = {
+    healthy1: {
+      peakLinear: 0.4,
+      left,
+      right: null,
+      sampleRate: 44100,
+      formatFrames: { source: 2600, ogg: 2600, mp3: 2611 },
+    },
+  };
+  const failures = checkSound(sound, variantData, sha256Hex);
+  assert.ok(!failures.some((f) => f.startsWith("variant 1 format length:")), "a variant whose shipped formats are all at or above source length must report no format-length failure");
+  console.log("PASS checkSound reports no format-length failure for a variant whose shipped ogg/mp3 are both at or above source length");
 }
