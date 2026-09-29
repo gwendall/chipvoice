@@ -3548,6 +3548,157 @@ gaussian-interpolation rounding, not yet checked line by line against
 `docs/BACKLOG.md` for that reason; the two fixes and the clear_echo()
 decision above are complete and proven on their own.
 
+## 59. A driver-side release taper precedes the dry-space SNES voice's fast key-off release (P6-11) (2026-09-29)
+
+Decision 53 documented, and NEXT-24 reproduced, that a held dry-space SNES
+note sits at full sustain until key-off - every factory instrument's ADSR2
+sustain rate is 0 ("never") - then switches to the S-DSP's own fixed, fast
+(~8 ms) exponential GAIN release. That is accurate hardware behavior, but
+with nothing before it to fade, it reads as an abrupt stop once `trimRender`
+cuts the near-silent remainder, unlike `room` or an external echo patch,
+both of which decay through their own tail instead. Real N-SPC-family
+drivers taper the sustain itself before key-off, with the ADSR's own SR
+(sustain rate) or a scripted GAIN decrease -
+<https://snes.nesdev.org/wiki/DSP_envelopes>: "[a normal or exponential
+decrease GAIN mode] need[s] to be triggered in the middle of your note... to
+implement a custom release rate... to mimic a release envelope." This
+driver did not do either. P6-11 closes that gap.
+
+**The mechanism, and why ADSR over GAIN.** `SnesDriver.noteOff`
+(`packages/chipvoice/src/chips/snes/driver.ts`) now writes the voice's own
+ADSR2 register (`$x6`) once, some time before its own existing key-off
+writes, replacing only the SR field (the low five bits) and keeping the
+instrument's own sustain level (the top three bits) untouched - the voice
+never leaves ADSR mode until `noteOff`'s own unchanged fast-GAIN-decrease
+write does, exactly as before this ticket. GAIN mode 5 (exponential
+decrease) was the other candidate; both modes tick the identical envelope
+step (`env--; env -= env >> 8`, `run_envelope` in this repo's own
+conformance oracle, `packages/conform/oracles/snes-spc/snes_spc/SPC_DSP.cpp`,
+the non-decay branch of `v->env_mode >= env_decay`), from the same 32-entry
+`counter_rates` table `noteOff`'s existing release already reads at its
+fastest entry. ADSR won on two counts: it is one register write instead of
+GAIN's two, and it keeps each instrument's own sustain *level* - not just
+its rate - governing where the fade starts, rather than requiring a second,
+separately-chosen GAIN target level.
+
+**The numbers, derived rather than tuned by ear.** A note shorter than
+`TAPER_FLOOR_MS` (40 ms, `2 * TAPER_MIN_MS`) is left untouched - a
+byte-identical register stream to before this ticket - because at
+`TAPER_FRACTION` (0.5) of the note and a `TAPER_MIN_MS` (20 ms) floor,
+anything shorter would have to spend more than its own length tapering.
+40 ms also clears every factory instrument's own decay-to-sustain time,
+computed from each entry's real ADSR1 decay rate and ADSR2 sustain level
+against the oracle's own formula; the slowest, `mallet`, is 224 ms, and an
+early ADSR2 write is harmless even before a voice still in its decay phase
+reaches sustain (the hardware only reads the SR field once `env_mode` is
+`env_sustain`; until then the write is inert, not wrong). Otherwise the
+taper runs for `clamp(duration * TAPER_FRACTION, TAPER_MIN_MS, TAPER_MAX_MS)`:
+at most half the note, so at least as much of it sounds at full, unmodified
+sustain as ever fades - the same proportional idiom N-SPC's own
+quantization/gate table already expresses release timing in, per the wiki
+page above - capped at `TAPER_MAX_MS` (100 ms), chosen to equal this
+ticket's own before/after measurement window (the last 100 ms before
+key-off), so every audible sample the taper changes sits inside the window
+its own proof inspects. The SR rate index itself is chosen, not guessed:
+`stepsToReach` runs the oracle's exact `env--; env -= env >> 8` loop to find
+how many steps this instrument's own sustain envelope takes to fall to
+`TAPER_TARGET_RATIO` (1/8, about -18 dB) of itself, and the rate whose real
+millisecond duration (`counter_rates`, converted at the DSP's fixed
+32000 Hz) lands closest to the taper's own derived length is the one
+written; `noteOff`'s existing, unchanged fast release finishes the last
+~-18 dB in the same few milliseconds it always has.
+
+**Scope: `room` keeps today's behavior.** Its echo already returns a
+decaying tail after key-off; layering this taper under `room` too would
+fade the dry voice under a return that is already doing that job, for no
+measured benefit, and decision 53 measured `room`'s tail as four to five
+orders of magnitude above dry's own. The taper is gated on the space
+(`this.taper = this.space === SPACES.dry`), so `room`'s own register stream
+is provably unchanged - a dedicated test (`packages/chipvoice/test/
+snes-taper.mjs`) pins a long `room` note against the same two-write release
+`noteOff` always emitted.
+
+**Audio-impact proof.** A 900 ms-held dry lead note (`flute`, ADSR2 `0xc0`),
+key-off at 900 ms: before this change, the last 100 ms before key-off sits
+at a constant -23.46 dBFS (full sustain, no fade), and the first 100 ms
+after key-off averages -36.46 dBFS as the window mixes near-full signal
+with the fast release's near-silent tail - the abrupt-stop signature.
+After: the last 100 ms before key-off ramps smoothly from about -24 dBFS
+down through the taper toward -41 dBFS, and the 100 ms after key-off
+averages -53.78 dBFS, well past the old window's blend. Time from key-off
+to first (and lastingly) crossing -60 dBFS: 22 ms before, 9 ms after -
+faster, not slower, because the taper already brought the level down before
+key-off instead of leaving the whole drop to the fixed hardware release.
+A millisecond-by-millisecond loudness trace of the same render's full
+1.4 s (onset through tail) is identical between before and after up to
+804 ms - 4 ms past the taper's own derived 800 ms start (900 ms key-off
+minus its 100 ms taper), the remaining gap being register-write stagger -
+confirming nothing before the taper window moved, and both tails converge
+to the render's own noise floor well past -60 dBFS afterward. A/B WAVs and
+the underlying JSON measurements are kept locally for this ticket only
+(scratchpad, never committed), same convention as decision 44's corpora.
+
+**gamesounds impact, measured, and the catalogue regenerated.** gamesounds' `16bit`-style
+catalogue takes its SNES half straight through `chip.driver()` -
+`renderSfx` (`packages/chipvoice/src/render-sfx.ts`) uses `SnesDriver` the
+same as `renderSong` does - so every SNES sound effect renders through this
+taper too, when its own hold is at least `TAPER_FLOOR_MS`. Re-running
+`apps/sounds/catalog/chipvoice-recipes.mjs`'s own group/variant-selection
+logic (the same "first `VARIANTS_PER_GROUP` audible, byte-distinct takes"
+rule `scripts/build-catalog.mjs` uses) against the committed catalogue's 44
+SNES event groups, comparing this driver's before and after: 105 of 176
+currently-shipped SNES variants (29 of 44 groups) render different PCM
+bytes; the other 71, across 15 groups, are short or percussive takes under
+the 40 ms floor and are provably unaffected - byte-identical. The changed
+variants' trimmed duration shortens by 10 ms on average (the taper's own
+earlier approach to the trim floor), from -1 ms (near-floor notes) up to
+-19 ms (the longest held notes, `combat/death`, `game/game-over`). This
+ticket regenerates `apps/sounds/generated/catalog.json` with the tapered
+driver, and the full rebuild confirms that measurement exactly: the same
+105 variants change (all `16bit`, the SNES half; new sha256, peaks and
+files for all 105, duration for 99, the loudness measure for 84), and the
+other 975 of 1080 variants are byte-identical. Their 315 new wav/ogg/mp3
+files are uploaded by the coordinator with `sounds:push` before merge, as
+for every catalogue change - never by the ticket itself.
+
+**Conformance and fixtures.** `check:snes` (100.0000% against `snes_spc`),
+`check:spc` (100.0000%) and `check:spc-export` (PASS, `mario` and `zelda`;
+`sonic` does not fit in ARAM, unrelated to this ticket) are all unaffected -
+this ticket only ever adds register writes `noteOff` was already free to
+schedule out of order (`RegisterTransactions` sorts by `at`), never changes
+what a register write does. `render-parity:check chromium` passes on all 22
+fixed inputs, including every SNES-affected one (`mario-snes`, `zelda-snes`,
+`sonic-snes`, `snes-lead-0`, `snes-perc-k`); Firefox and WebKit could not be
+run to completion on this workstation (a Firefox Nightly crash under the
+harness's own 90 s per-engine budget, and a WebKit binary cached under a
+version this workstation's Playwright no longer resolves) - both are
+pre-existing local environment gaps, not something this change caused, and
+CI installs all three fresh. Four engine-hash-pinned fixtures were
+regenerated: `packages/chipvoice/src/mix-profiles.ts` and
+`scores/mixing/calibration-manifest.json` (52 of 90 mix-profile entries
+changed, all `chip: 'snes'`, the other 38 byte-identical);
+`apps/web/src/data/instrument-catalogue.json` (16 of 89 presets changed, all
+`snes-*`, the other 73 byte-identical); `apps/web/public/render-parity-data/
+inputs.json` (5 of 22 inputs changed, the same five named above, the other
+17 byte-identical). `apps/web/public/arrangement-data/report.json` is regenerated too, by
+`scores/arrangements/evaluate.mjs` against the local GME-oracle reference
+(`.artifacts/arrangements/native-reference.json`, gitignored, present in
+the coordinator's checkout), and its new recordings are uploaded with
+`audio:push`, so the `browser` job's `audio:check` finds every file the
+report names. Only the three `snes` cases change: `mario` -28.86 to -29.40
+dBFS RMS, `zelda` -27.20 to -28.02, `sonic` -33.26 to -34.14, consistent
+with the taper trimming sustained energy off the end of held notes. Every
+2A03, DMG and MD case, and all three independent native references, are
+byte-identical.
+
+**Tests.** `packages/chipvoice/test/snes-taper.mjs` pins the exact register
+writes: a long dry note's taper ADSR2 write (independently re-derived from
+the cited formula, not imported from the driver), its position strictly
+before the existing fast-GAIN-decrease pair, a short note under the floor
+keeping the old two-write release byte for byte, a `room`-space note doing
+the same regardless of length, and a second note on a reused voice tapering
+from its own start rather than the first note's.
+
 ## 60. Firefox's 576-sample mp3 leading-delay is a missing LAME gapless tag, not a decoder bug; the real `lame` CLI replaces ffmpeg's mp3 muxer, and the browser-decode gate now enforces lag 0 (2026-09-29)
 
 GS-08. GS-07 v2.2 measured Firefox landing at a fixed +576-sample decode
@@ -3652,163 +3803,3 @@ fallback direction when GS-08 was first opened, turned out unnecessary:
 the mp3 defect is fixed at the source, so both formats are now
 gapless-exact in both engines and `docs/GAMESOUNDS.md` recommends neither
 format over the other on timing grounds.
-## 61. A driver-side release taper precedes the dry-space SNES voice's fast key-off release (P6-11) (2026-09-29)
-
-Decision 53 documented, and NEXT-24 reproduced, that a held dry-space SNES
-note sits at full sustain until key-off - every factory instrument's ADSR2
-sustain rate is 0 ("never") - then switches to the S-DSP's own fixed, fast
-(~8 ms) exponential GAIN release. That is accurate hardware behavior, but
-with nothing before it to fade, it reads as an abrupt stop once `trimRender`
-cuts the near-silent remainder, unlike `room` or an external echo patch,
-both of which decay through their own tail instead. Real N-SPC-family
-drivers taper the sustain itself before key-off, with the ADSR's own SR
-(sustain rate) or a scripted GAIN decrease -
-<https://snes.nesdev.org/wiki/DSP_envelopes>: "[a normal or exponential
-decrease GAIN mode] need[s] to be triggered in the middle of your note... to
-implement a custom release rate... to mimic a release envelope." This
-driver did not do either. P6-11 closes that gap.
-
-**The mechanism, and why ADSR over GAIN.** `SnesDriver.noteOff`
-(`packages/chipvoice/src/chips/snes/driver.ts`) now writes the voice's own
-ADSR2 register (`$x6`) once, some time before its own existing key-off
-writes, replacing only the SR field (the low five bits) and keeping the
-instrument's own sustain level (the top three bits) untouched - the voice
-never leaves ADSR mode until `noteOff`'s own unchanged fast-GAIN-decrease
-write does, exactly as before this ticket. GAIN mode 5 (exponential
-decrease) was the other candidate; both modes tick the identical envelope
-step (`env--; env -= env >> 8`, `run_envelope` in this repo's own
-conformance oracle, `packages/conform/oracles/snes-spc/snes_spc/SPC_DSP.cpp`,
-the non-decay branch of `v->env_mode >= env_decay`), from the same 32-entry
-`counter_rates` table `noteOff`'s existing release already reads at its
-fastest entry. ADSR won on two counts: it is one register write instead of
-GAIN's two, and it keeps each instrument's own sustain *level* - not just
-its rate - governing where the fade starts, rather than requiring a second,
-separately-chosen GAIN target level.
-
-**The numbers, derived rather than tuned by ear.** A note shorter than
-`TAPER_FLOOR_MS` (40 ms, `2 * TAPER_MIN_MS`) is left untouched - a
-byte-identical register stream to before this ticket - because at
-`TAPER_FRACTION` (0.5) of the note and a `TAPER_MIN_MS` (20 ms) floor,
-anything shorter would have to spend more than its own length tapering.
-40 ms also clears every factory instrument's own decay-to-sustain time,
-computed from each entry's real ADSR1 decay rate and ADSR2 sustain level
-against the oracle's own formula; the slowest, `mallet`, is 224 ms, and an
-early ADSR2 write is harmless even before a voice still in its decay phase
-reaches sustain (the hardware only reads the SR field once `env_mode` is
-`env_sustain`; until then the write is inert, not wrong). Otherwise the
-taper runs for `clamp(duration * TAPER_FRACTION, TAPER_MIN_MS, TAPER_MAX_MS)`:
-at most half the note, so at least as much of it sounds at full, unmodified
-sustain as ever fades - the same proportional idiom N-SPC's own
-quantization/gate table already expresses release timing in, per the wiki
-page above - capped at `TAPER_MAX_MS` (100 ms), chosen to equal this
-ticket's own before/after measurement window (the last 100 ms before
-key-off), so every audible sample the taper changes sits inside the window
-its own proof inspects. The SR rate index itself is chosen, not guessed:
-`stepsToReach` runs the oracle's exact `env--; env -= env >> 8` loop to find
-how many steps this instrument's own sustain envelope takes to fall to
-`TAPER_TARGET_RATIO` (1/8, about -18 dB) of itself, and the rate whose real
-millisecond duration (`counter_rates`, converted at the DSP's fixed
-32000 Hz) lands closest to the taper's own derived length is the one
-written; `noteOff`'s existing, unchanged fast release finishes the last
-~-18 dB in the same few milliseconds it always has.
-
-**Scope: `room` keeps today's behavior.** Its echo already returns a
-decaying tail after key-off; layering this taper under `room` too would
-fade the dry voice under a return that is already doing that job, for no
-measured benefit, and decision 53 measured `room`'s tail as four to five
-orders of magnitude above dry's own. The taper is gated on the space
-(`this.taper = this.space === SPACES.dry`), so `room`'s own register stream
-is provably unchanged - a dedicated test (`packages/chipvoice/test/
-snes-taper.mjs`) pins a long `room` note against the same two-write release
-`noteOff` always emitted.
-
-**Audio-impact proof.** A 900 ms-held dry lead note (`flute`, ADSR2 `0xc0`),
-key-off at 900 ms: before this change, the last 100 ms before key-off sits
-at a constant -23.46 dBFS (full sustain, no fade), and the first 100 ms
-after key-off averages -36.46 dBFS as the window mixes near-full signal
-with the fast release's near-silent tail - the abrupt-stop signature.
-After: the last 100 ms before key-off ramps smoothly from about -24 dBFS
-down through the taper toward -41 dBFS, and the 100 ms after key-off
-averages -53.78 dBFS, well past the old window's blend. Time from key-off
-to first (and lastingly) crossing -60 dBFS: 22 ms before, 9 ms after -
-faster, not slower, because the taper already brought the level down before
-key-off instead of leaving the whole drop to the fixed hardware release.
-A millisecond-by-millisecond loudness trace of the same render's full
-1.4 s (onset through tail) is identical between before and after up to
-804 ms - 4 ms past the taper's own derived 800 ms start (900 ms key-off
-minus its 100 ms taper), the remaining gap being register-write stagger -
-confirming nothing before the taper window moved, and both tails converge
-to the render's own noise floor well past -60 dBFS afterward. A/B WAVs and
-the underlying JSON measurements are kept locally for this ticket only
-(scratchpad, never committed), same convention as decision 44's corpora.
-
-**gamesounds impact, measured, nothing pushed.** gamesounds' `16bit`-style
-catalogue takes its SNES half straight through `chip.driver()` -
-`renderSfx` (`packages/chipvoice/src/render-sfx.ts`) uses `SnesDriver` the
-same as `renderSong` does - so every SNES sound effect renders through this
-taper too, when its own hold is at least `TAPER_FLOOR_MS`. Re-running
-`apps/sounds/catalog/chipvoice-recipes.mjs`'s own group/variant-selection
-logic (the same "first `VARIANTS_PER_GROUP` audible, byte-distinct takes"
-rule `scripts/build-catalog.mjs` uses) against the committed catalogue's 44
-SNES event groups, comparing this driver's before and after: 105 of 176
-currently-shipped SNES variants (29 of 44 groups) render different PCM
-bytes; the other 71, across 15 groups, are short or percussive takes under
-the 40 ms floor and are provably unaffected - byte-identical. The changed
-variants' trimmed duration shortens by 10 ms on average (the taper's own
-earlier approach to the trim floor), from -1 ms (near-floor notes) up to
--19 ms (the longest held notes, `combat/death`, `game/game-over`). No
-gamesounds asset, `apps/sounds/generated/catalog.json`, or `public/f/*` file
-was regenerated, uploaded or pushed by this ticket - `sounds:push` was never
-run - this is a measurement against a local, disposable re-render, exactly
-like the before/after WAVs above.
-
-**Conformance and fixtures.** `check:snes` (100.0000% against `snes_spc`),
-`check:spc` (100.0000%) and `check:spc-export` (PASS, `mario` and `zelda`;
-`sonic` does not fit in ARAM, unrelated to this ticket) are all unaffected -
-this ticket only ever adds register writes `noteOff` was already free to
-schedule out of order (`RegisterTransactions` sorts by `at`), never changes
-what a register write does. `render-parity:check chromium` passes on all 22
-fixed inputs, including every SNES-affected one (`mario-snes`, `zelda-snes`,
-`sonic-snes`, `snes-lead-0`, `snes-perc-k`); Firefox and WebKit could not be
-run to completion on this workstation (a Firefox Nightly crash under the
-harness's own 90 s per-engine budget, and a WebKit binary cached under a
-version this workstation's Playwright no longer resolves) - both are
-pre-existing local environment gaps, not something this change caused, and
-CI installs all three fresh. Four engine-hash-pinned fixtures were
-regenerated: `packages/chipvoice/src/mix-profiles.ts` and
-`scores/mixing/calibration-manifest.json` (52 of 90 mix-profile entries
-changed, all `chip: 'snes'`, the other 38 byte-identical);
-`apps/web/src/data/instrument-catalogue.json` (16 of 89 presets changed, all
-`snes-*`, the other 73 byte-identical); `apps/web/public/render-parity-data/
-inputs.json` (5 of 22 inputs changed, the same five named above, the other
-17 byte-identical). `apps/web/public/arrangement-data/report.json` was
-**not** regenerated: `scores/arrangements/evaluate.mjs` requires an
-independent GME-oracle reference (`.artifacts/arrangements/
-native-reference.json`, `.artifacts/native-songs/*`) that is not present in
-a fresh checkout and is not fetched by `pnpm audio:pull` - a pre-existing
-environment gap, not something this ticket introduced or can close without
-a local GME toolchain build. The committed file itself is untouched
-(confirmed unmodified in `git status`), so nothing stale reaches CI: no
-check in this repository gates `report.json`'s own `engineSha256` against
-the current build (unlike the three fixtures above, each of which is
-regenerated and diffed here), and the `browser` CI job's `audio:pull`/
-`audio:check` only verify the *already-published* recordings the committed
-file names, which do not change until someone runs `evaluate.mjs` and
-`audio:push` with that oracle available. Partial evidence gathered before
-the run failed: console output for all four demo songs completed before the
-`sonic`-adjacent native-reference read failed, showing `mario/snes` at
--30.0 dBFS RMS against the currently-committed report's -28.86 dBFS (about
-1.1 dB quieter, consistent with the taper trimming a small amount of
-sustained energy off the end of held notes), while `mario/2a03`, `mario/dmg`
-and `mario/md` - other chips, untouched by this SNES-only change - matched
-the committed report's own values. A follow-up with GME-oracle access
-should regenerate this fixture properly; this ticket documents the gap
-rather than working around it or leaving it silent.
-
-**Tests.** `packages/chipvoice/test/snes-taper.mjs` pins the exact register
-writes: a long dry note's taper ADSR2 write (independently re-derived from
-the cited formula, not imported from the driver), its position strictly
-before the existing fast-GAIN-decrease pair, a short note under the floor
-keeping the old two-write release byte for byte, a `room`-space note doing
-the same regardless of length, and a second note on a reused voice tapering
-from its own start rather than the first note's.

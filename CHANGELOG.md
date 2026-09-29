@@ -17,13 +17,14 @@ release cuts in - the abrupt-stop cue decision 53 and NEXT-24 documented.
 `SnesDriver.noteOff` (`packages/chipvoice/src/chips/snes/driver.ts`) writes
 the voice's own ADSR2 sustain-rate field once, some time before its
 existing release, for a note held at least 40 ms; the taper's length (up to
-100 ms) and rate are derived from the note's own duration and the
-instrument's own sustain level, the same mechanism (and one of the same two
-candidates) N-SPC-family drivers use. `room` is unaffected on purpose - its
-echo tail already covers this. See decision 59 in
-[DECISIONS.md](docs/DECISIONS.md) for the full derivation, the before/after
-tail measurements, and the measured (not pushed) impact on gamesounds' SNES
-catalogue.
+100 ms, at most half the note) is a chosen design constant, not a
+derivation, and its rate is picked to bring the instrument's own sustain
+level down by a chosen amount (1/8, about -18 dB) over that window - the
+same mechanism (and one of the same two candidates) N-SPC-family drivers
+use. `room` is unaffected on purpose - its echo tail already covers this.
+See decision 59 in [DECISIONS.md](docs/DECISIONS.md) for the full
+rationale, the before/after tail measurements, and the measured impact on
+gamesounds' SNES catalogue.
 
 `importSpc` restores an S-DSP snapshot's hidden per-sample state (the echo
 address and direction-page latches, the KON edge-latch, the echo history and
