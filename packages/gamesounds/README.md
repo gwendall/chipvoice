@@ -78,6 +78,7 @@ but `SOUNDS-CREDITS.md` names the source and author anyway.
 npm run build        # tsc -p tsconfig.build.json -> dist/
 npm run typecheck
 npm run test:unit    # node --test over test/*.mjs, a fake AudioContext
+npm run test:fresh    # npm pack -> install into a temp project -> drive the CLI and API against https://gamesounds.ai
 node test-cli.mjs    # the CLI against a real local gamesounds.ai server
 ```
 

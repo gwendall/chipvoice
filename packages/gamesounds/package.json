@@ -17,6 +17,9 @@
     "url": "git+https://github.com/gwendall/chipvoice.git",
     "directory": "packages/gamesounds"
   },
+  "bugs": {
+    "url": "https://github.com/gwendall/chipvoice/issues"
+  },
   "homepage": "https://gamesounds.ai",
   "type": "module",
   "main": "./dist/index.js",
@@ -51,6 +54,7 @@
     "prepublishOnly": "npm run build",
     "dev": "tsc -p tsconfig.build.json --watch",
     "test:unit": "node scripts/run-unit-tests.mjs",
+    "test:fresh": "node scripts/fresh-install-test.mjs",
     "test": "npm run test:unit"
   },
   "devDependencies": {
