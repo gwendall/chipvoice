@@ -4,6 +4,7 @@ import { Worker } from "node:worker_threads";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { Client } from "@libsql/client";
 import { db, newId } from "./db";
 import { PROJECT_ENGINE_VERSION } from "chipvoice";
 import {
@@ -15,6 +16,106 @@ import {
   ProjectHttpError,
 } from "./projects";
 const path = () => join(process.cwd(), "generated/project-render.cjs");
+
+/** Decision 55: how long a claimed render's lease stands before it is
+ * reclaimable, unchanged from the 270-second staleness window decision
+ * 27/33 already used (the render worker's own 240-second deadline, plus
+ * margin for termination and the final write). */
+const LEASE_TIMEOUT_MS = 270000;
+
+/** How many jobs may hold `status in ('rendering','cancelling')` at once.
+ * Decision 55 keeps decision 27/33's single fleet-wide slot as the default,
+ * but makes it a setting (`RENDER_CONCURRENCY`) rather than a hardcoded 1.
+ * Raising it past 1 in production also needs `evaluation_lease` (a singleton
+ * table today) to stop being a hard second 1-slot bound before it changes
+ * anything; see decision 55's own text for why that is not done here. */
+function renderConcurrency(): number {
+  const n = Number(process.env.RENDER_CONCURRENCY ?? 1);
+  if (!Number.isSafeInteger(n) || n < 1 || n > 8)
+    throw new ProjectHttpError(503, "render_misconfigured", "Invalid RENDER_CONCURRENCY");
+  return n;
+}
+
+/** How many times decision 55's sweep may reclaim and retry a lease before
+ * dead-lettering the job. `RENDER_MAX_ATTEMPTS`, default 3: the first claim
+ * plus two retries. */
+function renderMaxAttempts(): number {
+  const n = Number(process.env.RENDER_MAX_ATTEMPTS ?? 3);
+  if (!Number.isSafeInteger(n) || n < 1 || n > 10)
+    throw new ProjectHttpError(503, "render_misconfigured", "Invalid RENDER_MAX_ATTEMPTS");
+  return n;
+}
+
+/**
+ * Decision 55's sweep: reclaims leases nobody is renewing, whether or not
+ * the instance that held one is still alive. Called from every path that
+ * already touches a job - a claim attempt, a status read - and from the
+ * cron sweeper (`sweepProjectJobs`), so the queue advances even when nobody
+ * ever polls again.
+ *
+ * - A `cancelling` lease that expires resolves as `cancelled`: the owner
+ *   asked to stop, so an expired lease must never silently resume it.
+ * - A `rendering` lease that expires with attempts left goes back to
+ *   `queued`, for the next claim to pick up exactly like a fresh job.
+ * - A `rendering` lease that expires with no attempts left is dead-lettered:
+ *   `failed`, with `dead_letter_at` set, so it stops being retried but stays
+ *   visible as a job rather than silently vanishing.
+ *
+ * `lease_expires_at is null` (a row claimed by code older than this
+ * migration, or never given a lease at all) is treated as already expired,
+ * not as never expiring, so no row can get stuck forever for lack of one.
+ *
+ * Returns how many rendering jobs were requeued, the number a caller that
+ * wants to know whether it did anything can check.
+ */
+export async function reclaimExpiredLeases(client: Client, now = Date.now()) {
+  const maxAttempts = renderMaxAttempts();
+  await client.execute({
+    sql: "update project_jobs set status='cancelled',lease_expires_at=null where status='cancelling' and (lease_expires_at is null or lease_expires_at<?)",
+    args: [now],
+  });
+  await client.execute({
+    sql: "update project_jobs set status='failed',error='Render failed after repeated interruptions; publish a new revision to retry',dead_letter_at=?,lease_expires_at=null where status='rendering' and (lease_expires_at is null or lease_expires_at<?) and attempts>=?",
+    args: [now, now, maxAttempts],
+  });
+  const requeued = await client.execute({
+    sql: "update project_jobs set status='queued',lease_expires_at=null where status='rendering' and (lease_expires_at is null or lease_expires_at<?) and attempts<? returning id",
+    args: [now, maxAttempts],
+  });
+  return requeued.rows.length;
+}
+
+/**
+ * Decision 55's cron entry point (`/api/cron/sweep-jobs`): reclaims expired
+ * leases, then advances the queue itself, so a job's progress never depends
+ * on the instance that accepted the original request staying alive. Also
+ * drives mp3 encoding the same way - it holds no lease of its own (decision
+ * 55 explains why re-running it is always safe, so it needs no fencing),
+ * so the sweep simply retries any row still `mp3_status='queued'`. Bounded
+ * by the same single fleet-wide slot as a request-triggered render: kicking
+ * more queued rows than the slot admits is harmless, since every losing
+ * claim just returns immediately.
+ */
+export async function sweepProjectJobs(limit = 20) {
+  const client = await db(),
+    now = Date.now();
+  const reclaimed = await reclaimExpiredLeases(client, now);
+  const queued = await client.execute({
+    sql: "select id from project_jobs where status='queued' order by created_at limit ?",
+    args: [limit],
+  });
+  for (const row of queued.rows) await runProjectJob(String(row.id));
+  const pendingMp3 = await client.execute({
+    sql: "select id from project_jobs where mp3_status='queued' order by created_at limit ?",
+    args: [limit],
+  });
+  for (const row of pendingMp3.rows) await runProjectMp3(String(row.id));
+  return {
+    reclaimed,
+    queued: queued.rows.length,
+    mp3: pendingMp3.rows.length,
+  };
+}
 let identity: string | undefined;
 export function rendererIdentity() {
   return (identity ??= createHash("sha256")
@@ -99,27 +200,17 @@ function jobView(row: Record<string, unknown>) {
   };
 }
 export async function getProjectJob(id: string, viewer: Viewer) {
-  const result = await (
-    await db()
-  ).execute({
+  const client = await db();
+  // Decision 55: reclaim before reading, so a lease nobody renewed reports
+  // its post-sweep state (queued for a retry, or failed once dead-lettered)
+  // rather than a stale 'rendering'/'cancelling' a dead instance never left.
+  await reclaimExpiredLeases(client);
+  const result = await client.execute({
     // A progress read needs authorization, not the entire project JSON and report.
     sql: "select j.* from project_jobs j join projects p on p.id=j.project_id where j.id=? and p.deleted_at is null and (p.visibility<>'private' or (p.user_id=? and (? is null or p.profile_id=?)))",
     args: [id, viewerUser(viewer), viewerProfile(viewer), viewerProfile(viewer)],
   });
   const row = result.rows[0];
-  if (
-    ["rendering", "cancelling"].includes(String(row?.status)) &&
-    Number(row.started_at) < Date.now() - 270000
-  ) {
-    await (
-      await db()
-    ).execute({
-      sql: "update project_jobs set status='failed',error='Render interrupted; publish a new revision to retry' where id=? and status in ('rendering','cancelling')",
-      args: [id],
-    });
-    row.status = "failed";
-    row.error = "Render interrupted; publish a new revision to retry";
-  }
   if (!row)
     throw new ProjectHttpError(404, "not_found", "Render not found");
   return jobView(row);
@@ -127,17 +218,22 @@ export async function getProjectJob(id: string, viewer: Viewer) {
 export async function runProjectJob(id: string) {
   const client = await db(),
     now = Date.now();
-  // Expired leases fail visibly instead of producing a different engine's audio.
-  await client.execute({
-    sql: "update project_jobs set status='failed',error='Render interrupted; publish a new revision to retry' where status in ('rendering','cancelling') and started_at<?",
-    args: [now - 270000],
-  });
+  // Decision 55: reclaim expired leases before claiming, so a job a dead
+  // instance abandoned is retried (or dead-lettered) instead of holding the
+  // fleet-wide slot forever.
+  await reclaimExpiredLeases(client, now);
   const claim = await client.execute({
-    sql: "update project_jobs set status='rendering',started_at=? where id=? and status='queued' and not exists(select 1 from project_jobs where status in ('rendering','cancelling')) and not exists(select 1 from evaluation_lease where expires_at>?) returning *",
-    args: [now, id, now],
+    sql: "update project_jobs set status='rendering',started_at=?,lease_expires_at=?,attempts=attempts+1 where id=? and status='queued' and (select count(*) from project_jobs where status in ('rendering','cancelling')) < ? and not exists(select 1 from evaluation_lease where expires_at>?) returning *",
+    args: [now, now + LEASE_TIMEOUT_MS, id, renderConcurrency(), now],
   });
   const row = claim.rows[0];
   if (!row) return;
+  // Decision 55's fencing token: this claim's own attempt number. Every
+  // write this run makes back to the job is guarded by it, so a run whose
+  // lease already expired and was reclaimed by a later claim (attempts no
+  // longer matches) loses every write instead of clobbering the newer
+  // attempt's state - the "exactly once" half of the durable queue.
+  const attempt = Number(row.attempts);
   try {
     if (row.engine !== rendererIdentity())
       throw Error("Prepared with a different engine; publish a new revision");
@@ -189,8 +285,12 @@ export async function runProjectJob(id: string) {
         polling = true;
         void client
           .execute({
-            sql: "select status from project_jobs where id=?",
-            args: [id],
+            // Decision 55: fenced by attempt too, so a lease this run's own
+            // claim already lost to a later attempt (reclaimed and reclaimed
+            // again) is noticed within one poll instead of rendering to
+            // completion for nothing.
+            sql: "select status from project_jobs where id=? and attempts=?",
+            args: [id, attempt],
           })
           .then((result) => {
             if (result.rows[0]?.status !== "rendering")
@@ -205,8 +305,8 @@ export async function runProjectJob(id: string) {
         if (message.progress !== undefined) {
           void client
             .execute({
-              sql: "update project_jobs set progress=? where id=? and status='rendering' returning id",
-              args: [message.progress, id],
+              sql: "update project_jobs set progress=? where id=? and status='rendering' and attempts=? returning id",
+              args: [message.progress, id, attempt],
             })
             .then((result) => {
               if (!result.rows.length) finish(Error("Render cancelled"));
@@ -230,9 +330,13 @@ export async function runProjectJob(id: string) {
       );
     const tx = await client.transaction("write");
     try {
+      // Decision 55: fenced by attempt - a run whose lease already expired
+      // and was reclaimed (a later claim bumped attempts) finds nothing
+      // active here and rolls back without writing a single audio chunk,
+      // however far its own render got.
       const active = await tx.execute({
-        sql: "select 1 from project_jobs j join projects p on p.id=j.project_id where j.id=? and j.status='rendering' and p.deleted_at is null",
-        args: [id],
+        sql: "select 1 from project_jobs j join projects p on p.id=j.project_id where j.id=? and j.status='rendering' and j.attempts=? and p.deleted_at is null",
+        args: [id, attempt],
       });
       if (!active.rows.length) {
         await tx.rollback();
@@ -257,13 +361,14 @@ export async function runProjectJob(id: string) {
           args: [id, chunk, mp3.slice(offset, offset + 262144)],
         });
       await tx.execute({
-        sql: "update project_jobs set status='ready',finished_at=?,bytes=?,etag=?,progress=1,mp3_status='ready',mp3_bytes=? where id=?",
+        sql: "update project_jobs set status='ready',finished_at=?,bytes=?,etag=?,progress=1,mp3_status='ready',mp3_bytes=?,lease_expires_at=null where id=? and attempts=?",
         args: [
           Date.now(),
           bytes.length,
           createHash("sha256").update(bytes).digest("hex"),
           mp3.length,
           id,
+          attempt,
         ],
       });
       await tx.commit();
@@ -274,15 +379,18 @@ export async function runProjectJob(id: string) {
       tx.close();
     }
   } catch (error) {
+    // Decision 55: fenced by attempt, so a superseded run's own failure -
+    // including the "Render cancelled" a lost fencing check above raises -
+    // can never mark a newer attempt's job failed.
     await client.execute({
-      sql: "update project_jobs set status='failed',error=? where id=? and status='rendering'",
-      args: [error instanceof Error ? error.message : "Render failed", id],
+      sql: "update project_jobs set status='failed',error=?,lease_expires_at=null where id=? and status='rendering' and attempts=?",
+      args: [error instanceof Error ? error.message : "Render failed", id, attempt],
     });
   } finally {
     // Keep admission closed until termination, including cancellation during storage.
     await client.execute({
-      sql: "update project_jobs set status='cancelled' where id=? and status='cancelling'",
-      args: [id],
+      sql: "update project_jobs set status='cancelled',lease_expires_at=null where id=? and status='cancelling' and attempts=?",
+      args: [id, attempt],
     });
   }
 }

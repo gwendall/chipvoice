@@ -2,5 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd ../.. && pnpm build --filter chipvoice-web"
+  "buildCommand": "cd ../.. && pnpm build --filter chipvoice-web",
+  "crons": [
+    {
+      "path": "/api/cron/sweep-jobs",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

@@ -2987,3 +2987,148 @@ The catalogue itself did not change in this round either: zero diff
 against the catalogue this decision's own GS-07 v2.1 amendment above
 already confirmed unchanged (commit `6308ea5`) - this round touched only
 the gate script, its lib module, its unit tests, and documentation.
+
+## 55. project_jobs becomes a durable queue: attempts, a reclaimable lease and a cron sweep, no new service (2026-09-29)
+
+Decision 27 put publication rendering behind one fleet-wide `project_jobs`
+row per `(project_id, kind)`, admission-bounded and deduplicated by that same
+row (AUD-2: worker bound, duration/concurrency/rate/cache bounds, versioned
+keys, deduplication and conditional GET). What it never had was durability: a
+row only ever advanced from a live request's own `after()`, so an instance
+that died mid-render left its job stuck `rendering` forever - nobody was
+coming back to it, and no lease or attempt counter existed to say so. NEXT-19
+closes that without a new vendor or paid queue service: `project_jobs`
+itself becomes the durable queue, in the same SQLite/libsql database
+`db.ts` already owns.
+
+**The state machine.** Three additive columns
+(`apps/web/src/lib/migrations.ts`, migration `durable-render-queue`):
+`attempts` (integer, default 0), `lease_expires_at` (nullable timestamp) and
+`dead_letter_at` (nullable timestamp). A claim is one atomic
+`update project_jobs set status='rendering',lease_expires_at=?,attempts=attempts+1
+where status='queued' and (select count(*) from project_jobs where
+status in ('rendering','cancelling')) < ? returning *` - SQLite is
+single-writer and serializes this the same way the old `not exists(...)`
+guard was already relying on, so no separate row lock is needed. The
+returned `attempts` value becomes a fencing token: every later write this
+same run makes (progress updates, the cancellation poll, the storage
+transaction's own liveness check, the terminal `ready`/`failed`/`cancelled`
+update) is qualified `and attempts=?` with that captured value. A run whose
+lease was reclaimed loses the fence the instant a fresh claim bumps
+`attempts` again, so it finds nothing to update and rolls back without
+writing a single audio chunk, however far its own render actually got - this
+is what makes completion exactly-once rather than merely at-least-once.
+
+`reclaimExpiredLeases(client, now)` is the reclaim itself: any `rendering`
+row whose lease is expired or `null` (a pre-migration row, or one claimed by
+code that predates leases, reads as already-expired so nothing from before
+this migration can get stuck forever) goes back to `queued` if
+`attempts < RENDER_MAX_ATTEMPTS` (default 3, env `RENDER_MAX_ATTEMPTS`,
+validated 1-10), or to `failed` with `dead_letter_at` set and a visible
+`error` once attempts are spent. A `cancelling` row whose lease expires
+resolves straight to `cancelled`, never back to `queued` - an owner who
+asked to stop must not have their job silently resumed by a dead instance's
+lease finally timing out. `LEASE_TIMEOUT_MS` is 270 seconds, matched to the
+45-second render deadline of decision 27 plus generous margin for a stalled
+worker thread, not to any request timeout.
+
+**What drives it.** Nothing new at the infrastructure layer: request-time
+work (a claim still happens inline, same as before), and
+`GET /api/cron/sweep-jobs` (`apps/web/src/app/api/cron/sweep-jobs/route.ts`),
+called every 5 minutes by a new `crons` entry in `apps/web/vercel.json`.
+The route checks `Authorization: Bearer $CRON_SECRET` with the same
+constant-time `timingSafeEqual`-on-SHA-256-digest pattern
+`songs/[id]/route.ts` already uses for `CHIPVOICE_ADMIN_KEY`, refusing
+outright (never comparing anything) when `CRON_SECRET` is unset. On each
+tick, `sweepProjectJobs()` reclaims expired leases, then claims and runs
+whatever is `queued` (bounded by the same single fleet-wide slot a
+request-triggered claim already respects, so an over-eager sweep is
+harmless - a losing claim just returns immediately) and whatever mp3 encode
+is still `mp3_status='queued'` (the older, separate upgrade-an-existing-WAV
+path `runProjectMp3` already served; it needs no fencing because it is
+naturally idempotent, guarded entirely by its own `mp3_status='queued'`
+checks). This is the actual durability backstop: a job's progress no longer
+depends on the instance that accepted the original request staying alive,
+only on the next cron tick or the next live request, whichever comes first.
+
+**The concurrency bound is now a setting, not a constant.** `renderConcurrency()`
+reads `RENDER_CONCURRENCY` (default 1, validated 1-8) into the claim's own
+admission count. Decision 27/33's single-slot semantics are the shipped
+default and are not changed by this decision; only the fact that changing
+them now takes an environment variable instead of a code edit does.
+
+**Why in the database, not a new service.** Every alternative (a managed
+queue, a second worker fleet with its own storage) is a new vendor, a new
+failure domain and new latency between "job exists" and "somewhere durable
+knows about it," for a product whose render volume decision 27 already
+sized at one fleet-wide slot. A row this codebase already owns, claimed
+with a `WHERE` clause SQLite's own single-writer semantics make atomic for
+free, gives every property a queue needs (visibility timeout, retry count,
+dead-lettering, idempotent claim) without adding an account, a bill or a
+network hop this deployment does not otherwise have. Dedup is unchanged: the
+existing `unique(project_id, kind)` constraint and versioned engine keys
+(AUD-2, decision 43) are what makes two identical requests share one row;
+this decision adds nothing new to that path.
+
+**Measured (local stack, `apps/web`, disposable per-run SQLite files, this
+machine shared with several other concurrent Claude sessions - repeated
+3-5x per figure below, spread reported because the machine's load makes
+single-run numbers meaningless):**
+
+- Identical concurrent requests (dedup path), 3 concurrent `createProjectJob`
+  calls for the same `(project, kind)`, 3 repeats: the admission check alone
+  (`render:user`, 3/minute) is what actually caps how many concurrent
+  identical requests are useful to send, independent of dedup - the call
+  itself resolves in p50 6.0ms / p95 6.2ms (min 3.8ms, max 6.2ms) across 9
+  samples; all three repeats still produced exactly one row. Full round trip
+  (create + let the shared job render) was 2470-8765ms per repeat, spread
+  dominated by render time on a loaded machine, not by the queue.
+- Distinct concurrent requests, N=5, `RENDER_CONCURRENCY=1` (the shipped
+  default): 2927-7901ms wall clock for all five to reach `ready`
+  (mean 5010ms, throughput about 1.0 job/s - serialized, as decision 27
+  intends).
+- The same five, `RENDER_CONCURRENCY=3`: 7652-14527ms (mean 10071ms,
+  throughput about 0.5 job/s) - worse, not better, on this machine. Three
+  renders sharing this laptop's already-loaded cores contend for the same
+  CPU instead of running in parallel; the setting buys real concurrency
+  only where separate claims land on separate compute (separate serverless
+  instances), which a single shared dev machine cannot demonstrate. The
+  number is reported rather than hidden: raising `RENDER_CONCURRENCY` is
+  not free, and its payoff has to be verified against the real fleet, not
+  assumed from this benchmark.
+- Kill test, 5 repeats: start a real render, poll until `rendering`, force
+  its lease into the past (simulating the instance dying), call
+  `reclaimExpiredLeases` directly, then let a second `runProjectJob` claim
+  and finish it, then let the original ("zombie") call finally run to
+  completion too. `reclaimExpiredLeases` itself is 0.8-1.9ms regardless of
+  render size - the sweep's own cost is negligible. Full recovery (force-expiry
+  to the retried job reaching `ready`) was 12046-22946ms (p50 14132ms, p95
+  22946ms), which is simply the cost of re-rendering the same fixture from
+  scratch - the retry does no less work than the original attempt did. Every
+  repeat completed with `attempts=2`, `dead_letter_at=null`, the zombie's
+  writes fenced out (no duplicate `project_audio` rows, `bytes` matching the
+  winning attempt only), confirming exactly-once completion. In production,
+  worst-case detection is bounded by `LEASE_TIMEOUT_MS` (270s) plus up to one
+  cron interval (5 minutes) if no live request claims it sooner - about 9.5
+  minutes worst case before a truly abandoned job even starts its retry; a
+  live request racing the same claim, as tested here, recovers as soon as the
+  lease is checked, not on the cron's own schedule.
+
+**What changes in production on merge.** `apps/web/vercel.json` gains a
+`crons` entry calling `/api/cron/sweep-jobs` every 5 minutes; this requires
+`CRON_SECRET` to be set in the production environment before or at deploy
+time, since the route refuses every request (including Vercel's own cron
+caller) when it is unset. No other production behavior changes: default
+`RENDER_CONCURRENCY` stays 1, default `RENDER_MAX_ATTEMPTS` stays 3, and the
+migration is additive-only against the existing `project_jobs` table.
+
+**What changes.** `apps/web/src/lib/migrations.ts` adds `durable-render-queue`.
+`apps/web/src/lib/project-jobs.ts` adds `reclaimExpiredLeases`,
+`sweepProjectJobs`, `renderConcurrency`, `renderMaxAttempts`, and fences every
+write in `runProjectJob` by the claim's own `attempts`.
+`apps/web/src/app/api/cron/sweep-jobs/route.ts` is new.
+`apps/web/test-render-queue.mjs` pins dedup, the kill/lease-expiry test, the
+cancelling-lease-expires-to-cancelled edge case, dead-lettering after
+`RENDER_MAX_ATTEMPTS`, `RENDER_CONCURRENCY` as a real setting, and the cron
+route's own auth and effect, isolated against a disposable SQLite file with
+no network, same pattern as `test-projects.mjs`.

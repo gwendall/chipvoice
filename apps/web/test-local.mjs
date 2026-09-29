@@ -58,6 +58,7 @@ try {
     "../../scores/arrangements/verify-publication.mjs",
     "test-foundations.mjs",
     "test-projects.mjs",
+    "test-render-queue.mjs",
     "test-artists.mjs",
     "test-agent-oauth.mjs",
     "test-auth-conformance.mjs",

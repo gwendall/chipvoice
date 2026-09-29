@@ -898,3 +898,29 @@ GS-08自身の数値も誤りだった。上記の「623から1774サンプル�
 まずカタログの5分の1（7個おきのバリアント、1080個中155個、両エンジン）で計測した：Chromiumは155/155でラグ0、Firefoxは155/155でラグ+576、最良ラグでの正規化相関の最小値は両エンジンとも0.89。次に同じ手法を`check-browser-decode.mjs`の情報行に組み込み（`ONSET_THRESHOLD`/`firstAboveThreshold`は削除）、1080個すべてで計測した：Chromiumは1080/1080でラグ0、Firefoxは1080/1080でラグ+576、最良ラグでの正規化相関の最小値は両エンジンとも0.888。**GS-08はちょうど576サンプル、44.1kHzで13.06ミリ秒、mp3の1グラニュールであり、中央値578/最小531という以前の数値と、この追記が置き換えた指標の両方に取って代わる。**
 
 ラグ探索のCPUコストにより、`check-browser-decode.mjs`のローカル実行時間はv2.1単独の約38秒から、マシンの負荷に応じて65秒から約4分に増えた。`sounds` CIジョブの35分のタイムアウトには十分収まり、変更していない。カタログはこの回も変化していない：コミット`6308ea5`のカタログに対して変化したフィールドはゼロであり、この回で変更されたのはゲートのスクリプト、そのlibモジュールとユニットテスト、そしてドキュメントだけである。
+
+<a id="55-project_jobs-becomes-a-durable-queue-attempts-a-reclaimable-lease-and-a-cron-sweep-no-new-service-2026-09-29"></a>
+## 55. project_jobsは永続的なキューになる：attempts、再取得可能なリース、cronスイープ。新しいサービスは追加しない（2026-09-29）
+
+決定27は公開レンダリングを`project_jobs`の1行（`project_id`、`kind`ごと）の背後に置いた（AUD-2：workerの上限、時間／同時実行／頻度／cacheの上限、バージョン付きキー、重複排除、条件付きGET）。しかし永続性は無かった：行はライブなリクエスト自身の`after()`からしか進まず、レンダー中にインスタンスが死ぬと、その行は永遠に`rendering`のまま取り残された。NEXT-19は新しいベンダーや有料のキューサービスを追加せずにこれを解決する：`project_jobs`自身が、`db.ts`がすでに所有する同じSQLite/libsqlデータベース内で、永続的なキューになる。
+
+**状態機械。** 3つの追加専用カラム（`apps/web/src/lib/migrations.ts`、マイグレーション`durable-render-queue`）：`attempts`（整数、デフォルト0）、`lease_expires_at`（null許容のタイムスタンプ）、`dead_letter_at`（null許容のタイムスタンプ）。claimは単一の原子的な`update ... where status='queued' and (同時実行数) < ? returning *`であり、SQLiteは単一ライターなのでこれは古い`not exists(...)`ガードと同様に直列化される。返された`attempts`の値はフェンシングトークンになる：この実行のその後のすべての書き込み（進捗更新、キャンセルのポーリング、保存トランザクション自身の生存確認、終端の`ready`/`failed`/`cancelled`更新）は、この捕捉された値で`and attempts=?`により条件付けられる。リースが再取得されたrunは、新しいclaimが`attempts`を再び増やした瞬間にフェンスを失うので、更新対象が見つからずロールバックし、実際のレンダーがどこまで進んでいようと音声チャンクを一切書き込まない - これにより完了は「少なくとも一度」ではなく「厳密に一度」になる。
+
+`reclaimExpiredLeases(client, now)`が再取得そのものである：リースが期限切れまたは`null`（このマイグレーション以前の行、またはリースが無かったコードがclaimした行は、すでに期限切れとして読まれるので、これ以前のどの行も永遠に詰まったままにはならない）の`rendering`行は、`attempts < RENDER_MAX_ATTEMPTS`（デフォルト3、env `RENDER_MAX_ATTEMPTS`、1-10で検証）なら`queued`に戻り、attemptsを使い切っていれば`dead_letter_at`と可視な`error`を伴って`failed`になる。リースが期限切れになった`cancelling`行は、`queued`には戻らず直接`cancelled`になる - 停止を求めたオーナーのジョブが、死んだインスタンスのリースのタイムアウトによって黙って再開されてはならない。`LEASE_TIMEOUT_MS`は270秒である。
+
+**駆動するもの。** インフラ層では何も新しくない：リクエスト時の処理（インラインのclaimは変わらない）と、5分ごとに呼ばれる新しい`GET /api/cron/sweep-jobs`（`apps/web/vercel.json`の新しい`crons`エントリ経由）。このルートは、`songs/[id]/route.ts`がすでに使っているのと同じ`timingSafeEqual`によるSHA-256ダイジェスト比較で`Authorization: Bearer $CRON_SECRET`を検証し、`CRON_SECRET`が未設定なら常に拒否する（何とも比較しない）。各ティックで`sweepProjectJobs()`は期限切れリースを再取得し、`queued`なものと`mp3_status='queued'`なもの（既存のWAVをアップグレードする、`runProjectMp3`の別の古い経路。これはすでに`mp3_status='queued'`のチェックだけで自然にべき等なのでフェンシング不要）をclaimして実行する。これが実際の永続性のバックストップである：ジョブの進行は、元のリクエストを受け付けたインスタンスが生き続けることにはもはや依存しない。
+
+**同時実行数の上限は、いまや設定である。** `renderConcurrency()`が`RENDER_CONCURRENCY`（デフォルト1、1-8で検証）を読み、claimの同時実行数チェックに使う。決定27/33の単一スロットのセマンティクスはデフォルトのまま変わらない。
+
+**なぜデータベース内で、新しいサービスではないのか。** どの代替案（マネージドキュー、独自ストレージを持つ第二のworkerフリート）も、新しいベンダー、新しい障害ドメイン、新しいレイテンシーを追加する。このコードベースがすでに所有する行を、SQLiteの単一ライターのセマンティクスが無料で原子的にする`WHERE`句でclaimすることで、キューに必要なすべての性質（可視性タイムアウト、リトライ回数、dead-lettering、べき等なclaim）が、アカウントも請求も新しいネットワークホップも追加せずに得られる。重複排除は変わらない：既存の`unique(project_id, kind)`制約とバージョン付きengineキー（AUD-2、決定43）が、2つの同一リクエストが1行を共有する理由のままである。
+
+**計測（ローカルスタック、使い捨てのSQLiteファイル、このマシンは他の複数のClaudeセッションと共有されているため、下記の各数値は3-5回繰り返し、ばらつきを報告する）：**
+
+- 同一の同時リクエスト（dedup経路）、同じ`(project, kind)`への3並列`createProjectJob`、3回繰り返し：admissionチェック自体（`render:user`、3/分）がdedupとは独立に同時リクエスト数の実際の上限になる - 呼び出し自体は9サンプルでp50 6.0ms/p95 6.2ms（最小3.8ms、最大6.2ms）。3回とも行は1つだけだった。作成からレンダー完了までの往復は2470-8765msで、ばらつきは負荷の高いマシンでのレンダー時間に支配され、キュー自体には起因しない。
+- 異なる同時リクエスト、N=5、`RENDER_CONCURRENCY=1`（出荷時デフォルト）：5件すべてが`ready`になるまで2927-7901ms（平均5010ms、スループット約1.0job/s - 決定27の意図通り直列）。
+- 同じ5件、`RENDER_CONCURRENCY=3`：7652-14527ms（平均10071ms、スループット約0.5job/s）- このマシンでは改善どころか悪化した。すでに負荷の高いこのラップトップのコアを3つのレンダーが奪い合うためであり、この設定が真に並列実行の利益を生むのは、別々のclaimが別々の計算資源（別々のサーバーレスインスタンス）に着地する場合だけである。この数値は隠さず報告する：`RENDER_CONCURRENCY`を上げることは無料ではなく、その効果は実際のフリートで検証されるべきであり、このベンチマークから想定すべきではない。
+- kill test、5回繰り返し：実際のレンダーを開始し、`rendering`になるまでポーリングし、リースを過去に強制し（インスタンスの死をシミュレート）、`reclaimExpiredLeases`を直接呼び、2回目の`runProjectJob`にclaimさせて完了させ、その後に元の（ゾンビの）呼び出しも最後まで走らせる。`reclaimExpiredLeases`自体はレンダーサイズに関わらず0.8-1.9ms - スイープ自体のコストは無視できる。完全な復旧（強制期限切れからリトライしたジョブが`ready`になるまで）は12046-22946ms（p50 14132ms、p95 22946ms）で、これは単に同じフィクスチャを最初からレンダーし直すコストである。すべての繰り返しで`attempts=2`、`dead_letter_at=null`、ゾンビの書き込みはフェンスされて消え（`project_audio`の重複行なし、`bytes`は勝った試行のものとのみ一致）、厳密に一度の完了が確認された。本番環境での検出時間の最悪ケースは`LEASE_TIMEOUT_MS`（270秒）に、cron間隔（5分）を足したもので、ライブなリクエストが先に同じclaimを競う場合はそのリースチェックの時点で即座に復旧する。
+
+**マージ時に本番で変わること。** `apps/web/vercel.json`に、5分ごとに`/api/cron/sweep-jobs`を呼ぶ`crons`エントリが追加される。これはデプロイ時までに本番環境に`CRON_SECRET`が設定されている必要がある - 未設定だとVercel自身のcron呼び出しを含むすべてのリクエストが拒否されるためである。他の本番の挙動は変わらない：`RENDER_CONCURRENCY`のデフォルトは1のまま、`RENDER_MAX_ATTEMPTS`のデフォルトは3のまま、マイグレーションは既存の`project_jobs`テーブルに対して追加専用である。
+
+**変更点。** `apps/web/src/lib/migrations.ts`が`durable-render-queue`を追加。`apps/web/src/lib/project-jobs.ts`が`reclaimExpiredLeases`、`sweepProjectJobs`、`renderConcurrency`、`renderMaxAttempts`を追加し、`runProjectJob`のすべての書き込みをclaim自身の`attempts`でフェンスする。`apps/web/src/app/api/cron/sweep-jobs/route.ts`が新規。`apps/web/test-render-queue.mjs`が、dedup、kill/リース期限切れテスト、cancelling中のリース期限切れがcancelledになる境界ケース、`RENDER_MAX_ATTEMPTS`後のdead-lettering、実際に効く設定としての`RENDER_CONCURRENCY`、cronルート自身の認証と効果を、`test-projects.mjs`と同じパターン（使い捨てのSQLiteファイル、ネットワークなし）でピン留めする。

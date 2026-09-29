@@ -279,6 +279,30 @@ export const migrations: Migration[] = [
       await addColumns(tx, "generations", { song_report: "text" });
     },
   },
+  {
+    // Decision 55 (NEXT-19): project_jobs becomes a durable queue - explicit
+    // attempts, a lease a cron sweep (not only a live request) can reclaim,
+    // and a dead-letter marker once retries run out. All additive: an
+    // existing row reads attempts=0, lease_expires_at=null,
+    // dead_letter_at=null and is claimed exactly as before until its next
+    // claim, which is the first one to set a lease. The two indexes serve
+    // the sweep's own queries (an expired lease by status, the oldest queued
+    // row by status) without scanning the whole table.
+    name: "durable-render-queue",
+    async up(tx: Transaction) {
+      await addColumns(tx, "project_jobs", {
+        attempts: "integer not null default 0",
+        lease_expires_at: "integer",
+        dead_letter_at: "integer",
+      });
+      await tx.execute(
+        `create index if not exists project_jobs_lease on project_jobs(status, lease_expires_at)`,
+      );
+      await tx.execute(
+        `create index if not exists project_jobs_queue on project_jobs(status, created_at)`,
+      );
+    },
+  },
 ];
 
 /** `web-kit/db`'s `migrate` bound to chipvoice's own migration history, for

@@ -67,7 +67,7 @@ try {
   await api.migrate(legacy);
   assert.equal(
     (await legacy.execute("select * from schema_migrations")).rows.length,
-    12,
+    13,
   );
   assert.equal(
     Number(
@@ -199,7 +199,7 @@ try {
   await api.migrate(fresh);
   assert.equal(
     (await fresh.execute("select * from schema_migrations")).rows.length,
-    12,
+    13,
   );
   // Decision 42: whoever composed before invitations began keeps composing.
   await fresh.batch(
