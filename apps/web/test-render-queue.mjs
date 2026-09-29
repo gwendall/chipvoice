@@ -37,7 +37,14 @@ const api = await import(pathToFileURL(file));
 
 try {
   const client = await api.db();
-  const account = async (email) => {
+  // A fresh account per section, never reused: admitProject's own
+  // render:user admission (3/minute, decision 27/33) is real and shared with
+  // every createProjectJob call an account makes, and CI's fast, consistent
+  // timing (unlike this repo's own noisy local machine) lets two sections'
+  // calls land in the same 60-second window if they share an account.
+  let accountSeq = 0;
+  const account = async () => {
+    const email = `render-queue-${++accountSeq}@example.test`;
     const key = await api.createKey(email, null);
     return api.identify(
       new Request("https://chipvoice.test/api", {
@@ -45,8 +52,6 @@ try {
       }),
     );
   };
-  const alice = await account("render-queue-alice@example.test");
-  const bob = await account("render-queue-bob@example.test");
 
   // A song slow enough to still be 'rendering' when polled, the same
   // fixture shape test-projects.mjs uses for its own cancellation test.
@@ -74,14 +79,15 @@ try {
   });
 
   // --- Dedup: two identical requests share one job (AUD-2's own key). ---
-  const dedupSong = await api.publishProject(alice.userId, {
+  const dedupOwner = await account();
+  const dedupSong = await api.publishProject(dedupOwner.userId, {
     project: api.starterProject(),
     visibility: "private",
     requestKey: "render-queue-dedup",
   });
   const [first, second] = await Promise.all([
-    api.createProjectJob(dedupSong.id, alice.userId, "full"),
-    api.createProjectJob(dedupSong.id, alice.userId, "full"),
+    api.createProjectJob(dedupSong.id, dedupOwner.userId, "full"),
+    api.createProjectJob(dedupSong.id, dedupOwner.userId, "full"),
   ]);
   assert.equal(first.id, second.id, "concurrent identical requests share one job");
   const dedupRows = await client.execute({
@@ -91,13 +97,14 @@ try {
   assert.equal(Number(dedupRows.rows[0].n), 1, "exactly one row backs both requests");
   // A third, sequential request also reuses it.
   assert.equal(
-    (await api.createProjectJob(dedupSong.id, alice.userId, "full")).id,
+    (await api.createProjectJob(dedupSong.id, dedupOwner.userId, "full")).id,
     first.id,
   );
   console.log("PASS dedup: concurrent and sequential identical requests share one job row");
 
   // --- Kill test: a worker dies mid-job; the job completes after the
   // lease expires, exactly once. ---
+  const bob = await account();
   const killSong = await api.publishProject(bob.userId, {
     project: longSong("Kill test"),
     visibility: "private",
@@ -163,15 +170,16 @@ try {
 
   // --- A cancelling lease that expires resolves as cancelled, not requeued
   // (the owner asked to stop; a dead instance must not silently resume it). ---
-  const cancelSong = await api.publishProject(alice.userId, {
+  const cancelOwner = await account();
+  const cancelSong = await api.publishProject(cancelOwner.userId, {
     project: longSong("Cancel-expiry test"),
     visibility: "private",
     requestKey: "render-queue-cancel-expiry",
   });
-  const cancelJob = await api.createProjectJob(cancelSong.id, alice.userId, "full");
+  const cancelJob = await api.createProjectJob(cancelSong.id, cancelOwner.userId, "full");
   const cancelRun = api.runProjectJob(cancelJob.id);
   for (let i = 0; i < 400; i++) {
-    if ((await api.getProjectJob(cancelJob.id, alice.userId)).status === "rendering") break;
+    if ((await api.getProjectJob(cancelJob.id, cancelOwner.userId)).status === "rendering") break;
     await new Promise((r) => setTimeout(r, 10));
   }
   await client.execute({
@@ -180,7 +188,7 @@ try {
   });
   await api.reclaimExpiredLeases(client);
   assert.equal(
-    (await api.getProjectJob(cancelJob.id, alice.userId)).status,
+    (await api.getProjectJob(cancelJob.id, cancelOwner.userId)).status,
     "cancelled",
     "an expired cancelling lease resolves as cancelled, never requeued",
   );
@@ -191,12 +199,13 @@ try {
   // RENDER_MAX_ATTEMPTS (default 3) and is marked failed, visibly. Driven
   // directly against the row so this is a pure state-machine test of
   // reclaimExpiredLeases, independent of any real render. ---
-  const dlSong = await api.publishProject(bob.userId, {
+  const dlOwner = await account();
+  const dlSong = await api.publishProject(dlOwner.userId, {
     project: api.starterProject(),
     visibility: "private",
     requestKey: "render-queue-dead-letter",
   });
-  const dlJob = await api.createProjectJob(dlSong.id, bob.userId, "full");
+  const dlJob = await api.createProjectJob(dlSong.id, dlOwner.userId, "full");
   for (let attempt = 1; attempt <= 3; attempt++) {
     await client.execute({
       sql: "update project_jobs set status='rendering',attempts=?,lease_expires_at=? where id=?",
@@ -223,18 +232,20 @@ try {
   // --- The concurrency bound is a setting: RENDER_CONCURRENCY=2 lets two
   // different jobs render at the same time (decision 55 keeps the default
   // at 1; this proves it is no longer hardcoded). ---
-  const concurrencySongA = await api.publishProject(alice.userId, {
+  const concurrencyOwnerA = await account();
+  const concurrencyOwnerB = await account();
+  const concurrencySongA = await api.publishProject(concurrencyOwnerA.userId, {
     project: longSong("Concurrency A"),
     visibility: "private",
     requestKey: "render-queue-concurrency-a",
   });
-  const concurrencySongB = await api.publishProject(bob.userId, {
+  const concurrencySongB = await api.publishProject(concurrencyOwnerB.userId, {
     project: longSong("Concurrency B"),
     visibility: "private",
     requestKey: "render-queue-concurrency-b",
   });
-  const jobA = await api.createProjectJob(concurrencySongA.id, alice.userId, "full");
-  const jobB = await api.createProjectJob(concurrencySongB.id, bob.userId, "full");
+  const jobA = await api.createProjectJob(concurrencySongA.id, concurrencyOwnerA.userId, "full");
+  const jobB = await api.createProjectJob(concurrencySongB.id, concurrencyOwnerB.userId, "full");
   process.env.RENDER_CONCURRENCY = "2";
   try {
     const runA = api.runProjectJob(jobA.id);
@@ -242,8 +253,8 @@ try {
     let bothRendering = false;
     for (let i = 0; i < 400; i++) {
       const [statusA, statusB] = await Promise.all([
-        api.getProjectJob(jobA.id, alice.userId),
-        api.getProjectJob(jobB.id, bob.userId),
+        api.getProjectJob(jobA.id, concurrencyOwnerA.userId),
+        api.getProjectJob(jobB.id, concurrencyOwnerB.userId),
       ]);
       if (statusA.status === "rendering" && statusB.status === "rendering") {
         bothRendering = true;
@@ -254,8 +265,8 @@ try {
     assert.ok(bothRendering, "RENDER_CONCURRENCY=2 allows two jobs to render at once");
     await Promise.all([runA, runB]);
     const [debugA, debugB] = await Promise.all([
-      api.getProjectJob(jobA.id, alice.userId),
-      api.getProjectJob(jobB.id, bob.userId),
+      api.getProjectJob(jobA.id, concurrencyOwnerA.userId),
+      api.getProjectJob(jobB.id, concurrencyOwnerB.userId),
     ]);
     assert.equal(debugA.status, "ready", debugA.error ?? "");
     assert.equal(debugB.status, "ready", debugB.error ?? "");
@@ -266,14 +277,15 @@ try {
 
   // --- The cron sweeper advances a queued render and a queued mp3 encode,
   // unauthenticated requests are refused, and a correct secret is admitted. ---
-  const sweepSong = await api.publishProject(alice.userId, {
+  const sweepOwner = await account();
+  const sweepSong = await api.publishProject(sweepOwner.userId, {
     project: api.starterProject(),
     visibility: "private",
     requestKey: "render-queue-sweep",
   });
-  const sweepJob = await api.createProjectJob(sweepSong.id, alice.userId, "full");
+  const sweepJob = await api.createProjectJob(sweepSong.id, sweepOwner.userId, "full");
   assert.equal(
-    (await api.getProjectJob(sweepJob.id, alice.userId)).status,
+    (await api.getProjectJob(sweepJob.id, sweepOwner.userId)).status,
     "queued",
     "nothing has rendered it yet - only the cron sweep will",
   );
@@ -297,7 +309,7 @@ try {
   assert.equal(swept.status, 200);
   const sweptBody = await swept.json();
   assert.ok(sweptBody.queued >= 1, "the sweep claimed the queued render");
-  const sweptJob = await api.getProjectJob(sweepJob.id, alice.userId);
+  const sweptJob = await api.getProjectJob(sweepJob.id, sweepOwner.userId);
   assert.equal(sweptJob.status, "ready", "the cron sweep alone rendered it, no request needed");
   // A fresh render encodes its own mp3 inline (mp3_status goes straight to
   // 'ready'); mp3_status='queued' is the separate, older path for upgrading
@@ -322,7 +334,7 @@ try {
   const secondSweepBody = await secondSweep.json();
   assert.ok(secondSweepBody.mp3 >= 1, "the sweep also claimed the queued mp3 encode");
   assert.equal(
-    (await api.getProjectJob(sweepJob.id, alice.userId)).mp3Status,
+    (await api.getProjectJob(sweepJob.id, sweepOwner.userId)).mp3Status,
     "ready",
     "the cron sweep alone encoded the mp3, no request needed",
   );
