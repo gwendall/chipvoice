@@ -498,25 +498,26 @@ export function levelToConvention(render, { targetLufs = LOUDNESS_TARGET_LUFS, p
   return { sampleRate: render.sampleRate, left, right, seconds: render.seconds, peak: peakOf(left, right), rawMeasure: raw, appliedGainDb: Math.round(gainDb * 100) / 100 };
 }
 
-// Both ffmpeg output calls in encodeVariant (wav measurement round-trips and
-// the mp3 encode) get these unconditionally: without them, ffmpeg's mp3
-// stream carries an encoder/version tag on every encode, so byte-identical
-// audio re-encoded on a later run (or a fresh checkout) hashes differently
-// even though nothing about the sound changed, which is exactly what
-// scripts/check-determinism.mjs exists to catch. Verified experimentally: a
-// test tone encoded twice with plain ffmpeg args (no bitexact) produced
-// same-size, different-sha256 files; with `-fflags +bitexact -flags:a
-// +bitexact` added as OUTPUT options (after `-i`, before the output path -
-// the placement matters, the same flags placed as INPUT/demuxer options
-// before `-i` do not fix it), repeated encodes of the same input produced
-// byte-identical output. mp3 already happens to be stable on this machine
-// without bitexact, but only because the current ffmpeg/lame version string
-// it embeds does not change between runs; adding the flags removes that
-// dependency on the build machine's ffmpeg version never changing. The ogg
-// no longer goes through ffmpeg at all (see GS-06/GS-07 below) - `sox -R`
-// is repeatable on its own terms, verified the same way (two encodes of the
-// same input, byte-identical sha256; see test/audio.test.mjs).
-const BITEXACT_ARGS = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
+// Neither shipped lossy format goes through ffmpeg's own encoder any more
+// (ogg: GS-06/GS-07, `sox -R`, below; mp3: GS-08, the real `lame` CLI, in
+// encodeVariant) - both are deterministic on their own terms, verified the
+// same way (two encodes of the same input, byte-identical sha256; see
+// test/audio.test.mjs). This used to need an explicit `-fflags +bitexact
+// -flags:a +bitexact` on every ffmpeg encode call: without it, ffmpeg's
+// mp3/ogg muxers embedded a build-machine-dependent encoder/version tag on
+// every encode, so byte-identical audio re-encoded on a later run (or a
+// fresh checkout) hashed differently even though nothing about the sound
+// changed - exactly what scripts/check-determinism.mjs exists to catch.
+// Verified experimentally at the time: a test tone encoded twice with plain
+// ffmpeg args (no bitexact) produced same-size, different-sha256 files; with
+// the bitexact flags added as OUTPUT options (after `-i`, before the output
+// path - the placement mattered, the same flags placed as INPUT/demuxer
+// options before `-i` did not fix it), repeated encodes of the same input
+// produced byte-identical output. That fixture is kept as a standalone
+// regression record in test/audio.test.mjs (it calls ffmpeg's old args
+// directly, not through encodeVariant, which has no ffmpeg-encoder path left
+// to call at all) even though the constant itself (`BITEXACT_ARGS`) is gone
+// from production code along with the last ffmpeg encode call it guarded.
 
 // GS-06/GS-07: ogg encoding switched to libvorbis via sox, everywhere, plus
 // a fixed tail guard so no decoder's own end-trim ever eats real content ---
@@ -645,6 +646,28 @@ function ensureSoxVorbis() {
   soxVorbisChecked = true;
 }
 
+// GS-08: mp3 is encoded with the real `lame` CLI, not ffmpeg's own
+// libmp3lame wrapper, for the same reason GS-06/GS-07 stopped using ffmpeg's
+// vorbis encoders - see the mp3 half of encodeVariant's own header comment,
+// below, for the measured cause and fix. `ensureLameCli` mirrors
+// `ensureSoxVorbis`: called once per process (cached), throws a specific,
+// actionable error if `lame` is missing, so a misconfigured machine fails
+// the build loudly instead of silently shipping an mp3 with no real gapless
+// tag.
+let lameCliChecked = false;
+function ensureLameCli() {
+  if (lameCliChecked) return;
+  const result = spawnSync("lame", ["--version"], { maxBuffer: 1024 * 1024 });
+  if (result.error || result.status !== 0) {
+    throw new Error(
+      "encodeVariant: `lame` is not installed or not on PATH. Every mp3 this catalogue ships is encoded with the real " +
+        "LAME CLI, not ffmpeg's own libmp3lame wrapper (GS-08, scripts/lib/audio.mjs) - install it: `brew install lame` " +
+        "on macOS, or on Ubuntu/Debian CI runners `sudo apt-get install -y lame`.",
+    );
+  }
+  lameCliChecked = true;
+}
+
 /** A copy of `render` (see `RenderResult`, this module's own shape) with
  * trailing zero-valued samples appended on every channel out to
  * `targetFrames`. Used by `encodeVariant`'s tail guard (`OGG_TAIL_GUARD_FRAMES`,
@@ -684,10 +707,54 @@ function padRenderTrailingZeros(render, targetFrames) {
  * ffmpeg was exactly such a machine) - see docs/DECISIONS.md, decision 54,
  * for that now-retired mechanism. `sox` keeps the source's own channel
  * count unconditionally, so there is no longer a machine-dependent layout to
- * know about.
+ * know about. The real `lame` CLI (GS-08, below) auto-detects the wav's own
+ * channel count the same way and never upmixes either.
+ *
+ * mp3 is encoded with the real `lame` CLI, not ffmpeg's own libmp3lame
+ * wrapper (GS-08). Cause, measured directly: ffmpeg's mp3 muxer writes a
+ * Xing/Info header (frame count, byte count, TOC, quality - `write_xing`,
+ * on by default) but never populates the LAME-specific info-tag extension
+ * that follows it (replaygain, encoder delay, encoder padding, etc.) with
+ * real values - it fills those exact bytes with a fixed `0xAA` placeholder
+ * instead, on every ffmpeg version/build tried, bitexact flags or not
+ * (confirmed by hex-dumping the tag: bytes 9 through 24 after the
+ * "LAME3.100" version string, which is where the encoder-delay/padding
+ * field lives, read back as `0xAA` repeated - an internally implausible
+ * "delay 2730, padding 2730" that no real encoder would produce). Chromium
+ * does not appear to trust that tag either way (it is exact regardless), but
+ * Firefox does: fed a tag with no real delay/padding info, it does not trim
+ * LAME's own fixed 576-sample encoder priming delay at all - exactly GS-08's
+ * measured +576-sample lag. The real `lame` CLI writes this tag correctly
+ * (verified the same way: delay 576, padding computed from the real output
+ * length, both plausible and correct) because it is the reference
+ * implementation's own writer, not a muxer that never populates it.
+ *
+ * Fix, tested empirically (real Chromium AND Firefox, Playwright,
+ * `decodeAudioData`, the same cross-correlation lag search
+ * check-browser-decode.mjs itself uses): re-encoding a 60-variant sample
+ * spanning every category/style family in the catalogue with `lame -V 3`
+ * (the same VBR-quality scale as ffmpeg's `-q:a 3` - libmp3lame interprets
+ * both identically) landed Firefox at lag 0 on 60/60 (previously +576 on
+ * 60/60, matching GS-07/GS-08's own full-catalogue measurement exactly) and
+ * left Chromium untouched at lag 0 on 60/60 (identical minimum correlation
+ * before and after, 0.9534...), with zero mp3 length excess in Firefox
+ * (previously 626 to 1718 samples over the wav's own frame count - the
+ * leading delay plus Firefox's own untrimmed trailing pad, both gone).
+ * Decoded audio content is unaffected: ffmpeg's own CLI decode of a
+ * `lame`-CLI mp3 and of an ffmpeg-encoded mp3 of the same input wav is
+ * sample-for-sample identical (max abs diff 0.0 on a synthetic 880Hz tone;
+ * true peak measured by ffmpeg's own `ebur128` matched to 0.1dB on a real
+ * catalogue wav) - this changes only which tool writes the mp3 container and
+ * its own gapless tag, never the audio itself. `lame` is deterministic
+ * across repeated encodes of the same input (verified the same way GS-06
+ * verified sox: byte-identical sha256 across two runs, both on a synthetic
+ * tone and on a real catalogue wav), so no bitexact-style flag is needed -
+ * `lame` never embeds a machine- or run-dependent value in the first place.
+ * See docs/DECISIONS.md, decision 60, for the full measurement.
  */
 export function encodeVariant(render, outDir, { mkdirSync } = {}) {
   ensureSoxVorbis();
+  ensureLameCli();
   const wavBytes = toWavBytes(render);
   const wavHash = sha256Hex(wavBytes);
   if (mkdirSync) mkdirSync(outDir, { recursive: true });
@@ -726,7 +793,14 @@ export function encodeVariant(render, outDir, { mkdirSync } = {}) {
   renameSync(tmpOggPath, join(outDir, oggName));
 
   const tmpMp3Path = join(outDir, `.tmp-${wavHash}.mp3`);
-  run("ffmpeg", ["-y", "-v", "error", "-i", wavPath, "-c:a", "libmp3lame", "-q:a", "3", ...BITEXACT_ARGS, tmpMp3Path]);
+  // GS-08: the real `lame` CLI, not ffmpeg's own libmp3lame wrapper - see
+  // this function's own header comment for the measured cause (ffmpeg's mp3
+  // muxer never populates the LAME info tag's encoder delay/padding fields
+  // with real values) and the empirical fix this replaces it with.
+  // `-V 3` is the same VBR-quality scale as ffmpeg's `-q:a 3` (libmp3lame
+  // interprets both identically); `--silent` only suppresses lame's own
+  // progress/ReplayGain console output, it does not change the encoded bytes.
+  run("lame", ["--silent", "-V", "3", wavPath, tmpMp3Path]);
   const mp3Bytes = readFileSync(tmpMp3Path);
   const mp3Hash = sha256Hex(mp3Bytes);
   const mp3Name = `${mp3Hash}.mp3`;

@@ -36,23 +36,27 @@
 //      CONTENT_LOSS_MARGIN_FRAMES and REAL_CONTENT_THRESHOLD; see
 //      decode-judge.mjs's own header and [Decision 54](../../docs/DECISIONS.md)'s
 //      GS-07 v2.1 amendment for the full measurement.
-//      Not checked for mp3: Firefox's mp3s are proven whole but SHIFTED
-//      LATER (GS-08, a leading-delay defect measured below, not content
-//      loss) - reported as information, never a failure.
-//   4. Mp3 only, information only, never a failure: the leading delay
-//      between the wav and the decoded mp3, per engine, found by a
-//      cross-correlation lag search (scripts/lib/decode-judge.mjs's
-//      `crossCorrelationLag`, GS-07 v2.2). An earlier version of this line
-//      compared the decoded mp3's own first sample above 1e-3 against the
-//      wav's - that metric was not just noisy but WRONG, because mp3
-//      pre-echo crosses 1e-3 near the start of many decodes well before the
-//      real onset. Measured against the full 1080-variant catalogue with the
-//      cross-correlation search: Chromium sits at lag 0 on all 1080, Firefox
-//      sits at lag +576 on all 1080 (one mp3 granule, 13.06ms at 44.1kHz) -
-//      see crossCorrelationLag's own header for the fifth-of-the-catalogue
-//      measurement (155 of 1080, minimum correlation 0.89 both engines) this
-//      full-catalogue run confirmed (minimum correlation 0.888 in both
-//      engines across all 1080).
+//      Not checked for mp3: mp3's leading-delay defect (point 4, below) is
+//      a different rule with its own tolerance, not this ogg content
+//      agreement check.
+//   4. Mp3 only: the leading delay between the wav and the decoded mp3, per
+//      engine, found by a cross-correlation lag search
+//      (scripts/lib/decode-judge.mjs's `crossCorrelationLag`, GS-07 v2.2).
+//      GS-08 (below): this used to be informational only. As of GS-08's mp3
+//      encoding fix (the real `lame` CLI, which writes a correct LAME/Xing
+//      gapless tag - encoder delay and padding - instead of ffmpeg's own mp3
+//      muxer, which never populated those exact tag fields with real values)
+//      this is now a GATE: lag must be exactly 0 in both engines. Before the
+//      fix, measured against the full 1080-variant catalogue with the
+//      cross-correlation search: Chromium sat at lag 0 on all 1080, Firefox
+//      sat at lag +576 on all 1080 (one mp3 granule, 13.06ms at 44.1kHz,
+//      also LAME's own fixed encoder delay - see crossCorrelationLag's own
+//      header for the fifth-of-the-catalogue measurement, 155 of 1080,
+//      minimum correlation 0.89 both engines, that full-catalogue run
+//      confirmed, minimum correlation 0.888 in both engines across all
+//      1080). After the fix, the same full-catalogue run lands Firefox at
+//      lag 0 too (see docs/DECISIONS.md, decision 60, for the exact numbers
+//      this gate's own threshold was set from).
 //
 // Measured max |browser - reference| after this fix, across every ogg in
 // the rebuilt catalogue (1080 files, both engines; see this script's own
@@ -120,6 +124,14 @@ const filesDir = flagValue("--files", join(root, "public", "f"));
 // have to wait for all 1080.
 const limitFlag = flagValue("--limit", null);
 const limit = limitFlag ? parseInt(limitFlag, 10) : null;
+
+// GS-08: mp3's leading-delay lag (crossCorrelationLag against the wav) must
+// land exactly here, in every engine, on every live variant, after the mp3
+// encoding fix (the real `lame` CLI, scripts/lib/audio.mjs) - see this
+// file's own header, point 4, and docs/DECISIONS.md decision 60 for the
+// measured before/after numbers this gate replaces an informational report
+// with.
+const MP3_LAG_TOLERANCE_FRAMES = 0;
 
 function log(...m) { console.log("[check-browser-decode]", ...m); }
 
@@ -403,6 +415,15 @@ async function main() {
               const { lag, correlation } = crossCorrelationLag(job.wavChannel, decodedChannel);
               mp3Lag.push(lag);
               if (correlation < mp3MinCorrelation) mp3MinCorrelation = correlation;
+              // GS-08: this used to be informational only (Firefox sat at a
+              // fixed +576-sample lag on every live mp3, ffmpeg's mp3 muxer
+              // never having written a real LAME gapless tag). The fix (the
+              // real `lame` CLI, scripts/lib/audio.mjs) landed Firefox at
+              // lag 0 on the full catalogue, matching Chromium exactly - so
+              // this is now a real gate, not just a report.
+              if (lag !== MP3_LAG_TOLERANCE_FRAMES) {
+                failures.push(`${job.id} (${name}): mp3 leading-delay lag is ${lag} frame(s), expected exactly ${MP3_LAG_TOLERANCE_FRAMES} (cross-correlation ${correlation.toFixed(3)}) - see GS-08, docs/DECISIONS.md decision 60`);
+              }
             }
           }
         }
@@ -460,12 +481,12 @@ async function main() {
       }
       const lagStats = summarizeLag(info.mp3Lag);
       if (lagStats) {
-        log(`${name}: mp3 leading-delay by cross-correlation (GS-08, information only, not a failure) - n=${lagStats.n}, modal lag ${lagStats.modalLag} frame(s) (${lagStats.modalCount}/${lagStats.n} variant(s)), range [${lagStats.min}, ${lagStats.max}], minimum normalized correlation at the best lag ${info.mp3MinCorrelation.toFixed(3)}`);
+        log(`${name}: mp3 leading-delay by cross-correlation (GS-08, gated - lag must equal ${MP3_LAG_TOLERANCE_FRAMES}) - n=${lagStats.n}, modal lag ${lagStats.modalLag} frame(s) (${lagStats.modalCount}/${lagStats.n} variant(s)), range [${lagStats.min}, ${lagStats.max}], minimum normalized correlation at the best lag ${info.mp3MinCorrelation.toFixed(3)}`);
       }
     }
 
     if (ok) {
-      log("PASS: every ogg and mp3 decoded whole (no error, no shorter-than-wav) and every ogg agreed with its own reference decode in both Chromium and Firefox");
+      log("PASS: every ogg and mp3 decoded whole (no error, no shorter-than-wav), every ogg agreed with its own reference decode, and every mp3's leading-delay lag was exactly 0 - in both Chromium and Firefox");
     } else {
       log("FAIL: see failures above");
     }
