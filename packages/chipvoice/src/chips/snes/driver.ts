@@ -161,38 +161,48 @@ const CLOCK_HZ = 1024000;
  * of two, and never switches the voice out of ADSR mode until `noteOff`
  * itself does, exactly as before this ticket.
  *
- * The taper's length is derived, not tuned by ear: a note shorter than
- * `TAPER_FLOOR_MS` is left untouched (byte-identical register stream),
- * because at `TAPER_FRACTION` of the note and a `TAPER_MIN_MS` floor,
- * anything shorter would have to spend more than its own length tapering.
- * `TAPER_FLOOR_MS` (`2 * TAPER_MIN_MS`) also clears every factory
- * instrument's own decay-to-sustain time (computed from each entry's real
- * ADSR1 decay rate and ADSR2 sustain level against the oracle's own
- * formula; the slowest, mallet, is 224 ms - longer notes clear it, and an
- * early ADSR2 write is harmless even before the voice reaches sustain: the
- * hardware only reads the SR field once `env_mode` is `env_sustain`, and
- * the sustain-level bits this write preserves are what drives that
- * transition, so it is inert, not wrong, until then). Otherwise the taper
- * runs for `clamp(duration * TAPER_FRACTION, TAPER_MIN_MS, TAPER_MAX_MS)`:
- * at most half the note (so at least as much of it sounds at full,
- * unmodified sustain as ever fades, the same proportional idiom N-SPC's
- * own quantization/gate table already expresses release timing in - see
- * the wiki page above), capped at `TAPER_MAX_MS`, chosen to equal this
- * ticket's own before/after measurement window (the last 100 ms before
- * key-off), so every audible sample this taper changes is inside the
- * window its own proof inspects.
+ * The taper's own shape is a set of chosen design constants, not a
+ * derivation - only the SR rate index below is actually computed from a
+ * formula. A note shorter than `TAPER_FLOOR_MS` (40 ms, `2 * TAPER_MIN_MS`)
+ * is left untouched (byte-identical register stream): below `TAPER_MIN_MS`
+ * (20 ms) a taper would be too brief to read as a fade rather than a click,
+ * and at `TAPER_FRACTION` (0.5) of the note, anything under 40 ms would
+ * have to spend more than its own length tapering. 40 ms also happens to
+ * clear every factory instrument's own decay-to-sustain time (computed
+ * from each entry's real ADSR1 decay rate and ADSR2 sustain level against
+ * the oracle's own formula; the slowest, mallet, is 224 ms), so an early
+ * ADSR2 write on any note this taper reaches is harmless even before the
+ * voice gets there: the hardware only reads the SR field once `env_mode`
+ * is `env_sustain`, and the sustain-level bits this write preserves are
+ * what drives that transition, so the write is inert, not wrong, until
+ * then.
  *
- * The SR rate index is chosen, not guessed: `RATE_MS` is `counter_rates`
- * converted to milliseconds (32 DSP samples per ms, the DSP's fixed
- * 32000 Hz output rate), and `stepsToReach` runs the oracle's exact
- * `env--; env -= env >> 8` loop to find how many steps this instrument's
- * own sustain envelope takes to fall to `TAPER_TARGET_RATIO` (1/8, about
- * -18 dB) of itself - independent of the chosen rate, only of the ratio
- * and the starting envelope. `taperRateIndex` then picks whichever of the
- * 32 rates gets that fall closest to the taper's own derived duration, so
- * the note is well into its fade by key-off; `noteOff`'s existing,
- * unchanged fast GAIN release finishes the last ~-18 dB in the same few
- * milliseconds it always has.
+ * Otherwise the taper runs for `clamp(duration * TAPER_FRACTION,
+ * TAPER_MIN_MS, TAPER_MAX_MS)`. `TAPER_FRACTION` (0.5, at most half the
+ * note) keeps at least as much of every note sounding at full, unmodified
+ * sustain as ever fades - the same proportional idiom N-SPC's own
+ * quantization/gate table already expresses release timing in, see the
+ * wiki page above. `TAPER_MAX_MS` (100 ms) keeps a long held note's taper
+ * from becoming a noticeably long fade-out in its own right rather than a
+ * release. Both are chosen starting points, not measured thresholds -
+ * decision 59 in `docs/DECISIONS.md` records the before/after evidence,
+ * including a fast staccato passage built to stress exactly this choice,
+ * that this ticket checked them against.
+ *
+ * The SR rate index is the one number here that is actually derived:
+ * `RATE_MS` is `counter_rates` converted to milliseconds (32 DSP samples
+ * per ms, the DSP's fixed 32000 Hz output rate), and `stepsToReach` runs
+ * the oracle's exact `env--; env -= env >> 8` loop to find how many steps
+ * this instrument's own sustain envelope takes to fall to
+ * `TAPER_TARGET_RATIO` (1/8, about -18 dB - itself a chosen fade depth,
+ * not a derived one: deep enough to read as a real fade, shallow enough
+ * that `noteOff`'s existing, unchanged fastest-rate GAIN release still has
+ * a real last stretch of its own to finish in the same few milliseconds it
+ * always has, rather than the taper doing that release's whole job for
+ * it) of itself - independent of the chosen rate, only of the ratio and
+ * the starting envelope. `taperRateIndex` then picks whichever of the 32
+ * rates gets that fall closest to the taper's own chosen duration, so the
+ * note is well into its fade by key-off.
  *
  * `room` keeps today's behavior (no taper): its echo already returns a
  * decaying tail after key-off - the dry voice's own release stays fast,

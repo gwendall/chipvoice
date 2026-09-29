@@ -1,4 +1,6 @@
 import { OfflineDriver, snesChip } from '../dist/index.js';
+import { EventQueue } from '../dist/event-queue.js';
+import { SnesDriver } from '../dist/chips/snes/driver.js';
 
 /**
  * P6-11: the dry space's pre-key-off release taper. Pins the exact ADSR2
@@ -141,6 +143,65 @@ function expectedTaperByte(adsr2, taperMs) {
   check('two notes on the same voice each end with their own fast-GAIN-decrease write', koffIndices.length === 2, `${koffIndices.length}`);
   const secondTail = all.slice(koffIndices[1] - 1, koffIndices[1] + 2);
   check('a second, longer note on a reused voice tapers from its own start, not the first note\'s', secondTail.length === 3 && secondTail[0].reg === 0x06 && secondTail[0].value === 0xd9, JSON.stringify(secondTail));
+}
+
+{
+  // Live-path safety. The song-rendering paths (`planPerformance`'s
+  // `RegisterTransactions`, `mix-calibration.ts`, the progressive preview
+  // worker built on a `planPerformance` plan, and `renderSong`/`renderSfx`'s
+  // own pump-then-render loop) all either collect a whole song's events and
+  // sort once before any rendering starts, or `pump()` strictly before
+  // `core.render()` for the same block - the taper's own backdated write
+  // just lands in its correct sorted slot before anything plays. None of
+  // that machinery is exercised here.
+  //
+  // The studio's LIVE playback/preview engine is different: `APU.enqueue()`
+  // (packages/chipvoice/src/driver.ts) pushes each `note()`/`noteOff()`
+  // call's own events into an in-memory queue with no sort of its own,
+  // flushed roughly once per animation frame to the worklet's `EventQueue`
+  // (packages/chipvoice/src/event-queue.ts), which drains it one DSP cycle
+  // at a time. A live "stop" issued with little or no scheduling lookahead
+  // (worst case: `Sequencer.stop()`, called with no `at`, defaults to
+  // `ctx.currentTime` - zero lookahead) can dispatch `noteOff()`'s taper
+  // write already behind the worklet's current cycle by the time it
+  // actually arrives. This reproduces that with the driver's own real
+  // `noteOff()` output (not a synthetic array), fed through the real
+  // `EventQueue`, to confirm the one property that matters: a backdated
+  // batch is applied harmlessly - not dropped, not thrown on, and never
+  // reordering another voice's own pending write - even though its intended
+  // pre-fade window has, in this worst case, already elapsed by delivery.
+  const frame = (at) => ({ at, volume: 15, freq: 440, period: 0, duty: 0, noiseMode: false, pitchOffset: 0, waveform: null, wave: null, fm: null, sample: 'flute' });
+  const encoder = new SnesDriver();
+  const CLOCK_HZ = 1024000;
+  const koffAt = Math.round(0.5 * CLOCK_HZ); // 500ms hold: well past the taper floor
+  encoder.note('v0', [frame(0)]);
+  const lateEvents = encoder.noteOff('v0', koffAt); // the taper write is somewhere inside this array, backdated
+  check('the scenario actually produced a tapered noteOff (6 events, not 4) - otherwise this test would not exercise the taper at all', lateEvents.length === 6, `${lateEvents.length}`);
+
+  const queue = new EventQueue();
+  // A different voice's own already-pending, correctly-timed write, sitting
+  // in the ~100ms gap between the taper's pair and noteOff's own key-off
+  // pair - present in the queue BEFORE the late batch below arrives, same
+  // as any other voice's live note would be.
+  const otherVoiceEvent = { at: lateEvents[1].at + 1500, addr: 0xf2, value: 0x99, owner: 'v5' };
+  queue.schedule([otherVoiceEvent]);
+
+  // The worklet has already advanced past every timestamp in `lateEvents`
+  // (including the taper's own) before this batch is even scheduled -
+  // modelling dispatch latency (rAF + postMessage + worklet block) that can
+  // exceed the pre-fade's own backdating in the worst case above.
+  const drained = [];
+  const drainUpTo = (limit) => { while (queue.size && queue.nextAt <= limit) drained.push(queue.take()); };
+  const cycle = lateEvents[lateEvents.length - 1].at + 50000;
+  drainUpTo(cycle);
+  check('a pending event already behind the simulated cycle position is still delivered once scheduled, not silently skipped (sanity check on the harness itself)', drained.length === 1 && drained[0] === otherVoiceEvent, `${drained.length}`);
+
+  queue.schedule(lateEvents);
+  check('scheduling a fully backdated batch does not throw and does not drop any of its events', queue.size === lateEvents.length, `${queue.size}`);
+  drainUpTo(cycle);
+  check('every event in the backdated batch is delivered on the very next drain - applied immediately (the taper collapses toward instantaneous in this worst case), never dropped or stuck', drained.length === 1 + lateEvents.length, `${drained.length}`);
+  check('the backdated batch is delivered in its own internal order, taper pair first then the unchanged key-off pair - never reordered against itself', JSON.stringify(drained.slice(1)) === JSON.stringify(lateEvents), 'order preserved');
+  check('the queue is left empty: nothing stuck or leaked', queue.size === 0, `${queue.size}`);
 }
 
 console.log(failures === 0 ? '\nPASS' : `\n${failures} FAILURE(S)`);
