@@ -70,13 +70,17 @@ jobs:
       - run: npm publish --access public --provenance
         working-directory: packages/gamesounds
 
-      # No workflow has ever done this for chipvoice's own releases - the
-      # release page has always been a separate, manual step after
-      # publishing, which is exactly the kind of step a maintainer forgets.
-      # npm publish above already means the version is out and nothing here
-      # can undo that, so this only ever adds the page and checks first
-      # rather than failing on one a maintainer already created by hand.
+      # Mirrors publish.yml's own release step: npm publish above already
+      # means the version is out and nothing here can undo that, so this
+      # only ever adds the page and checks first rather than failing on one
+      # a maintainer already created by hand. --title falls back to the tag
+      # name itself when the tag carries no subject (an annotated tag made
+      # with `git tag -a` but an empty message, or a lightweight tag) -
+      # without it, `--notes-from-tag` alone ships a release with an empty
+      # title, as chipvoice's own v0.20.0 did before this fix.
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag
+        run: |
+          title="$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag --title "${title:-$GITHUB_REF_NAME}"

@@ -98,11 +98,16 @@ CLIとランタイムの完全なリファレンスは
 [`packages/gamesounds/README_ja.md`](../packages/gamesounds/README_ja.md)を、
 各バージョンで何が出荷されたかは
 [`packages/gamesounds/CHANGELOG_ja.md`](../packages/gamesounds/CHANGELOG_ja.md)
-を参照。パッケージの`files`ホワイトリスト、`exports`マップ、フレッシュイン
-ストールテストは`packages/gamesounds/scripts/fresh-install-test.mjs`
-（`npm run test:fresh`）がカバーする - これはtarballをパックし、空のプロ
-ジェクトにインストールし、公開のたびにインストール済みのCLIとAPIを実際の
-gamesounds.aiに対して駆動して検証する。
+を参照。`packages/gamesounds/scripts/fresh-install-test.mjs`
+（`npm run test:fresh`）はtarballをパックし、空のプロジェクトにインストー
+ルし、インストール済みのCLIとAPIを実際のgamesounds.aiに対して駆動する -
+これによりパッケージの`files`ホワイトリストと`exports`マップが、実際に
+`npm install`が渡すものの上で本当に動くことを証明する。
+`.github/workflows/publish-gamesounds.yml`は、タグ付き公開のたびに（ライ
+ブチェックを強制的に有効にして）これを実行する。初回のみの手動公開
+（0.1.0。信頼済み公開を設定できるようになる前に、パッケージがまだレジス
+トリに存在しない段階で、認証済みのローカルnpmから行う）は、同じように
+手動でこれを先に実行する。
 
 <a id="the-cli"></a>
 ## CLI

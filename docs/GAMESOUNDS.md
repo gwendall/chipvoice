@@ -493,11 +493,15 @@ const sounds = await loadSounds({ manifest });
 See [`packages/gamesounds/README.md`](../packages/gamesounds/README.md) for
 the full CLI and runtime reference and
 [`packages/gamesounds/CHANGELOG.md`](../packages/gamesounds/CHANGELOG.md) for
-what shipped in each version. The package's `files` whitelist, `exports` map
-and fresh-install test are covered by `packages/gamesounds/scripts/fresh-install-test.mjs`
-(`npm run test:fresh`), which packs the tarball, installs it into an empty
-project and drives the installed CLI and API against a live gamesounds.ai
-before every publish.
+what shipped in each version. `packages/gamesounds/scripts/fresh-install-test.mjs`
+(`npm run test:fresh`) packs the tarball, installs it into an empty project
+and drives the installed CLI and API against a live gamesounds.ai, proving
+the package's `files` whitelist and `exports` map actually work from what
+`npm install` hands somebody. `.github/workflows/publish-gamesounds.yml`
+runs it (with its live checks forced on) before every tagged publish; the
+one-time first publish (0.1.0, done from an authenticated local npm before
+the package exists on the registry for trusted publishing to be configured
+against) runs it by hand first, the same way.
 
 ## The CLI
 
