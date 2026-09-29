@@ -261,30 +261,41 @@ only 1004 of 1080 measured live oggs. `apps/sounds/scripts/check-browser-decode.
 ogg and mp3 in real Chromium AND Firefox (Playwright, one browser launch
 per engine, a hard overall timeout, both closed in a `finally`) and fails
 the build on any decode error, any decoded length shorter than the source
-wav, or (ogg only) the browser's own last-audible sample sitting
-meaningfully earlier than the wav's. Firefox's mp3 behavior below is
-reported, never failed on. Run in CI as part of the `sounds` job
-(which now installs Firefox alongside Chromium) and exposed locally as
-`pnpm sounds:check-decode`. "Meaningfully earlier" needed one more
-refinement once this gate ran against the rebuilt catalogue: 96 of 1080
-oggs showed a gap past the margin in both engines, but every one turned
-out to be near-threshold chatter on a slowly-decaying tail (the wav's own
-loudest sample in the gap never exceeded -55 dBFS) rather than real lost
-content, so the gate now also requires the wav's own gap content to reach
-a second, higher threshold before failing - see
-[Decision 54](DECISIONS.md)'s GS-07 v2 amendment for the full
-measurement and the negative fixture that proves this did not just widen
-the gate into uselessness. With that in place, the gate passes cleanly
-against the rebuilt catalogue: 0 failures in Chromium, 0 in Firefox.
+wav, or, ogg only, disagreement with a reference decode of the SAME file:
+sox's own reference decoder (libvorbisfile) decodes each shipped ogg's
+exact bytes, and the browser's own decode of those same bytes is compared
+against it sample by sample, at a stated 1e-3 tolerance
+(`DECODER_AGREEMENT_TOLERANCE`, `apps/sounds/scripts/lib/decode-judge.mjs`).
+Comparing against a reference DECODE of the file, rather than the wav,
+answers the question this gate needs answered - did the browser return
+what the file actually contains - without also catching the codec's own
+already-gated lossy quantization of the wav (`checkFormatEnergies`'s job).
+Firefox's mp3 behavior below is reported, never failed on. Before checking
+anything real, three negative fixtures (a real truncation; a same-length
+zeroed tail at full amplitude; the same at a much quieter amplitude) must
+each fail their own specific rule, in both engines, or the gate refuses to
+run at all - see [Decision 54](DECISIONS.md)'s GS-07 v2.1 amendment for the
+full mechanism, why an earlier version of this gate compared against the
+wav instead and why that was wrong, and the measured max disagreement (1.54e-5
+in both engines, well under the tolerance). Run in CI as part of the
+`sounds` job (which now installs Firefox alongside Chromium) and exposed
+locally as `pnpm sounds:check-decode`. The gate passes cleanly against the
+rebuilt catalogue: 0 failures in Chromium, 0 in Firefox.
 
 mp3 has no equivalent content-loss problem, but has a different, newly
 measured one: Chromium is gapless-exact on every live mp3 (1042 of 1080
 decode to exactly the wav's own frame count, the other 38 longer by 4 to
-46 samples, none shorter). Firefox decodes every mp3 whole too, but its
-own decoded length exceeds the wav's frame count by 623 to 1774 samples
-(mean about 1172, roughly 14 to 40ms) - it does not trim the LAME
-encoder's own priming delay the way Chromium's gapless playback does. That
-is a real, separate defect (added leading latency, not lost content) -
+46 samples, none shorter). Firefox decodes every mp3 whole too, but does
+not trim the LAME encoder's own priming delay the way Chromium's gapless
+playback does, so its decode of the same file sits a median 578 samples
+later than Chromium's (minimum 531, about 13.1ms at 44.1kHz, close to one
+mp3 granule of 576 samples) - the actual leading delay, measured as the
+last-audible-sample difference between the two engines' decodes of the
+identical bytes. That is smaller than, and different from, Firefox's own
+decoded length exceeding the wav's frame count by 623 to 1774 samples
+(mean about 1172): the length excess is the leading delay plus whatever
+trailing padding Firefox also leaves untrimmed, not latency by itself. That
+is a real, separate defect (added leading delay, not lost content) -
 tracked as new backlog item **GS-08**, not fixed in this ticket. The
 catalogue has no loop sounds, so none of this trailing-silence handling is
 ever audible as a seam either way.

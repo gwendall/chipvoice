@@ -572,11 +572,21 @@ const BITEXACT_ARGS = ["-fflags", "+bitexact", "-flags:a", "+bitexact"];
 //   - mp3 has no equivalent content-loss problem: Chromium is gapless-exact
 //     (1042 of 1080 live mp3s decode to exactly the wav's own frame count,
 //     the other 38 longer by 4 to 46 samples, none shorter). Firefox decodes
-//     every mp3 whole too, but shifts the content later by 623 to 1774
-//     samples (mean ~1172, roughly 14 to 40ms) - it does not fully trim the
-//     LAME encoder's own priming delay. That is a real, separate defect
-//     (leading silence/latency, not lost content) - see docs/BACKLOG.md's
-//     GS-08. `check-browser-decode.mjs` reports it, never fails on it.
+//     every mp3 whole too, but does not fully trim the LAME encoder's own
+//     priming delay, so its decode is shifted later by a median of 578
+//     samples relative to Chromium's decode of the same file (about 13.1ms
+//     at 44.1kHz, close to one mp3 granule of 576 samples; minimum 531).
+//     That figure is the actual leading delay (last-audible-sample
+//     difference between the two engines' decodes of the same bytes, which
+//     cancels out the encoder's own pre-echo since both engines decode the
+//     identical bitstream). The 623-to-1774-sample range (mean ~1172) some
+//     earlier notes here called "latency" is a DIFFERENT quantity - decoded
+//     length minus the wav's own frame count - which is the leading delay
+//     PLUS whatever trailing padding Firefox also leaves untrimmed; it was
+//     mislabeled as latency in GS-07 v2 and corrected in GS-07 v2.1. Either
+//     way this is a real, separate defect (leading silence, not lost
+//     content) - see docs/BACKLOG.md's GS-08. `check-browser-decode.mjs`
+//     reports both numbers as information, never fails on them.
 //
 // The catalogue has no loop sounds (docs/BACKLOG.md), so trailing silence -
 // from padding, from a guard, from either decoder's own trim eating into

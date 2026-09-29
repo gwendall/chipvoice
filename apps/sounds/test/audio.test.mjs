@@ -496,6 +496,14 @@ if (!nativeVorbisAvailable()) {
   // so simulating "sox missing" has to happen in a FRESH process, not by
   // shrinking this process's own PATH after that cache is already warm.
   const dir = mkdtempSync(join(tmpdir(), "gamesounds-gs07-nosox-"));
+  // An empty, freshly-made directory - never a hardcoded system path like
+  // "/usr/bin:/bin" - is the only PATH restriction guaranteed to exclude sox
+  // on every machine this suite runs on: a hardcoded path excludes sox on a
+  // Homebrew Mac (sox lives under /opt/homebrew/bin there) but NOT on this
+  // repo's own CI runner, where `apt-get install sox` puts the binary at
+  // /usr/bin/sox - inside "/usr/bin:/bin" - which silently defeated this
+  // exact test in CI (DID_NOT_THROW) without ever failing it locally.
+  const emptyPathDir = mkdtempSync(join(tmpdir(), "gamesounds-gs07-emptypath-"));
   try {
     const audioModuleUrl = new URL("../scripts/lib/audio.mjs", import.meta.url).href;
     const script = [
@@ -514,7 +522,7 @@ if (!nativeVorbisAvailable()) {
       `}`,
     ].join("\n");
     const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
-      env: { ...process.env, PATH: "/usr/bin:/bin" },
+      env: { ...process.env, PATH: emptyPathDir },
       encoding: "utf8",
       maxBuffer: 1024 * 1024,
     });
@@ -524,6 +532,7 @@ if (!nativeVorbisAvailable()) {
     console.log("PASS encodeVariant fails loudly (not silently) when sox is missing from PATH, in a fresh process");
   } finally {
     rmSync(dir, { recursive: true, force: true });
+    rmSync(emptyPathDir, { recursive: true, force: true });
   }
 }
 
