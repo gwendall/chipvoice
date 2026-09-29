@@ -15,7 +15,8 @@ import { FACTORY_SAMPLES, FACTORY_RAM_HEX } from "./bank-inline.js";
  * exponential decrease in GAIN mode, which is the voice's own register: KOFF
  * is shared by eight voices and a driver that writes it for one would carry
  * the others' state, which this one, writing notes out of time order, does
- * not have.
+ * not have. In the dry space, that fast release is preceded by its own
+ * taper: see the doc comment above `TAPER_TARGET_RATIO`, below.
  *
  * The factory default is dry: `space` unset, or `{ space: "dry" }`, writes
  * EVOL/EFB/EON all zero, exactly as this driver always has. Space is an
@@ -124,6 +125,122 @@ function spaceFor(name: string | undefined): { evol: number; efb: number; eon: n
   return SPACES[name ?? "dry"] ?? SPACES.dry;
 }
 
+/** The SPC700's clock, and the DSP's: 1024000 Hz, one phase of the DSP's pipeline per cycle. */
+const CLOCK_HZ = 1024000;
+
+/**
+ * A driver-side release taper before key-off, for the dry space only (P6-11,
+ * decision 53's "the dry-space release, honestly", decision 59). A held dry
+ * note stays at the sample's sustain level until key-off, because every
+ * factory instrument's ADSR2 sustain rate (SR) is 0 ("never"); key-off then
+ * switches the voice to a fixed, fast exponential GAIN decrease
+ * (`noteOff`, below, unchanged by this taper). That is accurate hardware
+ * behavior, but with nothing before it, it reads as an abrupt stop. Native
+ * SPC drivers (N-SPC and its relatives) taper the sustain itself first,
+ * with the ADSR's own SR or a scripted GAIN decrease - see
+ * <https://snes.nesdev.org/wiki/DSP_envelopes>: "[a normal or exponential
+ * decrease GAIN mode] need[s] to be triggered in the middle of your note...
+ * to implement a custom release rate... to mimic a release envelope."
+ *
+ * This taper uses the ADSR path, not GAIN: one write to the voice's own
+ * ADSR2 (`$x6`), some time before key-off, replacing its SR field (the low
+ * five bits) while keeping the instrument's own sustain level (the top
+ * three bits) untouched. Once the voice has reached its sustain level - by
+ * the time any note old enough for this taper to apply gets one, see
+ * `TAPER_FLOOR_MS` below - the hardware's own sustain-phase envelope
+ * step takes over unassisted: `run_envelope` in this repo's own
+ * conformance oracle, `packages/conform/oracles/snes-spc/snes_spc/SPC_DSP.cpp`
+ * (`v->env_mode >= env_decay`, the non-decay branch), computes
+ * `env--; env -= env >> 8; rate = adsr2 & 0x1F` every
+ * `counter_rates[rate]` DSP cycles - the exact formula GAIN's own
+ * exponential-decrease mode (mode 5) uses, from the same 32-entry
+ * `counter_rates` table `noteOff`'s existing fast release already reads at
+ * its fastest entry (rate `0x1f`). Reusing the ADSR path instead of GAIN
+ * for the taper keeps every instrument's own sustain *level* (not just its
+ * rate) governing the fade's starting point, touches one register instead
+ * of two, and never switches the voice out of ADSR mode until `noteOff`
+ * itself does, exactly as before this ticket.
+ *
+ * The taper's own shape is a set of chosen design constants, not a
+ * derivation - only the SR rate index below is actually computed from a
+ * formula. A note shorter than `TAPER_FLOOR_MS` (40 ms, `2 * TAPER_MIN_MS`)
+ * is left untouched (byte-identical register stream): below `TAPER_MIN_MS`
+ * (20 ms) a taper would be too brief to read as a fade rather than a click,
+ * and at `TAPER_FRACTION` (0.5) of the note, anything under 40 ms would
+ * have to spend more than its own length tapering. 40 ms also happens to
+ * clear every factory instrument's own decay-to-sustain time (computed
+ * from each entry's real ADSR1 decay rate and ADSR2 sustain level against
+ * the oracle's own formula; the slowest, mallet, is 224 ms), so an early
+ * ADSR2 write on any note this taper reaches is harmless even before the
+ * voice gets there: the hardware only reads the SR field once `env_mode`
+ * is `env_sustain`, and the sustain-level bits this write preserves are
+ * what drives that transition, so the write is inert, not wrong, until
+ * then.
+ *
+ * Otherwise the taper runs for `clamp(duration * TAPER_FRACTION,
+ * TAPER_MIN_MS, TAPER_MAX_MS)`. `TAPER_FRACTION` (0.5, at most half the
+ * note) keeps at least as much of every note sounding at full, unmodified
+ * sustain as ever fades - the same proportional idiom N-SPC's own
+ * quantization/gate table already expresses release timing in, see the
+ * wiki page above. `TAPER_MAX_MS` (100 ms) keeps a long held note's taper
+ * from becoming a noticeably long fade-out in its own right rather than a
+ * release. Both are chosen starting points, not measured thresholds -
+ * decision 59 in `docs/DECISIONS.md` records the before/after evidence,
+ * including a fast staccato passage built to stress exactly this choice,
+ * that this ticket checked them against.
+ *
+ * The SR rate index is the one number here that is actually derived:
+ * `RATE_MS` is `counter_rates` converted to milliseconds (32 DSP samples
+ * per ms, the DSP's fixed 32000 Hz output rate), and `stepsToReach` runs
+ * the oracle's exact `env--; env -= env >> 8` loop to find how many steps
+ * this instrument's own sustain envelope takes to fall to
+ * `TAPER_TARGET_RATIO` (1/8, about -18 dB - itself a chosen fade depth,
+ * not a derived one: deep enough to read as a real fade, shallow enough
+ * that `noteOff`'s existing, unchanged fastest-rate GAIN release still has
+ * a real last stretch of its own to finish in the same few milliseconds it
+ * always has, rather than the taper doing that release's whole job for
+ * it) of itself - independent of the chosen rate, only of the ratio and
+ * the starting envelope. `taperRateIndex` then picks whichever of the 32
+ * rates gets that fall closest to the taper's own chosen duration, so the
+ * note is well into its fade by key-off.
+ *
+ * `room` keeps today's behavior (no taper): its echo already returns a
+ * decaying tail after key-off - the dry voice's own release stays fast,
+ * exactly as `noteOff` always made it, and the echo, not this taper, is
+ * what fills the space after key-off, matching decision 53's measurement
+ * that `room`'s tail is four to five orders of magnitude above dry's.
+ * Layering this taper under `room` too would fade the dry voice under an
+ * echo return that is already doing that job, for no measured benefit.
+ */
+const TAPER_TARGET_RATIO = 1 / 8;
+const TAPER_MIN_MS = 20;
+const TAPER_MAX_MS = 100;
+const TAPER_FRACTION = 0.5;
+const TAPER_FLOOR_MS = TAPER_MIN_MS * 2;
+/** `counter_rates` (SPC_DSP.cpp), in milliseconds: DSP samples per step / 32 (32 kHz). */
+const RATE_MS = [
+  30721, 2048, 1536, 1280, 1024, 768, 640, 512, 384, 320, 256, 192, 160, 128, 96, 80, 64, 48, 40, 32, 24, 20, 16, 12, 10, 8, 6, 5, 4, 3, 2, 1,
+].map((counter) => counter / 32);
+/** The oracle's own decay/sustain-phase step, run in software to find a step count. */
+function stepsToReach(env0: number, target: number): number {
+  let env = env0, steps = 0;
+  while (env > target && steps < 100000) {
+    env -= 1 + (env >> 8);
+    steps++;
+  }
+  return steps;
+}
+/** The SR (`adsr2 & 0x1f`) whose total fall to `TAPER_TARGET_RATIO` of `sustainEnv` lands closest to `taperMs`. */
+function taperRateIndex(sustainEnv: number, taperMs: number): number {
+  const steps = stepsToReach(sustainEnv, Math.floor(sustainEnv * TAPER_TARGET_RATIO));
+  let best = 1, bestError = Infinity;
+  for (let rate = 1; rate <= 0x1f; rate++) {
+    const error = Math.abs(steps * RATE_MS[rate] - taperMs);
+    if (error < bestError) { bestError = error; best = rate; }
+  }
+  return best;
+}
+
 type BankEntry = (typeof FACTORY_SAMPLES)[number];
 const SAMPLE_BY_NAME = new Map(FACTORY_SAMPLES.map(entry => [entry.name,entry]));
 /** One tuning source for both arrangement diagnostics and playback. */
@@ -153,10 +270,15 @@ export class SnesDriver implements ChipDriver {
   private readonly bank: BankEntry[];
   private readonly image: Uint8Array;
   private readonly space: { evol: number; efb: number; eon: number; edl: number };
+  /** Dry only (see the taper's own doc comment above `TAPER_TARGET_RATIO`); `room` keeps its own tail. */
+  private readonly taper: boolean;
+  /** One note per voice at a time, same as every other per-voice register this driver tracks. */
+  private readonly held = new Map<number, { entry: BankEntry; startAt: number }>();
   constructor(options?: ChipCreateOptions) {
     this.bank = FACTORY_SAMPLES;
     this.image = bankImage();
     this.space = spaceFor(options?.space);
+    this.taper = this.space === SPACES.dry;
   }
 
   /** The directory and the bank, from `$0200`. */
@@ -305,6 +427,7 @@ export class SnesDriver implements ChipDriver {
       lastVolume = volume;
       lastPitch = pitch;
     }
+    if (this.taper) this.held.set(v, { entry, startAt: first.at });
     return out;
   }
 
@@ -315,10 +438,38 @@ export class SnesDriver implements ChipDriver {
     const t = at + (v + 1) * STAGGER;
     const base = v * 0x10;
     return [
+      ...this.taperEvents(v, base, at),
       { at: t, addr: F2, value: base + 0x07 },
       { at: t + PAIR, addr: F3, value: 0xbf },
       { at: t + GAP, addr: F2, value: base + 0x05 },
       { at: t + GAP + PAIR, addr: F3, value: 0x7f },
+    ];
+  }
+
+  /**
+   * The pre-key-off release taper (P6-11): one ADSR2 write, some time before
+   * `noteOff`'s own fast release, that lowers the voice's sustain rate from
+   * 0 ("never") to a rate derived from this note's own duration and this
+   * instrument's own sustain level. See the doc comment above
+   * `TAPER_TARGET_RATIO` for the full derivation. `[]` for a short note, a
+   * voice this driver never saw a `note()` call for, or a non-dry space.
+   */
+  private taperEvents(v: number, base: number, at: number): RegisterEvent[] {
+    if (!this.taper) return [];
+    const state = this.held.get(v);
+    this.held.delete(v);
+    if (!state) return [];
+    const durationMs = ((at - state.startAt) / CLOCK_HZ) * 1000;
+    if (durationMs < TAPER_FLOOR_MS) return [];
+    const taperMs = Math.min(TAPER_MAX_MS, Math.max(TAPER_MIN_MS, durationMs * TAPER_FRACTION));
+    const taperAt = Math.max(state.startAt, at - Math.round((taperMs / 1000) * CLOCK_HZ));
+    const sustainLevel = state.entry.adsr2 & 0xe0;
+    const sustainEnv = sustainLevel === 0xe0 ? 0x7ff : (sustainLevel << 3) + 0xff;
+    const rate = taperRateIndex(sustainEnv, taperMs);
+    const t = taperAt + (v + 1) * STAGGER;
+    return [
+      { at: t, addr: F2, value: base + 0x06 },
+      { at: t + PAIR, addr: F3, value: sustainLevel | rate },
     ];
   }
 }
