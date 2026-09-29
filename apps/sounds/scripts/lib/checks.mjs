@@ -6,9 +6,9 @@ import { LOUDNESS_TARGET_LUFS, TRUE_PEAK_CEILING_DBTP, firstAboveFloor, peakOf, 
 // checkFormatEnergies guards the shipped ogg/mp3's own decoded loudness
 // against the wav it was encoded from - built from decoding and measuring
 // every real variant in this catalogue (both origins, both formats) after
-// the two fixes this file exists to guard (BITEXACT_ARGS and the fallback
-// ogg path's unity-gain pan filter - see audio.mjs's vorbisEncoderArgs and
-// encodeVariant).
+// the fix this file exists to guard (BITEXACT_ARGS, plus the now-retired
+// fallback ogg path's own unity-gain pan filter - see docs/DECISIONS.md,
+// decision 54, and audio.mjs's encodeVariant).
 //
 // This went through two designs, in order, and the first one was wrong in a
 // way a round-2 review caught before merge:
@@ -351,6 +351,83 @@ export function checkFormatEnergy(sourceEnergyLinear, formatEnergyLinear, { form
   return { ok: true };
 }
 
+/** GS-07: every shipped ogg/mp3 must decode to AT LEAST as many sample
+ * frames as the source wav it was encoded from, per ffmpeg's own CLI decode -
+ * zero tolerance on the short side. `decodedFrames` is `encodeVariant`'s own
+ * `formatFrames.ogg` / `formatFrames.mp3` (scripts/lib/audio.mjs): the actual
+ * decoded PCM's `left.length`, measured on the exact bytes that ship, never
+ * assumed.
+ *
+ * Unlike `checkFormatEnergy`, this has no per-channel variant to name: a
+ * single decoded file's frame count is the same for every one of its
+ * channels by construction (`decodeToRender` de-interleaves one
+ * fixed-length buffer into equal-length `left`/`right` arrays), so there is
+ * no channel-specific length to report separately the way there is for
+ * energy or peak (a channel CAN be quieter than another; it cannot be
+ * shorter). Longer than the source is fine and expected - the ogg's own
+ * `OGG_TAIL_GUARD_FRAMES` pad, and mp3's few extra gapless-trim samples
+ * (`docs/GAMESOUNDS.md`), both do this routinely - only SHORTER is ever a
+ * defect: a lossy codec may pad silence onto the end, it must never drop
+ * real content from it.
+ *
+ * This exists because `checkFormatEnergies` alone could not see the defect
+ * it was built to catch: decoders - not encoders - were found to trim real,
+ * quiet content off the end of an otherwise-complete ogg. GS-07's own
+ * investigation (see the amendment to Decision 54 in `docs/DECISIONS.md`,
+ * and the comment above `OGG_TAIL_GUARD_FRAMES` in audio.mjs for the full
+ * measured mechanism and numbers) found this was never the encoder's fault -
+ * a native-encoder ogg's own granule position, and a libvorbis ogg decoded
+ * through the reference libvorbis decoder, both prove the encoded stream is
+ * complete. ffmpeg's own CLI decoder (what feeds this very gate) drops up to
+ * 128 frames off the end regardless, and real browsers (Chromium especially)
+ * cut differently again - see `scripts/check-browser-decode.mjs`, the gate
+ * that actually verifies what ships decodes whole in a real browser, since
+ * this ffmpeg-CLI-based gate structurally cannot see that gap. Every one of
+ * the original 56 (of 1080) affected live catalogue oggs passed
+ * `checkFormatEnergies` outright, because the lost tail was, in every case,
+ * a quiet decay contributing almost nothing to total energy either way. A
+ * length gate catches exactly the class of loss an energy gate structurally
+ * cannot: real samples removed from a signal that was already quiet there.
+ */
+export function checkFormatLength(sourceFrames, decodedFrames, { format } = {}) {
+  if (!(sourceFrames > 0)) return { ok: true };
+  if (!Number.isFinite(decodedFrames) || decodedFrames < 0) {
+    return { ok: false, reason: `${format} decoded frame count is not a valid number (${decodedFrames})` };
+  }
+  if (decodedFrames < sourceFrames) {
+    return {
+      ok: false,
+      reason:
+        `${format} decoded ${decodedFrames} sample frame(s), ${sourceFrames - decodedFrames} short of the source wav's ` +
+        `${sourceFrames} frame(s) - a lossy codec may pad the end with silence, it must never drop real content from it`,
+    };
+  }
+  return { ok: true };
+}
+
+/** Runs `checkFormatLength` for both shipped formats against one variant's
+ * own source frame count - the length-gate analogue of `checkFormatEnergies`
+ * above, wired into `checkSound` next to it. `formatFrames` is
+ * `encodeVariant`'s own record (`{source, ogg, mp3}`, scripts/lib/audio.mjs);
+ * only `ogg` and `mp3` are checked here, `source` is read directly off the
+ * variant's own PCM by the caller (`checkSound`, mirroring how
+ * `checkFormatEnergies` is called with a freshly computed `sourceEnergy`
+ * rather than trusting `formatEnergy.source`). */
+export function checkFormatLengths(sourceFrames, formatFrames) {
+  if (!(sourceFrames > 0) || !formatFrames) return { ok: true };
+  const failures = [];
+  for (const format of ["ogg", "mp3"]) {
+    const decodedFrames = formatFrames[format];
+    if (decodedFrames === undefined) {
+      failures.push(`${format}: no decoded frame count to check`);
+      continue;
+    }
+    const check = checkFormatLength(sourceFrames, decodedFrames, { format });
+    if (!check.ok) failures.push(check.reason);
+  }
+  return failures.length ? { ok: false, reason: failures.join("; ") } : { ok: true };
+}
+
 /**
  * Every shipped ogg and mp3 must carry as much real energy as the wav it was
  * encoded from, per channel - not just "some channel is loud enough
@@ -403,9 +480,10 @@ export function checkFormatEnergies(sourceEnergy, formatEnergy, { toleranceDb = 
  *
  * `variantData` is keyed by each variant's own sha256 (content-addressed, so
  * one key never collides across sounds): `{ bytes, peakLinear, left, right,
- * sampleRate, formatPeaks, formatEnergy }` (both `formatPeaks` and
- * `formatEnergy`: `encodeVariant`'s own record of decoding the shipped
- * ogg/mp3 back to PCM - see checkFormatEnergies for the gate, and
+ * sampleRate, formatPeaks, formatEnergy, formatFrames }` (`formatPeaks`,
+ * `formatEnergy` and `formatFrames`: `encodeVariant`'s own record of
+ * decoding the shipped ogg/mp3 back to PCM - see checkFormatEnergies for the
+ * loudness gate, checkFormatLengths (GS-07) for the length gate, and
  * `collectFormatPeakDeltas` for the informational-only peak report). Any
  * field a caller does not have is simply skipped - the negative tests
  * exercise each check directly, so `checkSound`'s own tests only need to
@@ -455,6 +533,10 @@ export function checkSound(sound, variantData, sha256Hex, loudnessOptions = {}, 
       const energyCheck = checkFormatEnergies(sourceEnergy, data.formatEnergy);
       if (!energyCheck.ok) failures.push(`variant ${variant.n} format energy: ${energyCheck.reason}`);
       if (formatEnergyDeltasOut) formatEnergyDeltasOut.push(...collectFormatEnergyDeltas(sourceEnergy, data.formatEnergy));
+    }
+    if (data?.left && data.formatFrames) {
+      const lengthCheck = checkFormatLengths(data.left.length, data.formatFrames);
+      if (!lengthCheck.ok) failures.push(`variant ${variant.n} format length: ${lengthCheck.reason}`);
     }
     if (data?.left && data.formatPeaks && formatPeakDeltasOut) {
       const sourcePeaks = peakPerChannel(data.left, data.right ?? null);

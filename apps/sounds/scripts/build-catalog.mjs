@@ -43,13 +43,22 @@ import { checkSound, collectFormatEnergyDeltas, FORMAT_ENERGY_TOLERANCE_DB } fro
 // build gate itself runs on every other variant). These three lose real
 // energy - not the harmless peak-only "transient smearing" a first pass
 // wrongly assumed - because most of their own synthesized content sits above
-// ~16 kHz, inside the range both ffmpeg's native vorbis encoder and
+// ~16 kHz, inside the range both libvorbis (via sox, GS-06/GS-07) and
 // libmp3lame filter away at this catalogue's quality settings. A follow-up
 // ticket (docs/BACKLOG.md, GS-05) tracks finding why sfx-engine's modal
 // synthesis puts energy there and fixing it at the source; tuning the engine
 // itself is out of scope for this ticket (decision 52, decision 54).
+// Re-verified after GS-06/GS-07 switched every ogg to sox's libvorbis
+// handler (see docs/DECISIONS.md, decision 54's GS-07 v2 amendment): each of
+// these three was independently re-rendered and re-measured against the new
+// encoder (all 8 SEED_LADDER seeds, not just the accepted takes). The loss is
+// essentially unchanged from before the switch - within a few tenths of a dB
+// for two of the three, and actually a bit smaller for pickup-key - which
+// confirms the diagnosis was always about spectral content above 16 kHz
+// falling in a passband both codecs filter, not about which vorbis encoder
+// (or its own bugs) produced the ogg.
 const EXCLUDED_PRESETS = {
-  "pickup-key": "97.4% of the source wav's own energy sits above 16 kHz (steep highpass measurement); the shipped ogg/mp3 lose 13.2 to 18.2 dB of real (summed) energy against the wav across the seed ladder, far outside FORMAT_ENERGY_TOLERANCE_DB - a codec passband loss, not transient smearing",
+  "pickup-key": "97.4% of the source wav's own energy sits above 16 kHz (steep highpass measurement); the shipped ogg/mp3 lose 12.6 to 18.2 dB of real (summed) energy against the wav across the seed ladder, far outside FORMAT_ENERGY_TOLERANCE_DB - a codec passband loss, not transient smearing",
   "impact-glass-light": "77.6% of the source wav's own energy sits above 16 kHz; the shipped ogg/mp3 lose 6.1 to 6.9 dB of real (summed) energy against the wav across the seed ladder, outside FORMAT_ENERGY_TOLERANCE_DB - a codec passband loss, not transient smearing",
   "footstep-metal": "31.0% of the source wav's own energy sits above 16 kHz; the shipped ogg/mp3 lose 2.2 to 15.6 dB of real (summed) energy against the wav across the seed ladder - every one of the eight candidate seeds exceeds FORMAT_ENERGY_TOLERANCE_DB, not only the worst ones - a codec passband loss, not transient smearing",
 };
@@ -123,17 +132,27 @@ function processVariant(render, n) {
       left: leveled.left,
       right: leveled.right,
       sampleRate: leveled.sampleRate,
-      // Both decoded back from the actually-shipped ogg/mp3 bytes by
+      // All three decoded back from the actually-shipped ogg/mp3 bytes by
       // encodeVariant itself (scripts/lib/audio.mjs). formatEnergy is what
-      // checkSound's checkFormatEnergies actually gates on (total energy -
-      // the sum of each sample squared - per channel) - the class of bug a
-      // missing libvorbis fallback's old `-ac 2` upmix caused shows up here
-      // as an exact -3.01 dB delta.
+      // checkSound's checkFormatEnergies gates on for LOUDNESS (total energy -
+      // the sum of each sample squared - per channel) - the class of bug the
+      // old, now-retired ogg fallback path's `-ac 2` upmix caused shows up
+      // here as an exact -3.01 dB delta. formatFrames (GS-07) is what
+      // checkSound's checkFormatLengths gates on for LENGTH - a lossy
+      // format's own DECODER (ffmpeg's CLI decoder, and separately real
+      // browsers) was found to drop real samples off a file's own tail for a
+      // band of input lengths, regardless of which vorbis encoder produced
+      // it, invisible to the energy gate because the lost tail was always a
+      // quiet decay. encodeVariant's OGG_TAIL_GUARD_FRAMES pad exists to
+      // absorb this (see docs/DECISIONS.md's amendment to decision 54, and
+      // scripts/check-browser-decode.mjs for the gate that verifies real
+      // browsers, not just ffmpeg's own CLI decoder).
       // formatPeaks is kept only as informational build-log data
       // (collectFormatPeakDeltas) - see checks.mjs's own header for why peak
       // was retired as a gate.
       formatPeaks: encoded.formatPeaks,
       formatEnergy: encoded.formatEnergy,
+      formatFrames: encoded.formatFrames,
     },
   };
 }

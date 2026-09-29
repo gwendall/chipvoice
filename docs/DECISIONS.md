@@ -2367,3 +2367,418 @@ reason (`build-catalog.mjs` imports its built `dist/` directly).
 `catalog:build` - it serves the already-committed `generated/catalog.json`
 - so a change to `packages/sfx-engine` cannot affect what Vercel builds or
 serves.
+
+**Amendment, GS-07 v1 (2026-09-29, superseded below the same day): round
+3's "padding" description was incomplete - the native-fallback ogg path
+DROPS audio, it does not merely pad it.** Round 3 above (and
+`docs/GAMESOUNDS.md`'s "known, non-blocking issue" section) described
+ffmpeg's native vorbis encoder as extending a decoded ogg with harmless
+trailing silence out to the next 1024-sample block boundary. That is true
+for most input lengths, but not all of them. Measured directly on this
+machine (ffmpeg 8.0.1, no libvorbis) with an 880 Hz, 0.4-linear-amplitude
+mono tone, encoded with exactly `vorbisEncoderArgs("native")` plus
+`BITEXACT_ARGS` and decoded back: input lengths whose `n mod 1024` falls
+in roughly [962, 1023], and any length with residue exactly 0, decode
+SHORT by the entire final 1024-sample block - real, non-silent audio
+removed, not padded (`n=3071`, residue 1023, decodes to 2048; `n=4096`,
+residue 0, decodes to 3072) - and `n=1023`/`n=1024` decode to zero
+samples, the whole sound gone. Decoding all 1080 shipped live oggs on
+`main` (commit `3b40c16`) found 56 of them (5.2%) actually inside the
+truncating band, mean 999 samples lost. The fix this amendment shipped -
+an encode-verify-retry inside `encodeVariant`, forced native-only in a new
+`oggEncoder` test option - passed locally and moved exactly those 56
+oggs' `files.ogg` fields. **It never passed CI**, and CI's own `sounds` job
+failure on the resulting PR (#126) is what triggered the re-investigation
+below, superseding this amendment in full.
+
+**Amendment, GS-07 v2 (2026-09-29): v1 blamed the wrong layer - it is
+DECODERS, not either vorbis ENCODER, that cut real audio off a file's own
+tail, and CI's libvorbis oggs are cut too.** A v1 fix that only retried on
+the native-encoder branch could only ever be a no-op in CI, whose ffmpeg
+has libvorbis - and CI's `sounds` job failed anyway (333 of 1080 variants
+failing the length gate, every one exactly 128 frames short), proving the
+defect was never specific to the native encoder at all. Direct measurement
+settles where it actually lives. Ogg's own granule position - the
+authoritative, standard field a stream's last page carries stating exactly
+how many sample frames it contains - is read straight off the byte stream
+(no decoder involved) and is always >= the source frame count on both
+encoders: a native-encoder ogg at `n=1023` carries granule `1024`; at
+`n=3071`, granule `3072`; at `n=4096`, granule `4096`; at `n=10035`,
+granule `10048`; the same `n=10035` source encoded with libvorbis instead
+carries granule `10035`, exactly matching the true content length. The
+reference libvorbis decoder plays every one of these files whole. The
+encoder, either encoder, was never the problem - every file it produces
+already declares, and contains, its own complete content.
+
+What actually cuts audio is DECODERS - plural, disagreeing with each other
+and with the truth the granule position states:
+
+- **ffmpeg's own CLI decoder** (what `decodeToRender` in
+  `apps/sounds/scripts/lib/audio.mjs` uses, and so what `checkFormatLengths`
+  itself was reading) drops up to 128 frames off the end of ANY ogg,
+  libvorbis-encoded ones included. Reproduced directly: a granule-complete,
+  `n=1023` native-encoder ogg (granule `1024`, provably whole) decodes via
+  `ffmpeg -f f32le` to **zero frames** - the entire sound gone, by the
+  decoder, from a stream whose own header says it is complete. A
+  granule-exact `n=10035` libvorbis ogg (granule `10035`, no padding at
+  all) decodes to 9907 frames, 128 short; the first 9907 samples match a
+  reference decode to within 1.5e-5, and the missing tail peaks at
+  0.00024 - real content, just quiet. Across the 1080 live variants
+  re-encoded with libvorbis (the GS-06/GS-07 v2 fix below, before any tail
+  guard), 610 of 1080 (56.5%) decode via this same ffmpeg CLI decoder
+  exactly 128 frames short of source - never more, never less, whenever
+  short at all.
+- **Real browsers** (Playwright 1.62.1, `decodeAudioData` into an
+  `OfflineAudioContext(1, 44100, 44100)`, "last sample whose absolute value
+  exceeds 1e-3" as the content-loss threshold) disagree with the ffmpeg CLI
+  and with each other. On the CURRENT (native-encoder) live catalogue,
+  across all 1080 variants: Chromium 151 fails to decode 5 of them
+  entirely (all `ui-typewriter-*` presets' shortest takes), decodes 1013 of
+  the remaining 1075 shorter than the wav's own frame count, and loses
+  audible content on 747 relative to what Firefox plays (mean 465.3
+  samples lost, max 1024, about 10.5 to 23.2ms at 44.1kHz) - while Firefox
+  153 decodes all 1080 whole. The ffmpeg CLI's own decoded length matches
+  Chromium's on only 1004 of 1080 (93.0%) - it is measurably NOT a faithful
+  proxy for what a browser does with the same bytes.
+
+The same 1010 unique live wavs, re-encoded with `sox -R in.wav -C 5
+out.ogg` (libvorbis, mono, the GS-07 v2 fix below), fare much better in
+Chromium but not perfectly: 0 decode errors; 686 of 1080 (63.5%) still
+decode shorter than the wav's own frame count, but by at most 128 frames
+(matching the ffmpeg-CLI figure above almost exactly - 610 of those 686
+came from ffmpeg's CLI decoder reading exactly the same file the same
+way); the last audible sample matches Firefox exactly on 917 of 1080
+(84.9%), and on the other 163 (15.1%) it sits earlier by 1 to 179 frames
+(mean 74.4, p99 approximately 150). The worst single case,
+`movement-swim-16bit-snes` take 3 (15888 source frames): Chromium decodes
+15760 frames with its last audible sample at 15675, Firefox decodes all
+15888 with its last audible sample at 15854 - a 128-frame buffer shortfall
+but a 179-frame last-audible gap, because a decoder's own rendering of an
+already-near-zero fade tail can differ even inside the portion of the
+buffer that is not literally missing; buffer length and content loss are
+related but not the same measurement, and the larger of the two (179, not
+128) is the one that matters for a guard meant to protect real content.
+Firefox again decodes all 1080 whole.
+
+mp3 has no equivalent content-loss problem, but has a different,
+previously-unmeasured one: Chromium is gapless-exact on every one of the
+1080 live mp3s (1042 decode to exactly the wav's own frame count, the
+other 38 longer by 4 to 46 samples, mean 23.4, none shorter). Firefox
+decodes every mp3 whole too, but does not trim the LAME encoder's own
+priming delay the way Chromium's gapless playback does, so its decode of
+the same file is delayed by exactly 576 samples relative to Chromium's -
+13.06ms at 44.1kHz, exactly one mp3 granule (576 samples is MPEG-1 Layer
+III's fixed granule size). This is confirmed by a cross-correlation lag
+search against the wav, run on every one of the 1080 live variants:
+Chromium lands at lag 0 on all 1080, Firefox at lag +576 on all 1080, both
+with a minimum normalized correlation of 0.89 at their own best lag - an
+exact value, not a median or a range (see this decision's GS-07 v2.2
+amendment below for the full method, and the less exact measurement it
+supersedes). That leading-delay figure is smaller than, and different
+from, Firefox's own decoded length exceeding the wav's frame count by 623
+to 1774 samples (mean 1172.0): the length excess is the leading delay plus
+whatever trailing padding Firefox also leaves untrimmed, not latency by
+itself (see this decision's GS-07 v2.1 amendment below - an earlier draft
+of this paragraph called the whole 623-to-1774 length excess "14 to 40ms
+of latency", which conflated the two). Either way it is a real, separate
+defect (added leading delay, not lost
+content) - tracked as new backlog item GS-08, not fixed in this ticket. The
+catalogue has no loop sounds (`docs/BACKLOG.md`), so none of this
+trailing-silence handling - padding, a guard, or either decoder's own
+end-trim - is ever audible as a seam.
+
+**The fix has two parts, both in `apps/sounds/scripts/lib/audio.mjs`.**
+First, stop using ffmpeg's own vorbis encoders - native OR libvorbis -
+entirely: every ogg on every machine, dev and CI alike, is now encoded
+with `sox -R <wav> -C 5 <ogg>` (`-R`: deterministic pseudo-random state,
+proven byte-repeatable across two encodes of the same input; `-C 5`:
+sox's own documented quality knob for a lossy format, fed straight into
+libvorbis's own quality API exactly as ffmpeg's `-q:a 5` is - same
+encoder, same scale, same target quality, different front end). `sox` and
+its vorbis format handler (`libsox-fmt-base`/`libsox-fmt-all` on
+Ubuntu/Debian) are now a hard build requirement - `ensureSoxVorbis` checks
+for both before the first encode and throws a specific, actionable error
+naming exactly what to install if either is missing, never silently
+skipping or falling back. This removes the dev-machine-only code path
+entirely (there is no more "native" branch to diverge into) and delivers
+GS-06 (libvorbis everywhere) as a side effect: sox also keeps the source's
+own mono channel count, so the ogg is mono like the wav and mp3 now - the
+old native-fallback path's dual-mono stereo upmix, and its own unity-gain
+pan filter, no longer exist on any machine. Second, since even a complete,
+correctly-encoded libvorbis ogg still loses up to 128 frames of raw buffer
+length and up to 179 frames of real content to the worse of ffmpeg's CLI
+decoder or Chromium's own end-trim, `encodeVariant` now appends a fixed
+`OGG_TAIL_GUARD_FRAMES = 256` zero-sample pad to the ogg encoder's INPUT
+only (never the wav or mp3 that ship) before every single encode - chosen
+to clear both measured worst cases (128 and 179 frames) with real margin,
+not just the rounder-sounding "128" figure alone. `checkFormatLengths`
+keeps comparing against the true, unpadded source frame count; only the
+ogg encoder's own input changes.
+
+**A new real-browser gate exists because the CLI-decoder-based gate
+structurally cannot see what browsers do.** `checkFormatLength`/
+`checkFormatLengths` (`apps/sounds/scripts/lib/checks.mjs`) are unchanged
+in logic - ffmpeg CLI decode >= source frame count, zero tolerance short -
+and stay wired into `checkSound` alongside `checkFormatEnergies`, catching
+exactly the class of loss energy cannot (content removed from a part of
+the signal that was already quiet). But the 1004/1080 Chromium-match
+figure above means passing that gate was never proof a real browser plays
+a file whole. `apps/sounds/scripts/check-browser-decode.mjs` (new) decodes
+every catalogue ogg and mp3 in real Chromium AND Firefox (one browser
+launch per engine, one page reused, a hard 30-minute process-wide timeout,
+both browsers closed in a `finally` - measured 65 seconds to about 4
+minutes locally, depending on machine load, for the full 1080-variant
+catalogue across both engines, including GS-07 v2.2's
+own cross-correlation lag search below) via the same
+`decodeAudioData`/`OfflineAudioContext` methodology used to measure the
+numbers above. It fails the build on: any decode error; any decoded length
+shorter than the wav's own frame count; and, ogg only, disagreement with a
+reference decode of the SAME file (sox/libvorbisfile decoding those exact
+bytes, compared sample by sample over `[0, sourceFrames)` against the
+browser's own decode, `DECODER_AGREEMENT_TOLERANCE` = 1e-3, the pure
+comparison living in `apps/sounds/scripts/lib/decode-judge.mjs` so
+`node --test` can exercise it with no browser at all). Comparing against a
+reference DECODE of the file, rather than against the wav, answers the
+question this gate actually needs answered - did the browser's own decoder
+return what is actually in the file bytes - without also catching the
+codec's own already-gated lossy quantization of the wav (`checkFormatEnergies`'s
+job, not this gate's; see the v2.1 amendment below for why an earlier
+version of this gate compared against the wav instead, and why that was
+wrong). Firefox's mp3 leading delay is reported, never failed on - it is
+GS-08's concern, not this gate's. Before checking anything real, the script
+builds and checks three negative fixtures, each proving one rule fires
+specifically, in every engine: a length fixture (an ogg whose content
+genuinely ends 1024 frames before its claimed length, with no tail guard,
+must fail the length rule only); a content fixture (an 8192-frame 0.4 tone
+with its last 1024 frames zeroed before encoding, same length, same
+`OGG_TAIL_GUARD_FRAMES` guard as production, compared against a reference
+decode of the un-zeroed tone's own encode, must fail the agreement rule
+only, proving the comparison catches a real content difference the length
+rule cannot see); and the same fixture at 2e-3 (-54 dBFS), proving there is
+no hidden level floor above the stated tolerance. If any of the three does
+not fail with its specific expected rule in either engine, the checker
+itself is proven untrustworthy and refuses to run the real catalogue at
+all. Wired into the `sounds` CI job (which now also installs Firefox, not
+just Chromium) and exposed as `pnpm sounds:check-decode` for a pre-push
+local run.
+
+**Measured against the rebuilt catalogue, the reference-decode gate passes
+cleanly with a wide margin.** Across all 1080 live oggs, the max
+`|browser - reference|` disagreement is 1.54e-5 in both Chromium and
+Firefox - about 65x below `DECODER_AGREEMENT_TOLERANCE` (1e-3), comfortably
+past the 10x-margin bar this gate requires before it will ship (see the
+v2.1 amendment below for the full methodology and why the tolerance itself
+needed no change). `check-browser-decode.mjs` passes with 0 failures in
+Chromium and 0 in Firefox, across all 2160 ogg+mp3 decodes in each engine.
+
+**Rebuilding the catalogue under the new encoder moves every variant's
+ogg, and nothing else.** Every one of the 1080 variants' `files.ogg` entry
+(sha256, byte count, url) changed; `files.wav` and `files.mp3` did not
+change for a single variant (byte-identical, same sha256, confirmed by
+diffing the freshly rebuilt `generated/catalog.json` field-by-field
+against the pre-rebuild committed version). No sound or variant was added
+or removed (270 sounds, 1080 variants, before and after). No other field -
+`measure`, `peaks`, `duration`, `recipe`, `category`, `tags`, or the
+top-level `categories` list - changed on any sound or variant. `public/f`
+is content-addressed and additive-only, so the old, pre-fix ogg files are
+still physically present there for anyone who wants to re-run a
+before/after comparison.
+
+**Re-measured `FORMAT_ENERGY_TOLERANCE_DB` and the three `EXCLUDED_PRESETS`
+under the new encoder.** Rebuilding logged the real distribution under the
+new encoder across all 2160 ogg/mp3 energy readings: mean |delta| 0.0474
+dB, p99 |delta| 0.2985 dB, max |delta| 0.4789 dB (worst single reading:
+`movement-footstep-realistic-footstep-water-puddle` at -0.48 dB) -
+comfortably inside `FORMAT_ENERGY_TOLERANCE_DB`'s 1.0 dB with real margin,
+so the tolerance itself needs no change. Each of the three
+`EXCLUDED_PRESETS` (`pickup-key`, `impact-glass-light`, `footstep-metal`)
+was independently re-rendered (all 8 `SEED_LADDER` seeds, not just the
+accepted takes) and re-measured against the new sox/libvorbis ogg and the
+(byte-identical, unchanged) mp3: the loss is essentially unchanged from
+before the encoder switch - `impact-glass-light` (6.05 to 6.86 dB) and
+`footstep-metal` (2.17 to 15.59 dB) re-measured within a few hundredths of
+a dB of their existing recorded range, `pickup-key`'s worst-seed range
+moved from 13.2-18.2 dB to 12.64-18.17 dB (still far outside tolerance).
+All three exclusions still trigger and remain excluded; `build-catalog.mjs`'s
+reason strings were updated to the re-measured figures.
+
+**What remains open.** GS-06 (libvorbis everywhere) and this GS-07 v2 fix
+both ship in the same PR (#126) - a developer's local ogg rebuild now
+matches CI's byte-for-byte for the same input, closing GS-06 as a side
+effect rather than merely tolerating the old divergence. GS-08 (Firefox's
+mp3 leading-delay/encoder-priming defect, `docs/BACKLOG.md`) remains open
+and unfixed - it is added latency, not lost content, and out of scope
+here.
+
+**Amendment, GS-07 v2.1 (2026-09-29): the content-loss gate's own oracle
+was wrong, and the GS-08 numbers were mislabeled.** Review of v2 found two
+defects in the browser gate itself, both since fixed, still in the same PR
+(#126); the encoder fix above (sox/libvorbis everywhere,
+`OGG_TAIL_GUARD_FRAMES = 256`) is unaffected and was not revisited.
+
+The content-loss rule compared a browser's ogg decode against the SOURCE
+WAV at an instantaneous 1e-3 crossing. That conflates two different things:
+the lossy codec's own quantization of an already-quiet decaying tail
+(which `checkFormatEnergies` already gates, on total energy, at the
+encoder level) with an actual DECODER cut (a browser returning less than
+what the file itself contains). The evidence was in the reviewer's own
+rebuilt-catalogue measurement: v2's first real run against the rebuilt
+catalogue flagged 96 of 1080 variants, and every one of those 96 showed
+the identical gap size in BOTH Chromium and Firefox (96 and 96 - zero
+flagged by only one engine) - and Firefox is independently proven to
+decode every one of those 1080 files whole (the granule-position proof
+earlier in this decision). Two independent decoder implementations
+agreeing exactly with each other, and disagreeing only with a wav the
+lossy codec had already legitimately requantized, is not evidence of a
+decoder cut; it is evidence the codec's own encode differs slightly from
+the wav, which is expected and already gated elsewhere. `REAL_CONTENT_THRESHOLD`
+= 4e-3 was picked after seeing these 96 cases (about 2.4x their observed
+1.68e-3 max), making it a post-hoc threshold reverse-fitted to the data it
+was meant to judge, even though it happened to hide no real cut. The
+`CONTENT_LOSS_MARGIN_FRAMES` comment additionally claimed the pre-guard gap
+distribution was "bimodal: matches exactly or differs by 100+ frames,
+nothing in between" - that was false; the real, measured pre-guard
+distribution (Chromium: <=0 frames 691, 1-16 frames 226, 17-64 frames 114,
+65-128 frames 46, >128 frames 3; Firefox, a whole decoder: <=0 frames 765,
+1-16 frames 217, 17-64 frames 80, 65-128 frames 15, >128 frames 3) is
+continuous. A further check on 45 of the rebuilt files where Chromium and
+Firefox disagreed on the last audible sample (Chromium earlier in every
+one, by up to 165 frames) found both engines' last-audible sample landing
+AFTER the wav's own last-audible sample in every case, with the wav
+exactly zero in between - codec ringing inside the guard zone that
+Chromium trims more aggressively, not lost content. The earlier "confirmed
+by hand" description of the 96 cases similarly overstated what had been
+established; the actual, decisive evidence was the 96/96 cross-engine
+agreement and Firefox's independent proof of wholeness, not a listen-by-ear
+check.
+
+The fix replaces the wav-based rule with a reference-decode comparison:
+for each shipped ogg, sox's own reference decoder (`sox <ogg> -t f32 -`,
+libvorbisfile under the hood - the same decoder GS-06/GS-07 encodes with,
+used here purely as a decoder) decodes those exact bytes, and each
+browser's own decode of the same bytes is compared against it, sample by
+sample, over `[0, sourceFrames)`, at `DECODER_AGREEMENT_TOLERANCE` = 1e-3
+(the same -60 dBFS audibility floor the old, wrong rule used - unchanged,
+since the floor itself was never the problem). The comparison never
+searches for or corrects a lag: offset 0 is what a correct decode at a
+matching, unresampled 44.1kHz sample rate is expected to produce, and a
+systematic offset would be a bug to report, not paper over - none was
+found. `REAL_CONTENT_THRESHOLD`, `CONTENT_LOSS_MARGIN_FRAMES` and the false
+"bimodal" comment are deleted outright, along with the wav-based
+`lastAboveThreshold` mechanism. The pure comparison and judging logic moved
+into `apps/sounds/scripts/lib/decode-judge.mjs`, unit-tested directly
+(`apps/sounds/test/decode-judge.test.mjs`, 8 cases: equal arrays agree;
+reference plus 1.5e-5 noise still agrees, the reviewer's own measured
+ffmpeg-vs-sox reference-decoder disagreement on a real file; a zeroed tail
+and a zeroed middle block each fail naming the exact first/last differing
+index; `judge()`'s length, content, decode-error and healthy-decode paths
+each behave independently) with no browser launched at all. The tolerance
+was fixed before measuring, per this project's own standing rule never to
+adjust a stated tolerance to fit what got measured: the actual max
+`|browser - reference|` across all 1080 rebuilt oggs measured 1.54e-5 in
+both Chromium and Firefox - about 65x below the 1e-3 tolerance, comfortably
+past the 10x margin required before shipping, so no widening was ever
+needed or considered. The single length-only negative fixture is now three,
+each asserted to fail its OWN specific rule (not "any failure") in both
+engines before the real catalogue is allowed to run at all: the existing
+length fixture; a content fixture (an 8192-frame 0.4 tone with the last
+1024 frames zeroed before encoding, same length and same
+`OGG_TAIL_GUARD_FRAMES` guard as production, compared against a reference
+decode of the un-zeroed tone's own separate encode - deliberately a
+different file, since comparing the zeroed file against a reference decode
+of itself would never catch missing content that was never encoded in the
+first place); and the same fixture at 2e-3 (-54 dBFS), proving there is no
+hidden level floor above the stated tolerance. All three fail with their
+specific expected rule, in both engines, on every run.
+
+GS-08's own numbers were also wrong. The "623 to 1774 samples, mean 1172,
+14 to 40ms of latency" figure above is Firefox's decoded mp3 length minus
+the wav's own frame count - that excess is the leading delay PLUS whatever
+trailing padding Firefox also leaves untrimmed, not latency by itself. A
+first attempt at the actual leading delay - Firefox's last-audible sample
+minus Chromium's own, on the same decoded bytes (a comparison that cancels
+the encoder's own pre-echo, since both engines decode the identical
+bitstream) - found a median 578 samples (minimum 531), about 13.1ms at
+44.1kHz and close to one mp3 granule of 576 samples. `docs/BACKLOG.md`'s
+GS-08 entry, `docs/GAMESOUNDS.md` and this decision's own mp3 paragraph
+above were corrected at the time to state both numbers and which is which.
+Separately, `check-browser-decode.mjs`'s own per-file info line reported a
+plainer, script-computable proxy for the same defect - each engine's
+decoded mp3's first sample above 1e-3 minus the wav's own first sample
+above 1e-3 - which GS-07 v2.2 (below) found was not just noisier than the
+578/531 figure above but flatly WRONG on many files: mp3 pre-echo crosses
+1e-3 before the real onset on this catalogue's short, percussive chiptune
+attacks, in both engines, and a single instantaneous crossing cannot tell
+that apart from a genuine delay. v2.2 replaced that metric with a
+cross-correlation lag search, which pins a single exact value rather than
+a distribution - see the amendment below for the full story and the number
+that supersedes both the 578/531 figure and the per-file proxy.
+
+The catalogue itself did not change in this round: `apps/sounds/generated/catalog.json`
+diffs at zero changed fields against the version this decision's own GS-07
+v2 fix produced (commit `6308ea5`) - this round touched only the gate
+script, its new unit-tested lib module, and documentation.
+
+**Amendment, GS-07 v2.2 (2026-09-29): GS-08's own leading-delay metric was
+not just noisy, it was wrong - replaced with a cross-correlation lag
+search that pins an exact value.** The v2.1 amendment above already
+replaced one broken metric (the wav-based content-loss oracle) with a
+reference-decode comparison. Review of that same round's OTHER new metric
+- `check-browser-decode.mjs`'s own per-file mp3 leading-delay info line,
+"the decoded mp3's first sample above 1e-3 minus the wav's own first
+sample above 1e-3, per engine" - found it was not simply noisier than the
+578-sample/531-minimum figure computed the other way (the last-audible-
+sample difference between the two engines' own decodes), it was measuring
+the wrong thing entirely: mp3 encoding leaves a pre-echo/ringing artifact
+right at the very start of many decodes, especially this catalogue's
+short, percussive chiptune attacks, which crosses the 1e-3 threshold well
+before the real onset, in both engines. A metric built on a single
+instantaneous threshold crossing has no way to tell that apart from a
+genuine delay.
+
+The fix is a cross-correlation lag search
+(`apps/sounds/scripts/lib/decode-judge.mjs`'s `crossCorrelationLag`,
+exported and unit-tested with no browser launched at all): it finds the
+wav's own onset only to place a search window, never as the measurement
+itself, then slides the decoded mp3 against that window at every lag in
+`[-1300, +1300]` and returns the lag with the highest normalized
+cross-correlation over a window of up to 4096 frames. Comparing a whole
+window at every candidate lag, rather than a single instantaneous
+crossing, is immune to a few samples of pre-echo or ringing on either
+side. Three unit tests (`apps/sounds/test/decode-judge.test.mjs`) exercise
+the pure function on a synthetic chirp rather than a fixed-frequency tone
+(a tone's own autocorrelation peaks at every multiple of its period and
+could report a wrong-but-plausible lag): a signal against itself must
+report lag 0; a signal delayed by exactly 576 samples - the exact defect
+this search exists to measure - must report lag 576; and a signal shifted
+earlier (the opposite direction) must report a correctly-signed negative
+lag, proving the search is not accidentally biased toward positive delays.
+
+Measured first on a fifth of the catalogue (every 7th variant, 155 of
+1080, both engines, a 4096-frame window): Chromium sits at lag 0 on
+155/155, Firefox at lag +576 on 155/155, with a minimum normalized
+correlation of 0.89 in both engines at their own best lag - exact
+agreement on a single integer, not a distribution. Measured again against
+the full 1080-variant catalogue with the same method wired into
+`check-browser-decode.mjs`'s own per-file info line (replacing
+`ONSET_THRESHOLD`/`firstAboveThreshold` entirely, both deleted): Chromium
+lands at lag 0 on all 1080/1080, Firefox at lag +576 on all 1080/1080,
+with a minimum normalized correlation of 0.888 at the best lag in both
+engines - the sampled measurement's 155/155 held exactly at full scale. **GS-08 is
+exactly 576 samples, 13.06ms at 44.1kHz, one mp3 granule - not a median,
+not a range: this is the number `docs/BACKLOG.md`, `docs/GAMESOUNDS.md`
+and this decision's own mp3 paragraph above now state, and it supersedes
+both the 578-sample/531-minimum figure and the noisier, sometimes-wrong
+per-file proxy this amendment replaces.**
+
+Adding the lag search's own CPU cost to `check-browser-decode.mjs` raised
+its measured local run time from about 38 seconds (v2.1 alone) to between
+65 seconds and about 4 minutes depending on machine load (`time node
+scripts/check-browser-decode.mjs`, full 1080-variant
+catalogue, both engines) - still comfortably inside the `sounds` CI job's
+35-minute timeout, which was not changed again.
+
+The catalogue itself did not change in this round either: zero diff
+against the catalogue this decision's own GS-07 v2.1 amendment above
+already confirmed unchanged (commit `6308ea5`) - this round touched only
+the gate script, its lib module, its unit tests, and documentation.
