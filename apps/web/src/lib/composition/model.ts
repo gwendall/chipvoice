@@ -13,21 +13,32 @@ export interface CompositionModel {
   }): Promise<{ value: unknown; model: string; usage: unknown }>;
 }
 
-/** Server configuration only: callers cannot select a credential or endpoint. */
-export function compositionConfig() {
+/** The credential and base URL shared by every OpenAI-hosted endpoint this
+ * server calls: the paid Responses API (below) and the free Moderation API
+ * (`./moderation.ts`). Kept separate from `compositionConfig` so a
+ * moderation-only environment (no `COMPOSITION_PROVIDER`/token-limit
+ * concerns) still resolves the same credential and HTTPS check without
+ * duplicating either. */
+export function openAICredentials() {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey)
     throw new ProjectHttpError(503, "generation_disabled", "Set OPENAI_API_KEY on the server to enable composition");
+  const base = new URL(process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1/");
+  if (base.protocol !== "https:" && !(base.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname)))
+    throw new ProjectHttpError(503, "generation_disabled", "The model endpoint must use HTTPS");
+  if (!base.pathname.endsWith("/")) base.pathname += "/";
+  return { apiKey, base };
+}
+
+/** Server configuration only: callers cannot select a credential or endpoint. */
+export function compositionConfig() {
+  const { apiKey, base } = openAICredentials();
   const provider = process.env.COMPOSITION_PROVIDER ?? "openai";
   if (provider !== "openai")
     throw new ProjectHttpError(503, "generation_disabled", "Unsupported composition provider");
   const maxTokens = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? 24000);
   if (!Number.isSafeInteger(maxTokens) || maxTokens < 1024 || maxTokens > 64000)
     throw new ProjectHttpError(503, "generation_disabled", "Invalid OPENAI_MAX_OUTPUT_TOKENS");
-  const base = new URL(process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1/");
-  if (base.protocol !== "https:" && !(base.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(base.hostname)))
-    throw new ProjectHttpError(503, "generation_disabled", "The model endpoint must use HTTPS");
-  if (!base.pathname.endsWith("/")) base.pathname += "/";
   return {
     apiKey, maxTokens, endpoint: new URL("responses", base).href,
     model: process.env.OPENAI_MODEL?.trim() || "gpt-6-astra",

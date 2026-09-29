@@ -3159,6 +3159,111 @@ cancelling-lease-expires-to-cancelled edge case, dead-lettering after
 route's own auth and effect, isolated against a disposable SQLite file with
 no network, same pattern as `test-projects.mjs`.
 
+## 56. Prompt moderation and a melodic-similarity gate refuse a known work, on the input and the output (2026-09-29)
+
+Decision 39 promised that generation "declines requests to reproduce a
+known theme" while the Mario, Zelda and Sonic material stays free.
+Nothing enforced that on a real request: only the generation benchmark's
+own prompts were screened for a named franchise or composer
+(`bench.ts`'s `KNOWN_WORK_DENYLIST`, `validatePromptSet`). NEXT-21 adds
+two checks - one cheap and on the prompt, one measured on what the model
+actually wrote.
+
+- **Prompt-side, before any paid call.** A prompt naming a denylisted
+  franchise or composer (the same list the benchmark already checked its
+  own prompts against, reused here rather than duplicated) is refused for
+  free with no network call at all (`422 prompt_known_work`). Every
+  remaining prompt is then sent to OpenAI's free Moderation API
+  (`omni-moderation-latest` - the same provider and credential as the
+  paid model, a different, free endpoint) before the generation's status
+  ever reaches `composing`; a flagged prompt is refused
+  (`422 prompt_flagged`) with only its flagged category names recorded on
+  the generation record, never scores. If the moderation call itself
+  fails - a network error, a non-2xx response, a malformed body - this
+  fails CLOSED with a retryable `503 moderation_unavailable`; a prompt is
+  never allowed to generate unchecked.
+- **Output-side, the real gate.** A prompt can name no franchise and
+  still get a reproduced melody back, and can name one without the model
+  ever reproducing anything; decision 39's promise is really about what
+  gets composed, not what gets asked for. Once a generation's score
+  exists (`jobs.ts`, right after the model call, before the score is
+  saved), every melodic part is reduced to a transposition-invariant
+  pitch-interval sequence and a tempo-invariant duration-ratio sequence
+  (`similarity.ts`) and compared against a small reference set
+  (`known-melodies.ts`) with a windowed edit distance - the same
+  alignment family as DTW, tolerant of an inserted ornament or a changed
+  note. A match at or above `KNOWN_MELODY_THRESHOLD` refuses the
+  generation (`422 known_melody`), reporting the matched percentage.
+
+**The reference set.** Eight incipits - a short opening, never a whole
+piece - stored only as interval and duration-ratio sequences: no
+absolute pitch, no absolute timing, no audio and no sheet music. Three
+are the site's own familiar material, the first 16 melody notes of the
+verified transcriptions already in the repository
+(`scores/references/{mario,zelda,sonic}.json`, decision 29) - the same
+three songs `scores/classics.json` already calls the studio's familiar
+melodies. Five more are well-known, public-domain incipits hand-encoded
+from memory: Twinkle, Twinkle, Little Star; Beethoven's "Ode to Joy"; the
+opening of "Fur Elise"; the opening motif of Beethoven's Fifth Symphony;
+and "Korobeiniki", the Russian folk song that is also the Tetris "Type A"
+theme - so the set is not only game themes.
+
+**Calibration.** Positives: each reference transposed (±12 semitones),
+re-timed (0.5x-2.5x) and lightly varied - one or two changed notes, most
+with one inserted ornament, decision 3's own "ornaments, a changed note
+or two" - then embedded inside unrelated random material, 8 references x
+6 variants each, 48 total. Negatives: the repository's own original
+fixtures (the starter project's lead line, the generation benchmark's
+mock score, the composition test server's fixture score) plus 20
+seeded-random tunes, 23 total. The threshold was chosen from this
+calibration set alone, before a second, disjoint set (different random
+seeds, the same shape) was ever built or looked at.
+
+| | Calibration (48 pos / 23 neg) | Held-out (48 pos / 23 neg) |
+| --- | --- | --- |
+| Threshold | 0.40 | 0.40 (unchanged) |
+| True positives | 44 (92%) | 45 (94%) |
+| False negatives | 4 | 3 |
+| False positives | 0 | 0 |
+| True negatives | 23 | 23 |
+| Margin over the negative max | 0.067 (0.40 vs. 0.333) | 0.067 (0.40 vs. 0.333) |
+
+Every missed positive is a heavily varied copy of one of the two
+shortest, most repetitive references (`fur-elise`, `beethoven-5th-motif`
+- six or seven tokens each): "a changed note or two" is a far larger
+fraction of a seven-token incipit than of a sixteen-note one, so those
+two references are what a determined paraphrase is most likely to slip
+past. Zero false positives on either set - including the repository's
+own three original fixtures and 40 seeded-random tunes together - is the
+property that matters most here: this is a refusal gate, and a false
+positive on an ordinary original composition would be user-hostile.
+`apps/web/test-known-melody-similarity.mjs` reproduces both confusion
+matrices deterministically in CI.
+
+**What doesn't fully change.** Prompt moderation never spends paid usage
+- it never calls the model - but a refused generation still reaches
+`runGeneration` and so still gets `started_at` set; decision 42's own
+worst-case reserve accounting, already applied to any generation that
+fails before the model responds with no usage recorded (an expired
+authorization, for instance), still prices this generation at the
+reserve rate for the rest of the month. Changing that accounting is
+admission.ts's budget territory, not this ticket's.
+
+**Why.** Both checks are pure, dependency-free and unit-tested with no
+network or key - the moderation endpoint is mocked, not called - so
+`pnpm test` and the generation benchmark's `--mock` path stay exactly as
+fast and free as before. The prompt-side check alone cannot catch an
+unprompted quote, and an uncalibrated output check would either miss
+real quotes or flag ordinary original melodies; the two together, and an
+honestly measured threshold, are what decision 39's promise actually
+needs.
+
+**What changes.** `apps/web/src/lib/composition/moderation.ts` (new),
+`similarity.ts` (new) and `known-melodies.ts` (new); `jobs.ts` calls both
+before composing and after the model responds; migration
+`prompt-moderation` adds `generations.moderation`; `model.ts`'s
+`compositionConfig` splits out `openAICredentials`, shared by the paid
+adapter and the free moderation call.
 ## 57. chipvoice publishes terms of use and a privacy policy: no ownership claim on your songs, prompts stay owner-only and are erased when their song is withdrawn (2026-09-29)
 
 NEXT-22. chipvoice had no terms page and no privacy page; `/terms` and

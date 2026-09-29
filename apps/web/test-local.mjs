@@ -78,6 +78,8 @@ try {
     "test-i18n.mjs",
     "test-score-compiler.mjs",
     "test-whole-song-checks.mjs",
+    "test-known-melody-similarity.mjs",
+    "test-moderation.mjs",
     "test-gen-bench.mjs",
     "test-live-playback.mjs",
     "test-latest-worker.mjs",

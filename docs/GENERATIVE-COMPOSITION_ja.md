@@ -60,6 +60,16 @@ UIは経過時間と4段階（作曲、確認、保存、音声）を表示し�
 
 コーパスの実行では、レンダー自身のネイティブチップまたは宣言したループで誤検知はありませんでした。`mario`（ネイティブ2a03）、`zelda`（移植した4機種すべて。実在するゲームのループ）、`sonic`（ネイティブ`md`）は健全に計測され、スターターのデモプロジェクトも同様です。13本の編曲レンダーのうち5本は`loop_level_jump`を検出しますが、いずれも採取元とは別のチップで実現したチップ適応後の抜粋（例えば`mario`を`dmg`で演奏したもの）で、ネイティブのレンダリングではありません。これらは生成の`request.loop`のような自分自身の宣言したループ意図を持たず、計測された跳躍はチップ変換による本物の音響差であって、検査の見誤りではありません。
 
+<a id="prompt-moderation-and-the-known-melody-gate-next-21"></a>
+## プロンプトのモデレーションと既知メロディーのゲート（NEXT-21）
+
+決定39は生成が「既知のテーマを再現する依頼を断る」と約束していましたが、実際のリクエストでそれを強制するものは、[決定56](DECISIONS_ja.md#56-prompt-moderation-and-a-melodic-similarity-gate-refuse-a-known-work-on-the-input-and-the-output-2026-09-29)が`jobs.ts`の`runGeneration`に2つの検査を追加するまで存在しませんでした。どちらも、生成の状態が`composing`に達する前、2つ目については採点結果を保存する前に働きます。
+
+- **プロンプト側。** 禁止リストに載った作品や作曲家を名指しするプロンプト（`apps/web/src/lib/composition/moderation.ts`の`knownWorkInPrompt`。2つ目のリストを作らず`bench.ts`の`KNOWN_WORK_DENYLIST`を再利用）は、通信を一切行わずに無料で拒否されます（`422 prompt_known_work`）。残る全てのプロンプトは、有料モデル呼び出しの前にOpenAIの無料モデレーションAPI（`omni-moderation-latest`、`moderatePrompt`）へ送られます。フラグが立てば拒否し（`422 prompt_flagged`）、生成レコードにはフラグが立ったカテゴリ名のみを記録します（`moderation`列。スコアは記録しません）。モデレーション呼び出し自体が失敗した場合は、再試行可能な`503 moderation_unavailable`で必ず閉じ側に倒れます。プロンプトが未検査のまま生成に進むことはありません。
+- **出力側。** プロンプトがどの作品も名指ししなくても、再現されたメロディーが返ってくることはあり得ます。採点結果ができた時点で、すべての旋律パートを移調不変な音程差列とテンポ不変な音価比列に還元し（`apps/web/src/lib/composition/similarity.ts`）、小さな参照集合（`known-melodies.ts`。サイト自身のMario/Zelda/Sonicの採譜に加え、パブリックドメインの冒頭句5つを手で符号化したもの。音程・リズムのデータのみを保存）に対して窓付き編集距離で比較します。較正済みのしきい値以上で一致すれば生成を拒否し（`422 known_melody`）、一致率を報告します。
+
+どちらのモジュールも純粋で依存を持たず、通信や鍵なしで単体テストされています。`apps/web/test-moderation.mjs`はモデレーションエンドポイントをモックし、フラグあり・なし・閉じ側フェイルの各経路と禁止リストを検証します。`apps/web/test-known-melody-similarity.mjs`は較正の混同行列を決定的に再現します（決定56が全数値を記録: しきい値0.40、較正集合で再現率92%かつ誤検知ゼロ、しきい値を選ぶのに一度も使っていないホールドアウト集合で94%かつゼロ）。`test-generation.mjs`はさらに、4つの結果すべてを実際のHTTPパイプラインを通してエンドツーエンドで検証します。生成ベンチマークの`--mock`経路は影響を受けません。`compositionInstructions`/`compositionProject`/モデルアダプターを直接動かすだけで、`runGeneration`は一切通らないためです。
+
 <a id="delivery-order"></a>
 ## 実施順序
 

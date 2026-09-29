@@ -11,6 +11,8 @@ import { compositionConfig, openAIModel, type CompositionModel } from "./model";
 import { compositionAccess, compositionBudget, isInvited, monthSpend, requireBudget, requireInvitation } from "./admission";
 import { compositionRequest, compositionTarget, compositionInstructions, compositionSchema, compositionProject } from "./score";
 import { decodeWav, wholeSongChecks, type Finding, type PartActivity } from "./checks";
+import { moderatePrompt, knownWorkInPrompt } from "./moderation";
+import { isKnownMelody } from "./similarity";
 
 function error(status: number, code: string, message: string): never { throw new ProjectHttpError(status, code, message); }
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -118,6 +120,7 @@ export async function getGeneration(id: string, caller: Caller, summary = false)
     project: publication, render: job,
     evaluation: row.report ? JSON.parse(String(row.report)) : null,
     songReport: row.song_report ? JSON.parse(String(row.song_report)) : null,
+    moderation: row.moderation ? JSON.parse(String(row.moderation)) : null,
     usage: row.usage ? JSON.parse(String(row.usage)) : null,
   };
 }
@@ -192,12 +195,36 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
     const request = compositionRequest.parse(JSON.parse(String(row.request)));
     let project = row.document ? JSON.parse(String(row.document)) : null;
     if (row.status === "queued") {
+      // Decision 56 (NEXT-21): both prompt-side screens run before any paid
+      // model call, so a refusal never records `usage` and never spends a
+      // model request - the generation row's status never reaches
+      // 'composing' when either refuses. (`monthSpend`'s pre-existing,
+      // unrelated-to-this-decision reserve accounting still prices any row
+      // that reached `runGeneration` at all, including this one, at a
+      // worst case for the month if it has no `usage` - the same
+      // conservative treatment an `authorization_expired` failure already
+      // got before decision 56; changing that accounting is admission.ts
+      // budget/queue territory, out of scope here.)
+      if (await stopped()) return;
+      const named = knownWorkInPrompt(request.prompt);
+      if (named) error(422, "prompt_known_work", `This prompt names a known work ("${named}"). Describe an original piece instead.`);
+      const moderation = await moderatePrompt(request.prompt, controller.signal);
+      await client.execute({ sql: "update generations set moderation=? where id=?", args: [JSON.stringify(moderation), id] });
+      if (moderation.flagged) error(422, "prompt_flagged", "This prompt could not be composed as written. Rewrite it and try again.");
       await client.execute({ sql: "update generations set status='composing' where id=? and active=1 and status='queued'", args: [id] });
       if (await stopped()) return;
       const model = suppliedModel ?? openAIModel({ ...compositionConfig(), model: String(row.model) });
       const result = await model.generate({ instructions: compositionInstructions(request), prompt: request.prompt, schema: compositionSchema, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(210000)]), onProgress: progress => { outputCharacters = progress.outputCharacters; } });
       if (await stopped()) return;
       project = compositionProject(result.value, request);
+      // Decision 56: the real known-melody gate, measured on the model's
+      // OUTPUT (the notes it actually wrote), not the prompt - see
+      // ./similarity.ts's module comment for why the prompt-side screen
+      // above cannot catch this by itself.
+      const melodicParts = project.source.kind === "performance" ? project.source.performance.parts : [];
+      const knownMelody = isKnownMelody(melodicParts);
+      if (knownMelody)
+        error(422, "known_melody", `This composition matched a well-known melody too closely (${Math.round(knownMelody.similarity * 100)}% similarity). Try a different musical idea.`);
       await client.execute({ sql: "update generations set document=?,model=?,usage=?,output_characters=?,progress_at=?,status='validating' where id=? and status='composing'", args: [canonical(project), result.model, JSON.stringify(result.usage), outputCharacters, Date.now(), id] });
       row.status = "validating"; row.model = result.model;
     }
