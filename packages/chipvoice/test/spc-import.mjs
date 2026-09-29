@@ -66,6 +66,7 @@ const check = (name, ok, extra = '') => {
   // 128 registers restored (256 synthetic events), then the two real writes.
   check('every DSP register is restored as a synthetic write pair', plan.events.length >= 256 + 2);
   check('restoreEvents reports exactly the 256 synthetic pairs', plan.restoreEvents === 256);
+  check('snapshotEvents adds the DSPADDR seed and the restore sentinel', plan.snapshotEvents === plan.restoreEvents + 2);
   const restore = plan.events.slice(0, plan.restoreEvents);
   check('the restore pairs are all stamped at cycle 0', restore.every((e) => e.at === 0));
   check('MVOLL is restored via the same $F2/$F3 protocol', restore[0x0c * 2].addr === 0xf2 && restore[0x0c * 2].value === 0x0c && restore[0x0c * 2 + 1].addr === 0xf3 && restore[0x0c * 2 + 1].value === 0x7f);

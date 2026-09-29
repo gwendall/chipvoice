@@ -636,9 +636,17 @@ async function checkOne(id) {
   // whether the S-DSP core itself, given the same stimulus, produces the
   // same audio - the same thing `check:spc` already gates at 100%, and the
   // reason this can be gated the same way.
-  const restoreEvents = imported.events.slice(0, imported.restoreEvents);
+  // `snapshotEvents` (not `restoreEvents`) is the right prefix here: this
+  // replay needs the DSPADDR seed AND the `DSP_SNAPSHOT_RESTORE_ADDR`
+  // sentinel that follow the per-register restore pairs, the same as any
+  // other fresh chip taking a snapshot's plan - otherwise this comparison
+  // would start the DSP's hidden per-sample latches at constructor
+  // defaults while play-spc's `load()` semantics (which this whole file
+  // exists to match) start them from the snapshot, exactly the gap
+  // `DSP_SNAPSHOT_RESTORE_ADDR` closes everywhere else.
+  const snapshotRestore = imported.events.slice(0, imported.snapshotEvents);
   const oracleWriteEvents = oracleWrites.flatMap((w) => [{ at: w.cycle, addr: 0xf2, value: w.reg }, { at: w.cycle, addr: 0xf3, value: w.value }]);
-  const oursForOracle = ChangeStream.from(chipSnes.trace([...restoreEvents, ...oracleWriteEvents], cycles, imported.memory));
+  const oursForOracle = ChangeStream.from(chipSnes.trace([...snapshotRestore, ...oracleWriteEvents], cycles, imported.memory));
   // See ORACLE_TAIL_TRIM_CYCLES's own doc comment: the exact gate excludes
   // this package's own trailing output period, which play-spc's one-shot
   // render cannot be relied on to have flushed.

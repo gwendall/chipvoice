@@ -26,13 +26,26 @@ export interface Id666Tag {
 export interface SpcPerformancePlan extends PerformancePlan {
   id666?: Id666Tag;
   /**
-   * How many of `events`, from the start, are the synthetic DSP-register
-   * restore writes (see `importSpc`'s doc comment) rather than writes the
-   * CPU actually made while playing. A comparison against a real CPU oracle
-   * - which loads a snapshot's registers directly, never through $F2/$F3 -
-   * skips exactly this many events from the front before comparing.
+   * How many of `events`, from the start, are the synthetic per-register
+   * DSPADDR/DSPDATA restore pairs (see `importSpc`'s doc comment). This
+   * does NOT cover every synthetic event the plan opens with - the DSPADDR
+   * seed and the `DSP_SNAPSHOT_RESTORE_ADDR` sentinel both come right
+   * after this many entries, deliberately outside this count, so a caller
+   * that only wants to skip the per-register restore pairs (e.g. `check.mjs`'s
+   * `resolveWrites`, which still wants to see the DSPADDR seed) can. See
+   * `snapshotEvents` for the index of the first write the CPU itself made.
    */
   restoreEvents: number;
+  /**
+   * How many of `events`, from the start, are synthetic (not writes the CPU
+   * actually made while playing): the `restoreEvents` per-register restore
+   * pairs, plus the DSPADDR seed and the `DSP_SNAPSHOT_RESTORE_ADDR`
+   * sentinel that follow them. A comparison against a real CPU oracle -
+   * which loads a snapshot's registers and hidden latches directly, never
+   * through any $F2/$F3 write a replay can see - skips exactly this many
+   * events from the front before comparing.
+   */
+  snapshotEvents: number;
 }
 
 // The .spc container: a fixed-offset struct, not a chip's own behavior, so
@@ -220,6 +233,7 @@ export function importSpc(bytes: Uint8Array, options: {seconds?: number} = {}): 
   // already does for a caller with the raw register block in hand. Placed
   // after `restoreEvents` for the same reason as the DSPADDR seed above.
   events.push({at: 0, addr: DSP_SNAPSHOT_RESTORE_ADDR, value: 0});
+  const snapshotEvents = events.length;
 
   const maxEvents = 4_000_000;
   while (ssmp.cycle < totalCycles) {
@@ -234,6 +248,7 @@ export function importSpc(bytes: Uint8Array, options: {seconds?: number} = {}): 
     loopStartSeconds: 0,
     events,
     restoreEvents,
+    snapshotEvents,
     memory: [{address: 0, bytes: ram.slice()}],
     notes: [],
     losses: [],
