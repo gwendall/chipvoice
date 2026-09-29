@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { Client } from "@libsql/client";
 import { parseProject, PROJECT_ENGINE_VERSION, type MusicProject } from "chipvoice";
 import { HttpError } from "web-kit/http";
 import { admitWindow } from "web-kit/db";
@@ -586,6 +587,31 @@ export async function withdrawProject(id: string, viewer: Viewer) {
     sql: "update project_jobs set status=case when status='rendering' then 'cancelling' else 'cancelled' end where project_id=? and status in ('queued','rendering')",
     args: [id],
   });
+  await scrubGenerationPrompt(client, id);
+}
+/**
+ * Decision 57: withdrawing a generated song also erases the prompt that made
+ * it, not only its audio and page. The `generations` row otherwise stays -
+ * its model, usage and timestamps are accounting facts the monthly budget
+ * (`composition/admission.ts`'s `monthSpend`) still needs, and it never reads
+ * `request` - only the prompt text itself, the private part, is overwritten.
+ */
+async function scrubGenerationPrompt(client: Client, projectId: string) {
+  const rows = (
+    await client.execute({
+      sql: "select id,request from generations where project_id=?",
+      args: [projectId],
+    })
+  ).rows;
+  for (const row of rows) {
+    const request = JSON.parse(String(row.request));
+    if (request.prompt === "[deleted with its song]") continue;
+    request.prompt = "[deleted with its song]";
+    await client.execute({
+      sql: "update generations set request=? where id=?",
+      args: [JSON.stringify(request), String(row.id)],
+    });
+  }
 }
 export async function setFavourite(
   id: string,

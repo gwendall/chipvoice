@@ -1,0 +1,86 @@
+name: publish-gamesounds
+
+# Publishing runs on a tag, so a release is a deliberate act rather than a
+# side effect of a merge. A separate tag prefix from chipvoice's own
+# publish.yml (gamesounds-v* here, v* there) so the two packages' releases
+# never collide or trigger each other.
+on:
+  push:
+    tags: ["gamesounds-v*"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      # npm trades this OIDC token for a short-lived publishing credential. No
+      # secret is stored anywhere, so there is nothing to leak, rotate or
+      # forget to revoke. Trusted publishing has to be configured on
+      # npmjs.com against this exact repo and workflow file before this can
+      # succeed - see the PR body for the one-time first-publish steps that
+      # come before that configuration can even be entered.
+      id-token: write
+      # Write, not read: creating the GitHub release below needs it.
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # No version here: package.json's `packageManager` field is the one
+      # source, and naming it twice is an error rather than a redundancy.
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      # npm 11.5.1 or newer knows how to do the OIDC exchange.
+      - run: npm install -g npm@latest
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build and typecheck
+        run: |
+          pnpm --filter gamesounds build
+          pnpm --filter gamesounds typecheck
+
+      - name: The tag has to match the version
+        working-directory: packages/gamesounds
+        run: |
+          tag="${GITHUB_REF_NAME#gamesounds-v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "tag $tag does not match package.json $pkg"
+            exit 1
+          fi
+
+      - run: pnpm test:unit
+        working-directory: packages/gamesounds
+
+      # Installs the tarball into an empty project and drives the CLI and the
+      # programmatic API against the real, live gamesounds.ai - the gate that
+      # actually matters before a publish, forced on here since CI's own
+      # `sounds` job intentionally skips it (that job stays network-free).
+      - run: pnpm test:fresh
+        working-directory: packages/gamesounds
+        env:
+          GAMESOUNDS_TEST_LIVE: "1"
+
+      - run: npm publish --access public --provenance
+        working-directory: packages/gamesounds
+
+      # Mirrors publish.yml's own release step: npm publish above already
+      # means the version is out and nothing here can undo that, so this
+      # only ever adds the page and checks first rather than failing on one
+      # a maintainer already created by hand. --title falls back to the tag
+      # name itself when the tag carries no subject (an annotated tag made
+      # with `git tag -a` but an empty message, or a lightweight tag) -
+      # without it, `--notes-from-tag` alone ships a release with an empty
+      # title, as chipvoice's own v0.20.0 did before this fix.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag --title "${title:-$GITHUB_REF_NAME}"

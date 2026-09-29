@@ -249,6 +249,17 @@ jobs:
       - run: pnpm --filter sfx-engine build
       - run: pnpm --filter gamesounds typecheck
       - run: pnpm --filter gamesounds test:unit
+      # test:fresh builds the npm package, packs it, installs the tarball
+      # into an empty temp project and drives the installed CLI/exports -
+      # the same fresh-install shape as packages/chipvoice's own release
+      # test, catching a wrong `files` whitelist or a broken `exports` map
+      # that "it works from the repo" never would. It always runs its
+      # network-free packaging checks; its own live checks against
+      # gamesounds.ai stay off here (CI === "true", the same network-free
+      # rule this whole job follows) and only run forced with
+      # GAMESOUNDS_TEST_LIVE=1, which is the release workflow's job.
+      - run: pnpm --filter gamesounds build
+      - run: pnpm --filter gamesounds test:fresh
       - run: pnpm --filter gamesounds-site typecheck
       # build-catalog.mjs's encode step shells out to ffmpeg (packages/chipvoice's
       # own renderSfx does not need it, but trimming/encoding every variant to

@@ -3132,3 +3132,115 @@ cancelling-lease-expires-to-cancelled edge case, dead-lettering after
 `RENDER_MAX_ATTEMPTS`, `RENDER_CONCURRENCY` as a real setting, and the cron
 route's own auth and effect, isolated against a disposable SQLite file with
 no network, same pattern as `test-projects.mjs`.
+
+## 57. chipvoice publishes terms of use and a privacy policy: no ownership claim on your songs, prompts stay owner-only and are erased when their song is withdrawn (2026-09-29)
+
+NEXT-22. chipvoice had no terms page and no privacy page; `/terms` and
+`/privacy` now exist (and their `ja` mirrors), linked from the site footer
+and from sign-in and the composer, dated 2026-09-29. Both are written to
+say only what the code already does, checked against `songs.ts`,
+`projects.ts`, `composition/`, `auth.ts` and `migrations.ts` line by line
+rather than restating decisions 39 and 42 from memory. Two gaps between
+what was implied and what the code did were closed as part of this ticket
+rather than left as unfulfilled promises.
+
+- **Ownership.** Whoever writes or generates a song owns what chipvoice
+  renders for them; chipvoice claims no ownership. Publishing grants
+  chipvoice a non-exclusive licence to host, stream, render and display
+  that publication while it stays published, which is what
+  `projects.ts`'s `publishProject`/`withdrawProject` already do: a
+  publication is either live under this licence or withdrawn
+  (soft-deleted) out of it, with no third state. The existing remix
+  feature (fork of a public song, lineage shown on its page) is named
+  explicitly as part of that licence rather than left implicit. chipvoice
+  makes no warranty that generated output is free of third-party rights;
+  the person who publishes is responsible for what they publish.
+- **Original music, not known melodies, now actually instructed.**
+  Decision 39 said "generation declines requests to reproduce a known
+  theme," but `composition/score.ts`'s `compositionInstructions()` sent no
+  such instruction to the model; only `composition/bench.ts`'s
+  `KNOWN_WORK_DENYLIST` existed, and it validates the benchmark's own
+  authored prompts, explicitly commented as "a safety net, not the
+  enforcement." `compositionInstructions()` now tells the model to write
+  only an original piece and to decline reproducing a specific existing
+  song's melody, riff or lyrics, however closely a prompt names or
+  describes one, citing decision 39 in the instruction text itself. The
+  terms page states this as an instruction to the model, not a guarantee,
+  since NEXT-21 is what measures it.
+- **Prompt privacy, stated as strong as the code actually is.** A
+  generation's prompt (`Publication.generation.prompt` in `projects.ts`)
+  is attached to `getProject`'s response only `if (publication.owned)`;
+  it is never returned to anyone but the account that wrote it, in any API
+  response, regardless of whether the song itself is public, unlisted or
+  private. The compact `/api/songs` format never includes a prompt field
+  at all (`songs.ts`). The privacy page states this outright rather than
+  the weaker "not shown unless published" a first draft would have
+  implied. A prompt is sent to OpenAI only to produce its song
+  (`composition/model.ts`'s adapter calls the Responses API with
+  `store: false`); chipvoice does not use prompts to train a model. The
+  page links OpenAI's own description of its API data handling rather
+  than inventing figures.
+- **Prompt retention: kept with the song, erased when it is withdrawn.**
+  Before this ticket, `withdrawProject` soft-deleted a project but left its
+  `generations.request.prompt` untouched forever, which would have made a
+  deletion promise false. `projects.ts` now calls a new
+  `scrubGenerationPrompt` from `withdrawProject`, which overwrites
+  `request.prompt` to a fixed placeholder on every one of that project's
+  `generations` rows. The row itself, and the `model`/`usage`/timestamp
+  fields `composition/admission.ts`'s `monthSpend` reads for the shared
+  budget, stay; `monthSpend` never reads `request`, so scrubbing the
+  prompt cannot affect billing. A song that is never withdrawn keeps its
+  prompt indefinitely, which the privacy page says plainly instead of
+  implying a retention window that does not exist. `test-generation.mjs`
+  asserts the scrub happens on withdrawal.
+- **No self-serve account deletion.** There is no account-deletion code
+  anywhere in the schema or API (`migrations.ts` checked in full). The
+  privacy page says so and gives `hello@chipvoice.dev` for a manual
+  request, rather than promising a delete button that does not exist.
+- **Accounts and the beta.** The terms page restates decision 42's
+  invitation-and-budget enforcement and decision 39's free closed beta in
+  plain language, without repeating the dollar figures or the invite
+  mechanics, which stay in decisions 39 and 42.
+
+**Not lawyer-reviewed.** This text is honest about what the code does, in
+plain language, with no dark patterns - but it has not been reviewed by a
+lawyer. It should be, before any paid launch or any launch outside the
+closed beta. This caveat is deliberately internal: it is not on the public
+`/terms` or `/privacy` page itself.
+
+**Why.** A product that stores prompts and renders songs needs to say what
+it does with them somewhere a person can read before they use it, and a
+promise that outruns the code is worse than no promise. Writing the pages
+from the code, not from the decision bullets that inspired them, surfaced
+two places (the melody instruction, prompt retention on withdrawal) where
+the code was not yet as good as what NEXT-22 wanted to say about it; both
+are now fixed rather than the pages being softened to match the gap.
+
+**What changes.** `/terms` and `/privacy` exist in English and Japanese.
+`compositionInstructions()` carries an explicit anti-reproduction
+instruction. `withdrawProject` erases a withdrawn project's prompts. None
+of this changes decisions 39, 42 or 43; it makes their public-facing text
+match what was already decided, and closes the two gaps above.
+
+**Amendment: who else handles your data, and what the browser keeps -
+caught by a PR review of this same ticket before merge.** The first draft
+of `/privacy` opened by claiming to describe "exactly what chipvoice
+stores today", then named only OpenAI as a third party and said nothing
+about cookies or browser storage - both true gaps, not just omissions of
+detail, given that opening claim. The page now also says, checked against
+the same files as everything else on it: Vercel hosts chipvoice.dev and
+keeps its own standard request logs (IP addresses included); Turso hosts
+the database (`apps/web/src/lib/db.ts`, the `TURSO_*` prefix); domani
+delivers the sign-in email and so sees the address it is sent to
+(`apps/web/src/lib/mail.ts`, `DOMANI_API_KEY`); OpenAI receives prompts,
+as already stated. `@vercel/blob` (decision 40) was checked and excluded
+from this list: it stores the studio's own lab and arrangement
+recordings, never a user's song audio or any other user data, which is
+rendered on request from the stored score instead
+(`apps/web/src/app/api/audio/[id]/[format]/route.ts`). The page also now
+states the session cookie's 30-day lifetime (`SESSION_TTL_MS`,
+`apps/web/src/lib/auth.ts`), names what the browser keeps locally (a song
+or prompt draft in progress, and a short-lived cache of the signed-in
+account's own display details), and states plainly that chipvoice runs no
+analytics or advertising trackers, which a search of `apps/web/src` and
+its dependencies confirms.

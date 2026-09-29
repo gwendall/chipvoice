@@ -88,14 +88,20 @@ jobs:
       - run: npm publish --access public
         working-directory: packages/chipvoice
 
-      # No workflow has ever done this - the release page has always been a
+      # No workflow did this before - the release page had always been a
       # separate, manual step after publishing, which is exactly the kind of
       # step a maintainer forgets: 0.15.0, 0.15.1, 0.18.0 and 0.19.0 all
       # reached npm without a release page and had to be backfilled by hand.
       # npm publish above already means the version is out and nothing here
       # can undo that, so this only ever adds the page and checks first
       # rather than failing on one a maintainer already created by hand.
+      # --title falls back to the tag name itself when the tag carries no
+      # subject - without it, `--notes-from-tag` alone ships a release with
+      # an empty title, as v0.20.0 did before this fix (fixed by hand with
+      # `gh release edit --title`).
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag
+        run: |
+          title="$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")"
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --verify-tag --notes-from-tag --title "${title:-$GITHUB_REF_NAME}"

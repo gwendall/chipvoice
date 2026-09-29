@@ -141,6 +141,7 @@ button:disabled { opacity: .35; }
 .about-main section { border-top: 1px solid var(--edge); padding: 25px 0; }
 .about-main p, .about-main li { font-size: var(--text-body); line-height: 1.8; color: #575c51; }
 .about-main a { text-underline-offset: 4px; }
+.legal-updated { color: var(--muted); font-size: var(--text-label); margin-top: -18px; }
 .about-main pre { padding: 22px; overflow-x: auto; background: #202721; color: #e9eadc; border-radius: 8px; font: var(--text-label)/1.8 var(--mono); }
 
 /* NEXT-12: the public accuracy page. `.chip-accuracy` is one of `.about-main`'s
@@ -286,6 +287,7 @@ button:disabled { opacity: .35; }
 .signin-fields input { box-sizing: border-box; width: 100%; min-width: 0; padding: 12px; font: inherit; border: 1px solid var(--edge); border-radius: 4px; background: #f8f6ef; color: inherit; }
 .signin-fields button { min-height: 48px; }
 .signin-form p { line-height: 1.5; }
+.signin-legal { font-size: var(--text-label); color: var(--muted); }
 .prompt-signin { border-top: 1px solid var(--edge); padding-top: 16px; }
 .prompt-signin h2 { font-size: 20px; margin: 0; }
 @media (max-width:760px) {

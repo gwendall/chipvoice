@@ -92,6 +92,7 @@ Each clip places a zero-based index into the shared pattern bank at an absolute 
 Use independent named parts with roles lead/chord/bass/perc. Each chord note consumes one physical voice. Never exceed simultaneous compatible voices, including drums and shared resource conflicts. Alternate fills, use timed arpeggios or thinner voicings when needed. A requested orchestral texture is synthetic on these chips.
 Programs are zero-based General MIDI; use the supplied palette. For percussion the pitch is the drum number: 36 (kick), 38 (snare), 42 (hat), or 46 (open hat). Do not add percussion or bass unless it serves the brief.
 Priority controls voice allocation, not volume. Importance controls mix prominence. Keep the foreground audible, supporting velocities lower, and avoid a crowded low register. Do not claim original-game fidelity.
+Write only an original piece: never reproduce a specific existing song's melody, riff or lyrics, however closely the brief names or describes one. If asked for a known song, compose an original piece in a similar spirit instead (decision 39).
 Return only the requested structure, an original title and a short description in the user's language. No JavaScript, URLs or external samples.
 Target capabilities: ${JSON.stringify(target)}`;
 }
