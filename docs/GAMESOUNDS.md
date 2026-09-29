@@ -282,27 +282,33 @@ in both engines, well under the tolerance). Run in CI as part of the
 locally as `pnpm sounds:check-decode`. The gate passes cleanly against the
 rebuilt catalogue: 0 failures in Chromium, 0 in Firefox.
 
-mp3 has no equivalent content-loss problem, but has a different, newly
-measured one: Chromium is gapless-exact on every live mp3 (1042 of 1080
-decode to exactly the wav's own frame count, the other 38 longer by 4 to
-46 samples, none shorter). Firefox decodes every mp3 whole too, but does
-not trim the LAME encoder's own priming delay the way Chromium's gapless
-playback does, so its decode of the same file is delayed by exactly 576
-samples relative to Chromium's - 13.06ms at 44.1kHz, exactly one mp3
-granule (576 samples is MPEG-1 Layer III's fixed granule size). This is
-confirmed by a cross-correlation lag search against the wav, run on every
-one of the 1080 live variants: Chromium lands at lag 0 on all 1080,
-Firefox at lag +576 on all 1080, both with a minimum normalized
-correlation of 0.89 at their own best lag - an exact value, not a median
-or a range (see [Decision 54](DECISIONS.md)'s GS-07 v2.2 amendment for the
-full method). That is smaller than, and different from, Firefox's own
-decoded length exceeding the wav's frame count by 623 to 1774 samples
-(mean about 1172): the length excess is the leading delay plus whatever
-trailing padding Firefox also leaves untrimmed, not latency by itself. That
-is a real, separate defect (added leading delay, not lost content) -
-tracked as new backlog item **GS-08**, not fixed in this ticket. The
-catalogue has no loop sounds, so none of this trailing-silence handling is
-ever audible as a seam either way.
+mp3 has no equivalent content-loss problem, and, since **GS-08**, no
+leading-delay problem either: every mp3 this catalogue ships is gapless-
+exact in both engines. This was not always true. Chromium was always
+gapless-exact on every live mp3, but Firefox used to decode the same file
+delayed by exactly 576 samples relative to Chromium's - 13.06ms at
+44.1kHz, exactly one mp3 granule (576 samples is MPEG-1 Layer III's fixed
+granule size, also LAME's own fixed encoder priming delay) - because
+ffmpeg's mp3 muxer, which every mp3 used to be encoded with, never
+populated the LAME/Xing gapless tag's encoder-delay/padding fields with
+real values (it filled them with a fixed `0xAA` placeholder instead);
+Chromium does not appear to trust that tag either way, but Firefox does,
+and with no real delay/padding info it did not trim LAME's own priming
+delay at all. GS-08 fixed this at the source: every mp3 is now encoded
+with the real `lame` CLI (the reference implementation's own tag writer)
+instead of ffmpeg's mp3 muxer. Confirmed by the same cross-correlation lag
+search against the wav (`crossCorrelationLag`, `scripts/lib/decode-
+judge.mjs`), run on every one of the 1080 live variants after the fix:
+Chromium and Firefox both land at lag 0 on all 1080, both with a minimum
+normalized correlation of 0.883 at their own best lag - identical audio
+content and quality to the pre-fix mp3s, only the container's own gapless
+tag changed (see [Decision 60](DECISIONS.md) for the full mechanism and
+measurement). `check-browser-decode.mjs`'s mp3 leading-delay check is now
+a real gate (lag must equal exactly 0 in both engines), not just an
+informational report. The catalogue has no loop sounds, so none of this
+trailing-silence handling is ever audible as a seam either way - and since
+both shipped formats are now gapless-exact in both major engines, neither
+ogg nor mp3 is recommended over the other on timing grounds.
 
 ## Variants
 

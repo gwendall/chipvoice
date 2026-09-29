@@ -3547,3 +3547,108 @@ gaussian-interpolation rounding, not yet checked line by line against
 `SPC_DSP.cpp`. NEXT-26 stays open (`doing`, not `done`) in
 `docs/BACKLOG.md` for that reason; the two fixes and the clear_echo()
 decision above are complete and proven on their own.
+
+## 60. Firefox's 576-sample mp3 leading-delay is a missing LAME gapless tag, not a decoder bug; the real `lame` CLI replaces ffmpeg's mp3 muxer, and the browser-decode gate now enforces lag 0 (2026-09-29)
+
+GS-08. GS-07 v2.2 measured Firefox landing at a fixed +576-sample decode
+lag (13.06ms at 44.1kHz, one mp3 granule - MPEG-1 Layer III's fixed
+granule size, also LAME's own fixed encoder priming delay) relative to
+Chromium on every one of the 1080 live catalogue mp3s, via a
+cross-correlation lag search against the wav (`crossCorrelationLag`,
+`scripts/lib/decode-judge.mjs`): Chromium at lag 0 on all 1080, Firefox at
+lag +576 on all 1080, minimum normalized correlation 0.888 in both
+engines. That was tracked as an unfixed backlog item (GS-08) and reported,
+not gated, by `check-browser-decode.mjs`. This ticket fixed it.
+
+**Cause.** Hex-dumping the LAME/Xing gapless tag on a live catalogue mp3
+found the answer directly: ffmpeg's mp3 muxer (`libavformat/mp3enc.c`)
+writes a Xing/Info header (frame count, byte count, TOC, quality -
+`write_xing`, on by default) but never populates the LAME-specific
+info-tag extension that follows it - replaygain, encoder delay, encoder
+padding - with real values. It fills those exact bytes with a fixed
+`0xAA` placeholder instead, on every ffmpeg version/build tried, bitexact
+flags (`-fflags +bitexact -flags:a +bitexact`) or not: bytes 9 through 24
+after the "LAME3.100" version string, where the encoder-delay/padding
+field lives, read back as `0xAA` repeated - an internally implausible
+"delay 2730, padding 2730" no real encoder would produce. Nothing in
+`ffmpeg -h muxer=mp3` or `-h encoder=libmp3lame` exposes an option to
+populate those fields correctly; this is a real gap in ffmpeg's own mp3
+muxer, not a flag that was merely unset. Chromium does not appear to trust
+that tag either way (it decoded gapless-exact regardless), but Firefox
+does: fed a tag with no real delay/padding info, it does not trim LAME's
+own fixed 576-sample encoder priming delay at all - exactly the measured
+lag. The real `lame` CLI (the reference implementation's own writer, not a
+muxer bolted on afterward) writes the same tag correctly - verified the
+same way: delay 576, padding computed from the real output length, both
+internally plausible and correct.
+
+**Fix, tested empirically before touching the build pipeline.** Real
+Chromium AND Firefox, Playwright, `decodeAudioData`, the same
+cross-correlation lag search `check-browser-decode.mjs` itself uses, on a
+60-variant sample spanning every category/style family in the catalogue
+(mono 44.1kHz kept as-is throughout; nothing here changes sample rate or
+channel count). `lame -V 3` (the same VBR-quality scale as ffmpeg's own
+`-q:a 3` - libmp3lame interprets both identically) landed Firefox at lag 0
+on 60/60 (previously +576 on 60/60) and left Chromium untouched at lag 0
+on 60/60, with identical minimum normalized correlation before and after
+in both engines (0.9534010956664087 chromium, 0.953400869444321 firefox) -
+proving no content or quality change, not just no regression - and zero
+mp3 length excess in Firefox after the fix (previously 626 to 1718 samples
+over the wav's own frame count; the length excess was always the leading
+delay plus whatever trailing padding Firefox also left untrimmed, not
+latency by itself, per GS-07 v2.1's own correction). Content parity was
+also checked directly, independent of the lag search: ffmpeg's own CLI
+decode of a `lame`-CLI mp3 and of an ffmpeg-encoded mp3 of the same input
+wav is sample-for-sample identical (max abs diff 0.0 on a synthetic 880Hz
+tone), and true peak measured by ffmpeg's own `ebur128` filter matched to
+0.1dB on a real catalogue wav - this change only touches which tool writes
+the mp3 container and its own gapless tag, never the audio itself. `lame`
+is deterministic across repeated encodes of the same input (byte-identical
+sha256 across two independent runs, both on a synthetic tone and a real
+catalogue wav; the existing `encodeVariant is deterministic` unit test,
+`apps/sounds/test/audio.test.mjs`, exercises this same path and passed),
+so no bitexact-style flag is needed - `lame` never embeds a machine- or
+run-dependent value in the first place. `BITEXACT_ARGS` was removed
+entirely from `scripts/lib/audio.mjs`: it existed only for the ffmpeg mp3
+path this fix deletes, and the ogg path (`sox -R`, GS-06/GS-07) never used
+it.
+
+**Shipped.** `scripts/lib/audio.mjs`'s `encodeVariant` now calls
+`lame --silent -V 3 <wav> <mp3>` (via a new `ensureLameCli`, mirroring the
+existing `ensureSoxVorbis` pattern) instead of ffmpeg for every mp3 this
+catalogue encodes. CI (`.github/workflows/ci.yml`) now installs `lame`
+alongside `sox` before the `sounds` job runs. The full catalogue was
+rebuilt locally: wav and ogg are untouched (0 of 1080 changed, verified
+byte-identical on disk by direct sha256 comparison of every file, not just
+by the recorded hash); all 1080 mp3s changed (1010 unique new hashes,
+since 1080 variants dedup to 1010 unique underlying sounds). The loudness
+gate and the format-energy gate (the actual per-format acceptance
+criteria, `FORMAT_ENERGY_TOLERANCE_DB`) are unaffected: identical stats
+before and after the fix (mean 0.0477dB, p99 0.2747dB, max 0.4789dB across
+2160 ogg/mp3 format/channel readings). `check-determinism.mjs` confirmed a
+fresh rebuild's wav hashes match the committed `generated/catalog.json`
+exactly.
+
+**The gate.** `check-browser-decode.mjs`'s mp3 leading-delay check (point
+4 of its own header comment) used to be informational only
+(`MP3_LAG_TOLERANCE_FRAMES` did not exist). It is now a real gate: lag
+must equal exactly 0 in both engines, or the build fails with a message
+pointing at this decision. Run against the full rebuilt catalogue (1080
+live variants, both engines, after the fix): 0 failures of 2160 decodes
+per engine; mp3 lag exactly 0 on 1080/1080 in both Chromium and Firefox
+(modal lag 0, range [0, 0] in both); mp3 length excess now +0/+0/+0
+(min/median/max) in both engines, down from the pre-fix +576 lag plus
+untrimmed trailing pad; minimum normalized correlation 0.883 in both
+engines, matching the pre-fix baseline (0.888) closely enough to confirm
+no quality regression across the full catalogue, not only the 60-variant
+sample. Ogg's own agreement check is unaffected by any of this (GS-06/
+GS-07/decision 54's own mechanism, untouched): max |browser - reference|
+1.54e-5 in both engines, 65x under `DECODER_AGREEMENT_TOLERANCE`.
+
+**What was not needed.** No change to ogg's own encoding path (`sox -R`,
+`OGG_TAIL_GUARD_FRAMES`) - this ticket's defect and fix are mp3-only.
+Recommending ogg over mp3 for latency-sensitive consumers, floated as a
+fallback direction when GS-08 was first opened, turned out unnecessary:
+the mp3 defect is fixed at the source, so both formats are now
+gapless-exact in both engines and `docs/GAMESOUNDS.md` recommends neither
+format over the other on timing grounds.

@@ -280,6 +280,17 @@ jobs:
       # rather than silently skipping or falling back.
       - name: Install sox
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sox libsox-fmt-base
+      # GS-08: every mp3 is now encoded with the real `lame` CLI, not
+      # ffmpeg's own libmp3lame wrapper - ffmpeg's mp3 muxer was found to
+      # never populate the LAME info tag's own encoder-delay/padding fields
+      # with real values (fixed 0xAA placeholder bytes instead), which is why
+      # Firefox never trimmed LAME's own fixed priming delay off the front of
+      # its decode (measured: +576 samples on every live mp3, informational
+      # in check-browser-decode.mjs before this ticket, a gate after it). The
+      # real `lame` CLI writes that tag correctly, same as `ensureLameCli`
+      # requires in scripts/lib/audio.mjs. See docs/DECISIONS.md, decision 60.
+      - name: Install lame
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lame
       # CI has no license to trust that whatever ffmpeg ships on the runner
       # re-encodes bytes identically to the author's own machine, so it never
       # serves the committed catalog.json as-is. Instead it rebuilds the
