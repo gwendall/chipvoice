@@ -70,6 +70,40 @@ mp3にはこれと同等のコンテンツ損失問題はないが、新たに�
 
 `sounds.json`は、すべての生産者と消費者が共有する唯一の契約である：`POST /api/v1/resolve`、`GET /packs/{id}`、そしてCLI自身が書き出すファイルは、すべて`buildManifest()`（`apps/sounds/src/lib/catalog.ts`）の出力である。その`base`は`files`/`fallback`のパスが何に対する相対パスかを示す（サーバーは`"/"`を返すが、CLIがディスクに書き出すファイルは代わりに`"./"`を持ち、パスもそれに合わせて書き換えられるため、書き出されたファイルは単体で持ち運べる）。`credits`は、音のidで重複排除した上で、それぞれ異なる音のライセンス、作者、出所、必要なクレジット表記を列挙する。
 
+<a id="installing-gamesounds"></a>
+## gamesoundsのインストール
+
+`gamesounds`（このリポジトリの`packages/gamesounds`）はnpmに
+[`gamesounds`](https://www.npmjs.com/package/gamesounds)として公開されている。
+CLIはインストール不要である（`npx`がオンデマンドで取得する）：
+
+```bash
+npx gamesounds add jump coin hit/heavy --style 8bit
+```
+
+ランタイムは通常の依存パッケージとして使う：
+
+```bash
+npm install gamesounds
+```
+
+```ts
+import { loadSounds } from "gamesounds";
+import manifest from "./sounds.json";
+
+const sounds = await loadSounds({ manifest });
+```
+
+CLIとランタイムの完全なリファレンスは
+[`packages/gamesounds/README_ja.md`](../packages/gamesounds/README_ja.md)を、
+各バージョンで何が出荷されたかは
+[`packages/gamesounds/CHANGELOG_ja.md`](../packages/gamesounds/CHANGELOG_ja.md)
+を参照。パッケージの`files`ホワイトリスト、`exports`マップ、フレッシュイン
+ストールテストは`packages/gamesounds/scripts/fresh-install-test.mjs`
+（`npm run test:fresh`）がカバーする - これはtarballをパックし、空のプロ
+ジェクトにインストールし、公開のたびにインストール済みのCLIとAPIを実際の
+gamesounds.aiに対して駆動して検証する。
+
 <a id="the-cli"></a>
 ## CLI
 

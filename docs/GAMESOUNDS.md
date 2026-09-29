@@ -467,6 +467,38 @@ its paths are rewritten to match, so the written file is portable on its
 own). `credits` lists every distinct sound's licence, author, source and
 required attribution, deduplicated by sound id.
 
+## Installing gamesounds
+
+`gamesounds` (`packages/gamesounds` in this repository) publishes to npm as
+[`gamesounds`](https://www.npmjs.com/package/gamesounds). The CLI needs no
+install (`npx` fetches it on demand):
+
+```bash
+npx gamesounds add jump coin hit/heavy --style 8bit
+```
+
+The runtime is a regular dependency:
+
+```bash
+npm install gamesounds
+```
+
+```ts
+import { loadSounds } from "gamesounds";
+import manifest from "./sounds.json";
+
+const sounds = await loadSounds({ manifest });
+```
+
+See [`packages/gamesounds/README.md`](../packages/gamesounds/README.md) for
+the full CLI and runtime reference and
+[`packages/gamesounds/CHANGELOG.md`](../packages/gamesounds/CHANGELOG.md) for
+what shipped in each version. The package's `files` whitelist, `exports` map
+and fresh-install test are covered by `packages/gamesounds/scripts/fresh-install-test.mjs`
+(`npm run test:fresh`), which packs the tarball, installs it into an empty
+project and drives the installed CLI and API against a live gamesounds.ai
+before every publish.
+
 ## The CLI
 
 `packages/gamesounds/bin/gamesounds.mjs` (no dependencies) is a small set of
