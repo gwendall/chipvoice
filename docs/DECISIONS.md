@@ -3099,3 +3099,93 @@ or prompt draft in progress, and a short-lived cache of the signed-in
 account's own display details), and states plainly that chipvoice runs no
 analytics or advertising trackers, which a search of `apps/web/src` and
 its dependencies confirms.
+
+## 58. importSpc restores S-DSP's hidden per-sample state on snapshot load; play-spc's clear_echo() demo convention stays out of it (2026-09-29)
+
+NEXT-26 tested `importSpc` against a set of real commercial SPC rips, kept
+locally for this ticket only (decision 44's rule for VGM applies the same
+way here: never committed, a person's own `--corpus <dir>`, CI never
+depends on it), bisected against `play-spc` as a black box the same way
+every other chip's oracle is used. Two real bugs turned up, both in how a
+fresh chip reconstructs a snapshot's state from an imported plan's
+`events`/`memory` - not harness artifacts: `packages/chipvoice/src/
+performance.ts` and `progressive-renderer.ts` replay a plan the identical
+way `packages/conform`'s own harness does, so both bugs were real playback
+bugs, not just check:spc failures.
+
+**The two fixes.** DSPADDR (`$F2`) is S-SMP latch state, not one of the 128
+DSP registers a snapshot's register block restores; a snapshot almost
+always resumes with the CPU's very next instruction writing straight to
+DSPDATA with no `$F2` write of its own, since the selecting write already
+happened before the snapshot was taken. `importSpc` now seeds it explicitly
+from the snapshot's own value, right after the register-restore writes.
+Separately, several S-DSP fields - the echo address latch, the direction-
+page latch, the KON edge-latch, the echo history and its ring position -
+are hidden internal state a real chip only re-derives once a sample, never
+on an ordinary register write; a snapshot's register file was written by a
+chip that had been running continuously; so they were in sync with it at
+that instant too, but the snapshot format itself does not carry them, and a
+fresh chip replaying only ordinary `$F2`/`$F3` writes never re-triggers that
+sync. `SDsp.load()` was split into the register copy plus a new
+`restoreInternalState()` (`packages/chipvoice/src/chips/snes/sdsp.ts`), and
+`importSpc` now emits one more synthetic event at a reserved sentinel
+address, `DSP_SNAPSHOT_RESTORE_ADDR` (`$F9`, unimplemented on real
+hardware, never reachable from real S-SMP traffic; `chips/snes/dsp.ts`),
+that `SnesChip.write` recognizes as "the register file you now hold is a
+snapshot's" and re-syncs those latches from it immediately - matching what
+`SDsp.load()` already did for a caller with the raw register block in hand.
+Both fixes ship with self-authored, redistributable regression files
+(`dspaddr-select.spc`, `echo-snapshot-restore.spc`, `packages/conform/
+corpus/snes/spc`, see that directory's own README) that fail on the
+pre-fix code and pass on the fix, gated in `check:spc`/CI like every other
+file there.
+
+**The clear_echo() question, settled explicitly.** `play-spc.cpp` (the
+vendored oracle binary `check:spc` runs, blargg's own reference SPC700
+player) calls `SNES_SPC::clear_echo()` unconditionally right after loading
+a snapshot and before playing a single cycle: whenever the snapshot's FLG
+register has echo writes enabled, it `memset`s the whole echo buffer
+region (`ESA*0x100` through `+EDL*0x800`) in RAM to `0xFF` - a constant
+`-1` sample - before anything plays. This is not hardware behavior; real
+hardware never spontaneously overwrites RAM on load. It is blargg's own
+convenience for a generic .spc *player*: most user-dumped snapshots'
+echo buffers hold meaningless leftover content (whatever the game last
+used that memory for, or nothing at all), so without this, a full echo-
+buffer-length of playback at the start of many real-world files pops on
+random garbage before the DSP's own echo writes catch up and overwrite it
+naturally. Confirmed directly against this ticket's own local corpus:
+three Super Mario Kart rips (`smk-s06`, `smk-07`, `smk-08`) all have FLG
+with echo writes enabled, ESA=$df, and a genuine `0x00` byte - not `0xFF`
+- sitting in RAM at the echo buffer's own address; `check:spc` reports
+exactly "ours 0, oracle -1" diverging at cycle 251 (the first echo-
+affected sample) for each. Three F-Zero rips (`fz-02`, `fz-07`, `fz-09`)
+have the identical FLG/ESA shape, but their own snapshot's echo buffer
+RAM already happens to be all-`0xFF`, so `clear_echo()` is a no-op there -
+exactly why the hidden-latch fix above made their own cycle-251 divergence
+disappear while the Super Mario Kart files kept a residual one.
+
+`importSpc` does not replicate `clear_echo()`. It belongs to blargg's own
+demo player, not to any SNES chip, and copying it into a hardware-faithful
+emulator would mean deliberately discarding a real snapshot's own true RAM
+content in favor of a fabricated pattern - the opposite of what "plays a
+real commercial SPC700 rip exactly" is supposed to mean here. A real
+console handed the exact RAM in one of those Super Mario Kart snapshots
+would play back the `0` sample that is actually there, not blargg's `-1`;
+the divergence `check:spc` reports against `play-spc` on such a file is
+therefore expected, and attributable to a documented player convenience in
+the oracle binary, not a chipvoice bug. Recorded here per the clean-room
+rule (decisions 41 and 48) rather than left as a silent, unexplained
+mismatch or quietly ported in either direction.
+
+**What is still open.** Some of NEXT-26's four originally reported
+divergence families are not fully closed: a handful of write-sequence
+divergences on the F-Zero/Super Mario World corpus still appear after tens
+of thousands of otherwise-identical writes (timing drift far downstream,
+not yet root-caused); a small residual sample divergence, a few units at
+most, remains on some Super Mario Kart files even once the clear_echo()
+explanation above does not apply (echo writes disabled, or the snapshot's
+own buffer already agrees) - most likely voice/envelope/BRR-decode/
+gaussian-interpolation rounding, not yet checked line by line against
+`SPC_DSP.cpp`. NEXT-26 stays open (`doing`, not `done`) in
+`docs/BACKLOG.md` for that reason; the two fixes and the clear_echo()
+decision above are complete and proven on their own.

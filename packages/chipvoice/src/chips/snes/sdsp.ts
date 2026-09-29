@@ -694,6 +694,38 @@ export class SDsp {
   /** `SPC_DSP::load`: registers as given, every other piece of state fresh. */
   load(regs: Uint8Array) {
     this.regs.set(regs.subarray(0, 128));
+    this.restoreInternalState();
+  }
+
+  /**
+   * Everything `load()` sets besides the 128 addressable registers
+   * themselves: the hidden per-sample latches (`t_esa`, `t_dir`, `new_kon`),
+   * the echo history and its ring position, and every other piece of
+   * internal state a real chip only ever re-derives once per sample (not
+   * on an ordinary $F2/$F3 write).
+   *
+   * On real hardware these latches are always in sync with the register
+   * file during normal play - they are re-read from it once every sample,
+   * so after even one sample of continuous running they can be at most one
+   * sample stale. A snapshot's register file was written by a chip that
+   * had been running continuously up to that instant, so its hidden
+   * latches were in sync too; the snapshot format just does not carry them
+   * (SPC_DSP.h's own `state_t` comment calls them exactly that: internal
+   * state, not part of the 128-register file `regs`).
+   *
+   * A consumer that only replays a plan's `events` (ordinary $F2/$F3
+   * writes, exactly as `SnesChip.write` applies them) reconstructs the
+   * register file perfectly, but never triggers this re-sync: the writes
+   * are addressed to DSP registers, not to these hidden fields, so they
+   * would only apply as the *next* sample naturally re-latches from
+   * whatever the register file happens to hold - up to 32 cycles after
+   * cycle 0, using the fresh chip's constructor defaults instead of the
+   * snapshot's actual state for that first sample. `SnesChip.write` calls
+   * this method once, right after a plan's DSP-register restore writes,
+   * closing that gap the same way `load()` does for a caller that already
+   * has the raw 128-byte register block in hand.
+   */
+  restoreInternalState() {
     this.echo_hist.fill(0);
     this.echo_hist_pos = 0;
     this.every_other_sample = 0;

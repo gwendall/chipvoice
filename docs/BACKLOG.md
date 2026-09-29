@@ -588,6 +588,33 @@ real game music, and a real unit.
   `src/chips/gb/cpu.ts` and `src/gbs-import.ts` only; no existing chip module
   changed, so the calibration manifest was refreshed but nothing about the
   mixer or its golden renders moved.
+- doing - NEXT-26: `importSpc` (NEXT-08) tested against real commercial SPC
+  rips, kept locally for this ticket only (never committed, decision 44's
+  rule) and bisected against `play-spc` as a black box. Found and fixed two
+  real playback bugs, both in how a fresh chip reconstructs a snapshot's
+  state from an imported plan (`packages/chipvoice/src/performance.ts` and
+  `progressive-renderer.ts` replay a plan the same way the conformance
+  harness does, so these were real bugs, not harness artifacts): DSPADDR
+  ($F2, S-SMP latch state, not one of the 128 restored DSP registers) was
+  never seeded from the snapshot's own value; and several S-DSP fields the
+  chip only re-derives once a sample (the echo address and direction-page
+  latches, the KON edge-latch, the echo history and its ring position)
+  were left at construction defaults instead of the snapshot's own state.
+  Fixed by `SDsp.restoreInternalState()` and a new reserved sentinel event,
+  `DSP_SNAPSHOT_RESTORE_ADDR`, both in `chips/snes/sdsp.ts`/`dsp.ts`, plus
+  seeding DSPADDR in `spc-import.ts`; two new self-authored, redistributable
+  regression files (`dspaddr-select.spc`, `echo-snapshot-restore.spc`) fail
+  pre-fix and pass post-fix, gated in `check:spc`/CI alongside the existing
+  two. Also settled, explicitly, the question of `play-spc`'s `clear_echo()`
+  demo-player convention (decision 58): it is not hardware behavior, and
+  `importSpc` does not replicate it, so a divergence it causes against the
+  oracle on a real-world file is expected, not a bug. Left open: a handful
+  of write-sequence divergences on the local F-Zero/Super Mario World corpus
+  after tens of thousands of otherwise-identical writes (timing drift, not
+  yet root-caused), and a small residual sample divergence on some Super
+  Mario Kart files even where `clear_echo()` does not explain it (likely
+  voice/envelope/BRR-decode/gaussian-interpolation rounding). See decision
+  58 for the full mechanism and the local corpora's before/after numbers.
 - done - NEXT-08: `importSpc` plays an `.spc` snapshot (SPC700 + S-DSP, the
   SNES's own music format) through a new SPC700 (S-SMP), timers and I/O
   ports written from fullsnes, Anomie's SPC700/S-DSP documents and the SNES

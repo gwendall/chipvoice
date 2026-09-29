@@ -99,17 +99,19 @@ for now - see its README); a local, gitignored directory can hold anything
 else for a person's own testing without CI depending on it.
 
 <!-- spc:begin -->
-Written by `check:spc` on 2026-09-27, against play-spc (blargg's SPC700, vendored snes_spc).
+Written by `check:spc` on 2026-09-29, against play-spc (blargg's SPC700, vendored snes_spc).
 
 | | |
 | --- | --- |
-| Files | 2 |
+| Files | 4 |
 | Write-sequence divergences | 0 |
-| Sample cycles identical | 3072000 / 3072000 (100.0000 %) |
+| Sample cycles identical | 7168000 / 7168000 (100.0000 %) |
 | Files with a sample divergence | 0 |
 
 | File | Writes | Samples | First divergence |
 | --- | --- | --- | --- |
+| corpus/snes/spc/dspaddr-select.spc | 1/1 | 100.0000 % | none |
+| corpus/snes/spc/echo-snapshot-restore.spc | 1/1 | 100.0000 % | none |
 | corpus/snes/spc/selftest.spc | 3/3 | 100.0000 % | none |
 | corpus/snes/spc/timer-phase.spc | 1/1 | 100.0000 % | none |
 <!-- spc:end -->
