@@ -9,7 +9,18 @@ Notable changes to the `chipvoice` package and the SDK it exposes, newest
 first. See [README.md](README.md) for the current quickstart and feature
 overview.
 
-## Unreleased
+## 0.20.0: Console files in and out, and a fuller SNES
+
+New since 0.19.1: the package plays the consoles' own music files (`.spc`,
+`.gbs`, PSID/RSID, and NES and Game Boy VGM beside the Mega Drive's) and
+exports NES, Game Boy and SNES songs as standard `.nsf`, `.gbs` and `.spc`
+files. It models three more chips, reachable from the SDK but not yet from
+the studio's picker (Konami's VRC6, the Sunsoft 5B's AY-3-8910/YM2149 and
+the Yamaha YM2151), and the C64's 8580 as a second SID model. The SNES
+factory bank is richer and its echo is an opt-in `space`, and `renderSfx`
+renders a single sound effect offline. Existing songs can sound different on
+the SNES, the Mega Drive, the C64 and the Game Boy - the entries below say
+how - so this is a minor release, not a patch.
 
 The SNES factory bank's brass, strings, picked-bass, kick and snare move onto
 a shared ensemble/detune synthesis formula (several detuned partials per
@@ -393,6 +404,33 @@ player, in `scores/nsf-corpus` and `scores/nsf-export` alongside every
 other real-world 2A03 file. See [docs/chips/vrc6.md](docs/chips/vrc6.md)
 for the full sheet, both oracles' known limits, and what remains (a
 driver/arranger role, a real test ROM - none exists to automate).
+
+NEXT-15 adds General Instrument's AY-3-8910 and Yamaha's YM2149F as one
+standalone, host-agnostic core, `Ay8910`: three 12-bit tone channels, one
+shared noise channel (a 17-bit LFSR with a 5-bit period), a per-channel
+AND-gate mixer, and 4-bit volume or a shared envelope generator with a
+16-bit period and 16 shapes. It is written from nesdev's "Sunsoft 5B audio"
+page and General Instrument's AY-3-8910/8912/8913 datasheet, never from a
+ported GPL/LGPL emulator (decision 41). It is first hosted the way VRC6 was,
+as the Sunsoft 5B: the FME-7 mapper's own YM2149F behind two NES CPU ports
+(`$C000` register select, `$E000` data; `Sunsoft5bAudio`). The combined
+chip is registered as `"2a03-sunsoft5b"` (`NES_SUNSOFT5B`), reachable
+through `chips()`, `getChip`, `chipFor` and `Chip.create`, and, like VRC6,
+kept out of the studio's `CHIP_IDS` until it has a driver (decision 38).
+Measured against two independent oracles, neither ported: Peter Sovietov's
+Ayumi (MIT) and Game_Music_Emu's `Ay_Apu` (LGPL, harness only). `core`
+scripts (DAC mode, both generators disabled on every channel) gate at a
+literal 100 % against both; `edge` scripts (tone, noise and the envelope
+running) gate exactly against Ayumi on the full seven-script corpus and are
+report-only against Game_Music_Emu (74.3561 %). The noise LFSR is the
+Fibonacci form MAME verified on hardware and Ayumi shares (decision 48).
+`exportNsf` routes the 5B's two ports through the same indirect dispatch as
+VRC6 and sets the NSF header's bit 5; a self-authored CC0 probe proves the
+export/playback path exactly through Game_Music_Emu's `Nsf_Emu` (8400/8400
+commands in `nsf-corpus`; 8530/8530 commands, 301/301 frame writes and
+0.0 % export loss in `nsf-export`). See
+[docs/chips/sunsoft5b.md](docs/chips/sunsoft5b.md) for the sheet and what
+remains (a real test ROM, a unit's line-out, other AY/YM hosts).
 
 NEXT-16's first half adds the Yamaha YM2151 (OPM), the eight-channel,
 four-operator FM synthesiser behind the arcade boards and home computers of

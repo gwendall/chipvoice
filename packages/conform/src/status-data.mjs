@@ -104,7 +104,7 @@ export const CHIPS = [
     machine: 'NES, Famicom (Konami VRC6 cartridges)',
     chip: 'Konami VRC6',
     sheet: 'docs/chips/vrc6.md',
-    since: '0.19.1',
+    since: '0.20.0',
     analog: { done: 0, label: 'none' },
     /** Voices the driver reaches, of the chip's. None yet: decision 38 keeps VRC6 out of the studio picker and the arranger. */
     driver: { reached: 0, voices: 3 },
@@ -121,7 +121,7 @@ export const CHIPS = [
     machine: 'NES, Famicom (Sunsoft 5B mapper: Gimmick!)',
     chip: 'AY-3-8910 / YM2149, first hosted as the Sunsoft 5B',
     sheet: 'docs/chips/sunsoft5b.md',
-    since: '0.19.1',
+    since: '0.20.0',
     analog: { done: 0, label: 'none' },
     /** Voices the driver reaches, of the chip's. None yet: decision 38 keeps this chip out of the studio picker and the arranger. */
     driver: { reached: 0, voices: 3 },
@@ -138,7 +138,7 @@ export const CHIPS = [
     machine: 'Arcade and home-computer boards (Sharp X68000, many 1980s Taito/Konami/Sega/Capcom boards)',
     chip: 'Yamaha YM2151 (OPM)',
     sheet: 'docs/chips/ym2151.md',
-    since: '0.19.1',
+    since: '0.20.0',
     analog: { done: 0, label: 'none' },
     /** Voices the driver reaches, of the chip's own two DAC pins. None yet: decision 38 keeps YM2151 out of the studio picker and the arranger, and this chip has no per-channel output tap to reach anyway - see the sheet's "Known deviations". */
     driver: { reached: 0, voices: 2 },
