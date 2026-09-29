@@ -287,11 +287,15 @@ measured one: Chromium is gapless-exact on every live mp3 (1042 of 1080
 decode to exactly the wav's own frame count, the other 38 longer by 4 to
 46 samples, none shorter). Firefox decodes every mp3 whole too, but does
 not trim the LAME encoder's own priming delay the way Chromium's gapless
-playback does, so its decode of the same file sits a median 578 samples
-later than Chromium's (minimum 531, about 13.1ms at 44.1kHz, close to one
-mp3 granule of 576 samples) - the actual leading delay, measured as the
-last-audible-sample difference between the two engines' decodes of the
-identical bytes. That is smaller than, and different from, Firefox's own
+playback does, so its decode of the same file is delayed by exactly 576
+samples relative to Chromium's - 13.06ms at 44.1kHz, exactly one mp3
+granule (576 samples is MPEG-1 Layer III's fixed granule size). This is
+confirmed by a cross-correlation lag search against the wav, run on every
+one of the 1080 live variants: Chromium lands at lag 0 on all 1080,
+Firefox at lag +576 on all 1080, both with a minimum normalized
+correlation of 0.89 at their own best lag - an exact value, not a median
+or a range (see [Decision 54](DECISIONS.md)'s GS-07 v2.2 amendment for the
+full method). That is smaller than, and different from, Firefox's own
 decoded length exceeding the wav's frame count by 623 to 1774 samples
 (mean about 1172): the length excess is the leading delay plus whatever
 trailing padding Firefox also leaves untrimmed, not latency by itself. That

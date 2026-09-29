@@ -2466,18 +2466,22 @@ previously-unmeasured one: Chromium is gapless-exact on every one of the
 other 38 longer by 4 to 46 samples, mean 23.4, none shorter). Firefox
 decodes every mp3 whole too, but does not trim the LAME encoder's own
 priming delay the way Chromium's gapless playback does, so its decode of
-the same file sits a median 578 samples later than Chromium's (minimum
-531, about 13.1ms at 44.1kHz, close to one mp3 granule of 576 samples) -
-measured as the last-audible-sample difference between the two engines'
-own decodes of the identical bytes, which cancels the encoder's own
-pre-echo since both engines decode the same bitstream. That leading-delay
-figure is smaller than, and different from, Firefox's own decoded length
-exceeding the wav's frame count by 623 to 1774 samples (mean 1172.0): the
-length excess is the leading delay plus whatever trailing padding Firefox
-also leaves untrimmed, not latency by itself (see this decision's GS-07
-v2.1 amendment below - an earlier draft of this paragraph called the whole
-623-to-1774 length excess "14 to 40ms of latency", which conflated the two).
-Either way it is a real, separate defect (added leading delay, not lost
+the same file is delayed by exactly 576 samples relative to Chromium's -
+13.06ms at 44.1kHz, exactly one mp3 granule (576 samples is MPEG-1 Layer
+III's fixed granule size). This is confirmed by a cross-correlation lag
+search against the wav, run on every one of the 1080 live variants:
+Chromium lands at lag 0 on all 1080, Firefox at lag +576 on all 1080, both
+with a minimum normalized correlation of 0.89 at their own best lag - an
+exact value, not a median or a range (see this decision's GS-07 v2.2
+amendment below for the full method, and the less exact measurement it
+supersedes). That leading-delay figure is smaller than, and different
+from, Firefox's own decoded length exceeding the wav's frame count by 623
+to 1774 samples (mean 1172.0): the length excess is the leading delay plus
+whatever trailing padding Firefox also leaves untrimmed, not latency by
+itself (see this decision's GS-07 v2.1 amendment below - an earlier draft
+of this paragraph called the whole 623-to-1774 length excess "14 to 40ms
+of latency", which conflated the two). Either way it is a real, separate
+defect (added leading delay, not lost
 content) - tracked as new backlog item GS-08, not fixed in this ticket. The
 catalogue has no loop sounds (`docs/BACKLOG.md`), so none of this
 trailing-silence handling - padding, a guard, or either decoder's own
@@ -2522,8 +2526,10 @@ figure above means passing that gate was never proof a real browser plays
 a file whole. `apps/sounds/scripts/check-browser-decode.mjs` (new) decodes
 every catalogue ogg and mp3 in real Chromium AND Firefox (one browser
 launch per engine, one page reused, a hard 30-minute process-wide timeout,
-both browsers closed in a `finally` - measured about 38 seconds locally for
-the full 1080-variant catalogue across both engines) via the same
+both browsers closed in a `finally` - measured 65 seconds to about 4
+minutes locally, depending on machine load, for the full 1080-variant
+catalogue across both engines, including GS-07 v2.2's
+own cross-correlation lag search below) via the same
 `decodeAudioData`/`OfflineAudioContext` methodology used to measure the
 numbers above. It fails the build on: any decode error; any decoded length
 shorter than the wav's own frame count; and, ogg only, disagreement with a
@@ -2688,29 +2694,91 @@ specific expected rule, in both engines, on every run.
 GS-08's own numbers were also wrong. The "623 to 1774 samples, mean 1172,
 14 to 40ms of latency" figure above is Firefox's decoded mp3 length minus
 the wav's own frame count - that excess is the leading delay PLUS whatever
-trailing padding Firefox also leaves untrimmed, not latency by itself. The
-actual leading delay - Firefox's last-audible sample minus Chromium's own,
-on the same decoded bytes (a comparison that cancels the encoder's own
-pre-echo, since both engines decode the identical bitstream) - is a median
-578 samples (minimum 531), about 13.1ms at 44.1kHz and close to one mp3
-granule of 576 samples. `docs/BACKLOG.md`'s GS-08 entry, `docs/GAMESOUNDS.md`
-and this decision's own mp3 paragraph above are corrected to state both
-numbers and which is which. Separately, `check-browser-decode.mjs`'s own
-per-file info line reports a plainer, script-computable proxy for the same
-defect - each engine's decoded mp3's first sample above 1e-3 minus the
-wav's own first sample above 1e-3, median/min/max across all 1080 variants
-- because this forward-looking, per-engine version is markedly noisier than
-the cross-engine last-sample figure above (Chromium: min -219, median -10,
-max 37; Firefox: min -142, median -4, max 580): many of this catalogue's
-short, percussive chiptune attacks carry their own lossy-encoding pre-echo
-right at the start of the decoded stream in BOTH engines, which this
-simpler per-engine metric cannot distinguish from a genuine delay, while
-comparing the two engines' decodes of the same bitstream against each
-other cancels that shared pre-echo out. The script reports this info line
-as a diagnostic, never a failure; the 578-sample/13.1ms figure above is the
-one to cite as "what GS-08 is."
+trailing padding Firefox also leaves untrimmed, not latency by itself. A
+first attempt at the actual leading delay - Firefox's last-audible sample
+minus Chromium's own, on the same decoded bytes (a comparison that cancels
+the encoder's own pre-echo, since both engines decode the identical
+bitstream) - found a median 578 samples (minimum 531), about 13.1ms at
+44.1kHz and close to one mp3 granule of 576 samples. `docs/BACKLOG.md`'s
+GS-08 entry, `docs/GAMESOUNDS.md` and this decision's own mp3 paragraph
+above were corrected at the time to state both numbers and which is which.
+Separately, `check-browser-decode.mjs`'s own per-file info line reported a
+plainer, script-computable proxy for the same defect - each engine's
+decoded mp3's first sample above 1e-3 minus the wav's own first sample
+above 1e-3 - which GS-07 v2.2 (below) found was not just noisier than the
+578/531 figure above but flatly WRONG on many files: mp3 pre-echo crosses
+1e-3 before the real onset on this catalogue's short, percussive chiptune
+attacks, in both engines, and a single instantaneous crossing cannot tell
+that apart from a genuine delay. v2.2 replaced that metric with a
+cross-correlation lag search, which pins a single exact value rather than
+a distribution - see the amendment below for the full story and the number
+that supersedes both the 578/531 figure and the per-file proxy.
 
 The catalogue itself did not change in this round: `apps/sounds/generated/catalog.json`
 diffs at zero changed fields against the version this decision's own GS-07
 v2 fix produced (commit `6308ea5`) - this round touched only the gate
 script, its new unit-tested lib module, and documentation.
+
+**Amendment, GS-07 v2.2 (2026-09-29): GS-08's own leading-delay metric was
+not just noisy, it was wrong - replaced with a cross-correlation lag
+search that pins an exact value.** The v2.1 amendment above already
+replaced one broken metric (the wav-based content-loss oracle) with a
+reference-decode comparison. Review of that same round's OTHER new metric
+- `check-browser-decode.mjs`'s own per-file mp3 leading-delay info line,
+"the decoded mp3's first sample above 1e-3 minus the wav's own first
+sample above 1e-3, per engine" - found it was not simply noisier than the
+578-sample/531-minimum figure computed the other way (the last-audible-
+sample difference between the two engines' own decodes), it was measuring
+the wrong thing entirely: mp3 encoding leaves a pre-echo/ringing artifact
+right at the very start of many decodes, especially this catalogue's
+short, percussive chiptune attacks, which crosses the 1e-3 threshold well
+before the real onset, in both engines. A metric built on a single
+instantaneous threshold crossing has no way to tell that apart from a
+genuine delay.
+
+The fix is a cross-correlation lag search
+(`apps/sounds/scripts/lib/decode-judge.mjs`'s `crossCorrelationLag`,
+exported and unit-tested with no browser launched at all): it finds the
+wav's own onset only to place a search window, never as the measurement
+itself, then slides the decoded mp3 against that window at every lag in
+`[-1300, +1300]` and returns the lag with the highest normalized
+cross-correlation over a window of up to 4096 frames. Comparing a whole
+window at every candidate lag, rather than a single instantaneous
+crossing, is immune to a few samples of pre-echo or ringing on either
+side. Three unit tests (`apps/sounds/test/decode-judge.test.mjs`) exercise
+the pure function on a synthetic chirp rather than a fixed-frequency tone
+(a tone's own autocorrelation peaks at every multiple of its period and
+could report a wrong-but-plausible lag): a signal against itself must
+report lag 0; a signal delayed by exactly 576 samples - the exact defect
+this search exists to measure - must report lag 576; and a signal shifted
+earlier (the opposite direction) must report a correctly-signed negative
+lag, proving the search is not accidentally biased toward positive delays.
+
+Measured first on a fifth of the catalogue (every 7th variant, 155 of
+1080, both engines, a 4096-frame window): Chromium sits at lag 0 on
+155/155, Firefox at lag +576 on 155/155, with a minimum normalized
+correlation of 0.89 in both engines at their own best lag - exact
+agreement on a single integer, not a distribution. Measured again against
+the full 1080-variant catalogue with the same method wired into
+`check-browser-decode.mjs`'s own per-file info line (replacing
+`ONSET_THRESHOLD`/`firstAboveThreshold` entirely, both deleted): Chromium
+lands at lag 0 on all 1080/1080, Firefox at lag +576 on all 1080/1080,
+with a minimum normalized correlation of 0.888 at the best lag in both
+engines - the sampled measurement's 155/155 held exactly at full scale. **GS-08 is
+exactly 576 samples, 13.06ms at 44.1kHz, one mp3 granule - not a median,
+not a range: this is the number `docs/BACKLOG.md`, `docs/GAMESOUNDS.md`
+and this decision's own mp3 paragraph above now state, and it supersedes
+both the 578-sample/531-minimum figure and the noisier, sometimes-wrong
+per-file proxy this amendment replaces.**
+
+Adding the lag search's own CPU cost to `check-browser-decode.mjs` raised
+its measured local run time from about 38 seconds (v2.1 alone) to between
+65 seconds and about 4 minutes depending on machine load (`time node
+scripts/check-browser-decode.mjs`, full 1080-variant
+catalogue, both engines) - still comfortably inside the `sounds` CI job's
+35-minute timeout, which was not changed again.
+
+The catalogue itself did not change in this round either: zero diff
+against the catalogue this decision's own GS-07 v2.1 amendment above
+already confirmed unchanged (commit `6308ea5`) - this round touched only
+the gate script, its lib module, its unit tests, and documentation.

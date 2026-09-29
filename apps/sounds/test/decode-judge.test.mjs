@@ -5,12 +5,38 @@
 // prove the same logic catches a real content difference through an actual
 // browser decode.
 import assert from "node:assert/strict";
-import { compareToReference, judge, DECODER_AGREEMENT_TOLERANCE } from "../scripts/lib/decode-judge.mjs";
+import { compareToReference, judge, crossCorrelationLag, DECODER_AGREEMENT_TOLERANCE } from "../scripts/lib/decode-judge.mjs";
 
 function tone(n, amp = 0.4) {
   const a = new Float32Array(n);
   for (let i = 0; i < n; i++) a[i] = amp * Math.sin((2 * Math.PI * 880 * i) / 44100);
   return a;
+}
+
+/** A linear chirp (sweeping frequency), not a fixed-frequency tone: a pure
+ * tone's autocorrelation has a peak at every multiple of its own period, so a
+ * lag search over it could report a wrong-but-plausible multiple of 880Hz's
+ * period instead of the real delay. A chirp's shape never repeats within the
+ * search range, so its cross-correlation has one unambiguous peak - the same
+ * property real, non-tonal chiptune attacks have that makes this search
+ * reliable on the genuine catalogue. */
+function chirp(n, amp = 0.5, sampleRate = 44100) {
+  const a = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const freq = 200 + (2000 - 200) * (i / n);
+    a[i] = amp * Math.sin((2 * Math.PI * freq * i) / sampleRate);
+  }
+  return a;
+}
+
+/** `decoded[i + delay] = reference[i]` - a real decoder's delayed output
+ * doesn't just start `delay` samples later, it CONTAINS the same signal
+ * shifted later in time, which is what a lag search actually has to
+ * recover. */
+function delayedBy(reference, delay, extra = 2000) {
+  const out = new Float32Array(reference.length + delay + extra);
+  out.set(reference, delay);
+  return out;
 }
 
 {
@@ -92,4 +118,44 @@ function tone(n, amp = 0.4) {
   const failures = judge("ogg", n, { length: n, error: null }, { referenceChannel: ref, browserChannel: ref.slice() });
   assert.deepEqual(failures, [], "a healthy decode must report no failures");
   console.log("PASS judge: a healthy, reference-matching decode reports no failures");
+}
+
+{
+  // GS-07 v2.2: crossCorrelationLag replaces the old first-crossing-vs-wav
+  // mp3 leading-delay metric, which mp3 pre-echo made not just noisy but
+  // wrong. A signal identical to itself (Chromium's own real-catalogue
+  // behavior against the wav, per check-browser-decode.mjs's own header)
+  // must report lag 0.
+  const ref = chirp(6000);
+  const decoded = ref.slice();
+  const { lag, correlation } = crossCorrelationLag(ref, decoded);
+  assert.equal(lag, 0, "an undelayed decode must report lag 0");
+  assert.ok(correlation > 0.99, `an undelayed decode's own correlation at its best lag must be near 1 (got ${correlation})`);
+  console.log(`PASS crossCorrelationLag: an undelayed decode reports lag 0 (correlation ${correlation.toFixed(4)})`);
+}
+
+{
+  // The measured, real defect this whole metric exists to report: Firefox's
+  // mp3 decode is delayed by exactly one mp3 granule, 576 samples, relative
+  // to the wav (see decode-judge.mjs's own header for the full-catalogue
+  // measurement this pins). A signal delayed by exactly 576 samples must
+  // report lag 576, not some nearby value a noisier metric would produce.
+  const ref = chirp(6000);
+  const decoded = delayedBy(ref, 576);
+  const { lag, correlation } = crossCorrelationLag(ref, decoded);
+  assert.equal(lag, 576, "a decode delayed by exactly one mp3 granule must report lag 576");
+  assert.ok(correlation > 0.99, `a cleanly delayed decode's correlation at its best lag must be near 1 (got ${correlation})`);
+  console.log(`PASS crossCorrelationLag: a decode delayed by 576 samples reports lag 576 (correlation ${correlation.toFixed(4)})`);
+}
+
+{
+  // A negative lag (decoded arrives EARLIER than the reference, the opposite
+  // direction from GS-08's real defect) must also be recovered correctly -
+  // proving the search is symmetric, not accidentally biased toward positive
+  // delays by how the window or bounds are built.
+  const ref = chirp(6000);
+  const decoded = delayedBy(ref, 200).slice(300); // shifts everything 100 samples earlier than "no delay"
+  const { lag } = crossCorrelationLag(ref, decoded);
+  assert.equal(lag, -100, "a decode shifted earlier than the reference must report a negative lag");
+  console.log("PASS crossCorrelationLag: a decode arriving earlier than the reference reports a negative lag");
 }

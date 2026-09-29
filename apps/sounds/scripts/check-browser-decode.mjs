@@ -39,6 +39,20 @@
 //      Not checked for mp3: Firefox's mp3s are proven whole but SHIFTED
 //      LATER (GS-08, a leading-delay defect measured below, not content
 //      loss) - reported as information, never a failure.
+//   4. Mp3 only, information only, never a failure: the leading delay
+//      between the wav and the decoded mp3, per engine, found by a
+//      cross-correlation lag search (scripts/lib/decode-judge.mjs's
+//      `crossCorrelationLag`, GS-07 v2.2). An earlier version of this line
+//      compared the decoded mp3's own first sample above 1e-3 against the
+//      wav's - that metric was not just noisy but WRONG, because mp3
+//      pre-echo crosses 1e-3 near the start of many decodes well before the
+//      real onset. Measured against the full 1080-variant catalogue with the
+//      cross-correlation search: Chromium sits at lag 0 on all 1080, Firefox
+//      sits at lag +576 on all 1080 (one mp3 granule, 13.06ms at 44.1kHz) -
+//      see crossCorrelationLag's own header for the fifth-of-the-catalogue
+//      measurement (155 of 1080, minimum correlation 0.89 both engines) this
+//      full-catalogue run confirmed (minimum correlation 0.888 in both
+//      engines across all 1080).
 //
 // Measured max |browser - reference| after this fix, across every ogg in
 // the rebuilt catalogue (1080 files, both engines; see this script's own
@@ -88,7 +102,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, firefox } from "playwright";
 import { toWavBytes, OGG_TAIL_GUARD_FRAMES } from "./lib/audio.mjs";
-import { DECODER_AGREEMENT_TOLERANCE, judge } from "./lib/decode-judge.mjs";
+import { DECODER_AGREEMENT_TOLERANCE, judge, crossCorrelationLag } from "./lib/decode-judge.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -111,25 +125,21 @@ function log(...m) { console.log("[check-browser-decode]", ...m); }
 
 // Whole run, both engines, every file, transferring full decoded PCM for
 // every ogg (GS-07 v2.1's reference-decode comparison needs the browser's
-// actual samples back, not just an index) - measured about 38 seconds for
-// all 1080 variants locally (`time node scripts/check-browser-decode.mjs`);
-// generous margin kept regardless, for a slower CI runner and for sox's own
-// per-file reference-decode subprocess cost on a colder disk cache.
+// actual samples back, not just an index) and every mp3 (GS-07 v2.2's
+// cross-correlation lag search needs the same) - measured 65 seconds to
+// about 4 minutes for all 1080 variants locally depending on machine load
+// (`time node scripts/check-browser-decode.mjs`;
+// v2.1 alone, before the lag search's own CPU cost, measured about 38
+// seconds - the lag search's `O(lag range x window)` search per mp3 per
+// engine is real work, not I/O, and accounts for the difference); generous
+// margin kept regardless, for a slower CI runner and for sox's own per-file
+// reference-decode subprocess cost on a colder disk cache.
 const HARD_TIMEOUT_MS = 30 * 60 * 1000;
 const timeoutHandle = setTimeout(() => {
   console.error("[check-browser-decode] hard timeout exceeded - forcing exit so no browser process is left running");
   process.exit(1);
 }, HARD_TIMEOUT_MS);
 timeoutHandle.unref();
-
-// Used only for the mp3 leading-delay metric (GS-08, information only, never
-// a gate): "first sample whose absolute value exceeds this" is the onset
-// this script compares between the wav and each engine's own mp3 decode.
-// Same value, and same rationale (well above 16-bit dither/quantization
-// noise, far below anything audible), as the tolerance the old wav-based
-// content rule used - it has no role in the ogg content-agreement rule below
-// at all, which never touches the wav.
-const ONSET_THRESHOLD = 1e-3;
 
 /** Minimal reader for the exact WAV shape scripts/lib/audio.mjs's own
  * `toWavBytes` writes: a canonical 44-byte PCM16 header (mono or stereo)
@@ -149,16 +159,6 @@ function readWavPcm(buf) {
     }
   }
   return { frameCount, channels: chans };
-}
-
-function firstAboveThreshold(channels, threshold) {
-  const n = channels[0].length;
-  for (let i = 0; i < n; i++) {
-    let m = 0;
-    for (const c of channels) { const a = Math.abs(c[i]); if (a > m) m = a; }
-    if (m > threshold) return i;
-  }
-  return -1;
 }
 
 /** Decodes sox's own reference PCM for a file already on disk (libvorbisfile
@@ -185,21 +185,25 @@ function base64ToFloat32(b64) {
   return out;
 }
 
-/** Decodes one ogg's bytes in the given page via `decodeAudioData` and
- * returns its FULL decoded length plus its first `sourceFrames` samples
- * (base64-encoded raw float32, little-endian) for the reference-agreement
- * comparison - never more than `sourceFrames` samples, since nothing past
- * that point is ever compared. `{length: -1, error, channelB64: null}` on a
- * decode error. */
-async function decodeOggInBrowser(page, bytes, sourceFrames) {
+/** Decodes one file's bytes in the given page via `decodeAudioData` and
+ * returns its FULL decoded length plus its channel data (base64-encoded raw
+ * float32, little-endian), truncated to `maxFrames` samples if given (`null`
+ * transfers the whole decode). Ogg passes `sourceFrames` - the
+ * reference-agreement comparison never looks past that point. Mp3 passes
+ * `null` - the cross-correlation lag search (GS-07 v2.2) needs a comfortable
+ * margin past the wav's own length to search lags on both sides of 0, and
+ * every variant this catalogue ships is at most a few seconds long, so
+ * transferring the whole decode costs nothing worth truncating for.
+ * `{length: -1, error, channelB64: null}` on a decode error. */
+async function decodeChannelInBrowser(page, bytes, maxFrames) {
   const b64 = bytes.toString("base64");
-  return page.evaluate(async ({ b64, sourceFrames }) => {
+  return page.evaluate(async ({ b64, maxFrames }) => {
     try {
       const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
       const ctx = new OfflineAudioContext(1, 44100, 44100);
       const buf = await ctx.decodeAudioData(bin.buffer);
       const d = buf.getChannelData(0);
-      const n = Math.min(d.length, sourceFrames);
+      const n = maxFrames == null ? d.length : Math.min(d.length, maxFrames);
       const bytesOut = new Uint8Array(n * 4);
       const view = new DataView(bytesOut.buffer);
       for (let i = 0; i < n; i++) view.setFloat32(i * 4, d[i], true);
@@ -212,28 +216,7 @@ async function decodeOggInBrowser(page, bytes, sourceFrames) {
     } catch (e) {
       return { length: -1, error: e && e.message ? e.message : String(e), channelB64: null };
     }
-  }, { b64, sourceFrames });
-}
-
-/** Decodes one mp3's bytes and returns its full decoded length plus the
- * index of its first sample above `threshold` (GS-08's leading-delay
- * metric) - no channel data is transferred back, since mp3 gets no
- * reference-agreement check (see this script's own header). */
-async function decodeMp3InBrowser(page, bytes, threshold) {
-  const b64 = bytes.toString("base64");
-  return page.evaluate(async ({ b64, threshold }) => {
-    try {
-      const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-      const ctx = new OfflineAudioContext(1, 44100, 44100);
-      const buf = await ctx.decodeAudioData(bin.buffer);
-      const d = buf.getChannelData(0);
-      let first = -1;
-      for (let i = 0; i < d.length; i++) { if (Math.abs(d[i]) > threshold) { first = i; break; } }
-      return { length: buf.length, error: null, first };
-    } catch (e) {
-      return { length: -1, error: e && e.message ? e.message : String(e), first: -1 };
-    }
-  }, { b64, threshold });
+  }, { b64, maxFrames });
 }
 
 /** Builds a genuinely-truncated ogg: `sourceFrames` of real, unfaded tone
@@ -322,7 +305,7 @@ async function runEngine(name, launcher, work) {
  * rule happened to catch something unrelated. */
 async function runFixtureCheck(page, engineName, label, expect, { oggPath, sourceFrames, referenceChannel }) {
   const bytes = readFileSync(oggPath);
-  const decoded = await decodeOggInBrowser(page, bytes, sourceFrames);
+  const decoded = await decodeChannelInBrowser(page, bytes, sourceFrames);
   const browserChannel = decoded.channelB64 ? base64ToFloat32(decoded.channelB64) : null;
   const failures = judge("ogg", sourceFrames, decoded, referenceChannel ? { referenceChannel, browserChannel } : {});
   const hasLength = failures.some((f) => f.includes("short of the source"));
@@ -345,23 +328,26 @@ async function runFixtureCheck(page, engineName, label, expect, { oggPath, sourc
 async function main() {
   const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
 
-  // Every (format, sourceFrames, wavFirst, bytes, id) job to decode, built
+  // Every (format, sourceFrames, wavChannel, bytes, id) job to decode, built
   // once and reused for both engines. `referenceChannel` (ogg only) is sox's
-  // own reference decode of that exact ogg's bytes, computed once here
-  // rather than per engine.
+  // own reference decode of that exact ogg's bytes, and `wavChannel` (mp3
+  // only) is the wav's own mono PCM, computed once here rather than per
+  // engine.
   const jobs = [];
   const sounds = limit ? catalog.sounds.slice(0, limit) : catalog.sounds;
   for (const sound of sounds) {
     for (const variant of sound.variants) {
       const wavBytes = readFileSync(join(filesDir, variant.files.wav.url.split("/").pop()));
       const { frameCount, channels } = readWavPcm(wavBytes);
-      const wavFirst = firstAboveThreshold(channels, ONSET_THRESHOLD);
       const oggPath = join(filesDir, variant.files.ogg.url.split("/").pop());
       const oggBytes = readFileSync(oggPath);
       const referenceChannel = soxReferenceDecode(oggPath, frameCount);
       jobs.push({ id: `${sound.id} ${variant.n}`, format: "ogg", sourceFrames: frameCount, bytes: oggBytes, referenceChannel });
       const mp3Bytes = readFileSync(join(filesDir, variant.files.mp3.url.split("/").pop()));
-      jobs.push({ id: `${sound.id} ${variant.n}`, format: "mp3", sourceFrames: frameCount, bytes: mp3Bytes, wavFirst });
+      // Every catalogue wav shipped is mono (checked directly: 0 of 1080 wavs
+      // have more than one channel) - channels[0] is the whole signal, not
+      // just a left channel of something wider.
+      jobs.push({ id: `${sound.id} ${variant.n}`, format: "mp3", sourceFrames: frameCount, bytes: mp3Bytes, wavChannel: channels[0] });
     }
   }
   log(`loaded ${catalog.sounds.length} sound(s), ${jobs.length / 2} variant(s), ${jobs.length} file(s) to decode per engine`);
@@ -387,11 +373,12 @@ async function main() {
 
         const failures = [];
         const mp3LengthExcess = [];
-        const mp3LeadingDelay = [];
+        const mp3Lag = [];
+        let mp3MinCorrelation = Infinity;
         let maxAgreementDiff = 0;
         for (const job of jobs) {
           if (job.format === "ogg") {
-            const decoded = await decodeOggInBrowser(page, job.bytes, job.sourceFrames);
+            const decoded = await decodeChannelInBrowser(page, job.bytes, job.sourceFrames);
             const browserChannel = decoded.channelB64 ? base64ToFloat32(decoded.channelB64) : null;
             const jobFailures = judge("ogg", job.sourceFrames, decoded, { referenceChannel: job.referenceChannel, browserChannel });
             for (const f of jobFailures) failures.push(`${job.id} (${name}): ${f}`);
@@ -405,19 +392,22 @@ async function main() {
               if (localMax > maxAgreementDiff) maxAgreementDiff = localMax;
             }
           } else {
-            const decoded = await decodeMp3InBrowser(page, job.bytes, ONSET_THRESHOLD);
+            const decoded = await decodeChannelInBrowser(page, job.bytes, null);
             const jobFailures = judge("mp3", job.sourceFrames, decoded, {});
             for (const f of jobFailures) failures.push(`${job.id} (${name}): ${f}`);
             if (!decoded.error && decoded.length >= job.sourceFrames) {
               mp3LengthExcess.push(decoded.length - job.sourceFrames);
             }
-            if (!decoded.error && decoded.first >= 0 && job.wavFirst >= 0) {
-              mp3LeadingDelay.push(decoded.first - job.wavFirst);
+            if (!decoded.error && decoded.channelB64) {
+              const decodedChannel = base64ToFloat32(decoded.channelB64);
+              const { lag, correlation } = crossCorrelationLag(job.wavChannel, decodedChannel);
+              mp3Lag.push(lag);
+              if (correlation < mp3MinCorrelation) mp3MinCorrelation = correlation;
             }
           }
         }
         failuresByEngine[name] = failures;
-        infoByEngine[name] = { maxAgreementDiff, mp3LengthExcess, mp3LeadingDelay };
+        infoByEngine[name] = { maxAgreementDiff, mp3LengthExcess, mp3Lag, mp3MinCorrelation };
       });
     }
 
@@ -427,6 +417,27 @@ async function main() {
       const mid = Math.floor(sorted.length / 2);
       const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
       return { min: sorted[0], max: sorted[sorted.length - 1], median, n: sorted.length };
+    }
+
+    /** Modal lag (the exact sample count GS-08 actually is, per engine), how
+     * many of n variants sit at it, and the full min/max range - a mode, not
+     * a median, is the right summary for a quantity a cross-correlation
+     * search expects to land on ONE exact integer almost every time (see
+     * crossCorrelationLag's own header: 155/155 in the sample measurement
+     * this full-catalogue run confirmed). */
+    function summarizeLag(values) {
+      if (!values.length) return null;
+      const counts = new Map();
+      for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+      let modalLag = values[0];
+      let modalCount = 0;
+      for (const [lag, count] of counts) {
+        if (count > modalCount) { modalCount = count; modalLag = lag; }
+      }
+      let min = values[0];
+      let max = values[0];
+      for (const v of values) { if (v < min) min = v; if (v > max) max = v; }
+      return { n: values.length, modalLag, modalCount, min, max };
     }
 
     let ok = true;
@@ -447,9 +458,9 @@ async function main() {
       if (lenStats) {
         log(`${name}: mp3 length excess info (GS-08, includes trailing padding, not a failure) - n=${lenStats.n}, min +${lenStats.min}, median +${Math.round(lenStats.median)}, max +${lenStats.max} frame(s) longer than the wav`);
       }
-      const delayStats = summarizeDelays(info.mp3LeadingDelay);
-      if (delayStats) {
-        log(`${name}: mp3 leading-delay info (GS-08, not a failure) - n=${delayStats.n}, min +${delayStats.min}, median +${Math.round(delayStats.median)}, max +${delayStats.max} frame(s) (first-sample-above-${ONSET_THRESHOLD} shift vs. the wav)`);
+      const lagStats = summarizeLag(info.mp3Lag);
+      if (lagStats) {
+        log(`${name}: mp3 leading-delay by cross-correlation (GS-08, information only, not a failure) - n=${lagStats.n}, modal lag ${lagStats.modalLag} frame(s) (${lagStats.modalCount}/${lagStats.n} variant(s)), range [${lagStats.min}, ${lagStats.max}], minimum normalized correlation at the best lag ${info.mp3MinCorrelation.toFixed(3)}`);
       }
     }
 

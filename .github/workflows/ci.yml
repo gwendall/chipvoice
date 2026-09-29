@@ -219,10 +219,12 @@ jobs:
     runs-on: ubuntu-latest
     # Raised from 20: GS-06/GS-07 added a real-browser decode check
     # (scripts/check-browser-decode.mjs) across both Chromium and Firefox for
-    # every one of the catalogue's 1080 variants, measured at well under a
-    # minute locally (GS-07 v2.1's reference-decode comparison, ~38 seconds)
-    # - on top of the two package builds, the catalogue build/rebuild, the
-    # test suites and the site's own e2e run this job already did. Kept at 35
+    # every one of the catalogue's 1080 variants, measured at 65 seconds to
+    # about 4 minutes locally depending on machine load (GS-07 v2.1's
+    # reference-decode comparison plus v2.2's cross-correlation lag search;
+    # v2.1 alone measured ~38 seconds) - on top of the two package builds,
+    # the catalogue build/rebuild, the test suites and the site's own e2e run
+    # this job already did. Kept at 35
     # for margin on a colder, slower CI runner.
     timeout-minutes: 35
     steps:
