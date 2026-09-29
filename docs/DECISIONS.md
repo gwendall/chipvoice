@@ -3181,7 +3181,13 @@ actually wrote.
   the generation record, never scores. If the moderation call itself
   fails - a network error, a non-2xx response, a malformed body - this
   fails CLOSED with a retryable `503 moderation_unavailable`; a prompt is
-  never allowed to generate unchecked.
+  never allowed to generate unchecked. All three pre-call refusals record
+  explicit zero usage (`jobs.ts`'s `ZERO_USAGE`, for the codes in
+  `PRE_CALL_REFUSAL_CODES`) rather than leaving `usage` null, so
+  `admission.ts`'s `monthSpend` prices the row at its true cost - zero -
+  instead of the worst-case reserve it falls back to for a null usage
+  row; `test-generation.mjs` asserts `monthSpend` is unchanged before and
+  after each of the three refusal codes.
 - **Output-side, the real gate.** A prompt can name no franchise and
   still get a reproduced melody back, and can name one without the model
   ever reproducing anything; decision 39's promise is really about what
@@ -3190,10 +3196,22 @@ actually wrote.
   saved), every melodic part is reduced to a transposition-invariant
   pitch-interval sequence and a tempo-invariant duration-ratio sequence
   (`similarity.ts`) and compared against a small reference set
-  (`known-melodies.ts`) with a windowed edit distance - the same
-  alignment family as DTW, tolerant of an inserted ornament or a changed
-  note. A match at or above `KNOWN_MELODY_THRESHOLD` refuses the
-  generation (`422 known_melody`), reporting the matched percentage.
+  (`known-melodies.ts`) with a windowed alignment - the same family as
+  DTW, tolerant of an inserted ornament or a changed note. A match at or
+  above `KNOWN_MELODY_THRESHOLD` refuses the generation
+  (`422 known_melody`), reporting the matched percentage. A window is
+  only scored once it clears two independent guards against a
+  degenerate, low-information match: `MIN_DISTINCT_INTERVALS` (at least
+  two distinct pitch intervals in the window - a cheap pre-filter) and
+  `MIN_MATCHED_MOTION` (the window must match, by pitch alone, at least
+  half of the reference's own nonzero-interval tokens, via a second,
+  independent alignment pass that counts genuine melodic motion rather
+  than edit-distance cost). The second guard exists because
+  `{interval:0, rhythm:0}` - a held or repeated note - is common enough
+  that a candidate window built mostly of held notes could otherwise rack
+  up "free" matches against any reference that itself repeats notes, with
+  no genuine melodic resemblance; see "Real-corpus validation" below for
+  how this was found and closed.
 
 **The reference set.** Eight incipits - a short opening, never a whole
 piece - stored only as interval and duration-ratio sequences: no
@@ -3222,11 +3240,11 @@ seeds, the same shape) was ever built or looked at.
 | | Calibration (48 pos / 23 neg) | Held-out (48 pos / 23 neg) |
 | --- | --- | --- |
 | Threshold | 0.40 | 0.40 (unchanged) |
-| True positives | 44 (92%) | 45 (94%) |
-| False negatives | 4 | 3 |
+| True positives | 43 (90%) | 45 (94%) |
+| False negatives | 5 | 3 |
 | False positives | 0 | 0 |
 | True negatives | 23 | 23 |
-| Margin over the negative max | 0.067 (0.40 vs. 0.333) | 0.067 (0.40 vs. 0.333) |
+| Margin over the negative max | 0.15 (0.40 vs. 0.250) | 0.15 (0.40 vs. 0.250) |
 
 Every missed positive is a heavily varied copy of one of the two
 shortest, most repetitive references (`fur-elise`, `beethoven-5th-motif`
@@ -3240,14 +3258,60 @@ positive on an ordinary original composition would be user-hostile.
 `apps/web/test-known-melody-similarity.mjs` reproduces both confusion
 matrices deterministically in CI.
 
-**What doesn't fully change.** Prompt moderation never spends paid usage
-- it never calls the model - but a refused generation still reaches
-`runGeneration` and so still gets `started_at` set; decision 42's own
-worst-case reserve accounting, already applied to any generation that
-fails before the model responds with no usage recorded (an expired
-authorization, for instance), still prices this generation at the
-reserve rate for the rest of the month. Changing that accounting is
-admission.ts's budget territory, not this ticket's.
+**Real-corpus validation.** The synthetic negative set above is all
+original or seeded-random material; it says nothing about how the gate
+behaves on real music it has never seen. `scripts/melody-negative-corpus.mjs`
+extracts all eight non-probe songs shipped in `scores/nsf-corpus/files`
+(the only corpus with a working extractor at the time of writing) and
+scores each one's best match against every reference. At the shipped
+threshold this first surfaced a 100% false-positive rate (all eight
+songs scoring exactly 0.500) despite the synthetic calibration above
+showing zero false positives on anything - root-caused to the
+degenerate-window exploit described above: a candidate window of mostly
+held notes accumulating "free" matches against a reference's own
+repeated notes, with no real melodic resemblance. The `MIN_MATCHED_MOTION`
+guard was added to close it. After the fix, the same eight songs score:
+
+| | Real-corpus (8 songs) |
+| --- | --- |
+| p50 max similarity | 0.000 |
+| p95 max similarity | 0.000 |
+| Max similarity | 0.000 |
+| False positives at 0.40 | 0 |
+
+A full 0.40 margin, and recall on the synthetic positive sets held
+within two points of its pre-fix numbers (was 44/48 and 45/48; is now
+43/48 and 45/48) rather than collapsing, so the fix closed the exploit
+without materially weakening the gate on real paraphrases.
+
+**Evidence for recalibration.** Every generation - not only ones the
+gate refuses - now records its best known-melody match as it happens:
+`jobs.ts` calls `knownMelodySimilarity` (rather than only checking the
+gate) and writes `{similarity, referenceId, part}` into the existing
+`generations.moderation` JSON column (`ModerationOutcome`'s new,
+deliberately-documented `melody` field) before deciding whether to
+refuse. No new column or migration; refusal is still decided by
+comparing that same similarity to `KNOWN_MELODY_THRESHOLD` immediately
+after. This gives any future recalibration a real distribution of scores
+on real generations to work from, rather than only the synthetic and
+NSF-corpus sets above. The owner has approved a roughly 250-sample run
+of the generation benchmark as the real future negative set once this
+evidence has accumulated; that run has not been performed as part of
+this ticket.
+
+**What changed for the budget.** Prompt moderation never spends paid
+usage - it never calls the model - but a refused generation still
+reaches `runGeneration` and so still gets `started_at` set; before this
+ticket, decision 42's own worst-case reserve accounting (meant for a
+generation that fails before the model responds with no usage yet known,
+such as an expired authorization mid-call) also caught these refusals,
+because a null `usage` looked the same either way. That was wrong for a
+refusal that never called the model at all: `jobs.ts` now records
+explicit zero usage for all three pre-call refusal codes
+(`prompt_known_work`, `prompt_flagged`, `moderation_unavailable`) so
+`monthSpend` prices them at their true cost, zero, instead of the
+reserve rate. `test-generation.mjs` asserts `monthSpend` is unchanged
+before and after each of the three refusal types.
 
 **Why.** Both checks are pure, dependency-free and unit-tested with no
 network or key - the moderation endpoint is mocked, not called - so
@@ -3260,10 +3324,13 @@ needs.
 
 **What changes.** `apps/web/src/lib/composition/moderation.ts` (new),
 `similarity.ts` (new) and `known-melodies.ts` (new); `jobs.ts` calls both
-before composing and after the model responds; migration
-`prompt-moderation` adds `generations.moderation`; `model.ts`'s
+before composing and after the model responds, and now also records
+every generation's best known-melody match as evidence; migration
+`prompt-moderation` (ordered after decision 55's
+`durable-render-queue`) adds `generations.moderation`; `model.ts`'s
 `compositionConfig` splits out `openAICredentials`, shared by the paid
-adapter and the free moderation call.
+adapter and the free moderation call; `scripts/melody-negative-corpus.mjs`
+(new) is the manual real-corpus validation report described above.
 ## 57. chipvoice publishes terms of use and a privacy policy: no ownership claim on your songs, prompts stay owner-only and are erased when their song is withdrawn (2026-09-29)
 
 NEXT-22. chipvoice had no terms page and no privacy page; `/terms` and
