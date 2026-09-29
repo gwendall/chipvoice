@@ -162,19 +162,42 @@ header/DSP-dump/extra-RAM struct `spc-import.ts` also reads:
 The echo buffer (`ESA`/`EDL`) writes into this same ARAM on the DSP's own
 initiative, live wherever the capture's own register writes ever point it
 while echo writes are enabled; `exportSpc` tracks every value the capture
-gives `ESA`, `EDL` and `FLG` and refuses to produce a file where that window
-could ever land on the player, the directory, a sample, the write stream, or
-the IPL ROM's reserved region (`$FFC0`-`$FFFF`) - `SpcExportSizeError`, never
-a truncated or silently corrupt file. The same error, naming `measured` and
-`limit`, covers the plain case: a song whose player, directory, samples and
-write stream together do not fit under `$FFC0`. One of the repo's three
-published SNES arrangements, `sonic`, measures big enough to hit exactly
-this (its SNES rendition, several minutes at this driver's note density and
-instrument variety, well over the ~64 KB budget even after the write
-stream's own back-reference compaction); `mario` and `zelda` both fit. There
-is no SNES-native song in `scores/` yet to measure against instead
-(`native-sources.mjs` only has NES and Mega Drive sources) - when one exists
-it joins this corpus.
+gives `ESA`, `EDL`, `FLG`, `EVOLL` and `EVOLR`, and refuses to produce a file
+where that window could ever land on the player, the directory, a sample,
+the write stream, or the IPL ROM's reserved region (`$FFC0`-`$FFFF`) -
+`SpcExportSizeError`, never a truncated or silently corrupt file. `EVOLL`/
+`EVOLR` are the only register path echo output ever reaches the audible mix
+(the final mix is `MVOL`-scaled voice output plus `EVOL`-scaled echo read,
+nothing else): when a capture's own writes set both to zero, explicitly, and
+never move either off zero again, its echo buffer's contents - real or
+garbage - can never reach a listener, by construction of the mix itself,
+whatever `EON`, `EFB`, `ESA` or `EDL` say. `exportSpc` recognizes that case
+(every capture this driver's `space: "dry"` produces qualifies, since dry
+zeroes `EVOL` before anything else plays and never touches it again),
+rewrites that capture's own `EDL` writes to 0, sets `FLG`'s echo-disable bit
+on every `FLG` write it emits, and gives up the echo buffer's fixed
+reservation entirely: the data may then run all the way up to the `$FFC0`
+IPL ceiling (65472 bytes) instead of stopping at the echo buffer's own fixed
+window (`ESA=$E0`, so $E000/57344 in practice). A capture that does not
+prove its echo silent this way - `space: "room"`, which moves `EVOL` off
+zero on purpose, or any capture that never mentions `EVOLL`/`EVOLR` at all,
+which on real hardware would inherit the S-DSP's own nonzero power-on
+`EVOL` bytes for its whole run - keeps the tighter, fixed window.
+
+Measured against the repo's three published SNES arrangements, all captured
+with the richer factory bank NEXT-24 built (decision 53 in
+[DECISIONS.md](../DECISIONS.md)): in the default `space: "dry"`, `mario`
+(59318/65472) and `zelda` (35593/65472) both fit; `sonic` (its SNES
+rendition, several minutes at this driver's note density and instrument
+variety) does not - its write stream alone needs 74247 bytes, more than the
+41262 left once its directory and samples (24210 bytes) are placed, even
+under the reclaimed ceiling. In `space: "room"`, which moves `EVOL` off
+zero on the pitched voices, the reclaim above does not apply and all three
+are measured against the tighter, fixed $E000/57344 window instead: `mario`
+(59320 bytes) and `sonic` (98459 bytes) no longer fit; `zelda` (35595/65472)
+is small enough to fit either window and still does. There is no SNES-native
+song in `scores/` yet to measure against instead (`native-sources.mjs` only
+has NES and Mega Drive sources) - when one exists it joins this corpus.
 
 Measured by
 [`check:spc-export`](../../packages/conform/src/spc/check-export.mjs)
@@ -201,8 +224,10 @@ boundary at the wrong instant, making blargg's poll exit one whole 7-cycle
 reference implementation, not a bug in either side, proven by construction
 (a single isolated wait never reproduces it; a repeating wait-then-write
 loop does, deterministically) and confirmed exhaustively on this corpus
-(every write in both `mario` and `zelda` takes one of exactly these two
-values, nothing else) - see `WRITE_CYCLE_OFFSETS`'s and
+(every write in `mario` and `zelda`, the two of the three arrangements that
+currently fit and so are the only ones this write comparison can run
+against, takes one of exactly these two values, nothing else) - see
+`WRITE_CYCLE_OFFSETS`'s and
 `compareOracleWrites`'s doc comments in `check-export.mjs`. The round trip
 additionally gates on timing: the largest deviation between any write's
 actual cycle and the tick `exportSpc` rounded it to, bounded at three ticks
@@ -227,8 +252,9 @@ shape `check:spc` already gates at 100%. Built this way, the oracle samples
 comparison is gated exactly too: `identical === cycles`, excluding only this
 package's own trailing `SAMPLE_OUTPUT_CYCLES` output period (blargg's own
 one-shot render tool cannot be relied on to have flushed it - see
-`ORACLE_TAIL_TRIM_CYCLES`'s doc comment). Measured on this corpus: both
-`mario` and `zelda` reach exactly 100.0000% cycle-exact on the oracle side.
+`ORACLE_TAIL_TRIM_CYCLES`'s doc comment). Measured on this corpus: `mario`
+and `zelda`, the two of the three that currently fit, both reach exactly
+100.0000% cycle-exact on the oracle side.
 Envelope correlation and per-note timing alignment are still reported on the
 oracle side too, not gated - they were this file's own gate before this
 rebuild, and stay as evidence that the CPU-timing difference the write
@@ -239,7 +265,7 @@ undiscovered problem. See the doc comments on `envelopeMatch`,
 measurements.
 
 <!-- spc-export:begin -->
-Written by `check:spc-export` on 2026-09-27, against play-spc (blargg's SPC700, vendored snes_spc).
+Written by `check:spc-export` on 2026-09-28, against play-spc (blargg's SPC700, vendored snes_spc).
 
 Writes: oracle writes are gated on content (register, value, order - exact) AND cycle: exact equality to ours[i].cycle plus one of exactly two named values, WRITE_CYCLE_OFFSETS ([1,-6]) - no residual, no running count. See WRITE_CYCLE_OFFSETS's and compareOracleWrites's doc comments for the derivation of the second value (a boundary-inclusivity artifact of blargg's own lazy timer catch-up formula, proven and shimmed, not a bug in this package's own per-cycle timer). earlyExits counts how many matched writes used the second value rather than the plain +1. roundTripDrift is the round trip's own timing gate (item 3): the largest |actual cycle - tick-rounded plan cycle| over every write, gated at 3 ticks (3072 cycles) - see roundTripTimingDrift's doc comment for the derivation.
 
@@ -247,9 +273,9 @@ Samples: Round trip (own CPU on both sides): envelope correlation - both streams
 
 | Song | ARAM used | Round trip (own CPU): writes, max drift | Round trip: samples (envelope corr, rel RMS error, cycle-exact) | play-spc: writes (cycleOk, early exits) | play-spc: samples (cycle-exact - gated exact; envelope corr, note timing reported only) |
 | --- | --- | --- | --- | --- | --- |
-| mario | 52991 / 65472 bytes | 24092/24092, 1998c (1.95t) | 0.9586 (18.3478 %, 31.3879 % cycle-exact) | 24092/24092, cycleOk true, 3316 early-exit | 1.0000 (0.0000 %, 100.0000 % cycle-exact, 99.6516 % note timing) |
-| zelda | 29623 / 65472 bytes | 12665/12665, 1993c (1.95t) | 0.9661 (10.9897 %, 15.2763 % cycle-exact) | 12665/12665, cycleOk true, 1620 early-exit | 1.0000 (0.0000 %, 100.0000 % cycle-exact, 96.1538 % note timing) |
-| sonic | does not fit: 82896 / 57344 bytes | - | - | - | - |
+| mario | 59318 / 65472 bytes | 24144/24144, 1995c (1.95t) | 0.9571 (19.5478 %, 31.4100 % cycle-exact) | 24144/24144, cycleOk true, 3203 early-exit | 1.0000 (0.0000 %, 100.0000 % cycle-exact, 3.8328 % note timing) |
+| zelda | 35593 / 65472 bytes | 12819/12819, 1993c (1.95t) | 0.9668 (11.2373 %, 15.2671 % cycle-exact) | 12819/12819, cycleOk true, 1680 early-exit | 1.0000 (0.0000 %, 100.0000 % cycle-exact, 0.0000 % note timing) |
+| sonic | does not fit: 74247 / 41262 bytes | - | - | - | - |
 <!-- spc-export:end -->
 
 ## Test ROMs
@@ -304,7 +330,7 @@ is divided across its notes; pitched chord voices have moderate stereo spread.
 | --- | --- | --- |
 | v0, v1, v2, v4 to v7 | original BRR attacks and separate sustain loops, per-family hardware ADSR, pitch and stereo volume per frame, key-on, note off as a fast GAIN decrease, echo; legacy periodic waveforms also available | GAIN's other modes, pitch modulation, hardware noise |
 | v3 | a one-shot drum from the bank at pitch `$1000`, the volumes per frame; the kit's hats routed to the DSP's own noise through `NON`, at the one clock `FLG`'s very first power-on write sets | a held drum note's noise clock changed mid-note (the corpus scripts this; the kit does not) |
-| the echo | on for the pitched voices: 48 ms, feedback `$38`, the low-pass FIR most games used, enabled once the power-on buffer has wrapped | other FIRs, other delays |
+| the echo | off by default (`space: "dry"`); `space: "room"` turns it on for the pitched voices only, once the power-on buffer has wrapped: 48 ms, feedback `$38`, the low-pass FIR below | other FIRs, other delays |
 
 ## Known deviations
 
@@ -323,14 +349,27 @@ of 28 KB - the noise register at `$4000`, the counters at zero. The driver's
 power-on does what the IPL ROM and a program did: disables echo writes and
 mutes echo output (reads can initially wrap into sample RAM), keys
 every voice off, sets the directory, the volumes, the echo and every voice's
-envelope, then releases KOFF, and enables echo writes and echo output a quarter
+envelope, then releases KOFF, and enables echo output a quarter
 of a second later, once the power-on buffer has wrapped. The very first of
 those writes - the one that disables echo writes - also sets the noise
 clock, `FLG`'s low five bits, to its fastest rate - the one clock every voice
 routed to noise shares - because a note can start as early as the song's own
 time zero, before the echo buffer has finished settling. The later write that
-turns echo writes back on repeats the same clock rather than setting it for
+would turn echo writes back on repeats the same clock rather than setting it for
 the first time; it is never rewritten to a different value after.
+
+Whether that later write actually turns `EON` on depends on `ChipCreateOptions.space`
+(`packages/chipvoice/src/chip.ts`): `"dry"`, the factory default, leaves `EVOL`
+and `EON` at zero forever, exactly as this driver did before `space` existed,
+so its register stream and every golden built from it are unchanged. `"room"`
+sets `EVOL`/`EFB` to a moderate authored return and writes `EON` for the
+pitched voices only (`v3`, the kit, stays excluded so one-shot drums read
+clean through the tail) once the quarter-second wait above has passed. Neither
+space writes `EON` any earlier, so the power-on buffer never plays back
+whatever wrapped into sample RAM during that wait. See
+[the SNES palette's Phase 3 protocol and measurements](../SNES-PALETTE.md)
+and decision 53 in [DECISIONS.md](../DECISIONS.md) for why dry stays the
+default even though room is now measured, audible and available.
 
 The factory bank occupies 21,472 bytes below the echo buffer at 57,344. Sample
 generation and BRR encoding happen at build time. Voice volume is capped at

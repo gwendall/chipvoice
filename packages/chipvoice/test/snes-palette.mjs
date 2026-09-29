@@ -13,20 +13,26 @@ assert.equal(families.length,8);
 const rms=(data,from,to)=>{
   let sum=0;for(let i=from;i<to;i++)sum+=data[i]*data[i];return Math.sqrt(sum/(to-from));
 };
-function note(sample,hz,rate=32000){
+function note(sample,hz,rate=32000,seconds=1.5){
   const core=snesChip.create(rate),driver=new OfflineDriver(core,snesChip,()=>0);
   core.setGain(.78);
-  driver.playNote('v0',{note:hz,instrument:{sample,volume:[15],sustain:true},duration:1.6,at:.1});driver.flush();
+  const duration=Math.max(1.6,seconds+0.1);
+  driver.playNote('v0',{note:hz,instrument:{sample,volume:[15],sustain:true},duration,at:.1});driver.flush();
   // Isolate the sample loop from feedback history and its own quantization.
   core.schedule([{at:270000,addr:0xf2,value:0x2c},{at:270005,addr:0xf3,value:0},
     {at:270010,addr:0xf2,value:0x3c},{at:270015,addr:0xf3,value:0}]);
-  const left=new Float32Array(Math.round(1.5*rate));core.render(left,null,0);return left;
+  const left=new Float32Array(Math.round(seconds*rate));core.render(left,null,0);return left;
 }
 const results=[];
 for(const entry of families){
-  const data=note(entry.name,entry.baseHz);
-  assert.ok(rms(data,32000,40000)>.003,`${entry.name} sustain is inaudibly low`);
+  // A loop can run to several hundred milliseconds now (the ensemble
+  // families' detune needs a long loop to resolve as distinct bins, not a
+  // repeated single cycle); size the render to the loop actually encoded,
+  // not a fixed constant tuned to the shortest one.
   const loopFrames=(entry.start+entry.bytes-entry.loopAddress)/9*16;
+  const seconds=Math.max(1.5,1.35+loopFrames/32000);
+  const data=note(entry.name,entry.baseHz,32000,seconds);
+  assert.ok(rms(data,32000,40000)>.003,`${entry.name} sustain is inaudibly low`);
   let delta=0;for(let i=32000;i<40000;i++)delta=Math.max(delta,Math.abs(data[i]-data[i+loopFrames]));
   assert.ok(delta<1e-5,`${entry.name}: sustain loop repeats its attack or is unstable (${delta})`);
   const loopOffset=entry.loopAddress-ram.address;

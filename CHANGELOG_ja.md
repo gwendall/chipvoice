@@ -11,6 +11,8 @@
 <a id="unreleased"></a>
 ## 未リリース
 
+SNES標準バンクのブラス、ストリングス、ピッキングベース、キック、スネアを、共有のアンサンブル／デチューン合成式（1ループにつき複数のデチューンしたパーシャルを置き、デチューン量に関わらず必ず周期境界で閉じる)へ移しました。実際の利用者からの「これらの楽器が薄く聞こえる」という指摘への直接対応です。マレット、ハープ、リードベース、シンセベースは、同じ式が`unison: 1, detuneCents: 0`で従来の単一パーシャル合成へ戻るため、音声が以前とバイト一致でレンダリングされます。フルートには小さなブレスノイズを追加しました。サンプル名と調律はすべて変えていません。S-DSPのエコーは、これまで無効な定数でしたが、`ChipCreateOptions.space`になりました：`"dry"`（標準の既定値、これまでの全レジスタ列とバイト一致)または`"room"`（有音高ボイスに測定・文書化済みの控えめなエコーを返す明示的な選択肢で、`renderSong`／`recordSong`自身の`space`オプションから通せます)。関連する電源投入の修正として、他の何よりも先にMVOL／EVOLをミュートするようにし、実機から取得した状態が`space`に関わらず生みかねない復号済みガラクタ音声の一瞬を取り除きました。バンクと既定値の根拠は[SNES-PALETTE_ja.md](docs/SNES-PALETTE_ja.md)のフェーズ3測定と[DECISIONS_ja.md](docs/DECISIONS_ja.md)の決定53を参照してください。
+
 `renderSfx(chip, spec, options)`は単一の効果音をオフラインでレンダリングします - `Chip.sfx(channel, options)`と同じ呼び出しから、ブラウザーだけを取り除いたものです。チップID、ボイス、音、`Instrument`、長さを渡すと、`renderSong`が返すのと同じ形の`RenderResult`が返るので、`trimRender`、`levelRender`、`packSprite`、`renderOnset`、`toWav`はそのまま使えます。`SfxRecipe`(仕様にチップを添えたもの)はJSON値で、カタログが音の`recipe`として保存し、`renderSfx(recipe.chip, recipe)`へ渡せば同じ効果音を、あるいは一つだけ値を変えてバリエーションを、再びレンダリングできます。gamesounds.aiのchipvoiceレンダー版レトロサウンドセットのために追加しました(`packages/chipvoice/src/render-sfx.ts`)。`scores/arrangements/evaluate.mjs`、`scores/mixing/calibrate.mjs`、`scores/instruments/generate.mjs`、`scores/render-parity/inputs.mjs`のどれもこれをインポートしないため、これらのハッシュはどれも動きません。
 
 プログレッシブなプレビュー再生は、チップや曲を再生中に切り替えるとき、もう

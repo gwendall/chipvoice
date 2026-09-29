@@ -17,8 +17,8 @@ A fixed, small set of 22 inputs (a short excerpt of each published arrangement o
 
 ## Last run
 
-- Date: 2026-09-27T19:49:34.956Z
-- Revision: `5af421f553ac068da881a7c18eaf3b1a3e494539`
+- Date: 2026-09-28T18:58:08.411Z
+- Revision: `67386ba3102e0aa11cca50d82ccd9378929ac3cd`
 - Node: v22.22.3
 
 | Engine | Version | Result |
@@ -36,15 +36,15 @@ A fixed, small set of 22 inputs (a short excerpt of each published arrangement o
 | mario-2a03 | arrangement | 2a03 | 6.0 | `a17a93143152ca39…` | match | match | match |
 | mario-dmg | arrangement | dmg | 6.0 | `e040db30278d198e…` | match | match | match |
 | mario-md | arrangement | md | 6.0 | `84c20218f7ff1f2e…` | match | match | match |
-| mario-snes | arrangement | snes | 6.0 | `015aa6577ccfcb65…` | match | match | match |
+| mario-snes | arrangement | snes | 6.0 | `a4b38abbd778164b…` | match | match | match |
 | zelda-2a03 | arrangement | 2a03 | 6.0 | `e2b8d55359b40b0b…` | match | match | match |
 | zelda-dmg | arrangement | dmg | 6.0 | `9913b11c01f6aa1a…` | match | match | match |
 | zelda-md | arrangement | md | 6.0 | `ba30377a47560429…` | match | match | match |
-| zelda-snes | arrangement | snes | 6.0 | `42b8a81a9e3a1387…` | match | match | match |
+| zelda-snes | arrangement | snes | 6.0 | `e48021faaeb987ff…` | match | match | match |
 | sonic-2a03 | arrangement | 2a03 | 6.0 | `52d4e0b214afa431…` | match | match | match |
 | sonic-dmg | arrangement | dmg | 6.0 | `52230d6ace5de88d…` | match | match | match |
 | sonic-md | arrangement | md | 6.0 | `1f7ae17bd2389fdf…` | match | match | match |
-| sonic-snes | arrangement | snes | 6.0 | `e92ee10a069509d8…` | match | match | match |
+| sonic-snes | arrangement | snes | 6.0 | `1154274247dfdd52…` | match | match | match |
 | 2a03-lead-0 | preset | 2a03 | 1.2 | `da89f6de20923814…` | match | match | match |
 | 2a03-perc-k | preset | 2a03 | 1.2 | `32d55e22baf66cec…` | match | match | match |
 | dmg-lead-0 | preset | dmg | 1.2 | `4a9ac546dbe7e930…` | match | match | match |
@@ -52,7 +52,7 @@ A fixed, small set of 22 inputs (a short excerpt of each published arrangement o
 | md-lead-0 | preset | md | 1.2 | `29e79c04c96a9ad7…` | match | match | match |
 | md-perc-k | preset | md | 1.2 | `b9a476361c0ebd4b…` | match | match | match |
 | snes-lead-0 | preset | snes | 1.2 | `a50e9d62a23ee8b7…` | match | match | match |
-| snes-perc-k | preset | snes | 1.2 | `a356cfdd65c6878d…` | match | match | match |
+| snes-perc-k | preset | snes | 1.2 | `52a64f4279058f09…` | match | match | match |
 | c64-lead-0 | preset | c64 | 1.2 | `e17460251730c6d0…` | match | match | match |
 | c64-perc-k | preset | c64 | 1.2 | `773c55dbf7900034…` | match | match | match |
 

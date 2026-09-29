@@ -18,8 +18,8 @@ MIX-14: 固定した入力セットがNodeと、自動化できるすべての�
 
 ## 直近の実行
 
-- 日付: 2026-09-27T19:49:34.956Z
-- リビジョン: `5af421f553ac068da881a7c18eaf3b1a3e494539`
+- 日付: 2026-09-28T18:58:08.411Z
+- リビジョン: `67386ba3102e0aa11cca50d82ccd9378929ac3cd`
 - Node: v22.22.3
 
 | エンジン | バージョン | 結果 |
@@ -37,15 +37,15 @@ MIX-14: 固定した入力セットがNodeと、自動化できるすべての�
 | mario-2a03 | arrangement | 2a03 | 6.0 | `a17a93143152ca39…` | 一致 | 一致 | 一致 |
 | mario-dmg | arrangement | dmg | 6.0 | `e040db30278d198e…` | 一致 | 一致 | 一致 |
 | mario-md | arrangement | md | 6.0 | `84c20218f7ff1f2e…` | 一致 | 一致 | 一致 |
-| mario-snes | arrangement | snes | 6.0 | `015aa6577ccfcb65…` | 一致 | 一致 | 一致 |
+| mario-snes | arrangement | snes | 6.0 | `a4b38abbd778164b…` | 一致 | 一致 | 一致 |
 | zelda-2a03 | arrangement | 2a03 | 6.0 | `e2b8d55359b40b0b…` | 一致 | 一致 | 一致 |
 | zelda-dmg | arrangement | dmg | 6.0 | `9913b11c01f6aa1a…` | 一致 | 一致 | 一致 |
 | zelda-md | arrangement | md | 6.0 | `ba30377a47560429…` | 一致 | 一致 | 一致 |
-| zelda-snes | arrangement | snes | 6.0 | `42b8a81a9e3a1387…` | 一致 | 一致 | 一致 |
+| zelda-snes | arrangement | snes | 6.0 | `e48021faaeb987ff…` | 一致 | 一致 | 一致 |
 | sonic-2a03 | arrangement | 2a03 | 6.0 | `52d4e0b214afa431…` | 一致 | 一致 | 一致 |
 | sonic-dmg | arrangement | dmg | 6.0 | `52230d6ace5de88d…` | 一致 | 一致 | 一致 |
 | sonic-md | arrangement | md | 6.0 | `1f7ae17bd2389fdf…` | 一致 | 一致 | 一致 |
-| sonic-snes | arrangement | snes | 6.0 | `e92ee10a069509d8…` | 一致 | 一致 | 一致 |
+| sonic-snes | arrangement | snes | 6.0 | `1154274247dfdd52…` | 一致 | 一致 | 一致 |
 | 2a03-lead-0 | preset | 2a03 | 1.2 | `da89f6de20923814…` | 一致 | 一致 | 一致 |
 | 2a03-perc-k | preset | 2a03 | 1.2 | `32d55e22baf66cec…` | 一致 | 一致 | 一致 |
 | dmg-lead-0 | preset | dmg | 1.2 | `4a9ac546dbe7e930…` | 一致 | 一致 | 一致 |
@@ -53,7 +53,7 @@ MIX-14: 固定した入力セットがNodeと、自動化できるすべての�
 | md-lead-0 | preset | md | 1.2 | `29e79c04c96a9ad7…` | 一致 | 一致 | 一致 |
 | md-perc-k | preset | md | 1.2 | `b9a476361c0ebd4b…` | 一致 | 一致 | 一致 |
 | snes-lead-0 | preset | snes | 1.2 | `a50e9d62a23ee8b7…` | 一致 | 一致 | 一致 |
-| snes-perc-k | preset | snes | 1.2 | `a356cfdd65c6878d…` | 一致 | 一致 | 一致 |
+| snes-perc-k | preset | snes | 1.2 | `52a64f4279058f09…` | 一致 | 一致 | 一致 |
 | c64-lead-0 | preset | c64 | 1.2 | `e17460251730c6d0…` | 一致 | 一致 | 一致 |
 | c64-perc-k | preset | c64 | 1.2 | `773c55dbf7900034…` | 一致 | 一致 | 一致 |
 

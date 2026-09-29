@@ -1,4 +1,4 @@
-import type { ChipDriver, NoteFrame, RegisterEvent } from "../../chip.js";
+import type { ChipCreateOptions, ChipDriver, NoteFrame, RegisterEvent } from "../../chip.js";
 import { FACTORY_SAMPLES, FACTORY_RAM_HEX } from "./bank-inline.js";
 
 /**
@@ -17,10 +17,17 @@ import { FACTORY_SAMPLES, FACTORY_RAM_HEX } from "./bank-inline.js";
  * the others' state, which this one, writing notes out of time order, does
  * not have.
  *
- * The factory palette is dry. Space is an authored effect, not a property of
- * every SNES sound. The DSP still supports original echo register streams.
- * This is one arrangement choice, not proof of a particular game's sound;
- * that also depends on its sample bank, envelopes, tuning and voicing.
+ * The factory default is dry: `space` unset, or `{ space: "dry" }`, writes
+ * EVOL/EFB/EON all zero, exactly as this driver always has. Space is an
+ * authored effect, not a property of every SNES sound, so it is an explicit
+ * choice rather than a hidden constant: `{ space: "room" }` turns on a
+ * moderate authored echo (48 ms, feedback `$38`, the low-pass FIR below, on
+ * the pitched voices only, the kit voice excluded) once the power-on buffer
+ * has wrapped. See `docs/chips/snes.md` and decision 53 in
+ * `docs/DECISIONS.md` for the measurements behind both the default and the
+ * "room" register values. This is one arrangement choice either way, not
+ * proof of a particular game's sound; that also depends on its sample bank,
+ * envelopes, tuning and voicing.
  *
  * The kit's hats are the DSP's own noise, not a sample. `NON` (`$3D`) routes
  * a voice's output to the shared noise generator instead of its decoded BRR;
@@ -90,6 +97,33 @@ const PAN_RIGHT = [1, .68, 1, 1, 1, .88, .72, 1];
 // would add. Set in the first FLG write at power-on, before any note can
 // play, and never rewritten after.
 const NOISE_CLOCK = 0x1f;
+
+/**
+ * Named echo choices for `ChipCreateOptions.space`. `dry` reproduces this
+ * driver's own behavior before `space` existed, bit for bit. An unrecognised
+ * name (including `undefined`) also falls back to `dry`, the same permissive
+ * contract `model` already has on the C64 driver - never a thrown error for
+ * an unrecognised string, since a portable caller should not have to know
+ * every chip's own vocabulary just to render one at all.
+ *
+ * `room`'s EDL (echo delay, in 2 KB units, 16 ms each) and EON (echo enable,
+ * one bit per voice; the kit's percussion voice, v3, is excluded so drum
+ * one-shots stay dry and readable through the echo tail) were chosen so the
+ * echo buffer (`ESA*0x100` to `+ EDL*2048`) still lands inside 64 KB above
+ * the factory bank: see `docs/chips/snes.md`'s power-on state section for
+ * that arithmetic. EFB and EVOL are measured in `docs/SNES-PALETTE.md`'s
+ * echo protocol against the three demo scores, a sustained-chord probe and
+ * a drum-loop probe, with the 2A03 rendered as a control; decision 53 in
+ * `docs/DECISIONS.md` records the result.
+ */
+const SPACES: Record<string, { evol: number; efb: number; eon: number; edl: number }> = {
+  dry: { evol: 0, efb: 0, eon: 0, edl: ECHO_DELAY },
+  room: { evol: 0x18, efb: 0x38, eon: 0xf7, edl: 3 },
+};
+function spaceFor(name: string | undefined): { evol: number; efb: number; eon: number; edl: number } {
+  return SPACES[name ?? "dry"] ?? SPACES.dry;
+}
+
 type BankEntry = (typeof FACTORY_SAMPLES)[number];
 const SAMPLE_BY_NAME = new Map(FACTORY_SAMPLES.map(entry => [entry.name,entry]));
 /** One tuning source for both arrangement diagnostics and playback. */
@@ -118,9 +152,11 @@ function bankImage(): Uint8Array {
 export class SnesDriver implements ChipDriver {
   private readonly bank: BankEntry[];
   private readonly image: Uint8Array;
-  constructor() {
+  private readonly space: { evol: number; efb: number; eon: number; edl: number };
+  constructor(options?: ChipCreateOptions) {
     this.bank = FACTORY_SAMPLES;
     this.image = bankImage();
+    this.space = spaceFor(options?.space);
   }
 
   /** The directory and the bank, from `$0200`. */
@@ -141,6 +177,24 @@ export class SnesDriver implements ChipDriver {
       out.push({ at: t + PAIR, addr: F3, value: value & 0xff });
       t += GAP;
     };
+    // The chip's own power-on state, captured from real hardware, is not
+    // silence: a nonzero main and echo volume, a key-on bit already set on
+    // some voice, and pitch/source registers this driver does not own until
+    // its own per-voice loop below writes them. That combination can decode
+    // a moment of whatever the bank's own bytes are at whichever address the
+    // stray voice's uninitialized source number happens to select - larger
+    // or differently laid out than the last bank measured, a louder moment.
+    // Muting both volumes before anything else, rather than relying on how
+    // many samples a bank happens to keep quiet at that one address, makes
+    // the fix independent of the bank's own size or layout: a captured
+    // voice can still decode a BRR block for a handful of cycles, but MVOL
+    // and EVOL being zero already means neither the voice sum nor the echo
+    // path contributes anything to the output before this driver's own
+    // setup, below, has silenced it properly.
+    reg(R_MVOLL, 0);
+    reg(R_MVOLR, 0);
+    reg(R_EVOLL, 0);
+    reg(R_EVOLR, 0);
     // Echo writes off while the buffer is set up. The DSP measures its buffer
     // when the old one wraps, and the register it powers on with means 28 KB
     // from wherever ESA points, which wraps round the top of RAM into the
@@ -166,10 +220,10 @@ export class SnesDriver implements ChipDriver {
     // wrap into sample RAM until it expires; do not audibly play those bytes.
     reg(R_EVOLL, 0);
     reg(R_EVOLR, 0);
-    reg(R_EFB, 0);
+    reg(R_EFB, this.space.efb);
     reg(R_ESA, ECHO_PAGE);
-    reg(R_EDL, ECHO_DELAY);
-    reg(R_EON, 0); // no implicit room on portable arrangements
+    reg(R_EDL, this.space.edl);
+    reg(R_EON, 0); // never on before the buffer has wrapped, in either space
     // Factory low-pass FIR; signed coefficients sum to 128 (unity gain).
     [0x0c, 0x21, 0x2b, 0x2b, 0x13, 0xfe, 0xf3, 0xf9].forEach((c, i) => reg(R_FIR + i * 0x10, c));
     for (let v = 0; v < 8; v++) {
@@ -184,10 +238,16 @@ export class SnesDriver implements ChipDriver {
     // Echo writes on, once the power-on buffer has wrapped: 240 ms of it.
     // The noise clock (bits 0-4) has been live since the first FLG write
     // above; this write repeats the same value, with the reset and mute
-    // bits (7, 6) staying off, as they were meant to from here on.
+    // bits (7, 6) staying off, as they were meant to from here on. In the
+    // "dry" space (the default) this writes exactly the sequence this
+    // driver always has - EVOL stays zero and EON is not written a second
+    // time - so its register stream, and every golden built from it, is
+    // unchanged. "room" is where the authored echo return comes up, and
+    // EON follows, on the pitched voices only.
     t = Math.round(0.25 * 1024000);
-    reg(R_EVOLL, 0);
-    reg(R_EVOLR, 0);
+    reg(R_EVOLL, this.space.evol);
+    reg(R_EVOLR, this.space.evol);
+    if (this.space.eon !== 0) reg(R_EON, this.space.eon);
     reg(R_FLG, NOISE_CLOCK);
     return out;
   }

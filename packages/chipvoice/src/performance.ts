@@ -82,6 +82,13 @@ export interface PerformanceOptions {
   transpose?: number;
   /** Isolate parts after allocation, so soloing cannot change the arrangement. */
   parts?: string[];
+  /** For the few chips with an authored acoustic space: the SNES's `"dry"`
+   * (the default, when omitted) or `"room"`. Threaded straight to the
+   * chip's own `driver()`, the same option `RenderOptions.space` and
+   * `ChipCreateOptions.space` name - a plan built with it set is otherwise
+   * identical, since only the driver's own power-on and note writes (EVOL/
+   * EFB/EON/EDL) differ between spaces, not allocation, mixing or timing. */
+  space?: string;
 }
 
 export function validatePerformance(score: Performance): void {
@@ -151,7 +158,7 @@ export function planPerformance(score: Performance, chip: ChipDefinition, option
   if (!Number.isFinite(transpose) || Math.abs(transpose) > 48) throw new Error('Invalid transpose');
   const time = performanceClock(score, options.tempoScale), seconds = time(score.endTick);
   if (seconds > 600) throw new Error('Performance exceeds ten minutes');
-  const driver = chip.driver(), bus = new RegisterTransactions(chip.spec.id), notes: PlannedNote[] = [], losses: PerformanceLoss[] = [];
+  const driver = chip.driver({ space: options.space }), bus = new RegisterTransactions(chip.spec.id), notes: PlannedNote[] = [], losses: PerformanceLoss[] = [];
   bus.add(driver.powerOn());
   const instruments = instrumentsFor(chip.spec.id, undefined);
   const sounding = new Map<string, {start: number; end: number}[]>(), selected = options.parts && new Set(options.parts);

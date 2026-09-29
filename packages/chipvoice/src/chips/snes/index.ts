@@ -1,4 +1,4 @@
-import { registerChip, type ChipDefinition, type ChipSpec } from "../../chip.js";
+import { registerChip, type ChipCreateOptions, type ChipDefinition, type ChipSpec } from "../../chip.js";
 import { SNES_PROCESSOR_NAME, SPC_HZ, SnesChip, SnesCore } from "./dsp.js";
 import { SnesDriver } from "./driver.js";
 import { WORKLET_SOURCE } from "./worklet-inline.js";
@@ -34,7 +34,7 @@ export const snesChip: ChipDefinition = {
   spec: SNES,
   create: (sampleRate: number) => new SnesCore(sampleRate),
   digital: () => new SnesChip(),
-  driver: () => new SnesDriver(),
+  driver: (options?: ChipCreateOptions) => new SnesDriver(options),
   workletSource: WORKLET_SOURCE,
   processorName: SNES_PROCESSOR_NAME,
 };

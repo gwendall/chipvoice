@@ -40,9 +40,15 @@ function regs(writes) {
   check('power-on loads the bank into RAM, directory first', loaded.length === 1 && loaded[0].address === 0x0200 && loaded[0].bytes.length > 4000, `${loaded[0]?.bytes.length} bytes at ${loaded[0]?.address.toString(16)}`);
   const power = regs(writes.filter((w) => w.at < 100000));
   const by = Object.fromEntries(power.map(([r, v]) => [r, v]));
-  // FLG's low bits are the noise clock ($1f, fastest): set in this very first write, alongside
-  // the echo-write-disable bit (0x20), since a note can start at the song's own time zero.
-  check('and sets the directory, the volumes, the echo and every voice\'s envelope, with echo writes off, the noise clock set and every voice released first', power[1][0] === 0x5c && power[1][1] === 0xff && by[0x5c] === 0x00 && by[0x6c] === 0x3f && by[0x5d] === 0x02 && by[0x0c] === 0x60 && by[0x7d] === 3 && by[0x4d] === 0 && by[0x05] === 0xff && by[0x75] === 0xff, JSON.stringify(by));
+  // The very first writes mute the main and echo volumes - before FLG, before
+  // anything else - so a captured hardware voice with a stray key-on bit and
+  // an uninitialized source number cannot be heard decoding whatever the
+  // bank's bytes are at that address, no matter the bank's own size or
+  // layout. FLG's low bits are the noise clock ($1f, fastest): set in the
+  // write right after, alongside the echo-write-disable bit (0x20), since a
+  // note can start at the song's own time zero.
+  check('mutes the main and echo volume before anything else', power[0][0] === 0x0c && power[0][1] === 0 && power[1][0] === 0x1c && power[1][1] === 0 && power[2][0] === 0x2c && power[2][1] === 0 && power[3][0] === 0x3c && power[3][1] === 0, JSON.stringify(power.slice(0, 4)));
+  check('and sets the directory, the volumes, the echo and every voice\'s envelope, with echo writes off, the noise clock set and every voice released first', power[5][0] === 0x5c && power[5][1] === 0xff && by[0x5c] === 0x00 && by[0x6c] === 0x3f && by[0x5d] === 0x02 && by[0x0c] === 0x60 && by[0x7d] === 3 && by[0x4d] === 0 && by[0x05] === 0xff && by[0x75] === 0xff, JSON.stringify(by));
   const enable = regs(writes.filter((w) => w.at >= 200000 && w.at < CLOCK));
   check('and turns echo writes on a quarter second later, once the power-on buffer has wrapped, repeating the same noise clock', JSON.stringify(enable) === JSON.stringify([[0x2c,0],[0x3c,0],[0x6c,0x1f]]), JSON.stringify(enable));
   const note = regs(writes.filter((w) => w.at >= CLOCK && w.at < CLOCK + CLOCK / 60));

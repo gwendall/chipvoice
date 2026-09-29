@@ -26,6 +26,8 @@ export interface RenderOptions {
   chip?: string;
   /** For the few chips with more than one model: the C64's `"6581"` (the default) or `"8580"`. */
   model?: string;
+  /** For the few chips with an authored acoustic space: the SNES's `"dry"` (the default) or `"room"`. See `ChipCreateOptions.space`. */
+  space?: string;
   /** 0 to 1, applied by the chip's own output stage. */
   gain?: number;
   /** Render both channels. The 2A03 is mono, so this duplicates; the Game Boy is stereo. */
@@ -77,6 +79,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
 
   const core = chip.create(sampleRate, { model: options.model });
   core.setGain(options.gain ?? 0.78);
+  const chipOptions = { model: options.model, space: options.space };
 
   /*
    * The driver and sequencer are the live ones, driven by a clock we advance.
@@ -87,7 +90,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
    * with nothing scheduled past the first fifth of a second.
    */
   let clock = 0;
-  const driver = new OfflineDriver(core, chip, () => clock);
+  const driver = new OfflineDriver(core, chip, () => clock, chipOptions);
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
   // Offline time zero is the first musical instant; live startup lookahead
   // must not steal the end of a full-loop export.
@@ -128,7 +131,7 @@ export function renderSong(song: Song, options: RenderOptions = {}): RenderResul
  */
 export function recordSong(
   song: Song,
-  options: { seconds?: number; chip?: string; sampleRate?: number } = {},
+  options: { seconds?: number; chip?: string; sampleRate?: number; model?: string; space?: string } = {},
 ): { events: RegisterEvent[]; cycles: number; memory: { address: number; bytes: Uint8Array }[] } {
   const chip = chipFor(options.chip ?? song.chip ?? "2a03");
   const sampleRate = options.sampleRate ?? 44100;
@@ -154,7 +157,7 @@ export function recordSong(
     reset() { pending.clear(); },
   };
   let clock = 0;
-  const driver = new OfflineDriver(core, chip, () => clock);
+  const driver = new OfflineDriver(core, chip, () => clock, { model: options.model, space: options.space });
   const sequencer = new Sequencer(driver, { canPlay: () => true }, () => clock, { live: false, roles: chip.spec.roles, chordVoices: chip.spec.chordVoices });
   // Offline time zero is the first musical instant; live startup lookahead
   // must not steal the end of a full-loop export.

@@ -300,7 +300,9 @@ output is not a guarantee of original-game timbre or subjective mix quality.
 
 Native FM ports use measured patch pitch and amplitude descriptors rather than
 interpreting local patch IDs as MIDI instruments. The SNES factory palette is dry
-from 0.16.3. Sonic DAC ports distinguish observed kick/snare attacks instead of
+from 0.16.3, and stays dry by default; `{ space: "room" }` is an explicit,
+documented opt-in for a moderate authored echo on the pitched voices, measured
+and decided in decision 53. Sonic DAC ports distinguish observed kick/snare attacks instead of
 mapping every burst to a kick. These improve adaptations; they do not make
 cross-console timbres identical. See the measured-projection workflow in
 [the mixing API](docs/MIXING-API.md).
