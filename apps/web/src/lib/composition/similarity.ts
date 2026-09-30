@@ -84,12 +84,19 @@ function tokensFromSequences(intervals: number[], durationRatios: number[]): Mel
  * `melodicLine`) into the same joint interval/rhythm sequence the reference
  * set is stored in. Fewer than 3 notes yields no tokens (an interval needs 2
  * notes, a duration ratio needs 2 gaps, i.e. 3 notes) - too little material
- * to measure, not a match or a non-match either way. */
+ * to measure, not a match or a non-match either way.
+ *
+ * Pitches are rounded to the nearest semitone before differencing. A
+ * generated score's pitches are already integers (`score.ts`), so this is a
+ * no-op in production, but a captured performance's are not (an NSF
+ * capture's pitch comes from the channel's frequency, e.g. 68.81), and a
+ * fractional interval can never equal a reference's integer one: every
+ * window would score 0 however close the melody. */
 export function tokenize(line: MelodicNoteInput[]): MelodicToken[] {
   if (line.length < 3) return [];
   const intervals: number[] = [], iois: number[] = [];
   for (let i = 1; i < line.length; i++) {
-    intervals.push(line[i].pitch - line[i - 1].pitch);
+    intervals.push(Math.round(line[i].pitch) - Math.round(line[i - 1].pitch));
     iois.push(Math.max(1, line[i].tick - line[i - 1].tick));
   }
   const durationRatios: number[] = [];
@@ -288,44 +295,33 @@ export function knownMelodySimilarity(parts: MelodicPart[], references: KnownMel
 }
 
 /**
- * Calibrated in `test-known-melody-similarity.mjs` (decision 56): positives
- * are the reference melodies themselves transposed, re-timed and lightly
- * varied (a transposed+retimed copy always measures 1.0, since both
- * invariances are exact by construction; the varied copies - an inserted
- * ornament, a changed note or two - are what actually sets the threshold),
- * negatives are the repository's own original fixtures (the starter
- * project's melody, the generation benchmark's synthetic mock score, the
- * composition test server's fixture score) and seeded-random tunes.
+ * Set from real generations (decision 56, recalibration): the generation
+ * benchmark's 188 rendered generations, every one from a prompt asking for
+ * original music, are the negatives that matter, because a false positive
+ * refuses a real user's generation AFTER the paid model call. Odd prompt
+ * numbers were the calibration half, even numbers the held-out half, and
+ * the rule was fixed before either was scored: the lowest 0.05 step at
+ * least 0.05 above the calibration half's highest match. The calibration
+ * max was 0.571 (a chord part's two-note oscillation against
+ * `twinkle-twinkle`), so 0.65; the held-out half's max was also 0.571, so
+ * 0/94 flagged. The first threshold, 0.40, flags 15/188 (8%) even with the
+ * corrected references, and flagged 59/188 with the references as first
+ * shipped (`./known-melodies.ts`'s file comment).
  *
- * On a calibration set (48 positives: 8 references x 6 varied/transposed/
- * retimed copies each; 23 negatives: 3 repo fixtures + 20 random tunes),
- * chosen BEFORE looking at a held-out set of the same shape: 0.40 clears
- * every negative in the calibration set (max negative similarity 0.250, a
- * margin of 0.15) while catching 43/48 positives (90%; the misses are all
- * heavily varied copies of the shortest, most repetitive references,
- * `fur-elise`, `beethoven-5th-motif` and `korobeiniki`, where "a changed
- * note or two" is a larger fraction of a 6-8-token incipit than of a longer
- * one). Verified, without changing the threshold, against a held-out set
- * built the same way from different seeds: 45/48 positives caught (94%),
- * 0/23 negatives flagged (max held-out negative similarity was also
- * 0.250). The full confusion matrices for both sets are recorded in
- * decision 56 (DECISIONS.md).
- *
- * Random tunes and three small original fixtures are the easy case for a
- * negative set - real music (repetition, stepwise motion, several long
- * parts) is where a false positive actually happens, and since that
- * happens AFTER the paid model call, it costs the user a generation.
- * `scripts/melody-negative-corpus.mjs` extracts every real, non-probe song
- * in `scores/nsf-corpus` (8 independently authored, redistribution-licensed
- * NES chiptunes, three of them explicitly short repetitive loops - the
- * hardest case) through the repo's own offline 6502 and reports each
- * song's strongest match: 0.000 similarity on all 8, so 0.40 keeps its full
- * margin against real music, not just synthetic negatives. See decision 56
- * for the numbers and the false-positive vulnerability this measure (the
- * `MIN_DISTINCT_INTERVALS`/`MIN_MATCHED_MOTION` guards in `bestMatch`
- * above) was built to close.
+ * Also measured at 0.65: 0/8 real NSF-corpus chiptunes (max 0.467) and 0/46
+ * synthetic negatives (the repository's own original fixtures and
+ * seeded-random tunes, max 0.286). Recall on the synthetic positives (each
+ * reference transposed, re-timed and varied, then embedded in unrelated
+ * material; `test-known-melody-similarity.mjs`) is 29/48 and 33/48: every
+ * copy with one changed note and no ornament is caught, a transposed and
+ * re-timed exact copy always measures 1.0, and what gets through is mostly
+ * the heaviest paraphrase (two changed notes and an inserted ornament) and
+ * the shortest reference (`beethoven-5th-motif`, six tokens, where one
+ * change is a sixth of the motif). The gate is for a reproduced melody,
+ * not a loose paraphrase, and refusing an original one is the costlier
+ * error. The full numbers are in decision 56 (DECISIONS.md).
  */
-export const KNOWN_MELODY_THRESHOLD = 0.4;
+export const KNOWN_MELODY_THRESHOLD = 0.65;
 
 /** Refuses (returns the match) when the strongest match reaches
  * `KNOWN_MELODY_THRESHOLD`, otherwise null. Called once per generation, on

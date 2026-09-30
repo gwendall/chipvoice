@@ -87,6 +87,25 @@ The measured mean is $0.2207 per generation, which extrapolates the full 250-pro
 
 Every sample render passed `duration_mismatch`, `clipping`, `level_jump` and `silence_gap`, and every one failed `abrupt_ending`: its final half second sits 2.1 to 5.8 dB under its own last three seconds' peak, at -29.4 to -33.2 dBFS against the check's -36 dBFS limit. The model writes music that stops rather than ends, on every console; the full run measures how general that is.
 
+## The full run
+
+The approved run started on 2026-09-30 with `node --env-file=<the main checkout's apps/web/.env.local> apps/web/scripts/gen-bench.mjs --confirm-paid-run --concurrency 4 --max-cost-usd 70 --out .artifacts/gen-bench/full-2026-09-30`. It did not finish the set. After 188 generations had rendered, the OpenAI account ran out of prepaid credit, and every later call came back as a streamed `insufficient_quota` error, which `model.ts` reports as `model_error` ("The composition provider interrupted the response"). 43 calls failed that way, the first `dmg-39`, before the run was stopped by hand, and the last 18 prompts of the interleaved order were never sent. One more failure is the model's own: `2a03-03` wrote more simultaneous notes than the 2A03 has voices, and the render refused it ("Arrangement exceeds hardware voices"), a paid call with nothing to hear. `--resume` on the same directory sends the 62 remaining prompts (44 failed, 18 unsent) once the account has credit.
+
+| Console | Rendered / sent | Mean cost | Model call p50 / p90 | Render p50 / p90 | `abrupt_ending` passed | `loop_click` passed | `loop_level_jump` passed |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `2a03` | 37 / 46 | $0.2547 | 89.7s / 106.4s | 2.5s / 5.0s | 10 / 23 | 13 / 14 | 14 / 14 |
+| `dmg` | 38 / 47 | $0.2419 | 78.0s / 112.2s | 3.8s / 8.6s | 10 / 23 | 15 / 15 | 14 / 15 |
+| `md` | 38 / 47 | $0.2992 | 84.8s / 104.9s | 12.6s / 24.3s | 10 / 23 | 13 / 15 | 15 / 15 |
+| `snes` | 38 / 47 | $0.2794 | 85.3s / 110.3s | 1.0s / 2.4s | 11 / 23 | 15 / 15 | 14 / 15 |
+| `c64` | 37 / 45 | $0.2547 | 90.2s / 109.7s | 2.9s / 5.9s | 13 / 23 | 14 / 14 | 13 / 14 |
+
+`abrupt_ending` applies to the 115 generations that are not loops, the loop checks to the 73 that are. `duration_mismatch`, `clipping` and `level_jump` passed on all 188, and `silence_gap` on all but one (`dmg`).
+
+- **Cost.** 189 priced calls (the 188 rendered and `2a03-03`) cost $50.29. A rendered generation cost $0.2661 on average ($0.0936 to $0.4530), 21% above the sample's $0.2207, which was a floor as expected: the full set asks for 43.6 seconds on average, the sample for 12 to 17. At that mean the whole set costs about $66.5, inside the approved 70 USD.
+- **Latency.** The model call dominates: 86.9s at p50 and 109.6s at p90 (153.4s at most), against a render of 1 to 13 seconds at p50 (`md` is the slowest to render). End to end, 92.7s at p50 and 118.4s at p90.
+- **Endings.** 61 of the 115 non-loop generations (53%) fail `abrupt_ending`, their final half second at -35.8 to -26.1 dBFS; the sample's five of five overstated it, but the model still stops rather than ends more often than not, on every console. That is the measured failure GEN-04's repair call was waiting for.
+- **Known melodies.** The run is the negative set decision 56 was waiting for. Scored against the gate as it shipped (threshold 0.40), 59 of the 188 would have been refused after the paid call; decision 56's recalibration amendment has why, and what changed. With the corrected references and the 0.65 threshold, none are: p50 0.313, p90 0.385, max 0.571. The 188 generations' pitched notes are committed as `apps/web/test/melody-negatives-gen-bench.json.gz`, which `test-known-melody-similarity.mjs` scores in CI.
+
 ## When to rerun
 
 Rerun on every model change: an `OPENAI_MODEL` change, an `OPENAI_REASONING_EFFORT` change, an adapter change in `model.ts`, or a prompt/schema change in `score.ts`. Expand the benchmark's prompt count only when the current set stops being useful, per the backlog's "expand only when useful."

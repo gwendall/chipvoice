@@ -5,6 +5,8 @@
 // synthetic note data only, seeded so a run always reproduces the same
 // confusion matrix.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { build } from "../../packages/chipvoice/node_modules/esbuild/lib/main.js";
 
 const built = await build({
@@ -50,6 +52,12 @@ check("tokenize is exactly transposition-invariant", () => {
   assert.deepEqual(tokenize(notes), tokenize(transposed));
 });
 
+check("tokenize rounds a fractional pitch (an NSF capture's) to the semitone", () => {
+  const line = [{ tick: 0, pitch: 60 }, { tick: 480, pitch: 62 }, { tick: 960, pitch: 64 }, { tick: 1440, pitch: 60 }];
+  const detuned = line.map((n, i) => ({ tick: n.tick, pitch: n.pitch + [0.13, -0.19, 0.07, -0.02][i] }));
+  assert.deepEqual(tokenize(detuned), tokenize(line));
+});
+
 check("tokenize is exactly tempo-invariant under uniform scaling", () => {
   const notes = [{ tick: 0, pitch: 60 }, { tick: 480, pitch: 64 }, { tick: 720, pitch: 67 }, { tick: 1200, pitch: 65 }];
   const retimed = notes.map((n) => ({ tick: Math.round(n.tick * 2.5), pitch: n.pitch }));
@@ -88,6 +96,33 @@ check("isKnownMelody flags a near-exact quote and clears an unrelated short line
     { id: "n0", tick: 0, pitch: 60 }, { id: "n1", tick: 500, pitch: 62 }, { id: "n2", tick: 900, pitch: 58 }, { id: "n3", tick: 1500, pitch: 65 },
   ] }]);
   assert.equal(original, null, "a short original line should not flag");
+});
+
+// Each public-domain reference, recomputed from the published score its
+// `source` cites (pitch, then the gap to the next onset in the score's
+// smallest unit), with tokenize's own definition. The first version checked
+// only the note names and filled in the rhythm from memory, which left four
+// of these five rhythms wrong; this pins pitches and rhythm to the score.
+const PUBLISHED_SCORES = {
+  "twinkle-twinkle": "C4:1 C4:1 G4:1 G4:1 A4:1 A4:1 G4:2 F4:1 F4:1 E4:1 E4:1 D4:1 D4:1 C4",
+  "ode-to-joy": "E4:1 E4:1 F4:1 G4:1 G4:1 F4:1 E4:1 D4:1 C4:1 C4:1 D4:1 E4:1 E4:1.5 D4:0.5 D4",
+  "fur-elise": "E5:1 D#5:1 E5:1 D#5:1 E5:1 B4:1 D5:1 C5:1 A4:3 C4:1 E4:1 A4:1 B4:3 E4:1 G#4:1 B4",
+  "beethoven-5th-motif": "G4:1 G4:1 G4:1 Eb4:5 F4:1 F4:1 F4:1 D4",
+  "korobeiniki": "E5:2 B4:1 C5:1 D5:2 C5:1 B4:1 A4:2 A4:1 C5:1 E5:2 D5:1 C5:1 B4:3 C5:1 D5:2 E5",
+};
+check("each public-domain reference matches the published score it cites", () => {
+  const STEP = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const midi = (name) => {
+    const [, letter, accidental, octave] = name.match(/^([A-G])(#|b)?(\d)$/);
+    return 12 * (Number(octave) + 1) + STEP[letter] + (accidental === "#" ? 1 : accidental === "b" ? -1 : 0);
+  };
+  for (const [id, text] of Object.entries(PUBLISHED_SCORES)) {
+    const notes = text.split(" ").map((token) => { const [name, gap] = token.split(":"); return { pitch: midi(name), gap: Number(gap) }; });
+    const gaps = notes.slice(0, -1).map((n) => n.gap);
+    const reference = KNOWN_MELODIES.find((m) => m.id === id);
+    assert.deepEqual(reference.intervals, notes.slice(1).map((n, i) => n.pitch - notes[i].pitch), `${id} intervals`);
+    assert.deepEqual(reference.durationRatios, gaps.slice(1).map((g, i) => Math.round((g / gaps[i]) * 1e4) / 1e4), `${id} duration ratios`);
+  }
 });
 
 console.log(`PASS unit: ${passed} checks`);
@@ -231,21 +266,57 @@ const heldOut = evaluate(buildSet(2));
 // and the doc comment need updating together with this test, not just this
 // test alone - the number here is a record of what was decided, not an
 // independent target to satisfy.
-check("threshold (0.40) reproduces decision 56's calibration-set confusion matrix", () => {
+check("threshold (0.65) reproduces decision 56's calibration-set confusion matrix", () => {
   const c = confusion(calibration, KNOWN_MELODY_THRESHOLD);
-  assert.deepEqual(c, { tp: 43, fn: 5, fp: 0, tn: 23 });
+  assert.deepEqual(c, { tp: 29, fn: 19, fp: 0, tn: 23 });
 });
-check("threshold (0.40) reproduces decision 56's held-out confusion matrix", () => {
+check("threshold (0.65) reproduces decision 56's held-out confusion matrix", () => {
   const c = confusion(heldOut, KNOWN_MELODY_THRESHOLD);
-  assert.deepEqual(c, { tp: 45, fn: 3, fp: 0, tn: 23 });
+  assert.deepEqual(c, { tp: 33, fn: 15, fp: 0, tn: 23 });
+});
+check("every copy with one changed note and no ornament is caught, both sets", () => {
+  // Variant 0 of each reference (buildSet: one change, no ornament).
+  for (const { id, similarity } of [...calibration.posScores, ...heldOut.posScores].filter((p) => p.id.endsWith("#0")))
+    assert.ok(similarity >= KNOWN_MELODY_THRESHOLD, `${id} should flag (similarity ${similarity})`);
 });
 check("zero false positives on repo-original and random negatives, both sets", () => {
   for (const { id, similarity } of [...calibration.negScores, ...heldOut.negScores])
     assert.ok(similarity < KNOWN_MELODY_THRESHOLD, `${id} should not flag as a known melody (similarity ${similarity})`);
 });
 
+// ---- real generations (decision 56, recalibration) ------------------------
+// The generation benchmark's rendered generations, every prompt asking for
+// original music, as scripts/melody-negative-corpus.mjs --gen-bench stores
+// them (pitched notes only, each [dTick, dPitch] from the previous note in
+// its part). Odd prompt numbers are the calibration half that set the
+// threshold, even numbers the held-out half.
+const genBench = JSON.parse(gunzipSync(readFileSync(new URL("./test/melody-negatives-gen-bench.json.gz", import.meta.url))).toString("utf8"))
+  .generations.map((generation) => ({
+    id: generation.id,
+    similarity: knownMelodySimilarity(generation.parts.map((part) => {
+      let tick = 0, pitch = 0;
+      return { ...part, notes: part.notes.map(([dTick, dPitch]) => ({ tick: (tick += dTick), pitch: (pitch += dPitch) })) };
+    }))?.similarity ?? 0,
+  }));
+const genHalf = (parity) => genBench.filter((g) => Number(g.id.split("-").pop()) % 2 === parity);
+const maxOf = (items) => Math.max(...items.map((g) => g.similarity));
+check("the threshold is the lowest 0.05 step at least 0.05 above the calibration half's max", () => {
+  const calibrationHalf = genHalf(1);
+  assert.equal(calibrationHalf.length, 94);
+  assert.equal(maxOf(calibrationHalf).toFixed(3), "0.571");
+  assert.equal(KNOWN_MELODY_THRESHOLD, Math.ceil(Math.round((maxOf(calibrationHalf) + 0.05) * 1e6) / 1e6 * 20) / 20);
+});
+check("the held-out half of real generations has no false positive", () => {
+  const heldOutHalf = genHalf(0);
+  assert.equal(heldOutHalf.length, 94);
+  for (const { id, similarity } of heldOutHalf)
+    assert.ok(similarity < KNOWN_MELODY_THRESHOLD, `${id} should not flag as a known melody (similarity ${similarity})`);
+});
+
 console.log(
   `PASS calibration: threshold=${KNOWN_MELODY_THRESHOLD} ` +
   `calibration TP/FN/FP/TN=${JSON.stringify(confusion(calibration, KNOWN_MELODY_THRESHOLD))} ` +
-  `held-out TP/FN/FP/TN=${JSON.stringify(confusion(heldOut, KNOWN_MELODY_THRESHOLD))}`,
+  `held-out TP/FN/FP/TN=${JSON.stringify(confusion(heldOut, KNOWN_MELODY_THRESHOLD))} ` +
+  `real generations: calibration max=${maxOf(genHalf(1)).toFixed(3)} held-out max=${maxOf(genHalf(0)).toFixed(3)} ` +
+  `flagged=${genBench.filter((g) => g.similarity >= KNOWN_MELODY_THRESHOLD).length}/${genBench.length}`,
 );
