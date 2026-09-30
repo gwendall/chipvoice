@@ -10,6 +10,7 @@
  * the same split `./checks.ts` uses for the same reason.
  */
 import { modelPrices, priceUsage, type Prices } from "./admission";
+import { KNOWN_MELODY_THRESHOLD } from "./similarity";
 
 export type Console = "2a03" | "dmg" | "md" | "snes" | "c64";
 export const CONSOLES: Console[] = ["2a03", "dmg", "md", "snes", "c64"];
@@ -123,6 +124,30 @@ export function guardPaidRun(plannedRealCalls: number, confirmPaidRun: boolean):
   };
 }
 
+/** The order a run sends its prompts in: one per console in turn (2a03,
+ * dmg, md, snes, c64, then each console's second prompt, ...), file order
+ * within a console. Records are still written in file order; this only
+ * decides what a run that stops early (a spending cap, an interrupt) has
+ * covered: every console about equally, not the first consoles whole and
+ * the last ones not at all. */
+export function interleaveByConsole(prompts: BenchPrompt[]): BenchPrompt[] {
+  const queues = CONSOLES.map((c) => prompts.filter((p) => p.console === c));
+  const out: BenchPrompt[] = [];
+  for (let i = 0; out.length < prompts.length; i++)
+    for (const queue of queues) if (i < queue.length) out.push(queue[i]);
+  return out;
+}
+
+/** `--max-cost-usd`: whether one more call may start without the run's
+ * spending passing the cap, counting what this invocation has spent, the
+ * calls still in flight and the new one each at `perCallUsd` (the run's own
+ * mean so far, or the estimate it started from). A cap is a ceiling on what
+ * one invocation spends, not a target. */
+export function budgetAllows(spentUsd: number, inFlight: number, perCallUsd: number, maxCostUsd: number | null): boolean {
+  if (maxCostUsd === null) return true;
+  return spentUsd + (inFlight + 1) * perCallUsd <= maxCostUsd;
+}
+
 /** Six generations recorded before decision 42 averaged about 0.28 USD each
  * (decision 42, DECISIONS.md); used only until this benchmark has its own
  * measured runs to draw from (see `estimateRunCost`). */
@@ -184,6 +209,15 @@ export interface BenchRecord {
   timings?: { modelMs: number; renderMs: number; totalMs: number };
   findings?: CheckFindingLike[];
   audio?: { path: string; seconds: number; sha256: string };
+  /** The known-melody gate's best match on the model's output, computed
+   * exactly as `jobs.ts` records it in production (decision 56): `null` when
+   * no melodic part had anything to compare. Recorded on every generation,
+   * below the threshold too, because the benchmark is the real negative set
+   * `KNOWN_MELODY_THRESHOLD` is recalibrated from. */
+  melody?: { similarity: number; referenceId: string; part: string } | null;
+  /** The generated MusicProject, saved beside the audio so a later measure
+   * can be rerun on the same compositions without paying for them again. */
+  project?: { path: string; sha256: string };
 }
 
 /** Which of GEN-03's check codes apply to a record, mirroring the same gates
@@ -214,6 +248,22 @@ export interface ConsoleSummary {
     total: { p50: number | null; p90: number | null };
   };
   meanCostUsd: number | null;
+  melody: MelodySummary;
+}
+
+/** The known-melody similarity distribution over a set of rendered
+ * generations: what decision 56's threshold is recalibrated from. `refused`
+ * counts the generations production would have refused (similarity at or
+ * above `threshold`) after paying for the model call. */
+export interface MelodySummary {
+  scored: number;
+  threshold: number;
+  p50: number | null;
+  p90: number | null;
+  p99: number | null;
+  max: number | null;
+  refused: number;
+  top: { id: string; similarity: number; referenceId: string; part: string }[];
 }
 
 export interface BenchSummary {
@@ -221,6 +271,29 @@ export interface BenchSummary {
   mock: boolean;
   totalPrompts: number;
   consoles: ConsoleSummary[];
+  melody: MelodySummary;
+}
+
+/** Summarizes the recorded known-melody matches of the rendered records
+ * (`melody` present, even `null`, only on a real render; a `null` match
+ * scores 0, since nothing melodic could match a reference). `top` keeps the
+ * five closest generations, with the reference each one matched, so the
+ * nearest misses can be listened to. */
+export function summarizeMelody(records: BenchRecord[], threshold = KNOWN_MELODY_THRESHOLD): MelodySummary {
+  const scored = records
+    .filter((r) => r.status === "ok" && r.melody !== undefined)
+    .map((r) => ({ id: r.id, similarity: r.melody?.similarity ?? 0, referenceId: r.melody?.referenceId ?? "", part: r.melody?.part ?? "" }));
+  const values = scored.map((r) => r.similarity);
+  return {
+    scored: scored.length,
+    threshold,
+    p50: percentile(values, 50),
+    p90: percentile(values, 90),
+    p99: percentile(values, 99),
+    max: values.length ? Math.max(...values) : null,
+    refused: values.filter((v) => v >= threshold).length,
+    top: [...scored].sort((a, b) => b.similarity - a.similarity).slice(0, 5),
+  };
 }
 
 const CHECK_CODES = ["duration_mismatch", "clipping", "level_jump", "silence_gap", "abrupt_ending", "loop_level_jump", "loop_click"];
@@ -251,9 +324,10 @@ export function summarize(records: BenchRecord[], generatedAt = new Date().toISO
         total: { p50: percentile(totalMs, 50), p90: percentile(totalMs, 90) },
       },
       meanCostUsd: costs.length ? costs.reduce((a, b) => a + b, 0) / costs.length : null,
+      melody: summarizeMelody(rows),
     };
   });
-  return { generatedAt, mock, totalPrompts: records.length, consoles };
+  return { generatedAt, mock, totalPrompts: records.length, consoles, melody: summarizeMelody(records) };
 }
 
 /** This run's own mean cost per real generation, for `estimateRunCost` to
@@ -271,6 +345,7 @@ export function meanCostOf(summary: BenchSummary): number | null {
 const fmtMs = (ms: number | null) => (ms === null ? "-" : `${Math.round(ms)}ms`);
 const fmtPct = (rate: number | null) => (rate === null ? "n/a" : `${Math.round(rate * 100)}%`);
 const fmtUsd = (usd: number | null) => (usd === null ? "n/a" : `$${usd.toFixed(4)}`);
+const fmtSim = (value: number | null) => (value === null ? "-" : value.toFixed(3));
 
 /** The generated summary document: one table per console over the run's own
  * numbers, nothing hand-typed. */
@@ -278,6 +353,16 @@ export function formatSummaryMarkdown(summary: BenchSummary): string {
   const lines: string[] = [];
   lines.push(`# Generation benchmark summary`, "");
   lines.push(`Generated ${summary.generatedAt}. ${summary.totalPrompts} prompt${summary.totalPrompts === 1 ? "" : "s"}, ${summary.mock ? "mock provider (no network, no cost)" : "real model"}.`, "");
+  const m = summary.melody;
+  lines.push(`## Known-melody similarity`, "");
+  lines.push(`${m.scored} rendered generation${m.scored === 1 ? "" : "s"} scored against the reference set; ${m.refused} at or above the ${m.threshold} threshold (production would refuse ${m.refused === 1 ? "it" : "them"} after the paid call).`, "");
+  lines.push(`| p50 | p90 | p99 | max |`, `| --- | --- | --- | --- |`);
+  lines.push(`| ${fmtSim(m.p50)} | ${fmtSim(m.p90)} | ${fmtSim(m.p99)} | ${fmtSim(m.max)} |`, "");
+  if (m.top.length) {
+    lines.push(`| Closest | similarity | reference | part |`, `| --- | --- | --- | --- |`);
+    for (const t of m.top) lines.push(`| ${t.id} | ${t.similarity.toFixed(3)} | ${t.referenceId || "-"} | ${t.part || "-"} |`);
+    lines.push("");
+  }
   for (const c of summary.consoles) {
     lines.push(`## ${c.console}`, "");
     lines.push(`${c.succeeded}/${c.total} rendered. Mean cost per generation: ${fmtUsd(c.meanCostUsd)}.`, "");
@@ -291,6 +376,8 @@ export function formatSummaryMarkdown(summary: BenchSummary): string {
       if (check.applicable) lines.push(`| ${code} | ${fmtPct(check.passRate)} | ${check.applicable} |`);
     }
     lines.push("");
+    if (c.melody.scored)
+      lines.push(`Known-melody similarity: p90 ${fmtSim(c.melody.p90)}, max ${fmtSim(c.melody.max)}, ${c.melody.refused} of ${c.melody.scored} at or above ${c.melody.threshold}.`, "");
   }
   return lines.join("\n");
 }
