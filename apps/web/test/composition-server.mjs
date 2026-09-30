@@ -9,7 +9,7 @@ import { spawn } from "node:child_process";
 // reconstructed from the exact interval/duration-ratio data
 // src/lib/composition/known-melodies.ts stores (see that file's comment for
 // the source). An unmodified reconstruction always scores 1.0 against the
-// same reference, comfortably above KNOWN_MELODY_THRESHOLD (0.40), so this
+// same reference, comfortably above KNOWN_MELODY_THRESHOLD (0.65), so this
 // is a deterministic fixture for the "known-melody" prompt sentinel below -
 // no audio, no sheet music, the same short interval/rhythm data already
 // committed to the repo.

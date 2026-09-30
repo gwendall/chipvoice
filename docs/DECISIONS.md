@@ -3346,6 +3346,93 @@ every generation's best known-melody match as evidence; migration
 adapter and the free moderation call; `scripts/melody-negative-corpus.mjs`
 (new) is the manual real-corpus validation report described above.
 
+**Amendment, recalibration (2026-09-30): the threshold is 0.65, set from
+188 real generations, after two measurement errors were found and
+fixed.** The generation benchmark's full run
+(docs/GENERATION-BENCHMARK.md, "The full run") rendered 188 generations,
+every one from a prompt asking for original music. Scored against the
+gate as it shipped, 59 of them (31%) reached 0.40: in production each of
+those would have been refused after the paid call. Two errors explain
+most of it, and the second explains why none of the checks above showed
+it.
+
+- **Four of the five public-domain rhythms were wrong.** The five
+  incipits were hand-encoded from memory, and only their pitches had
+  been checked against a score. Recomputed from the published scores
+  each `source` now cites (Wikipedia's scores for Ode to Joy, Für Elise,
+  the Fifth Symphony and Twinkle, thesession.org setting 24502 for
+  Korobeiniki), `ode-to-joy`, `fur-elise`, `beethoven-5th-motif` and
+  `korobeiniki` had wrong duration ratios; `fur-elise` and `korobeiniki`
+  were also shorter than the score's opening (now its first 16 notes,
+  like the three game themes). Only `twinkle-twinkle` was right.
+  `korobeiniki`'s invented all-equal rhythm did the most damage: any
+  stepwise run of even notes matched it, and it alone accounted for 42
+  of the 59. `test-known-melody-similarity.mjs` now recomputes every
+  public-domain reference from the score's note names and lengths.
+- **The NSF-corpus check could not fail.** An NSF capture's pitch comes
+  from the channel's frequency (68.81, not 69), so every interval it
+  produced was fractional and never equal to a reference's integer one:
+  the eight songs scored 0.000 whatever they contained, and the "full
+  0.40 margin" above was that artifact. `tokenize` now rounds each pitch
+  to the semitone before taking intervals. A generated score's pitches
+  are integers already (`score.ts`), so production scoring is unchanged
+  by this; measured properly, the eight songs score up to 0.467, and
+  three of them reached 0.40.
+
+With the references corrected, 15 of the 188 still reached 0.40, and
+each of the highest was a false positive on inspection: a chord part's
+two-note oscillation (B B A A B B A A) scoring 0.571 against Twinkle
+without its rising fifth, an arpeggio against the Fifth's motif without
+its three repeated notes. So the threshold was reset from the real
+generations, with the rule written down before either half was scored:
+odd prompt numbers are the calibration half, even numbers the held-out
+half, and the threshold is the lowest 0.05 step at least 0.05 above the
+calibration half's highest match. That maximum was 0.571, so 0.65. The
+held-out half's maximum was also 0.571: none of its 94 flagged.
+
+| Threshold | References | Real generations flagged (188) | NSF songs flagged (8) | Synthetic positives caught (calibration / held-out) | Synthetic negatives flagged (46) |
+| --- | --- | --- | --- | --- | --- |
+| 0.40 | as shipped | 59 | 3 | 43/48, 45/48 | 0 |
+| 0.40 | corrected | 15 | 3 | 46/48, 46/48 | 0 |
+| 0.60 | corrected | 0 | 0 | 35/48, 40/48 | 0 |
+| **0.65** | corrected | **0** | **0** | **29/48, 33/48** | **0** |
+
+(NSF counts use the rounded measure; without it every row reads 0.)
+
+What 0.65 gives up is recall on the synthetic paraphrases: 62 of 96,
+down from 88. Every copy with one changed note and no ornament is still
+caught (16/16), and 14 of 16 with two changed notes; a transposed,
+re-timed exact copy always measures 1.0. What gets through is mostly the
+heaviest variation, two changed notes plus an inserted ornament (5 of 32
+caught), and the shortest reference, `beethoven-5th-motif` (4 of 12: six
+tokens, so one change is a sixth of it). The gate is there to stop a
+reproduced melody, not a loose paraphrase, and its costly error is the
+other one: a false positive refuses a real user's original generation
+after the paid call. 0.60 would keep more recall (75 of 96) with none of
+these 188 flagged, but only 0.029 above the highest real score; the rule
+was fixed before scoring and is kept.
+
+The weakness underneath is structural rather than a matter of threshold.
+An edit distance over {interval, rhythm} tokens counts a repeated note,
+or a step of two semitones in even notes, as readily as a reference's
+distinctive leap, so the stepwise, repetitive references (Twinkle, Ode
+to Joy, Korobeiniki) collect partial matches from ordinary
+accompaniment. Weighting each reference's distinctive intervals is the
+follow-up that could bring the recall back without the false positives
+(BACKLOG, NEXT-27).
+
+`test-known-melody-similarity.mjs` pins the score check, the rounding,
+the new confusion matrices (29/19/0/23 and 33/15/0/23), that every
+one-change copy is caught, and, from
+`apps/web/test/melody-negatives-gen-bench.json.gz` (the 188 generations'
+pitched notes, 42 KB, written by
+`scripts/melody-negative-corpus.mjs --gen-bench`), that the threshold
+follows the rule from the calibration half and that the held-out half
+has no false positive. The run itself stopped at 232 of 250 prompts,
+when the OpenAI account ran out of credit; resuming it and rewriting the
+fixture re-applies the same rule, and the test's counts say whether the
+threshold moves.
+
 ## 57. chipvoice publishes terms of use and a privacy policy: no ownership claim on your songs, prompts stay owner-only and are erased when their song is withdrawn (2026-09-29)
 
 NEXT-22. chipvoice had no terms page and no privacy page; `/terms` and

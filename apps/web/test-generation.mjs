@@ -68,7 +68,7 @@ try {
   // EVERY generation, not only refused ones - the evidence a future
   // recalibration (the planned ~250-sample GEN benchmark run) reads back.
   assert.ok(result.moderation.melody, "an ordinary successful generation still records its best known-melody match");
-  assert.ok(result.moderation.melody.similarity < 0.4, "an ordinary generation's best match stays below the refusal threshold");
+  assert.ok(result.moderation.melody.similarity < 0.65, "an ordinary generation's best match stays below the refusal threshold");
   assert.equal(result.project.generation.prompt, request.prompt);
   assert.equal(result.project.profile.id, (await api.ensureProfile(caller.userId)).id);
   assert.equal(result.evaluation.seconds, 10);

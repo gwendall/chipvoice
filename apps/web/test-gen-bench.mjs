@@ -219,13 +219,13 @@ try {
   const melody = lib.summarizeMelody([
     { id: "m1", status: "ok", melody: { similarity: 0.1, referenceId: "r1", part: "lead" } },
     { id: "m2", status: "ok", melody: null },
-    { id: "m3", status: "ok", melody: { similarity: 0.45, referenceId: "r2", part: "bass" } },
+    { id: "m3", status: "ok", melody: { similarity: 0.7, referenceId: "r2", part: "bass" } },
     { id: "m4", status: "failed" },
     { id: "m5", status: "ok" },
   ]);
   assert.equal(melody.scored, 3);
   assert.equal(melody.threshold, lib.KNOWN_MELODY_THRESHOLD);
-  assert.equal(melody.max, 0.45);
+  assert.equal(melody.max, 0.7);
   assert.equal(melody.refused, 1);
   assert.deepEqual(melody.top.map((t) => t.id), ["m3", "m1", "m2"]);
 }

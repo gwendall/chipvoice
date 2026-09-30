@@ -1156,7 +1156,8 @@ real game music, and a real unit.
 **Step 6. Generation for everyone, in parallel (decision 39).**
 
 - doing - GEN-01 and GEN-05: harness done, sample measured, full run
-  approved (70 USD). `pnpm gen-bench` (`apps/web/scripts/gen-bench.mjs`, see
+  188/250 rendered (approved at 70 USD, stopped by an exhausted OpenAI
+  account). `pnpm gen-bench` (`apps/web/scripts/gen-bench.mjs`, see
   [the benchmark doc](GENERATION-BENCHMARK.md)) drives the same generation
   path the server uses over a committed set of 250 original prompts, 50 per
   console, varied in genre, mood, tempo, duration and structure, none naming
@@ -1172,13 +1173,21 @@ real game music, and a real unit.
   `results.jsonl` with `--resume`. The one-per-console paid sample ran on
   2026-09-30: 5 of 5 rendered at a mean $0.2207 per generation ($55.19
   extrapolated for the set, a floor since the sample's prompts are short),
-  and all five fail `abrupt_ending`. The full run is approved at 70 USD and
-  runs under that cap.
+  and all five fail `abrupt_ending`. The full run on 2026-09-30 rendered 188
+  generations for $50.29 ($0.2661 each on average, model call 86.9s at p50)
+  before the OpenAI account ran out of credit: 43 calls failed on it, 18
+  prompts were never sent, and one generation (`2a03-03`) wrote more notes
+  than the 2A03 has voices and failed to render. 61 of the 115 non-loop
+  generations fail `abrupt_ending`. `--resume` sends the remaining 62 once
+  the account has credit; results in
+  [the benchmark doc](GENERATION-BENCHMARK.md#the-full-run).
 - done - GEN-03: whole-song checks (late clipping, level jumps, silence
   gaps, an unresolved ending, a loop seam, a duration mismatch), pure and
   tested in `apps/web/src/lib/composition/checks.ts`, run once a generation's
   render is ready and recorded on it, never rejecting (GEN-04 stays separate).
-- GEN-04: a repair call, only if measured failures justify it.
+- GEN-04: a repair call, only if measured failures justify it. Measured:
+  the full run's endings (53% of non-loop generations stop rather than end)
+  are the first candidate.
 - todo - NEXT-18: style, tempo and structure control. GEN-11 and GEN-12:
   targeted revisions and console variants.
 - done - NEXT-19: PR #132. Decision 55. `project_jobs` is now a durable queue
@@ -1202,13 +1211,22 @@ real game music, and a real unit.
   site's own Mario/Zelda/Sonic transcriptions plus hand-encoded
   public-domain incipits, each verified against a published score and
   stored as interval/rhythm data only) with a transposition- and
-  tempo-invariant windowed edit distance, calibrated to a threshold of 0.40
-  (90% recall at zero false positives on the calibration set; verified,
-  unchanged, at 94%/zero on a held-out set, and zero false positives -
-  0.000 similarity - on 8 real, redistribution-licensed chiptunes from
-  `scores/nsf-corpus`; see decision 56 for the full confusion matrices and
-  methodology). The gate's best match is recorded on every generation, not
-  only refused ones, as evidence for a future recalibration.
+  tempo-invariant windowed edit distance. The first threshold, 0.40, was
+  recalibrated on 2026-09-30 from the benchmark's 188 real generations
+  (decision 56's amendment): four public-domain rhythms had been encoded
+  from memory and were wrong, and the NSF-corpus check measured fractional
+  pitches and so could not fail. With both fixed, the threshold is 0.65,
+  set on half of the real generations and confirmed on the other half: 0 of
+  188 real generations and 0 of 8 NSF chiptunes flagged (59 of 188 would
+  have been at 0.40 as shipped), 62 of 96 synthetic paraphrases caught,
+  every one-change copy included. The gate's best match is recorded on
+  every generation, not only refused ones.
+- todo - NEXT-27: weight each known melody's distinctive intervals in the
+  similarity measure, so that stepwise, repetitive references (Twinkle, Ode
+  to Joy, Korobeiniki) stop collecting partial matches from ordinary
+  accompaniment, then recover recall on paraphrases below 0.65 without
+  false positives on the committed real-generation set (decision 56's
+  amendment).
 - P8-9 and P8-14. done - NEXT-22: terms, ownership of generated songs and
   prompt privacy. `/terms` and `/privacy` (decision 57): no ownership claim,
   prompts stay owner-only and are erased when their song is withdrawn, and
