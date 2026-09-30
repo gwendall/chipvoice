@@ -5,7 +5,9 @@
 // committed prompt set (`gen-bench-prompts.json`, about 50 original prompts
 // per console), and records latency, usage, cost priced exactly the way the
 // monthly budget prices it, the GEN-03 whole-song checks and the rendered
-// WAV for each one. See docs/GENERATION-BENCHMARK.md.
+// WAV for each one, plus the known-melody gate's best match on each
+// generation (decision 56) and the generated project itself. See
+// docs/GENERATION-BENCHMARK.md.
 //
 // `--mock` swaps in a loopback HTTP server that speaks the same OpenAI
 // Responses SSE protocol `model.ts` expects, so the harness itself - and the
@@ -15,7 +17,7 @@
 // src/lib/composition/bench.ts); the estimated cost of the requested run is
 // printed before anything is sent either way.
 import { createServer } from "node:http";
-import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
+import { appendFile, mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
@@ -41,6 +43,7 @@ await build({
       "export * from './src/lib/composition/admission';",
       "export * from './src/lib/composition/checks';",
       "export * from './src/lib/composition/bench';",
+      "export * from './src/lib/composition/similarity';",
     ].join(""),
     resolveDir: webDir,
   },
@@ -52,11 +55,12 @@ const {
   decodeWav, wholeSongChecks,
   selectPrompts, guardPaidRun, estimateRunCost, costFromUsage, summarize, meanCostOf,
   formatSummaryMarkdown, listeningGridCsv, validatePromptSet,
+  knownMelodySimilarity, interleaveByConsole, budgetAllows, FALLBACK_COST_PER_CALL_USD,
 } = lib;
 
 // ---- CLI ---------------------------------------------------------------
 function parseArgs(argv) {
-  const args = { mock: false, confirmPaidRun: false, sample: false, consoles: null, limit: undefined, prompts: null, out: null };
+  const args = { mock: false, confirmPaidRun: false, sample: false, consoles: null, limit: undefined, prompts: null, out: null, resume: null, concurrency: 1, maxCostUsd: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--mock") args.mock = true;
@@ -66,11 +70,26 @@ function parseArgs(argv) {
     else if (a === "--limit") args.limit = Number(argv[++i]);
     else if (a === "--prompts") args.prompts = argv[++i];
     else if (a === "--out") args.out = argv[++i];
+    else if (a === "--resume") args.resume = argv[++i];
+    else if (a === "--concurrency") args.concurrency = Number(argv[++i]);
+    else if (a === "--max-cost-usd") args.maxCostUsd = Number(argv[++i]);
     else throw Error(`Unknown argument: ${a}`);
   }
   return args;
 }
 const args = parseArgs(process.argv.slice(2));
+if (!Number.isInteger(args.concurrency) || args.concurrency < 1 || args.concurrency > 8) {
+  console.error("--concurrency takes a whole number from 1 to 8.");
+  process.exit(1);
+}
+if (args.maxCostUsd !== null && !(args.maxCostUsd > 0)) {
+  console.error("--max-cost-usd takes a positive number of US dollars.");
+  process.exit(1);
+}
+if (args.resume && args.out) {
+  console.error("--resume already names the run directory; drop --out.");
+  process.exit(1);
+}
 
 const promptsPath = args.prompts ? path.resolve(process.cwd(), args.prompts) : path.join(scriptDir, "gen-bench-prompts.json");
 const allPrompts = JSON.parse(await readFile(promptsPath, "utf8"));
@@ -84,7 +103,28 @@ if (problems.length) {
 const selected = selectPrompts(allPrompts, { consoles: args.consoles ?? undefined, sample: args.sample, limit: args.limit });
 if (!selected.length) { console.error("No prompts matched the requested filters."); process.exit(1); }
 
-const plannedRealCalls = args.mock ? 0 : selected.length;
+// ---- --resume: a run directory's results.jsonl holds every record written
+// so far, one line each as it finished. Its rendered records are kept and
+// their prompts not sent again; failed ones are retried. A mock run's
+// records never stand in for a real run's, nor the other way round.
+const outDir = args.resume
+  ? path.resolve(process.cwd(), args.resume)
+  : args.out ? path.resolve(process.cwd(), args.out) : path.join(repoRoot, ".artifacts", "gen-bench", `${args.mock ? "mock-" : ""}${new Date().toISOString().replace(/[:.]/g, "-")}`);
+const done = new Map();
+if (args.resume) {
+  let lines = [];
+  try { lines = (await readFile(path.join(outDir, "results.jsonl"), "utf8")).split("\n").filter(Boolean); }
+  catch (error) { console.error(`Cannot resume ${outDir}: ${error.message}`); process.exit(1); }
+  for (const line of lines) {
+    const record = JSON.parse(line);
+    if (record.mock !== args.mock) { console.error(`Cannot resume ${outDir}: it holds ${record.mock ? "mock" : "real"} records.`); process.exit(1); }
+    if (record.status === "ok") done.set(record.id, record);
+  }
+  console.log(`Resuming ${outDir}: ${done.size} rendered record(s) kept.`);
+}
+const pending = selected.filter((p) => !done.has(p.id));
+
+const plannedRealCalls = args.mock ? 0 : pending.length;
 
 // ---- the spending guard, before any credential is read or call is made ----
 async function priorMeanCostUsd() {
@@ -104,9 +144,11 @@ async function priorMeanCostUsd() {
   return latest ? meanCostOf(latest) : null;
 }
 
+let perCallEstimateUsd = FALLBACK_COST_PER_CALL_USD;
 if (!args.mock) {
   const prior = await priorMeanCostUsd();
   const estimate = estimateRunCost(plannedRealCalls, prior);
+  perCallEstimateUsd = estimate.perCallUsd;
   console.log(`Estimated cost of this run: ${plannedRealCalls} real call(s) x $${estimate.perCallUsd.toFixed(4)}/call (${estimate.source}) = $${estimate.totalUsd.toFixed(2)}.`);
   const fullSetEstimate = estimateRunCost(allPrompts.length, prior);
   if (selected.length < allPrompts.length)
@@ -116,6 +158,7 @@ if (!args.mock) {
     console.error(`Refusing to run: ${guard.reason}. Pass --confirm-paid-run to proceed, or --mock to run without spending anything.`);
     process.exit(1);
   }
+  if (args.maxCostUsd !== null) console.log(`Spending cap: no new call once this invocation would pass $${args.maxCostUsd.toFixed(2)}.`);
 }
 
 // ---- the model: a loopback mock, or the real adapter -----------------------
@@ -185,9 +228,10 @@ if (args.mock) {
 }
 
 // ---- run every selected prompt ---------------------------------------------
-const runId = `${args.mock ? "mock-" : ""}${new Date().toISOString().replace(/[:.]/g, "-")}`;
-const outDir = args.out ? path.resolve(process.cwd(), args.out) : path.join(repoRoot, ".artifacts", "gen-bench", runId);
 await mkdir(path.join(outDir, "audio"), { recursive: true });
+await mkdir(path.join(outDir, "projects"), { recursive: true });
+// A fresh run (not --resume) starts its own results.jsonl, even in a reused --out directory.
+if (!args.resume) await writeFile(path.join(outDir, "results.jsonl"), "");
 
 async function runOne(prompt) {
   const request = { prompt: prompt.prompt, target: prompt.console, durationSeconds: prompt.durationSeconds, loop: prompt.loop, visibility: "private" };
@@ -204,6 +248,14 @@ async function runOne(prompt) {
     record.costUsd = costFromUsage(result.model, result.usage);
 
     const project = compositionProject(result.value, request);
+    // Decision 56's gate, measured the way jobs.ts measures it in production.
+    const melodicParts = project.source.kind === "performance" ? project.source.performance.parts : [];
+    const melodyMatch = knownMelodySimilarity(melodicParts);
+    record.melody = melodyMatch ? { similarity: melodyMatch.similarity, referenceId: melodyMatch.referenceId, part: melodyMatch.part } : null;
+    const projectJson = JSON.stringify(project);
+    const projectPath = path.join("projects", `${prompt.id}.json`);
+    await writeFile(path.join(outDir, projectPath), projectJson);
+    record.project = { path: projectPath, sha256: createHash("sha256").update(projectJson).digest("hex") };
 
     const renderStart = performance.now();
     const rendered = renderProject(project, {});
@@ -230,14 +282,38 @@ async function runOne(prompt) {
   return record;
 }
 
-const records = [];
-for (const prompt of selected) {
-  const record = await runOne(prompt);
-  records.push(record);
-  const cost = record.costUsd !== null && record.costUsd !== undefined ? ` $${record.costUsd.toFixed(4)}` : "";
-  console.log(`${record.status === "ok" ? "ok  " : "FAIL"} ${record.id} (${record.console}, ${record.durationSeconds}s${record.loop ? ", loop" : ""})${cost} ${record.status === "failed" ? `- ${record.errorCode}: ${record.error}` : `- ${(record.findings ?? []).length} finding(s)`}`);
+// `--concurrency` workers take the pending prompts one console at a time in
+// turn (`interleaveByConsole`), so a run that stops early still covers every
+// console. Each record is appended to results.jsonl the moment it finishes,
+// so a crash or an interrupted paid run keeps every generation already paid
+// for, and `--resume` picks up from there. `--max-cost-usd` stops handing out
+// new prompts once one more call could pass the cap.
+const byId = new Map(done);
+const queue = interleaveByConsole(pending);
+// A failed call has no usage to price but may still have been billed: it counts
+// against the cap at the per-call rate, and stays out of the run's mean.
+let next = 0, inFlight = 0, spentUsd = 0, pricedCalls = 0, unpricedUsd = 0, capped = false;
+async function worker() {
+  while (next < queue.length) {
+    const perCallUsd = pricedCalls ? spentUsd / pricedCalls : perCallEstimateUsd;
+    if (!budgetAllows(spentUsd + unpricedUsd, inFlight, perCallUsd, args.maxCostUsd)) { capped = true; return; }
+    const prompt = queue[next++];
+    inFlight++;
+    const record = await runOne(prompt);
+    inFlight--;
+    if (typeof record.costUsd === "number") { spentUsd += record.costUsd; pricedCalls++; }
+    else if (!args.mock) unpricedUsd += pricedCalls ? spentUsd / pricedCalls : perCallEstimateUsd;
+    byId.set(record.id, record);
+    await appendFile(path.join(outDir, "results.jsonl"), `${JSON.stringify(record)}\n`);
+    const cost = record.costUsd !== null && record.costUsd !== undefined ? ` $${record.costUsd.toFixed(4)}` : "";
+    const melody = record.melody ? `, melody ${record.melody.similarity.toFixed(3)}` : "";
+    console.log(`${record.status === "ok" ? "ok  " : "FAIL"} ${record.id} (${record.console}, ${record.durationSeconds}s${record.loop ? ", loop" : ""})${cost} ${record.status === "failed" ? `- ${record.errorCode}: ${record.error}` : `- ${(record.findings ?? []).length} finding(s)${melody}`}`);
+  }
 }
+await Promise.all(Array.from({ length: Math.min(args.concurrency, pending.length) }, worker));
 if (mockServer) await mockServer();
+if (capped) console.log(`Stopped at the spending cap: $${spentUsd.toFixed(2)} priced${unpricedUsd ? ` (plus up to $${unpricedUsd.toFixed(2)} for failed calls)` : ""}, ${queue.length - next} prompt(s) not sent. Continue with --resume ${outDir}.`);
+const records = selected.map((p) => byId.get(p.id)).filter(Boolean);
 
 // ---- write the results -----------------------------------------------------
 const summary = summarize(records);

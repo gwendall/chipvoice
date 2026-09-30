@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -54,11 +55,21 @@ try {
     assert.equal(wav.subarray(0, 4).toString("ascii"), "RIFF");
     assert.equal(wav.subarray(8, 12).toString("ascii"), "WAVE");
     assert.ok(Math.abs(wav.length - (44 + record.audio.seconds * 44100 * 2 * 2)) < 1000, "roughly the expected 16-bit stereo byte count");
+    // Decision 56's gate ran on the output and was recorded, below the threshold too.
+    assert.ok("melody" in record, "every rendered record carries the known-melody match");
+    if (record.melody) assert.ok(record.melody.similarity >= 0 && record.melody.similarity <= 1 && typeof record.melody.referenceId === "string");
+    const projectJson = await readFile(join(outDir, record.project.path), "utf8");
+    assert.equal(createHash("sha256").update(projectJson).digest("hex"), record.project.sha256);
+    assert.equal(JSON.parse(projectJson).source.kind, "performance");
   }
+  const jsonl = (await readFile(join(outDir, "results.jsonl"), "utf8")).trim().split("\n");
+  assert.equal(jsonl.length, 2, "each record is appended to results.jsonl as it finishes");
 
   const summary = JSON.parse(await readFile(join(outDir, "summary.json"), "utf8"));
   assert.equal(summary.mock, true);
   assert.equal(summary.totalPrompts, 2);
+  assert.equal(summary.melody.scored, 2);
+  assert.equal(summary.melody.refused, 0, "the synthetic mock score is no known melody");
   assert.deepEqual(summary.consoles.map((c) => c.console).sort(), ["2a03", "dmg"]);
   for (const c of summary.consoles) {
     assert.equal(c.succeeded, 1);
@@ -77,6 +88,31 @@ try {
   assert.equal(gridLines.length, 3); // header + 2 songs
   assert.match(gridLines[0], /musicality/);
   assert.match(gridLines[0], /console idiom/);
+  assert.match(summaryMd, /## Known-melody similarity/);
+
+  // --resume keeps the rendered records and sends nothing again.
+  const resumed = await run(["--mock", "--console", "2a03,dmg", "--sample", "--resume", outDir]);
+  assert.equal(resumed.code, 0, `resume should succeed:\n${resumed.stdout}\n${resumed.stderr}`);
+  assert.match(resumed.stdout, /Resuming .*: 2 rendered record\(s\) kept/);
+  assert.doesNotMatch(resumed.stdout, /ok\s+2a03-01/, "a kept record is not generated again");
+  assert.equal(JSON.parse(await readFile(join(outDir, "results.json"), "utf8")).length, 2);
+
+  // --concurrency runs prompts side by side and still writes them in file order.
+  const parallelDir = join(workDir, "parallel-run");
+  const parallel = await run(["--mock", "--console", "md", "--limit", "3", "--concurrency", "3", "--out", parallelDir]);
+  assert.equal(parallel.code, 0, `concurrent run should succeed:\n${parallel.stdout}\n${parallel.stderr}`);
+  const parallelResults = JSON.parse(await readFile(join(parallelDir, "results.json"), "utf8"));
+  assert.deepEqual(parallelResults.map((r) => r.id), ["md-01", "md-02", "md-03"]);
+
+  // --max-cost-usd stops handing out prompts before the cap would be passed
+  // (the mock's usage is priced like a real call's, about 0.3 USD each).
+  const cappedDir = join(workDir, "capped-run");
+  const capped = await run(["--mock", "--console", "md", "--limit", "5", "--max-cost-usd", "0.6", "--out", cappedDir]);
+  assert.equal(capped.code, 0, `capped run should succeed:\n${capped.stdout}\n${capped.stderr}`);
+  assert.match(capped.stdout, /Stopped at the spending cap/);
+  const cappedResults = JSON.parse(await readFile(join(cappedDir, "results.json"), "utf8"));
+  assert.ok(cappedResults.length >= 1 && cappedResults.length < 5, `${cappedResults.length} records under a 0.6 USD cap`);
+  assert.ok(cappedResults.reduce((sum, r) => sum + r.costUsd, 0) <= 0.6);
 } finally {
   await rm(workDir, { recursive: true, force: true });
 }
@@ -169,6 +205,29 @@ try {
   assert.match(lib.formatSummaryMarkdown(summary), /## 2a03/);
   const csv = lib.listeningGridCsv(fixture);
   assert.equal(csv.trim().split("\n").length, 3); // header + 2 succeeded (c failed, no audio)
+
+  // interleaveByConsole / budgetAllows.
+  const interleaved = lib.interleaveByConsole(prompts);
+  assert.equal(interleaved.length, prompts.length);
+  assert.deepEqual(interleaved.slice(0, 6).map((p) => p.id), ["2a03-01", "dmg-01", "md-01", "snes-01", "c64-01", "2a03-02"]);
+  assert.equal(lib.budgetAllows(0, 0, 0.3, null), true);
+  assert.equal(lib.budgetAllows(0.3, 0, 0.3, 0.6), true);
+  assert.equal(lib.budgetAllows(0.3, 1, 0.3, 0.6), false, "a call in flight counts against the cap");
+
+  // summarizeMelody: a null match scores 0, records without a render are left
+  // out, the threshold is the production one, and top lists the closest first.
+  const melody = lib.summarizeMelody([
+    { id: "m1", status: "ok", melody: { similarity: 0.1, referenceId: "r1", part: "lead" } },
+    { id: "m2", status: "ok", melody: null },
+    { id: "m3", status: "ok", melody: { similarity: 0.45, referenceId: "r2", part: "bass" } },
+    { id: "m4", status: "failed" },
+    { id: "m5", status: "ok" },
+  ]);
+  assert.equal(melody.scored, 3);
+  assert.equal(melody.threshold, lib.KNOWN_MELODY_THRESHOLD);
+  assert.equal(melody.max, 0.45);
+  assert.equal(melody.refused, 1);
+  assert.deepEqual(melody.top.map((t) => t.id), ["m3", "m1", "m2"]);
 }
 
-console.log("PASS gen-bench: mock run drives the real generation path (model/score/checks, unmodified) with no network and produces results/summary/listening-grid; the >5-real-call guard refuses before any credential is read; the committed 250-prompt set validates; cost pricing matches admission.ts's budget formula");
+console.log("PASS gen-bench: mock run drives the real generation path (model/score/checks, unmodified) with no network and produces results/summary/listening-grid, the known-melody match and the saved project per record; --resume keeps rendered records; --concurrency keeps file order; --max-cost-usd stops before its cap; the >5-real-call guard refuses before any credential is read; the committed 250-prompt set validates; cost pricing matches admission.ts's budget formula");

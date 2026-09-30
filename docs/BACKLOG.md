@@ -1155,23 +1155,25 @@ real game music, and a real unit.
 
 **Step 6. Generation for everyone, in parallel (decision 39).**
 
-- doing - GEN-01 and GEN-05: harness done, full run pending the owner's
-  approval. `pnpm gen-bench` (`apps/web/scripts/gen-bench.mjs`, see
+- doing - GEN-01 and GEN-05: harness done, sample measured, full run
+  approved (70 USD). `pnpm gen-bench` (`apps/web/scripts/gen-bench.mjs`, see
   [the benchmark doc](GENERATION-BENCHMARK.md)) drives the same generation
   path the server uses over a committed set of 250 original prompts, 50 per
   console, varied in genre, mood, tempo, duration and structure, none naming
   a known work (decision 39 applies to the benchmark's own prompts too); it
   records latency (model call and render, separately), usage-priced cost
   (`admission.ts`'s own `priceUsage`, so it cannot drift from the budget),
-  the GEN-03 whole-song checks and the rendered WAV, and writes a summary
-  and a listening-grid template. `--mock` runs the whole harness with no
-  network or cost, covered by `test-gen-bench.mjs` in CI; a real run refuses
-  more than 5 calls without `--confirm-paid-run`. The one-per-console paid
-  sample the harness was built for did not run: `OPENAI_API_KEY` is absent
-  from the main checkout's `.env.local`, so nothing was spent and, per the
-  ticket, no other key was tried. The full 250-prompt run is estimated at
-  70.00 USD (decision 42's 0.28 USD/generation fallback average; no measured
-  run exists yet) and needs the owner's approval before it runs.
+  the GEN-03 whole-song checks, the rendered WAV, the generated project and
+  the known-melody gate's best match on the output (decision 56's
+  recalibration set), and writes a summary and a listening-grid template.
+  `--mock` runs the whole harness with no network or cost, covered by
+  `test-gen-bench.mjs` in CI; a real run refuses more than 5 calls without
+  `--confirm-paid-run`, stops before `--max-cost-usd`, and resumes from its
+  `results.jsonl` with `--resume`. The one-per-console paid sample ran on
+  2026-09-30: 5 of 5 rendered at a mean $0.2207 per generation ($55.19
+  extrapolated for the set, a floor since the sample's prompts are short),
+  and all five fail `abrupt_ending`. The full run is approved at 70 USD and
+  runs under that cap.
 - done - GEN-03: whole-song checks (late clipping, level jumps, silence
   gaps, an unresolved ending, a loop seam, a duration mismatch), pure and
   tested in `apps/web/src/lib/composition/checks.ts`, run once a generation's
@@ -1179,7 +1181,7 @@ real game music, and a real unit.
 - GEN-04: a repair call, only if measured failures justify it.
 - todo - NEXT-18: style, tempo and structure control. GEN-11 and GEN-12:
   targeted revisions and console variants.
-- done - NEXT-19: PR #TBD. Decision 55. `project_jobs` is now a durable queue
+- done - NEXT-19: PR #132. Decision 55. `project_jobs` is now a durable queue
   in the existing SQLite/libsql database: attempts, a reclaimable lease,
   dead-lettering after `RENDER_MAX_ATTEMPTS`, and a Vercel Cron sweep
   (`/api/cron/sweep-jobs`) that reclaims expired leases and advances the
