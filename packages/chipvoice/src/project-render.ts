@@ -18,7 +18,7 @@ import { parseProject, type MusicProject } from "./project.js";
  * test/engine-version.mjs holds it equal to package.json, so a release bumps
  * both.
  */
-export const PROJECT_ENGINE_VERSION = "0.20.0";
+export const PROJECT_ENGINE_VERSION = "0.21.0";
 const definitions = {
   "2a03": nesChip,
   dmg: gbChip,

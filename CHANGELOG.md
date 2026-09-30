@@ -9,7 +9,14 @@ Notable changes to the `chipvoice` package and the SDK it exposes, newest
 first. See [README.md](README.md) for the current quickstart and feature
 overview.
 
-## Unreleased
+## 0.21.0: Tapered SNES releases and exact SPC snapshots
+
+New since 0.20.0: a held note in the SNES's default dry space now fades
+before its key-off instead of stopping on the S-DSP's fast hardware
+release, and `importSpc` resumes an `.spc` snapshot on the chip's exact
+hidden state, not only its registers. Existing songs can sound different on
+the SNES - a dry-space note held at least 40 ms now ends on a short taper -
+so this is a minor release, not a patch.
 
 A held dry-space SNES note now tapers its sustain before key-off, instead of
 sitting at full level until the S-DSP's own fixed, fast (~8 ms) hardware
