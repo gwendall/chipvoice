@@ -7,7 +7,7 @@ import { db, newId } from "../db";
 import { canonical, ensureProfile, ownedProfile, getProject, publishProject, ProjectHttpError, type Publication } from "../projects";
 import { createProjectJob, getProjectJob } from "../project-jobs";
 import { utilityWorker } from "../utility-worker";
-import { compositionConfig, openAIModel, type CompositionModel } from "./model";
+import { compositionConfig, openAIModel, PROVIDER_REFUSAL_CODES, type CompositionModel } from "./model";
 import { compositionAccess, compositionBudget, isInvited, monthSpend, requireBudget, requireInvitation } from "./admission";
 import { compositionRequest, compositionTarget, compositionInstructions, compositionSchema, compositionProject } from "./score";
 import { decodeWav, wholeSongChecks, type Finding, type PartActivity } from "./checks";
@@ -21,7 +21,9 @@ const viewer = (row: Record<string, unknown>) => ({ userId: String(row.user_id),
 /** Recorded on a generation refused before any paid call (known-work prompt,
  * flagged prompt, or a moderation outage) so `monthSpend` prices the row at
  * its true cost, zero, instead of `admission.ts`'s worst-case reserve. See
- * the comment in `runGeneration`'s catch block below and decision 56. */
+ * the comment in `runGeneration`'s catch block below and decision 56. A call
+ * the provider itself refused for credit or rate (`PROVIDER_REFUSAL_CODES`)
+ * did no work either and is recorded the same way (decision 61). */
 const ZERO_USAGE = JSON.stringify({ input_tokens: 0, output_tokens: 0, input_tokens_details: { cached_tokens: 0 } });
 const PRE_CALL_REFUSAL_CODES = new Set(["prompt_known_work", "prompt_flagged", "moderation_unavailable"]);
 
@@ -276,10 +278,11 @@ export async function runGeneration(id: string, suppliedModel?: CompositionModel
     const timedOut = controller.signal.reason?.name === "TimeoutError" || (e instanceof Error && e.name === "TimeoutError");
     const code = timedOut ? "generation_timeout" : e instanceof ProjectHttpError ? e.code : "composition_failed";
     const message = timedOut ? "The composition exceeded its time limit. No new request was started automatically." : e instanceof ProjectHttpError ? e.message : "The composition could not be completed. Please try another request.";
-    // A pre-call refusal never reached the model, so its usage is truthfully
-    // zero, not unknown - coalesce so any usage a later failure already
-    // recorded (e.g. after the model call) is never overwritten.
-    const usage = PRE_CALL_REFUSAL_CODES.has(code) ? ZERO_USAGE : null;
+    // A pre-call refusal never reached the model, and a provider refusal for
+    // credit or rate did no work, so their usage is truthfully zero, not
+    // unknown - coalesce so any usage a later failure already recorded (e.g.
+    // after the model call) is never overwritten.
+    const usage = PRE_CALL_REFUSAL_CODES.has(code) || PROVIDER_REFUSAL_CODES.has(code) ? ZERO_USAGE : null;
     await client.execute({ sql: "update generations set status='failed',error=?,error_code=?,finished_at=?,usage=coalesce(usage,?) where id=? and status not in ('cancelled','failed')", args: [message, code, Date.now(), usage, id] });
   } finally {
     clearTimeout(timer); clearInterval(cancellation);

@@ -1059,3 +1059,20 @@ GS-08。GS-07 v2.2は、1080個のライブカタログmp3すべてで、Firefox
 **ゲート。** `check-browser-decode.mjs`のmp3先頭遅延チェック（自身のヘッダーコメントの4番目の項目）は、以前は情報提供のみだった（`MP3_LAG_TOLERANCE_FRAMES`は存在しなかった）。今や実際のゲートになった：ラグは両エンジンでちょうど0でなければならず、そうでなければビルドはこの決定を指すメッセージとともに失敗する。修正後、再ビルドしたカタログ全体（1080個のライブバリアント、両エンジン）に対して実行した結果：各エンジンで2160回のデコード中0件の失敗、mp3ラグはChromium・Firefoxともに1080/1080でちょうど0（両方ともモーダルラグ0、範囲[0, 0]）、mp3の長さ超過は両エンジンとも+0/+0/+0（最小/中央値/最大）で、修正前の+576ラグと未トリムの末尾パディングから減少、両エンジンとも最小正規化相関0.883で修正前のベースライン（0.888）にほぼ一致し、60バリアントのサンプルだけでなくカタログ全体でも品質の後退がないことを裏付けた。oggの自身の一致チェックはこれによって一切影響を受けない（GS-06/GS-07/決定54自身の機構、変更なし）：両エンジンとも|browser - reference|の最大値は1.54e-5、`DECODER_AGREEMENT_TOLERANCE`の65分の1。
 
 **不要だったこと。** ogg自身のエンコード経路（`sox -R`、`OGG_TAIL_GUARD_FRAMES`）への変更は一切なかった - このチケットの欠陥と修正はmp3のみに関するものだ。GS-08が最初に開かれた際にフォールバックの方向性として挙げられていた、レイテンシーに敏感な利用者向けにoggを推奨することは、不要だと判明した：mp3の欠陥は発生源で修正されたため、両フォーマットとも今や両エンジンでギャップレスかつ正確であり、`docs/GAMESOUNDS.md`はタイミングの観点でどちらのフォーマットも他方より推奨していない。
+
+<a id="61-a-provider-refusal-for-credit-or-rate-is-named-logged-by-its-identifiers-and-priced-at-zero-2026-10-06"></a>
+## 61. クレジットやレートを理由とするモデル提供元の拒否は、その名で示され、識別子で記録され、費用ゼロとして計上される（2026-10-06）
+
+2026-10-06、エージェントが依頼した2件の生成が、2〜4秒で`model_error`「The composition provider interrupted the response」として失敗し、出力文字数はゼロだった。エージェントはこれを自分の依頼の欠陥と受け取って原因を作り上げ（短い曲のほうが「通りやすい」）、デプロイのログにはそれを正せる情報が何もなかった。同じOpenAI組織のローカル鍵で再現した結果：提供元はHTTP 200を返し、続いて`error`イベント`{ type: "insufficient_quota", code: "credit_balance_exhausted" }`、その後に`response.failed`をストリームする。`model.ts`は、中身が何であれ、すべての`error`イベントを同じ502に変えていた。
+
+`model.ts`は今後、拒否が届きうる3つの場所すべてから失敗の`type`と`code`を読む：`error`イベント（入れ子またはフラット）、`response.failed`の本体、OKでないHTTPの本体。読むのは`[a-z0-9_.-]{1,64}`に一致する識別子だけで、メッセージや本体の残りは決して読まない。このファイルの非漏洩ルールはそのままである。
+
+- **クレジット枯渇**（`insufficient_quota`、`credit_balance_exhausted`、`billing_hard_limit_reached`、`billing_not_active`）は`503 composition_unavailable`になる：「Composition is unavailable on chipvoice's side right now: the model provider's credit is exhausted. Retrying will not help until it is restored.」
+- **レート制限**（`rate_limit_exceeded`、`rate_limit_error`）は`503 composition_rate_limited`になり、1分後に再試行するよう伝える。429ではなく503なのは、`runGeneration`が送出された429を呼び出し側自身の利用枠として扱い、生成を実行中のまま残すからである。
+- **それ以外**はこれまでの`502 model_error`のメッセージを保ち、モデルがすでに出力をストリームした後に届いた拒否も同様である：その呼び出しは実際に処理を行っている。
+
+提供元の失敗はすべて、`where`（`error_event`、`response_failed`、`http_<status>`）、提供元の`type`と`code`、それまでの出力文字数とともに`Composition provider failure`として記録される。次の診断は再現ではなく、デプロイのログの検索で済む。
+
+**理由。** 呼び出し側が直せない拒否は、そうと言わなければならない。さもなければエージェントも人も再試行し、推測する。予算にも関わる：使用量が不明な失敗した生成は、`monthSpend`によって最悪ケースの予約額で計上される（決定56）。そのため、提供元の枯渇にエージェントの再試行が重なると、一度も実行されなかった呼び出しで月の予算を使い果たしてしまう。クレジットやレートによる提供元の拒否は何の処理も行っていないので、`jobs.ts`は両方のコード（`PROVIDER_REFUSAL_CODES`）について、決定56の呼び出し前の拒否と同じく、明示的にゼロの使用量を記録する。
+
+**変化。** `apps/web/src/lib/composition/model.ts`（分類と識別子の記録）、`jobs.ts`（ゼロの使用量）、そして作曲画面の失敗メッセージ（英語と日本語）。生成の`errorCode`は今後`composition_unavailable`または`composition_rate_limited`になりうる。OpenAPIドキュメントはコードではなくステータスを列挙しているため変更はない。`test-generation-stream.mjs`はモックしたfetchに対して実際のイベントの形を再生し（クレジット、レート、未知のコード、出力後の拒否、読めないHTTP本体。どのメッセージにもログ行にも提供元の文面は出ない）、`test-generation.mjs`はフィクスチャの提供元を通して2026-10-06の形をエンドツーエンドで検証する：生成は`composition_unavailable`で失敗し、サーバーのログにはメッセージではなくコードが残り、月の支出は変わらない。

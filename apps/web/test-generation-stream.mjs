@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { build } from '../../packages/chipvoice/node_modules/esbuild/lib/main.js';
 await build({stdin:{contents:"export * from './src/lib/composition/model';export * from './src/lib/composition/score';",resolveDir:process.cwd()},outfile:'generated/test-generation-stream.mjs',bundle:true,platform:'node',format:'esm',packages:'external',logLevel:'silent'});
-const {openAIModel,compositionProject}=await import('./generated/test-generation-stream.mjs');
+const {openAIModel,compositionProject,PROVIDER_REFUSAL_CODES}=await import('./generated/test-generation-stream.mjs');
 const config={apiKey:'fixture',endpoint:'http://localhost/responses',model:'fixture',maxTokens:24000};
 const originalFetch=globalThis.fetch;
 const encoder=new TextEncoder();
@@ -31,6 +31,29 @@ try {
     globalThis.fetch=async()=>new Response(payload,{headers:{'Content-Type':'text/event-stream'}});
     await assert.rejects(openAIModel(config).generate({instructions:'',prompt:'',schema:{},signal:new AbortController().signal}), error=>error.code===code && !error.message.includes('PRIVATE_PROVIDER_MESSAGE'));
   }
+  // Decision 61: a provider refusal is named by its identifiers only, whatever shape carries it.
+  const credit={type:'insufficient_quota',code:'credit_balance_exhausted',message:'PRIVATE_PROVIDER_MESSAGE',param:null};
+  const originalWarn=console.warn, logged=[];
+  console.warn=(...args)=>logged.push(JSON.stringify(args));
+  try {
+    for (const [label, response, code, status] of [
+      ['credit error event (the 2026-10-06 shape)', ()=>new Response(event({type:'error',error:credit})+event({type:'response.failed',response:{status:'failed',error:{code:'credit_balance_exhausted',message:'PRIVATE_PROVIDER_MESSAGE'}}})), 'composition_unavailable', 503],
+      ['credit on response.failed', ()=>new Response(event({type:'response.failed',response:{status:'failed',error:{code:'credit_balance_exhausted',message:'PRIVATE_PROVIDER_MESSAGE'}}})), 'composition_unavailable', 503],
+      ['credit as an HTTP error body', ()=>new Response(JSON.stringify({error:{...credit,code:'insufficient_quota'}}),{status:429}), 'composition_unavailable', 503],
+      ['rate limit, flat error event', ()=>new Response(event({type:'error',code:'rate_limit_exceeded',message:'PRIVATE_PROVIDER_MESSAGE'})), 'composition_rate_limited', 503],
+      ['rate limit as an HTTP error body', ()=>new Response(JSON.stringify({error:{type:'requests',code:'rate_limit_exceeded',message:'PRIVATE_PROVIDER_MESSAGE'}}),{status:429}), 'composition_rate_limited', 503],
+      ['unknown code keeps the old answer', ()=>new Response(event({type:'error',error:{type:'server_error',code:'server_error',message:'PRIVATE_PROVIDER_MESSAGE'}})), 'model_error', 502],
+      ['credit after output already streamed did work', ()=>new Response(event({type:'response.output_text.delta',delta:'{"ti'})+event({type:'error',error:credit})), 'model_error', 502],
+      ['unreadable HTTP error body', ()=>new Response('PRIVATE_PROVIDER_MESSAGE',{status:500}), 'model_error', 502],
+    ]) {
+      globalThis.fetch=async()=>response();
+      await assert.rejects(openAIModel(config).generate({instructions:'',prompt:'',schema:{},signal:new AbortController().signal}), error=>error.code===code && error.status===status && !error.message.includes('PRIVATE_PROVIDER_MESSAGE'), label);
+    }
+  } finally {console.warn=originalWarn;}
+  assert.ok(logged.some(line=>line.includes('Composition provider failure') && line.includes('credit_balance_exhausted') && line.includes('error_event')),'the provider identifiers reach the server log');
+  assert.ok(logged.every(line=>!line.includes('PRIVATE_PROVIDER_MESSAGE')),'a provider message never reaches the server log');
+  assert.deepEqual([...PROVIDER_REFUSAL_CODES].sort(),['composition_rate_limited','composition_unavailable']);
+  console.log('PASS provider refusals for credit or rate are named by code, logged by identifier, and never relay the provider message');
   const timeout = new AbortController();
   globalThis.fetch=async()=>new Response(new ReadableStream({start(controller){timeout.signal.addEventListener('abort',()=>controller.error(new TypeError('terminated')),{once:true});}}));
   const timedRequest=openAIModel(config).generate({instructions:'',prompt:'',schema:{},signal:timeout.signal});
