@@ -251,6 +251,26 @@ finally:
     assert.equal(await spend(), spendBefore, "a moderation-outage refusal prices at zero, not the reserve");
   }
   {
+    // Decision 61: the provider refuses the paid call for credit (the
+    // 2026-10-06 shape). The generation names that instead of an
+    // "interrupted" response, the server log carries the provider's
+    // identifiers and never its message, and the refusal prices at zero: an
+    // outage plus agents retrying must not spend the month's budget at the
+    // worst-case reserve.
+    const spendBefore = await spend();
+    const refused = await query("/api/v1/generations", post({ ...request, prompt: "credit-exhausted" }, "failure-credit-exhausted"));
+    assert.equal(refused.status, 202);
+    const refusedResult = await completed(refused.body.id);
+    assert.equal(refusedResult.status, "failed");
+    assert.equal(refusedResult.errorCode, "composition_unavailable");
+    assert.match(refusedResult.error, /credit is exhausted/);
+    assert.equal(refusedResult.projectId, null);
+    assert.ok(!JSON.stringify(refusedResult).includes("DO_NOT_LEAK_PROVIDER_BODY"));
+    assert.match(server.logs(), /Composition provider failure[^}]*credit_balance_exhausted/, "the provider's code reaches the server log");
+    assert.ok(!server.logs().includes("DO_NOT_LEAK_PROVIDER_BODY"), "the provider's message never reaches the server log");
+    assert.equal(await spend(), spendBefore, "a provider credit refusal prices at zero, not the reserve");
+  }
+  {
     // The real known-melody gate: measured on the model's OUTPUT after an
     // ordinary, unflagged prompt and a successful (mocked) paid call - the
     // model itself is what reproduced a known melody, not the prompt. The

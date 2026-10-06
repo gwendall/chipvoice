@@ -1078,6 +1078,8 @@
   "Composition took too long. Your prompt is saved; you can try again.": "Composition took too long. Your prompt is saved; you can try again.",
   "The model reached its output limit before finishing. Try a simpler arrangement.": "The model reached its output limit before finishing. Try a simpler arrangement.",
   "The model connection ended before the score was complete. You can try again.": "The model connection ended before the score was complete. You can try again.",
+  "Composition is unavailable on chipvoice's side right now. Retrying will not help until it is restored.": "Composition is unavailable on chipvoice's side right now. Retrying will not help until it is restored.",
+  "The model provider is busy right now. Try again in a minute.": "The model provider is busy right now. Try again in a minute.",
   "The model declined this request. Try a different musical brief.": "The model declined this request. Try a different musical brief.",
   "The score was saved, but its audio could not be prepared.": "The score was saved, but its audio could not be prepared.",
   "Your composition authorization expired. Sign in again to continue.": "Your composition authorization expired. Sign in again to continue.",

@@ -3890,3 +3890,60 @@ fallback direction when GS-08 was first opened, turned out unnecessary:
 the mp3 defect is fixed at the source, so both formats are now
 gapless-exact in both engines and `docs/GAMESOUNDS.md` recommends neither
 format over the other on timing grounds.
+
+## 61. A provider refusal for credit or rate is named, logged by its identifiers and priced at zero (2026-10-06)
+
+On 2026-10-06 two generations requested by an agent failed within two to
+four seconds with `model_error`, "The composition provider interrupted the
+response", and zero output characters. The agent read that as a fault of its
+own request and invented a cause (shorter pieces "pass better"), and the
+deployment's logs held nothing to correct it. Reproduced with a local key on
+the same OpenAI organization: the provider answers HTTP 200, then streams an
+`error` event `{ type: "insufficient_quota", code: "credit_balance_exhausted" }`
+followed by `response.failed`. `model.ts` turned every `error` event into the
+same 502, whatever it carried.
+
+`model.ts` now reads a failure's `type` and `code` from all three places a
+refusal can arrive: an `error` event (nested or flat), a `response.failed`
+body and a non-OK HTTP body. It reads only identifiers matching
+`[a-z0-9_.-]{1,64}`, never the message or the rest of the body: the file's
+no-leak rule stands.
+
+- **Credit exhausted** (`insufficient_quota`, `credit_balance_exhausted`,
+  `billing_hard_limit_reached`, `billing_not_active`) becomes
+  `503 composition_unavailable`: "Composition is unavailable on chipvoice's
+  side right now: the model provider's credit is exhausted. Retrying will not
+  help until it is restored."
+- **Rate limited** (`rate_limit_exceeded`, `rate_limit_error`) becomes
+  `503 composition_rate_limited`, which says to try again in a minute. It is
+  a 503 and not a 429 because `runGeneration` treats a thrown 429 as the
+  caller's own allowance and leaves the generation running.
+- **Anything else** keeps the previous `502 model_error` messages, and so
+  does a refusal that arrives after the model already streamed output: that
+  call did real work.
+
+Every provider failure logs `Composition provider failure` with `where`
+(`error_event`, `response_failed` or `http_<status>`), the provider's `type`
+and `code`, and the output characters so far, so the next diagnosis is a
+search of the deployment's logs rather than a reproduction.
+
+**Why.** A refusal the caller cannot fix must say so, or agents and people
+retry and guess. It also touches the budget: a failed generation with unknown
+usage is priced by `monthSpend` at the worst-case reserve (decision 56), so
+an exhausted provider plus agents retrying would spend the month's budget on
+calls that never ran. A provider refusal for credit or rate did no work, so
+`jobs.ts` records explicit zero usage for both codes
+(`PROVIDER_REFUSAL_CODES`), like the pre-call refusals of decision 56.
+
+**What changes.** `apps/web/src/lib/composition/model.ts` (classification and
+identifier logging), `jobs.ts` (zero usage), and the composer's failure
+messages in English and Japanese. A generation's `errorCode` can now be
+`composition_unavailable` or `composition_rate_limited`; the OpenAPI document
+lists statuses rather than codes, so it is unchanged.
+`test-generation-stream.mjs` replays the real event shapes against a mocked
+fetch (credit, rate, an unknown code, a refusal after output, an unreadable
+HTTP body; no provider text in any message or log line), and
+`test-generation.mjs` drives the 2026-10-06 shape end to end through the
+fixture provider: the generation fails with `composition_unavailable`, the
+server log carries the code and not the message, and the month's spend is
+unchanged.

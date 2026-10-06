@@ -1078,6 +1078,8 @@
   "Composition took too long. Your prompt is saved; you can try again.": "作曲が制限時間を超えました。プロンプトは保存されています。もう一度お試しください。",
   "The model reached its output limit before finishing. Try a simpler arrangement.": "完成する前にモデルの出力上限に達しました。編成をシンプルにしてお試しください。",
   "The model connection ended before the score was complete. You can try again.": "楽譜が完成する前にモデルとの接続が終了しました。もう一度お試しください。",
+  "Composition is unavailable on chipvoice's side right now. Retrying will not help until it is restored.": "現在、chipvoice 側で作曲を利用できません。復旧するまで再試行しても解決しません。",
+  "The model provider is busy right now. Try again in a minute.": "現在、モデルの提供元が混み合っています。1 分ほどしてからもう一度お試しください。",
   "The model declined this request. Try a different musical brief.": "モデルがこのリクエストを受け付けませんでした。別の曲の説明でお試しください。",
   "The score was saved, but its audio could not be prepared.": "楽譜は保存されましたが、音声を準備できませんでした。",
   "Your composition authorization expired. Sign in again to continue.": "作曲の認証が期限切れになりました。再度ログインしてください。",

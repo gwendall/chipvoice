@@ -87,6 +87,14 @@ export async function compositionServer({ live = false, mailBase, access = "open
       response.end(JSON.stringify({ error: "DO_NOT_LEAK_PROVIDER_BODY" }));
       return;
     }
+    // Decision 61: what OpenAI sent on 2026-10-06 for an exhausted credit
+    // balance - HTTP 200, an `error` event, then `response.failed`.
+    if (prompt === "credit-exhausted") {
+      const error = { type: "insufficient_quota", code: "credit_balance_exhausted", message: "DO_NOT_LEAK_PROVIDER_BODY", param: null };
+      response.writeHead(200, { "Content-Type": "text/event-stream" });
+      response.end(`data: ${JSON.stringify({ type: "error", error })}\n\ndata: ${JSON.stringify({ type: "response.failed", response: { status: "failed", error: { code: error.code, message: error.message } } })}\n\n`);
+      return;
+    }
     const seconds = Number(body.instructions.match(/Duration is exactly (\d+)/)[1]);
     const score = prompt === "known-melody" ? knownMelodyScore() : fixtureScore(seconds);
     if (prompt === "invalid") score.parts[0].notes[0].endTick = -1;

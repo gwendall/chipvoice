@@ -1,4 +1,5 @@
 import { ProjectHttpError } from "../projects";
+import type { HttpError } from "web-kit/http";
 import { readSSE } from "web-kit/sse";
 
 export type ModelProgress = { outputCharacters: number };
@@ -46,6 +47,49 @@ export function compositionConfig() {
   };
 }
 
+/** OpenAI error identifiers meaning the account cannot pay for any call: no
+ * request succeeds until someone restores the credit, so a retry never helps.
+ * Since 2026-10-06 an exhausted balance arrives as HTTP 200, then an `error`
+ * event `{ type: "insufficient_quota", code: "credit_balance_exhausted" }`,
+ * then `response.failed` - it used to read as "interrupted the response". */
+const CREDIT_EXHAUSTED = new Set(["insufficient_quota", "credit_balance_exhausted", "billing_hard_limit_reached", "billing_not_active"]);
+const RATE_LIMITED = new Set(["rate_limit_exceeded", "rate_limit_error"]);
+
+/** Failure codes for a call the provider refused before doing any work: it
+ * cost nothing, so `jobs.ts` records zero usage for them (decision 61). */
+export const PROVIDER_REFUSAL_CODES = new Set(["composition_unavailable", "composition_rate_limited"]);
+
+/** A provider-defined identifier, or null: only these short tokens are ever
+ * read from a provider failure, never its message or the rest of its body. */
+function identifier(value: unknown) {
+  return typeof value === "string" && /^[a-z0-9_.-]{1,64}$/i.test(value) ? value : null;
+}
+
+/** The provider's `type` and `code` for a failure, from an `error` event
+ * (`{ error: { type, code } }`, or the documented flat `{ code }`), a failed
+ * response's `error`, or an error response body's `error`. */
+function providerFailure(source: unknown) {
+  const record = (value: unknown) => value && typeof value === "object" ? value as Record<string, unknown> : null;
+  const outer = record(source), inner = record(outer?.error);
+  return inner ? { type: identifier(inner.type), code: identifier(inner.code) } : { type: null, code: identifier(outer?.code) };
+}
+
+/** The honest error for a provider failure, classified by identifier only.
+ * The identifiers (never the message) are logged, so the next diagnosis is a
+ * search of the deployment's logs rather than a reproduction. A failure after
+ * the model already wrote output keeps `fallback`: that call did real work,
+ * so it is not a free refusal. */
+function classifyFailure(where: string, failure: { type: string | null; code: string | null }, fallback: HttpError, outputCharacters = 0) {
+  console.warn("Composition provider failure", { where, type: failure.type, code: failure.code, outputCharacters });
+  if (outputCharacters > 0) return fallback;
+  const ids = [failure.type, failure.code].filter((id): id is string => id !== null);
+  if (ids.some(id => CREDIT_EXHAUSTED.has(id)))
+    return new ProjectHttpError(503, "composition_unavailable", "Composition is unavailable on chipvoice's side right now: the model provider's credit is exhausted. Retrying will not help until it is restored.");
+  if (ids.some(id => RATE_LIMITED.has(id)))
+    return new ProjectHttpError(503, "composition_rate_limited", "The model provider is rate-limiting chipvoice right now. Try again in a minute.");
+  return fallback;
+}
+
 /** One small adapter; another provider implements the same generate method. */
 export function openAIModel(config = compositionConfig()): CompositionModel {
   return {
@@ -62,9 +106,11 @@ export function openAIModel(config = compositionConfig()): CompositionModel {
         signal,
       });
       if (!response.ok) {
-        await response.body?.cancel();
-        // Provider bodies can contain private input; never relay them to clients/logs.
-        throw new ProjectHttpError(502, "model_error", `The composition provider returned HTTP ${response.status}`);
+        // Provider bodies can contain private input; never relay them to
+        // clients/logs. Only the error's identifiers are read from it.
+        let failure = { type: null as string | null, code: null as string | null };
+        try { failure = providerFailure(JSON.parse(await response.text())); } catch { await response.body?.cancel().catch(() => {}); }
+        throw classifyFailure(`http_${response.status}`, failure, new ProjectHttpError(502, "model_error", `The composition provider returned HTTP ${response.status}`));
       }
       if (!response.body) throw new ProjectHttpError(502, "model_error", "The composition provider returned no response");
       let body;
@@ -81,7 +127,8 @@ export function openAIModel(config = compositionConfig()): CompositionModel {
             body = event.response;
             break;
           }
-          if (event.type === "error") throw new ProjectHttpError(502, "model_error", "The composition provider interrupted the response");
+          if (event.type === "error")
+            throw classifyFailure("error_event", providerFailure(event), new ProjectHttpError(502, "model_error", "The composition provider interrupted the response"), outputCharacters);
         }
       } catch (error) {
         signal.throwIfAborted();
@@ -90,7 +137,7 @@ export function openAIModel(config = compositionConfig()): CompositionModel {
       }
       if (!body) throw new ProjectHttpError(502, "model_stream_interrupted", "The composition connection ended before the score was complete");
       if (body.status === "failed")
-        throw new ProjectHttpError(502, "model_error", "The composition provider could not complete the request");
+        throw classifyFailure("response_failed", providerFailure(body), new ProjectHttpError(502, "model_error", "The composition provider could not complete the request"), outputCharacters);
       if (body.status !== "completed")
         throw new ProjectHttpError(502, "model_incomplete", "The model did not finish the composition; try a shorter piece or increase the server token limit");
       const content = (body.output ?? []).filter((item: { type: string }) => item.type === "message")

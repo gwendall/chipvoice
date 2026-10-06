@@ -16,6 +16,9 @@ const failures: Record<string, string> = {
   model_incomplete: "The model reached its output limit before finishing. Try a simpler arrangement.",
   model_stream_interrupted: "The model connection ended before the score was complete. You can try again.",
   model_refused: "The model declined this request. Try a different musical brief.",
+  // Decision 61: the model provider refused the call for credit or rate.
+  composition_unavailable: "Composition is unavailable on chipvoice's side right now. Retrying will not help until it is restored.",
+  composition_rate_limited: "The model provider is busy right now. Try again in a minute.",
   render_failed: "The score was saved, but its audio could not be prepared.",
   authorization_expired: "Your composition authorization expired. Sign in again to continue.",
   // Decision 56 (NEXT-21): prompt moderation and the known-melody check.
